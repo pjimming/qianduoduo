@@ -21,6 +21,8 @@
 - 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
 - `cash_balance` / “R2 流动性仓”已移除，数据库、API、页面和 CSV 均不包含。
 - 产品池默认由 `scripts/fetch-cmb-r2-snapshot.cjs` 自动更新（招行理财产品统一查询平台公开接口：R2、开放中、代销；移动端 R2 货架核对展示年化）；页面“刷新快照”会重新解析 `data/` 下日期最新的 CSV，不登录账户、不抓取实时额度。
+- 快照选择：`R2_PRODUCT_CSV` 优先；否则扫描 `data/cmb_r2_products*.csv`，按文件名中的 `YYYY-MM-DD` 倒序，同日期按 `mtime` 倒序；刷新接口每次重新解析并整表替换 `products`。`product_snapshot_date` 是产品 `data_date` 的最大值，不是文件名日期。
+- 观察池评分：`0.45×3M + 0.30×6M + 0.25×1Y`；若 `1M < 3M - 0.5` 再扣 0.08；每个期限桶取最高分一只，CSV 的 `score` 列不参与应用排序。
 - 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据快照日期为 2026-09-16。
 - 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`。
 - 新增或修改报告后执行 `npm run research:publish`，会更新导航、同步副本与清单、构建并重启生产服务；旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
@@ -74,11 +76,17 @@
 
 ## 5. 当前数据与 Git
 
-- 2026-10-18 已按用户要求清空正式库：收益记录 0 条、本金账户未初始化、无转入/转出流水；产品观察池保留 14 只，来自本地 CSV 快照。
-- 2026-10-19 已完成复盘第一档（日/周/月指标与提醒）、第二档（决策日志、持仓、产品事件、月度五问/季度清单）和第三档（时间轴、结论按月留痕、Markdown 导出）。正式库仍为空，新表已创建，工作台显示空状态。
+- 2026-10-18 已按用户要求清空正式库：收益记录 0 条、本金账户未初始化、无转入/转出流水。
+- 2026-10-19 产品快照已扩到 19 只（原 14 只 + 5 只推荐产品），由公开接口自动生成。
+- 2026-10-19 已完成复盘第一档（日/周/月指标与提醒）、第二档（决策日志、持仓、产品事件、月度五问/季度清单）和第三档（时间轴、结论按月留痕、Markdown 导出）。
+- 2026-10-19 正式库已初始化本金 30,000 元（起始日 2026-10-18），已录入 6 笔持仓合计 30,000 元和 1 条「3%策略组合」决策；收益记录仍为 0 条，六笔买入均为交易进行中、待确认份额。
 - 清理前的完整演示数据保留在 `data/backups/r2_ledger-2026-10-18.sqlite`（30 条记录、本金 50,000、累计收益 +158.00）。需要恢复时先 `npm run prod:stop`，再 `npm run db:restore -- 2026-10-18`，最后 `npm run prod:restart`。
-- 打开应用后进入首次本金初始化流程；真实记录从初始化本金后开始录入。
-- 产品快照：`data/cmb_r2_products-2026-10-19.csv`（自动任务每周一 08:30 生成；服务按文件名日期选最新，刷新接口会重新解析最新文件，可用 `R2_PRODUCT_CSV` 覆盖）；CSV 额外包含 `max_drawdown_pct`、`negative_days_pct`、`history_months`、`fee_bps`、`liquidity_days`、`next_open_date`。近 1 年历史年化中位数约 1.62%，与 3% 目标有明显缺口。
-- 定时任务 `R2产品快照每周更新`（自动化 ID `r2`）每周一 08:30 运行 `scripts/fetch-cmb-r2-snapshot.cjs`；额度、费率、赎回到账和可买状态仍需在招行 App 当日复核。
+- 本金已初始化，后续通过转入/转出维护；每日收益在产生实际收益后录入，不用买入/赎回动作代替收益记录。
+- 产品快照：`data/cmb_r2_products-2026-10-19.csv`（19 只；自动任务每周一 08:30 生成；服务按文件名日期选最新，刷新接口会重新解析最新文件，可用 `R2_PRODUCT_CSV` 覆盖）；CSV 额外包含 `max_drawdown_pct`、`negative_days_pct`、`history_months`、`fee_bps`、`liquidity_days`、`next_open_date`。
+- 当前观察池：19 只中 18 只 ready；1Y 中位 1.815%、3M 中位 1.47%、6M 中位 1.555%；应用 watchlist 为 120026A（短）、120056A（中）、13328D（长）。
+- 2026-10-19 新增推荐产品：120026A（14 天，1Y 2.76%）、120056A（90 天，1Y 2.85%）、17356D（90 天，1Y 2.75%）、13328D（180 天，1Y 3.70%）、17318K（180 天，1Y 3.59%）。13328D/17318K 的 3M 约 2.88%/2.41%，6M 约 2.40%/2.33%，最大回撤约 0.15%/0.08%；13328D 的 1Y 高于其 1.60%–2.60% 基准区间，不能线性外推。
+- 3 万 target3 配置（30/35/35）：107320A 3,000 + 120026A 6,000 + 120056A 7,500 + 17356D 3,000 + 13328D 7,500 + 17318K 3,000；加权 1M/3M/6M/1Y = 2.28%/1.95%/2.14%/3.00%，固定费率 36.5bp。1Y 历史输入贴近 3%，但 3M/6M run-rate 未达 3%，不是未来收益承诺。
+- 公开数据源：`POST https://finprod.paas.cmbchina.com/api/prod/queryProdList`，条件 `type=PN/isOwn=C/isPublic=Z/status=1/riskLevel=R2/crossFinance=Z`；`pastPerf.tqilstw4z3` 的 A/B/C/D/F = 1M/3M/6M/1Y/成立以来；`zchrCst+chrmn2+chrsal` 为固定费率，`begdat` 为下一开放日，`buynfq` 为起购金额。签名从公开页面捕获，不硬编码。
+- 定时任务 `R2产品快照每周更新`（自动化 ID `r2`）每周一 08:30 运行 `scripts/fetch-cmb-r2-snapshot.cjs`，直接拉取公开接口并写 CSV/刷新应用；不登录账户、不抓实时额度，额度、赎回到账和可买状态仍需在招行 App 当日复核。
 - 数据备份：启动时自动写入 `data/backups/r2_ledger-YYYY-MM-DD.sqlite`，保留 45 天；`npm run db:list|db:backup|db:restore` 可手动查看、备份和恢复。
 - Git 分支：`main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。

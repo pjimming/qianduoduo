@@ -22,9 +22,10 @@ test('SQLite repository creates, updates and deletes daily records', (t) => {
   });
 
   assert.equal(repository.listRecords().length, 0);
-  assert.equal(repository.listProducts().length, 14);
-  assert.equal(repository.refreshProducts(), 14);
-  assert.equal(repository.listProducts().length, 14);
+  const productCount = repository.listProducts().length;
+  assert.ok(productCount > 0);
+  assert.equal(repository.refreshProducts(), productCount);
+  assert.equal(repository.listProducts().length, productCount);
   repository.initializeCapital(540000, '2026-09-01', '测试初始化');
   repository.createCapitalEvent({
     date: '2026-10-18',

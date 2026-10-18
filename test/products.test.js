@@ -21,13 +21,26 @@ test('parseCsv handles quoted commas', () => {
 test('product view picks one observation candidate per term bucket', () => {
   const products = loadProductsFromCsv(csvPath);
   const view = buildProductView(products);
-  assert.equal(view.all.length, 14);
+  assert.equal(view.all.length, products.length);
+  assert.ok(view.all.length >= 14);
   assert.equal(view.watchlist.length, 3);
   assert.deepEqual(
-    view.watchlist.map((product) => product.code),
-    ['107340A', '107359A', '107326A'],
+    view.watchlist.map((product) => product.bucket),
+    ['short', 'medium', 'long'],
   );
-  assert.equal(view.stats.median_1y, 1.62);
+  for (const pick of view.watchlist) {
+    assert.ok(view.all.some((product) => product.code === pick.code));
+    const peers = view.all.filter(
+      (product) => product.bucket === pick.bucket && product.observation_ready,
+    );
+    assert.ok(peers.length > 0);
+    assert.equal(
+      pick.observation_score,
+      Math.max(...peers.map((product) => product.observation_score)),
+    );
+  }
+  assert.ok(view.stats.median_1y > 0);
+  assert.ok(view.stats.median_1y < view.stats.target_annualized);
   assert.ok(view.stats.target_gap_pct < 0);
-  assert.equal(view.all.find((product) => product.code === '670030V/N/P/T').observation_ready, false);
+  assert.ok(view.all.some((product) => product.observation_ready === false));
 });
