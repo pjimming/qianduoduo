@@ -15,9 +15,47 @@ if errorlevel 1 (
   )
 )
 
+if /I not "%NODE_EXE%"=="node" (
+  set "PATH=%ProgramFiles%\nodejs;%PATH%"
+)
+
 "%NODE_EXE%" -e "require('node:sqlite')" >nul 2>nul
 if errorlevel 1 (
   echo The installed Node.js does not support built-in SQLite. Please install Node.js 24 or newer.
+  pause
+  exit /b 1
+)
+
+set "NPM_CMD="
+if exist "%ProgramFiles%\nodejs\npm.cmd" (
+  set "NPM_CMD=%ProgramFiles%\nodejs\npm.cmd"
+  set "PATH=%ProgramFiles%\nodejs;%PATH%"
+) else (
+  for /f "delims=" %%I in ('where npm.cmd 2^>nul') do (
+    set "NPM_CMD=%%I"
+    set "PATH=%%~dpI;%PATH%"
+  )
+)
+if not defined NPM_CMD (
+  echo npm was not found. Please reinstall Node.js 24 or newer.
+  pause
+  exit /b 1
+)
+
+if not exist "node_modules\vue\package.json" (
+  echo Installing frontend dependencies...
+  call "%NPM_CMD%" install
+  if errorlevel 1 (
+    echo Dependency installation failed.
+    pause
+    exit /b 1
+  )
+)
+
+echo Building frontend...
+call "%NPM_CMD%" run build
+if errorlevel 1 (
+  echo Frontend build failed.
   pause
   exit /b 1
 )

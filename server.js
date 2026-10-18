@@ -17,7 +17,9 @@ const {
 const { buildProductView } = require('./lib/products');
 
 const ROOT = __dirname;
+const DIST_DIR = path.join(ROOT, 'dist');
 const PUBLIC_DIR = path.join(ROOT, 'public');
+const STATIC_DIR = fs.existsSync(path.join(DIST_DIR, 'index.html')) ? DIST_DIR : PUBLIC_DIR;
 const DEFAULT_DB = path.join(ROOT, 'data', 'r2_ledger.sqlite');
 const DEFAULT_PRODUCT_CSV = path.join(ROOT, 'data', 'cmb_r2_products_2026-10-18.csv');
 const ACTIONS = new Set(['无操作', '买入', '赎回', '切换']);
@@ -30,6 +32,8 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.png': 'image/png',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
 };
 
 function sendJson(response, statusCode, payload) {
@@ -240,21 +244,36 @@ function serveStatic(request, response, pathname) {
     sendError(response, 400, '路径格式不正确');
     return;
   }
-  const filePath = path.resolve(PUBLIC_DIR, `.${relative}`);
-  const expectedPrefix = `${path.resolve(PUBLIC_DIR)}${path.sep}`;
+  const filePath = path.resolve(STATIC_DIR, `.${relative}`);
+  const expectedPrefix = `${path.resolve(STATIC_DIR)}${path.sep}`;
   if (!filePath.startsWith(expectedPrefix)) {
     sendError(response, 403, '禁止访问');
     return;
   }
   fs.stat(filePath, (error, stats) => {
     if (error || !stats.isFile()) {
+      if (!path.extname(filePath) && request.method === 'GET') {
+        sendStaticFile(path.join(STATIC_DIR, 'index.html'), response);
+        return;
+      }
       sendError(response, 404, '页面不存在');
       return;
     }
+    sendStaticFile(filePath, response, stats);
+  });
+}
+
+function sendStaticFile(filePath, response, knownStats = null) {
+  fs.stat(filePath, (error, stats) => {
+    if (error || !stats.isFile()) {
+      sendError(response, 404, '页面不存在');
+      return;
+    }
+    const finalStats = knownStats || stats;
     const extension = path.extname(filePath).toLowerCase();
     response.writeHead(200, {
       'Content-Type': MIME_TYPES[extension] || 'application/octet-stream',
-      'Content-Length': stats.size,
+      'Content-Length': finalStats.size,
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
     });

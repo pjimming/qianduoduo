@@ -3,4 +3,7 @@ data/*.sqlite-wal
 data/*.sqlite-shm
 data/backups/
 node_modules/
+dist/
+.env
+.env.local
 *.log

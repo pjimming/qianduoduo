@@ -1,15 +1,32 @@
 {
   "name": "r2-daily-ledger",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Local R2 wealth-management daily return ledger with SQLite and dependency-free charts.",
+  "description": "Local R2 wealth-management daily return ledger built with Vue 3, Vite, TypeScript, Pinia and SQLite.",
   "main": "server.js",
   "scripts": {
-    "start": "node --no-warnings server.js",
+    "dev": "vite",
+    "dev:all": "node scripts/dev.js",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "start": "npm run build && node --no-warnings server.js",
+    "server": "node --no-warnings server.js",
     "test": "node --test",
-    "check": "node --check server.js && node --check lib/db.js && node --check lib/metrics.js && node --check lib/products.js && node --check public/app.js"
+    "check": "vue-tsc --noEmit && node --check server.js && node --check lib/db.js && node --check lib/metrics.js && node --check lib/products.js"
   },
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "pinia": "^4.1.0",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.13"
   }
 }

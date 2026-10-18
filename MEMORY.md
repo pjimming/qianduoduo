@@ -13,11 +13,14 @@
 
 ## 2. 当前应用
 
-- 本地页面：`http://127.0.0.1:8765`；Node.js 24+、内置 `node:sqlite`、无 npm 依赖。
+- 本地页面：`http://127.0.0.1:8765`；前端为 Vue 3 + Vite + TypeScript + Pinia + Vue Router，后端为 Node.js 24+ 与内置 `node:sqlite`。
+- 页面入口在 `src/views/DashboardView.vue`，公共组件在 `src/components/`，复用逻辑在 `src/composables/`，接口状态在 `src/stores/dashboard.ts`。
+- 生产前端构建到 `dist/`，由 `server.js` 静态托管；开发模式使用 `npm run dev`，Vite 将 `/api` 代理到 `127.0.0.1:8765`。
 - 本金独立管理：首次初始化起始本金/日期；支持转入、转出，并自动重算历史本金快照和日收益率。
 - 每日收益表单只填日期、当日收益、操作、备注；不再显示“该日 R2 本金”块，本金仍由本金账户在后台自动带入并计算收益率。
 - `R2 流动性仓` / `cash_balance` 已彻底删除，数据库、API、页面和 CSV 都不再包含。
 - 图表：累计收益曲线（只累加每日收益，不受本金变化影响）、每日收益柱状图、日收益率折线；支持 7/30/90/全部区间。
+- 账户净值卡片的迷你曲线使用累计收益数据，不随本金变化；累计收益图与记账面板等高，收益图左右 Y 轴保留间距，月度复盘下拉默认选中当前月。
 - 自动复盘：每日显示当日本金、当日收益、月累计；月度按“月收益 ÷ 月均本金”评分，评分与历史月份合并在同一张卡内，可回看以前月份。
 - 每日记录：每页 10/20/50/全部，支持上一页/下一页、页码跳转；点击表头按日期/本金/当日收益/日收益率/账户净值排序并切换升降序，表格使用固定列宽，排序不会引发布局跳动。
 - 产品区：默认近 1 年收益率降序，支持近 1/3/6/12 月排序和短期/中期/长期筛选；产品池为静态 CSV 快照，手动“刷新快照”更新。
@@ -52,11 +55,12 @@
 
 ## 6. 运行、测试与备份
 
-- 启动：双击 `start.bat`，或运行 `node --no-warnings server.js`。
+- 启动：双击 `start.bat`，脚本会执行 `npm run build` 后启动服务；开发时分别运行 `npm run server` 和 `npm run dev`。
+- 开发模式：双击 `start-dev.bat` 或运行 `npm run dev:all`，自动启动 `node --watch server.js` 与 Vite HMR，页面为 `http://127.0.0.1:5173`；生产模式仍使用 `http://127.0.0.1:8765`。
 - 系统级 Node.js 24.20 已安装到 `C:\Program Files\nodejs`，并已写入 Windows 系统 PATH。
 - `start.bat` 使用纯 ASCII 提示和 Windows CRLF 行尾；若 PATH 尚未刷新，会自动回退到 `C:\Program Files\nodejs\node.exe`。
 - `start.bat` 会先检查 `http://127.0.0.1:8765/api/health`；服务已在运行时只打开页面，不会重复启动或报端口占用。
-- 测试：`node --test`，当前 12 项通过；代码检查：`node --check server.js` 等。
+- 测试：`npm test`，当前 12 项通过；类型与语法检查：`npm run check`。
 - 测试必须用临时 SQLite，不得清空 `data/r2_ledger.sqlite`。
 - 关键备份：
   - `data/backups/r2_ledger-before-cash-removal-20261018-023759.sqlite`
