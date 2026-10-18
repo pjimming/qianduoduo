@@ -13,6 +13,7 @@ import PnlChart from '@/components/PnlChart.vue'
 import ReviewSection from '@/components/ReviewSection.vue'
 import ProductsSection from '@/components/ProductsSection.vue'
 import LedgerTable from '@/components/LedgerTable.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 interface EntryFormExposed {
   loadRecordForEdit: (date: string, focus?: boolean) => void
@@ -33,6 +34,9 @@ const ledgerRef = ref<LedgerTableExposed | null>(null)
 const capitalDialogOpen = ref(false)
 const capitalDialogMode = ref<'init' | 'edit'>('init')
 const capitalPromptShown = ref(false)
+const initialLoadDone = ref(false)
+const loadError = ref('')
+const pendingDeleteDate = ref<string | null>(null)
 let promptTimer: number | undefined
 
 function openCapitalDialog(mode?: 'init' | 'edit'): void {
@@ -60,9 +64,14 @@ function maybePromptCapital(): void {
   }, 240)
 }
 
-async function handleDeleteRecord(date: string): Promise<void> {
-  const confirmed = window.confirm(`确认删除 ${date} 的记录？删除后无法恢复。`)
-  if (!confirmed) return
+function handleDeleteRecord(date: string): void {
+  pendingDeleteDate.value = date
+}
+
+async function confirmDeleteRecord(): Promise<void> {
+  const date = pendingDeleteDate.value
+  pendingDeleteDate.value = null
+  if (!date) return
   try {
     await dashboardStore.deleteRecord(date)
     if (entryRef.value?.isEditingDate(date)) {
@@ -78,19 +87,25 @@ function handleRecordSaved(): void {
   ledgerRef.value?.resetPage()
 }
 
-onMounted(async () => {
+async function loadDashboard(): Promise<void> {
+  loadError.value = ''
   try {
     await dashboardStore.load()
     await nextTick()
     entryRef.value?.resetForm()
     maybePromptCapital()
   } catch (error) {
-    show(error instanceof Error ? error.message : '读取数据失败', {
+    loadError.value = error instanceof Error ? error.message : '读取数据失败'
+    show(loadError.value, {
       error: true,
       duration: 6000,
     })
+  } finally {
+    initialLoadDone.value = true
   }
-})
+}
+
+onMounted(loadDashboard)
 
 onUnmounted(() => {
   window.clearTimeout(promptTimer)
@@ -126,6 +141,45 @@ onUnmounted(() => {
       :capital="dashboard.capital"
       :today="dashboard.meta.today"
     />
+
+    <ConfirmDialog
+      :open="Boolean(pendingDeleteDate)"
+      title="删除这条收益记录？"
+      :message="`${pendingDeleteDate ?? ''} 的记录删除后无法恢复，相关统计会立即重算。`"
+      confirm-label="删除记录"
+      danger
+      @confirm="confirmDeleteRecord"
+      @update:open="pendingDeleteDate = null"
+    />
   </template>
+  <section
+    v-else-if="!initialLoadDone || dashboardStore.loading"
+    class="dashboard-skeleton"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div class="skeleton-hero">
+      <span class="skeleton-line is-short"></span>
+      <span class="skeleton-line is-title"></span>
+      <span class="skeleton-line"></span>
+    </div>
+    <div class="skeleton-grid">
+      <span v-for="index in 5" :key="index" class="skeleton-card"></span>
+    </div>
+    <span class="skeleton-panel"></span>
+    <p class="skeleton-caption">正在读取本地账本…</p>
+  </section>
+  <section v-else class="dashboard-error-state" role="alert">
+    <p class="kicker">LOCAL LEDGER</p>
+    <h1>账本暂时读不到</h1>
+    <p>{{ loadError || '本地服务没有返回数据。' }}</p>
+    <p class="dashboard-error-hint">
+      请确认服务仍在运行（<code>npm run prod:status</code>），或检查
+      <code>data/r2_ledger.sqlite</code> 是否可读。
+    </p>
+    <button class="button button-primary button-small" type="button" @click="loadDashboard">
+      重新加载
+    </button>
+  </section>
 </template>
 

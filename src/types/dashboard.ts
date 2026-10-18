@@ -164,6 +164,8 @@ export interface DashboardMeta {
   today_record: RawLedgerRecord | null
   product_snapshot_date: string | null
   product_history_date: string | null
+  product_csv: string | null
+  latest_backup: { date: string; bytes: number } | null
   storage: string
 }
 

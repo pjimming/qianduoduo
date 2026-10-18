@@ -33,6 +33,15 @@ const monthly = computed<MonthlyReview | null>(() => {
   return props.review.current_month ?? history.value[0] ?? null
 })
 const hasData = computed(() => Boolean(daily.value && monthly.value))
+const gradeScale = computed(() => {
+  const thresholds = props.review.thresholds ?? []
+  return [
+    { grade: '及格', min: thresholds[0] ?? 0.16 },
+    { grade: '良好', min: thresholds[1] ?? 0.2 },
+    { grade: '优秀', min: thresholds[2] ?? 0.25 },
+    { grade: '卓越', min: thresholds[3] ?? 0.3 },
+  ]
+})
 
 watch(
   () => history.value.map((item) => item.month),
@@ -58,15 +67,9 @@ function nextGradeMessage(returnPct: number | null): string {
   if (returnPct === null || !Number.isFinite(returnPct)) {
     return '还没有足够的月度数据。'
   }
-  const levels: Array<[number, string]> = [
-    [0.16, '及格'],
-    [0.20, '良好'],
-    [0.25, '优秀'],
-    [0.30, '卓越'],
-  ]
-  for (const [threshold, grade] of levels) {
-    if (returnPct < threshold) {
-      return `距${grade}档还差 ${(threshold - returnPct).toFixed(3)} 个百分点`
+  for (const step of gradeScale.value) {
+    if (returnPct < step.min) {
+      return `距${step.grade}档还差 ${(step.min - returnPct).toFixed(3)} 个百分点`
     }
   }
   return '已达到最高档，继续保持节奏。'
@@ -181,25 +184,17 @@ function selectMonth(month: string): void {
               </div>
             </div>
             <div class="grade-steps" aria-label="月度评分标准">
+              <span :class="{ 'is-current': monthly?.grade === '不及格' }">
+                不及格
+                <small>&lt;{{ gradeScale[0]?.min.toFixed(2) }}%</small>
+              </span>
               <span
-                v-for="step in ['不及格', '及格', '良好', '优秀', '卓越']"
-                :key="step"
-                :class="{ 'is-current': monthly?.grade === step }"
+                v-for="step in gradeScale"
+                :key="step.grade"
+                :class="{ 'is-current': monthly?.grade === step.grade }"
               >
-                {{ step }}
-                <small>
-                  {{
-                    step === '不及格'
-                      ? '<0.16%'
-                      : step === '及格'
-                        ? '0.16%'
-                        : step === '良好'
-                          ? '0.20%'
-                          : step === '优秀'
-                            ? '0.25%'
-                            : '0.30%'
-                  }}
-                </small>
+                {{ step.grade }}
+                <small>{{ step.min.toFixed(2) }}%</small>
               </span>
             </div>
           </div>

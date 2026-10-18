@@ -8,7 +8,7 @@ const path = require('node:path');
 const { openDatabase } = require('../lib/db');
 const { createServer } = require('../server');
 
-const productCsv = path.join(__dirname, '..', 'data', 'cmb_r2_products_2026-10-18.csv');
+const { productCsv } = require('./fixtures');
 
 async function startTestServer(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-api-test-'));

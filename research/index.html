@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-rpnav-off>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>股票调研报告库</title>
+<style>
+  :root{
+    --ink:#141b26; --ink2:#3d4a5c; --ink3:#68768a;
+    --line:#dfe4ec; --line2:#eef1f6; --bg:#f4f6f9; --card:#ffffff;
+    --steel:#1b3a5c; --steel2:#2a5480; --accent:#b8860b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",-apple-system,"Segoe UI",sans-serif;
+    font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 20px}
+  header.hero{background:linear-gradient(135deg,#0f2337 0%,#1b3a5c 45%,#2f5f8f 100%);
+    color:#fff; padding:52px 20px 44px; border-bottom:4px solid var(--accent); margin-bottom:28px}
+  header.hero .inner{max-width:1180px; margin:0 auto}
+  .kicker{font-size:12.5px; letter-spacing:.22em; text-transform:uppercase; color:#9fb6cd; margin-bottom:14px}
+  header.hero h1{margin:0 0 10px; font-size:34px; line-height:1.3; font-weight:700}
+  header.hero .sub{font-size:15px; color:#c4d3e2; margin:0 0 24px; max-width:820px}
+  .stats{display:flex; flex-wrap:wrap; gap:12px}
+  .stat{background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.20);
+    border-radius:6px; padding:10px 16px; min-width:132px}
+  .stat .k{font-size:11.5px; color:#9fb6cd; letter-spacing:.06em}
+  .stat .v{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.35}
+  .toolbar{background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:16px 18px; margin-bottom:20px}
+  .searchrow{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  #q{flex:1 1 320px; padding:10px 13px; border:1px solid var(--line); border-radius:6px;
+    font-size:14px; font-family:inherit; color:var(--ink); background:#fff}
+  #q:focus{outline:none; border-color:var(--steel2); box-shadow:0 0 0 3px rgba(42,84,128,.12)}
+  #count{font-size:13px; color:var(--ink3); white-space:nowrap}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+  .chip{border:1px solid var(--line); background:#f8fafc; color:var(--ink2);
+    border-radius:999px; padding:5px 13px; font-size:12.5px; cursor:pointer;
+    font-family:inherit; font-weight:600; transition:.15s}
+  .chip:hover{border-color:#b9c6d6; background:#f2f6fb}
+  .chip.on{background:var(--steel); border-color:var(--steel); color:#fff}
+  .chip .n{opacity:.7; margin-left:5px; font-variant-numeric:tabular-nums}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(332px,1fr)); gap:16px}
+  .card{display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line);
+    border-radius:8px; padding:18px 20px 16px; text-decoration:none; color:inherit;
+    transition:.16s; position:relative; overflow:hidden}
+  .card:hover{border-color:#b9c6d6; box-shadow:0 8px 24px rgba(16,35,55,.10); transform:translateY(-1px)}
+  .card .top{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:9px}
+  .tagchip{background:#e7eef6; color:var(--steel2); border-radius:3px;
+    padding:2px 8px; font-size:11.5px; font-weight:700}
+  .date{font-size:12.5px; color:var(--ink3); font-variant-numeric:tabular-nums}
+  .new{background:var(--accent); color:#fff; border-radius:3px; padding:2px 7px;
+    font-size:11px; font-weight:700}
+  .card h3{margin:0 0 8px; font-size:16.5px; line-height:1.5; color:var(--steel); font-weight:700}
+  .card .sum{margin:0; font-size:13.5px; color:var(--ink2); flex:1 1 auto}
+  .card .go{margin-top:14px; font-size:13px; font-weight:700; color:var(--steel2)}
+  .card .go::after{content:" →"}
+  .empty{background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:40px 20px; text-align:center; color:var(--ink3)}
+  footer{margin-top:34px; padding:24px 20px 40px; border-top:1px solid var(--line);
+    color:var(--ink3); font-size:12.5px; line-height:1.9}
+  footer .inner{max-width:1180px; margin:0 auto}
+  footer code{background:#eef1f6; border-radius:3px; padding:1px 6px; font-size:12px; color:var(--steel2)}
+  @media (max-width:520px){
+    header.hero h1{font-size:26px}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="inner">
+    <div class="kicker">Serenity Research Library</div>
+    <h1>股票调研报告库</h1>
+    <p class="sub">本工作区的全部调研成果。方法论：Serenity 供应链瓶颈分析路径——从系统需求出发，定位难以扩张的输入环节，再追踪其能否转化为可计量的股东利润。</p>
+    <div class="stats">
+      <div class="stat"><div class="k">报告总数</div><div class="v" id="s-count">—</div></div>
+      <div class="stat"><div class="k">最新调研</div><div class="v" id="s-latest">—</div></div>
+      <div class="stat"><div class="k">时间跨度</div><div class="v" id="s-range">—</div></div>
+      <div class="stat"><div class="k">覆盖方向</div><div class="v" id="s-tags">—</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <div class="searchrow">
+      <input id="q" type="search" placeholder="搜索标题、摘要、章节关键词或日期…" autocomplete="off">
+      <span id="count"></span>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden>没有匹配的报告。</div>
+
+  <noscript>
+    <div class="empty">本页需要启用 JavaScript 才能列出报告（清单来自 ../scripts/report-nav.js）。</div>
+  </noscript>
+</div>
+
+<footer>
+  <div class="inner">
+    <p><b>清单来源</b>：本页与各报告右下角的导航按钮共用同一份清单，位于 <code>../scripts/report-nav.js</code>，由 <code>../scripts/update-nav.ps1</code> 生成。新增报告后在工作区根目录执行 <code>npm run research:publish</code>，会同时更新本页、应用内报告库并重新构建服务——<b>无需修改任何既有报告</b>。</p>
+    <p><b>应用内入口</b>：<code>/investment/research</code>。本页保留为可直接双击打开的独立报告库归档。</p>
+    <p>清单生成时间：<span id="s-gen">—</span>　｜　共 <span id="s-count2">—</span> 篇报告，按调研日期倒序排列。</p>
+    <p>各篇报告均标注了调研日期、财务数据报告期与估值口径；文中区分"已确认披露"与"推断／未验证线索"。全部内容为公开信息的研究整理与推断，<b>不构成投资建议</b>，不提供目标价或收益预测。</p>
+  </div>
+</footer>
+
+<script src="../scripts/report-nav.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function boot() {
+    var data = window.REPORT_NAV_DATA;
+    var grid = document.getElementById("grid");
+    var empty = document.getElementById("empty");
+
+    if (!data || !data.reports || !data.reports.length) {
+      grid.innerHTML = '<div class="empty">没有读到报告清单。请在工作区根目录执行：' +
+        '<br><code>pwsh -NoProfile -File .\\scripts\\update-nav.ps1</code></div>';
+      document.getElementById("count").textContent = "";
+      return;
+    }
+
+    var reports = data.reports.slice().sort(function (a, b) {
+      var da = String(a.d || ""), db = String(b.d || "");
+      if (da !== db) return db.localeCompare(da);
+      return String(a.t || "").localeCompare(String(b.t || ""), "zh-Hans-CN");
+    });
+
+    // ---------- 概览 ----------
+    var dates = reports.map(function (r) { return r.d; }).filter(Boolean).sort();
+    var tagCount = {};
+    reports.forEach(function (r) {
+      var g = r.g || "其他";
+      tagCount[g] = (tagCount[g] || 0) + 1;
+    });
+    var tagNames = Object.keys(tagCount).sort(function (a, b) {
+      return tagCount[b] - tagCount[a] || a.localeCompare(b, "zh-Hans-CN");
+    });
+
+    document.getElementById("s-count").textContent = reports.length + " 篇";
+    document.getElementById("s-count2").textContent = reports.length;
+    document.getElementById("s-latest").textContent = dates.length ? dates[dates.length - 1] : "—";
+    document.getElementById("s-range").textContent =
+      dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : dates[0] + " ~ " + dates[dates.length - 1]) : "—";
+    document.getElementById("s-tags").textContent = tagNames.length + " 个方向";
+    document.getElementById("s-gen").textContent = data.generated || "未知";
+
+    // ---------- 分类筛选 ----------
+    var activeTag = "";
+    var chips = document.getElementById("chips");
+
+    function makeChip(label, value, n) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (value === activeTag ? " on" : "");
+      b.dataset.tag = value;
+      b.innerHTML = esc(label) + (n != null ? '<span class="n">' + n + "</span>" : "");
+      b.addEventListener("click", function () {
+        activeTag = value;
+        [].forEach.call(chips.children, function (c) {
+          c.classList.toggle("on", c.dataset.tag === activeTag);
+        });
+        render();
+      });
+      return b;
+    }
+    chips.appendChild(makeChip("全部", "", reports.length));
+    tagNames.forEach(function (t) { chips.appendChild(makeChip(t, t, tagCount[t])); });
+
+    // ---------- 列表渲染 ----------
+    var newest = dates.length ? dates[dates.length - 1] : "";
+    var q = document.getElementById("q");
+
+    function render() {
+      var kw = q.value.trim().toLowerCase();
+      var shown = reports.filter(function (r) {
+        if (activeTag && (r.g || "其他") !== activeTag) return false;
+        if (!kw) return true;
+        return (String(r.t || "") + " " + String(r.s || "") + " " + String(r.k || "") + " " +
+                String(r.d || "") + " " + String(r.g || "") + " " + String(r.f || ""))
+                .toLowerCase().indexOf(kw) >= 0;
+      });
+
+      grid.innerHTML = "";
+      shown.forEach(function (r) {
+        var a = document.createElement("a");
+        a.className = "card";
+        a.href = (typeof data.hrefFor === "function")
+          ? data.hrefFor(r.f)
+          : "report/" + String(r.f || "");
+
+        var top = '<div class="top">' +
+          (r.g ? '<span class="tagchip">' + esc(r.g) + "</span>" : "") +
+          '<span class="date">' + esc(r.d || "日期未标注") + "</span>" +
+          (r.d === newest ? '<span class="new">最新</span>' : "") +
+          "</div>";
+
+        a.innerHTML = top +
+          "<h3>" + esc(r.t || r.f) + "</h3>" +
+          '<p class="sum">' + esc(r.s || "（未提取到摘要，可在报告中加 &lt;!-- rpnav-summary: … --&gt; 指定）") + "</p>" +
+          '<span class="go">打开报告</span>';
+        grid.appendChild(a);
+      });
+
+      empty.hidden = shown.length > 0;
+      document.getElementById("count").textContent =
+        "显示 " + shown.length + " / " + reports.length + " 篇";
+    }
+
+    q.addEventListener("input", render);
+
+    // 键盘：直接输入即可搜索，Esc 清空
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && document.activeElement === q) { q.value = ""; render(); }
+      if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+    });
+
+    render();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

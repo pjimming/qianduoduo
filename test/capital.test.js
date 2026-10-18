@@ -8,7 +8,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { openDatabase } = require('../lib/db');
 
-const productCsv = path.join(__dirname, '..', 'data', 'cmb_r2_products_2026-10-18.csv');
+const { productCsv } = require('./fixtures');
 
 function makeTempDirectory() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'r2-capital-test-'));

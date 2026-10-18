@@ -8,6 +8,7 @@ import {
   techMapStats,
   type TechCompany,
 } from '@/data/techmap'
+import { firstReportForCompany } from '@/data/techMapReports'
 import TechMapPrintOutline from '@/components/techmap/TechMapPrintOutline.vue'
 
 interface CanvasNode {
@@ -756,8 +757,19 @@ defineExpose({
               <span v-if="node.board" class="tm-node-board">{{ node.board }}</span>
             </div>
             <div class="tm-company-list">
-              <span v-for="company in node.cos" :key="company.c" class="tm-company">
+              <span
+                v-for="company in node.cos"
+                :key="company.c"
+                class="tm-company"
+                :class="{ 'has-report': firstReportForCompany(company.c) }"
+                :title="firstReportForCompany(company.c)?.title ?? ''"
+              >
                 {{ company.n }}<em>{{ company.c }}</em>
+                <i
+                  v-if="firstReportForCompany(company.c)"
+                  class="tm-co-report-dot"
+                  aria-label="有调研报告"
+                ></i>
               </span>
             </div>
           </template>

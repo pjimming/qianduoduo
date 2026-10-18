@@ -5,7 +5,9 @@ import AppSidebar from '@/components/AppSidebar.vue'
 import ToastBanner from '@/components/ToastBanner.vue'
 
 const route = useRoute()
-const isInvestment = computed(() => route.name === 'investment-tech-map')
+const isInvestment = computed(
+  () => route.meta.module === 'investment' || route.name === 'investment-tech-map',
+)
 const sidebarOpen = ref(false)
 
 watch(
@@ -57,7 +59,7 @@ watch(
       </footer>
       <footer v-else class="footer research-footer">
         <p>投资资料不代表当前行情，不构成投资建议；该模块不进入 R2 收益账本、产品池排序或选品结论。</p>
-        <p class="footer-meta">A股科技全景图 · 数据快照 2026-09-16</p>
+        <p class="footer-meta">股票调研报告与 A股科技图谱 · 资料按原调研日期归档</p>
       </footer>
     </div>
   </div>

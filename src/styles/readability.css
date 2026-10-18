@@ -1,0 +1,332 @@
+/* Readability pass: keep secondary text readable without losing hierarchy. */
+.kicker,
+.eyebrow {
+  font-size: 11px;
+}
+
+.brand-copy small {
+  font-size: 10px;
+}
+
+.stat-head,
+.field label {
+  font-size: 12px;
+}
+
+.stat-index,
+.soft-badge,
+.entry-date-chip,
+.capital-label,
+.capital-metrics span,
+.review-metrics span,
+.review-month-select {
+  font-size: 10px;
+}
+
+.stat-sub,
+.capital-metrics strong,
+.review-metrics strong,
+.ledger-date,
+.notes-cell,
+.record-count,
+.chart-summary-strong {
+  font-size: 11px;
+}
+
+.field-help,
+.review-history-main span,
+.review-history-value span,
+.capital-event-main span,
+.capital-event-after,
+.capital-history-head span:last-child,
+.monthly-history-head span:last-child,
+.review-card-head span:last-child,
+.review-history-value span {
+  font-size: 9.5px;
+}
+
+.form-note,
+.capital-breakdown,
+.capital-history-empty,
+.review-history-main strong,
+.review-history-value strong,
+.review-next,
+.review-footnote,
+.review-empty,
+.capital-event-main strong {
+  font-size: 10.5px;
+}
+
+.rate-preview,
+.today-notice,
+.today-notice button,
+.chart-legend,
+.review-card-head,
+.review-grade-line,
+.grade-badge,
+.chart-summary {
+  font-size: 11.5px;
+}
+
+.rate-preview strong,
+.review-history-main strong,
+.review-history-value strong,
+.capital-event-main strong {
+  font-size: 11.5px;
+}
+
+.chart-tooltip {
+  font-size: 12px;
+}
+
+.chart-tooltip strong {
+  font-size: 13px;
+}
+
+.review-auto-badge,
+.term-badge,
+.product-code,
+.product-yield span,
+.product-stat span,
+.product-benchmark,
+.product-foot,
+.status-pill,
+.product-disclaimer,
+.term-filter button,
+.filter-label,
+.filter-count,
+.dialog-sort-bar,
+.table-sort-button,
+.dialog-head p:last-child,
+.dialog-note,
+.product-table .product-name-cell span {
+  font-size: 10.5px;
+}
+
+.capital-history-head,
+.monthly-history-head {
+  font-size: 11px;
+}
+
+.product-stat strong,
+.product-table .product-name-cell strong {
+  font-size: 12px;
+}
+
+.ledger-table,
+.product-table {
+  font-size: 12px;
+}
+
+.ledger-table th,
+.product-table th {
+  font-size: 10.5px;
+}
+
+.action-badge {
+  font-size: 10px;
+}
+
+.ledger-pagination span,
+.ledger-page-size,
+.ledger-page-jump,
+.daily-review-main > span,
+.monthly-score-main span,
+.daily-review-main small {
+  font-size: 10.5px;
+}
+
+.ledger-page-size select,
+.ledger-page-jump input {
+  font-size: 10px;
+}
+
+.footer {
+  font-size: 10.5px;
+}
+
+.footer code,
+.footer-meta {
+  font-size: 10px;
+}
+
+.toast {
+  font-size: 13px;
+}
+
+.grade-steps span {
+  font-size: 9.5px;
+}
+
+.grade-steps small {
+  font-size: 9px;
+}
+
+/* Readability pass: keep secondary labels and dense data readable. */
+body {
+  font-size: 16px;
+}
+
+small {
+  font-size: 11.5px !important;
+  line-height: 1.5;
+}
+
+.brand-copy small,
+.sidebar-link-copy small {
+  font-size: 11.5px !important;
+}
+
+.sidebar-link-copy strong {
+  font-size: 14px !important;
+}
+
+.mobile-module {
+  font-size: 11px !important;
+}
+
+.eyebrow {
+  font-size: 11.5px !important;
+}
+
+.kicker {
+  font-size: 10.5px !important;
+}
+
+.target-status,
+.soft-badge,
+.entry-date-chip,
+.review-auto-badge,
+.capital-label,
+.field-help,
+.term-badge,
+.product-code,
+.status-pill,
+.action-badge,
+.filter-label,
+.filter-count,
+.pool-gap {
+  font-size: 11px !important;
+}
+
+.stat-index {
+  font-size: 10.5px !important;
+}
+
+.stat-sub,
+.chart-summary-strong {
+  font-size: 12px !important;
+}
+
+.target-hint,
+.form-note,
+.review-next,
+.review-footnote,
+.dialog-note,
+.capital-dialog-note,
+.capital-history-empty,
+.capital-breakdown {
+  font-size: 11.5px !important;
+}
+
+.target-disclaimer {
+  font-size: 11px !important;
+}
+
+.review-month-select {
+  font-size: 12px !important;
+}
+
+.grade-badge {
+  font-size: 11.5px !important;
+}
+
+.grade-steps span {
+  font-size: 10.5px !important;
+}
+
+.grade-steps small {
+  font-size: 10px !important;
+}
+
+.footer,
+.footer p {
+  font-size: 11px !important;
+}
+
+.footer-meta,
+.footer code {
+  font-size: 10.5px !important;
+}
+
+.ledger-table,
+.product-table {
+  font-size: 12.5px !important;
+}
+
+.ledger-table th,
+.product-table th {
+  font-size: 11px !important;
+}
+
+.product-table .product-name-cell strong {
+  font-size: 13px !important;
+}
+
+.product-table .product-name-cell span {
+  font-size: 11px !important;
+}
+
+.product-benchmark,
+.product-foot,
+.product-gap {
+  font-size: 11px !important;
+}
+
+.dialog-sort-bar,
+.term-filter button,
+.range-switch button,
+.capital-type-switch button {
+  font-size: 11px !important;
+}
+
+.ledger-pagination span,
+.ledger-page-size,
+.ledger-page-jump,
+.ledger-date,
+.notes-cell,
+.record-count {
+  font-size: 11.5px !important;
+}
+
+.review-history-main span,
+.review-history-value span,
+.capital-event-main span,
+.capital-event-after,
+.legend-note {
+  font-size: 11px !important;
+}
+
+.research-kicker {
+  font-size: 10.5px !important;
+}
+
+.research-meta span {
+  font-size: 11px !important;
+}
+
+.research-meta .research-date b {
+  font-size: 11.5px !important;
+}
+
+.research-tab strong {
+  font-size: 13.5px !important;
+}
+
+.research-tab small {
+  font-size: 10.5px !important;
+}
+
+.research-footnote {
+  font-size: 10.5px !important;
+}

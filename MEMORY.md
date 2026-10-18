@@ -1,7 +1,7 @@
 # 钱多多工作区记忆
 
 更新时间：2026-10-18  
-用途：记录长期有效的约束、当前应用状态和运行方式；具体选品方法以 `r2-wealth-management` skill 为准。
+用途：记录长期有效的约束、当前架构和运行方式；具体选品方法以 `r2-wealth-management` skill 为准。
 
 ## 1. 约束
 
@@ -10,32 +10,32 @@
 - 单只产品 25%–30% 以内，新品单只不超过 10%；无流动性仓时短桶不低于 30%。
 - 不替用户下单；额度、费率、风险等级和赎回规则以招行 App 与产品说明书为准。
 
-## 2. 当前应用
+## 2. 应用与架构
 
-- 应用名称：钱多多；左侧导航分为“理财”（`/`）与“投资”（`/investment/tech-map`）两个模块。
-- 左侧栏贴齐视口最左侧，只保留品牌和两个模块入口；底部的状态、导出和信息卡已移除。
+- 工作区：`D:\codex\钱多多财富工作台`（统一承载 R2 理财、股票调研与 A 股科技图谱）。
+- 旧路径 `D:\codex\R2理财` 已停用（仅剩 Codex 占用的 `.git` 元数据）；迁移前副本在 `D:\codex\_archive\R2理财-pre-rename-2026-10-18`。
+- 钱多多是本地个人财富工作台，左侧导航分为“理财”和“投资”两组，均可折叠；理财下为“R2 收益账本”，投资下为“科技全景图”和“调研报告”。分组折叠状态保存在浏览器 localStorage。
 - 本地生产页：`http://127.0.0.1:8765`；开发页：`http://127.0.0.1:5173`。
 - 前端：Vue 3 + Vite + TypeScript + Pinia + Vue Router；后端：Node.js 24+、内置 `node:sqlite`。
-- 主要代码：页面在 `src/views/DashboardView.vue`，组件在 `src/components/`，状态在 `src/stores/dashboard.ts`，接口封装在 `src/api/client.ts`。
-- 本金独立管理：首次初始化起始本金/日期，后续用转入/转出维护，历史本金快照自动重算。
-- 收益表单只填写日期、当日收益、操作、备注；不再显示“该日 R2 本金”，本金由本金账户自动带入。
-- `R2 流动性仓` / `cash_balance` 已彻底移除，数据库、API、页面和 CSV 均不包含。
-- 图表：累计收益曲线只累加每日收益，不受本金变化影响；账户净值卡片的迷你曲线也使用累计收益。
-- 累计收益图与记账面板等高；每日收益图的左右 Y 轴与绘图区保留间距。
-- 每日记录支持固定列宽排序、10/20/50/全部分页和页码跳转；月度复盘下拉默认选中当前月。
-- 产品池是静态 CSV 快照，页面“刷新快照”只重新读取本地文件，不抓取招行实时数据。
-- 投资资料入口：`/investment/tech-map`，对应左侧“投资”；页面为原生 Vue 组件，数据快照 2026-09-16。旧地址 `/research/tech-map` 自动跳转。
-- 科技图谱数据在 `src/data/techmap.json`，类型与统计在 `src/data/techmap.ts`；脑图、树状、表格组件位于 `src/components/techmap/`，共享样式在 `src/styles/techmap.css`。`public/research/techmap/` 仅保留为原始静态资料归档，不再通过 iframe 加载。
-- 科技图谱是 A 股产业资料，必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
-- 投资页采用紧凑标题、顶部视图栏和全高工作区：标题之后是视图切换/打印/全屏栏，再下面是整块内容区；桌面端三种视图填满剩余视口，移动端树状与表格改为页面自然滚动。顶部“资料边界”提示已移除，页脚风险说明保留。
-- 全景图视觉偏好：内容优先，避免卡片套卡片、厚重边框和阴影；搜索与浏览区尽量占满可用视口，视图切换和操作栏放在内容上方，移动端优先页面自然滚动。
-- 全景图内容结构保持原来的单列层级排布（门类→子行业→方向→公司），不要改成左右分翼或重排节点；空间不足时优先扩大画布窗口、压缩页面头部和工具栏。
-- 投资页主内容不受全局 1440px 宽度上限约束，应铺满侧栏之外的主区域；画布默认 100%，底部读法提示改为悬浮，页脚说明不占用画布高度。
-- 月度复盘：月份下拉为 280px、12px 字号，完整显示“月份 · 评级（月中）”；历史月份行使用固定金额/评级列，左右对齐。
-- 生产守护：`npm run prod:deploy` 构建、测试并启动 `scripts/daemon.ps1`；日志在 `logs/`，PID 在 `run/`。
-- 守护器崩溃自动拉起 Node，重启间隔按 2→60 秒退避；登录自启目前使用当前用户 Startup 快捷方式（计划任务注册被系统拒绝）。
-- 可读性：辅助标签、表头、脚注统一抬高到约 11–12px；投资脑图桌面默认 100%，窄屏按可用宽度自适应。
-- 原生 Vue 全景图已完成：保留脑图缩放/拖拽/搜索定位、树状逐级折叠、表格筛选与搜索，以及打印、全屏和 URL 视图切换；`TODO.md` 已勾选。
+- 首页页面在 `src/views/DashboardView.vue`，组件在 `src/components/`，状态在 `src/stores/dashboard.ts`，接口封装在 `src/api/client.ts`。
+- 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
+- `cash_balance` / “R2 流动性仓”已移除，数据库、API、页面和 CSV 均不包含。
+- 产品池是本地静态 CSV 快照；页面“刷新快照”只重新读取本地文件，不抓取招行实时数据。
+- 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据快照日期为 2026-09-16。
+- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`。
+- 新增或修改报告后执行 `npm run research:publish`，会更新导航、同步副本与清单、构建并重启生产服务；旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
+- 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库和可搜索切换器，左侧目录可折叠并高亮当前章节；无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。
+- 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；当前约 90 ms/篇、检索索引约 25 KB/篇，50 篇以上需重新评估索引拆分。
+- 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
+- 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
+
+### 投资页原则
+
+- 脑图、树状、表格三种视图都使用原生 Vue；保留搜索、缩放、折叠、打印、全屏和 `?view=canvas|tree|table` 切换。
+- 内容优先：页面铺满侧栏之外的主区域，避免卡片套卡片、厚重边框和阴影。
+- 脑图保持单列层级排布：门类 → 子行业 → 方向 → 代表公司；不要重排节点或改成左右分翼。空间不足时扩大画布窗口，而不是缩小内容。
+- 桌面端脑图默认 100%；移动端树状和表格使用页面自然滚动。
+- 修改脑图连线时，SVG 坐标必须与节点世界坐标同步（包括 `viewBox`），避免整体平移导致连线错位。
 
 ## 3. 数据口径
 
@@ -48,20 +48,21 @@
 - 月度评级：低于 0.16% 不及格；0.16% 及格；0.20% 良好；0.25% 优秀；0.30% 卓越。
 - 导出 CSV：`date,principal,daily_pnl,action,notes`。
 
-## 4. 运行方式
+## 4. 运行与测试
 
-- 生产守护模式：`npm run prod:deploy`；日常用 `prod:status`、`prod:start`、`prod:stop`、`prod:restart`。
-- 手动前台模式：双击 `start.bat`，执行 `npm run build` 后启动 `8765` 服务。
-- 开发模式：双击 `start-dev.bat` 或运行 `npm run dev:all`；Vite HMR 页面为 `5173`，后端未运行时自动使用 `node --watch server.js`。
-- `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新；`npm run server` 和开发模式不会更新它。
-- 系统级 Node.js 24.20 已安装；`start.bat` / `start-dev.bat` 支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
-- 测试：`npm test`（15 项通过）；检查：`npm run check`。
-- 测试必须使用临时 SQLite，不得清空正式库。
+- 生产守护：`npm run prod:deploy`；日常使用 `prod:status`、`prod:start`、`prod:stop`、`prod:restart`。
+- 手动前台：双击 `start.bat`，执行构建后启动 `8765` 服务。
+- 开发模式：双击 `start-dev.bat` 或运行 `npm run dev:all`；Vite 页面为 `5173`。
+- `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
+- Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
+- 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
+- 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git
 
-- 当前正式库是界面演示数据，不是真实收益：30 条记录（2026-09-19 至 2026-10-18），本金 50,000，累计收益 +158.00。
-- 后续加入真实记录前，先确认演示数据是清空还是保留，不要自行删除。
-- 产品快照：`data/cmb_r2_products_2026-10-18.csv`；近 1 年历史年化中位数约 1.62%，与 3% 目标有明显缺口。
-- Git 分支：`main`；最新提交：`af10bba Migrate frontend to Vue 3 and add dev mode`。
-- `dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。
+- 2026-10-18 已按用户要求清空正式库：收益记录 0 条、本金账户未初始化、无转入/转出流水；产品观察池保留 14 只，来自本地 CSV 快照。
+- 清理前的完整演示数据保留在 `data/backups/r2_ledger-2026-10-18.sqlite`（30 条记录、本金 50,000、累计收益 +158.00）。需要恢复时先 `npm run prod:stop`，再 `npm run db:restore -- 2026-10-18`，最后 `npm run prod:restart`。
+- 打开应用后进入首次本金初始化流程；真实记录从初始化本金后开始录入。
+- 产品快照：`data/cmb_r2_products_2026-10-18.csv`（服务自动选用 `data/` 下日期最新的快照，可用 `R2_PRODUCT_CSV` 覆盖）；近 1 年历史年化中位数约 1.62%，与 3% 目标有明显缺口。
+- 数据备份：启动时自动写入 `data/backups/r2_ledger-YYYY-MM-DD.sqlite`，保留 45 天；`npm run db:list|db:backup|db:restore` 可手动查看、备份和恢复。
+- Git 分支：`main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。

@@ -9,7 +9,8 @@ const {
   parseCsv,
 } = require('../lib/products');
 
-const csvPath = path.join(__dirname, '..', 'data', 'cmb_r2_products_2026-10-18.csv');
+const { productCsv } = require('./fixtures');
+const csvPath = productCsv;
 
 test('parseCsv handles quoted commas', () => {
   const rows = parseCsv('name,note\nA,"hello, world"\nB,"a ""quote"""');

@@ -3,8 +3,15 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const zlib = require('node:zlib');
 const { URL } = require('node:url');
 const { openDatabase } = require('./lib/db');
+const {
+  createDailyBackup,
+  defaultBackupDir,
+  listBackups,
+  pruneBackups,
+} = require('./lib/backup');
 const {
   TARGET_ANNUALIZED,
   buildReview,
@@ -21,7 +28,6 @@ const DIST_DIR = path.join(ROOT, 'dist');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const STATIC_DIR = fs.existsSync(path.join(DIST_DIR, 'index.html')) ? DIST_DIR : PUBLIC_DIR;
 const DEFAULT_DB = path.join(ROOT, 'data', 'r2_ledger.sqlite');
-const DEFAULT_PRODUCT_CSV = path.join(ROOT, 'data', 'cmb_r2_products_2026-10-18.csv');
 const ACTIONS = new Set(['无操作', '买入', '赎回', '切换']);
 
 const MIME_TYPES = {
@@ -32,9 +38,62 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
 };
+
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'no-referrer',
+};
+
+const HTML_CSP = [
+  "default-src 'self'",
+  "img-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self'",
+  "connect-src 'self'",
+  "font-src 'self'",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+/**
+ * 产品快照按文件名中的日期自动取最新一份；也可以用 R2_PRODUCT_CSV 指定。
+ * 这样换一期 CSV 不需要改代码。
+ */
+function resolveProductCsv(rootDir = ROOT) {
+  if (process.env.R2_PRODUCT_CSV) {
+    return path.resolve(process.env.R2_PRODUCT_CSV);
+  }
+  const dataDir = path.join(rootDir, 'data');
+  if (!fs.existsSync(dataDir)) {
+    return path.join(dataDir, 'cmb_r2_products.csv');
+  }
+  const candidates = fs
+    .readdirSync(dataDir)
+    .filter((name) => /^cmb_r2_products.*\.csv$/i.test(name))
+    .map((name) => {
+      const filePath = path.join(dataDir, name);
+      const match = /(\d{4}-\d{2}-\d{2})/.exec(name);
+      return {
+        filePath,
+        date: match ? match[1] : '',
+        mtime: fs.statSync(filePath).mtimeMs,
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date) || b.mtime - a.mtime);
+
+  return candidates[0]?.filePath || path.join(dataDir, 'cmb_r2_products.csv');
+}
+
+const DEFAULT_PRODUCT_CSV = resolveProductCsv(ROOT);
 
 function sendJson(response, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -42,6 +101,7 @@ function sendJson(response, statusCode, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
+    ...SECURITY_HEADERS,
   });
   response.end(body);
 }
@@ -55,6 +115,14 @@ function sendError(response, statusCode, message, details = null) {
 
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
+    const contentType = String(request.headers['content-type'] || '').toLowerCase();
+    if (!contentType.startsWith('application/json')) {
+      request.resume();
+      const error = new Error('请求需要 application/json');
+      error.statusCode = 415;
+      reject(error);
+      return;
+    }
     let body = '';
     let size = 0;
     request.setEncoding('utf8');
@@ -80,6 +148,24 @@ function readJsonBody(request) {
     });
     request.on('error', reject);
   });
+}
+
+/**
+ * 本地服务仍然会暴露给浏览器里的任意页面：写请求必须来自同源页面，
+ * 否则一个外部网页就能借用户浏览器改动账本。
+ */
+function isAllowedOrigin(request) {
+  const origin = request.headers.origin;
+  const host = request.headers.host;
+  if (origin) {
+    try {
+      return new URL(origin).host === host;
+    } catch {
+      return false;
+    }
+  }
+  if (request.headers['sec-fetch-site'] === 'cross-site') return false;
+  return true;
 }
 
 function validateRecordPayload(payload, options = {}) {
@@ -216,6 +302,7 @@ function dashboardPayload(repository) {
       .filter(Boolean)
       .sort()
       .at(-1) || snapshotDate;
+  const backups = repository.backupDir ? listBackups(repository.backupDir) : [];
 
   return {
     meta: {
@@ -225,6 +312,10 @@ function dashboardPayload(repository) {
       today_record: todayRecord,
       product_snapshot_date: snapshotDate,
       product_history_date: historyDate,
+      product_csv: repository.productCsvPath ? path.basename(repository.productCsvPath) : null,
+      latest_backup: backups[0]
+        ? { date: backups[0].date, bytes: backups[0].bytes }
+        : null,
       storage: 'SQLite · 本地',
     },
     records,
@@ -252,18 +343,18 @@ function serveStatic(request, response, pathname) {
   }
   fs.stat(filePath, (error, stats) => {
     if (error || !stats.isFile()) {
-      if (!path.extname(filePath) && request.method === 'GET') {
-        sendStaticFile(path.join(STATIC_DIR, 'index.html'), response);
+      if (!path.extname(filePath) && (request.method === 'GET' || request.method === 'HEAD')) {
+        sendStaticFile(path.join(STATIC_DIR, 'index.html'), response, request);
         return;
       }
       sendError(response, 404, '页面不存在');
       return;
     }
-    sendStaticFile(filePath, response, stats);
+    sendStaticFile(filePath, response, request, stats);
   });
 }
 
-function sendStaticFile(filePath, response, knownStats = null) {
+function sendStaticFile(filePath, response, request, knownStats = null) {
   fs.stat(filePath, (error, stats) => {
     if (error || !stats.isFile()) {
       sendError(response, 404, '页面不存在');
@@ -271,13 +362,36 @@ function sendStaticFile(filePath, response, knownStats = null) {
     }
     const finalStats = knownStats || stats;
     const extension = path.extname(filePath).toLowerCase();
-    response.writeHead(200, {
-      'Content-Type': MIME_TYPES[extension] || 'application/octet-stream',
-      'Content-Length': finalStats.size,
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff',
-    });
-    fs.createReadStream(filePath).pipe(response);
+    const contentType = MIME_TYPES[extension] || 'application/octet-stream';
+    const isHashedAsset =
+      filePath.includes(`${path.sep}assets${path.sep}`) ||
+      filePath.includes(`${path.sep}research${path.sep}media${path.sep}`);
+    const compressible = /^(text\/|application\/(json|javascript|xml)|image\/svg)/.test(
+      contentType,
+    );
+    const useGzip =
+      compressible && /\bgzip\b/.test(String(request.headers['accept-encoding'] || ''));
+    const headers = {
+      'Content-Type': contentType,
+      'Cache-Control': isHashedAsset
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache',
+      ...SECURITY_HEADERS,
+      ...(compressible ? { Vary: 'Accept-Encoding' } : {}),
+      ...(useGzip ? { 'Content-Encoding': 'gzip' } : { 'Content-Length': finalStats.size }),
+      ...(extension === '.html' ? { 'Content-Security-Policy': HTML_CSP } : {}),
+    };
+    response.writeHead(200, headers);
+    if (request.method === 'HEAD') {
+      response.end();
+      return;
+    }
+    const stream = fs.createReadStream(filePath);
+    if (useGzip) {
+      stream.pipe(zlib.createGzip()).pipe(response);
+    } else {
+      stream.pipe(response);
+    }
   });
 }
 
@@ -290,6 +404,14 @@ function createServer(options = {}) {
     const { pathname } = requestUrl;
 
     try {
+      if (
+        !['GET', 'HEAD'].includes(request.method || '') &&
+        !isAllowedOrigin(request)
+      ) {
+        sendError(response, 403, '拒绝跨站写入请求');
+        return;
+      }
+
       if (pathname === '/favicon.ico') {
         response.writeHead(204);
         response.end();
@@ -298,6 +420,19 @@ function createServer(options = {}) {
 
       if (pathname === '/api/health' && request.method === 'GET') {
         sendJson(response, 200, { ok: true, time: new Date().toISOString() });
+        return;
+      }
+
+      if (pathname === '/api/backups' && request.method === 'GET') {
+        const dir = repository.backupDir || defaultBackupDir(repository.dbPath);
+        sendJson(response, 200, { dir, backups: listBackups(dir) });
+        return;
+      }
+
+      if (pathname === '/api/backups' && request.method === 'POST') {
+        const dir = repository.backupDir || defaultBackupDir(repository.dbPath);
+        const result = createDailyBackup(repository.db, repository.dbPath, { dir });
+        sendJson(response, 201, { ...result, backups: listBackups(dir) });
         return;
       }
 
@@ -472,14 +607,16 @@ function createServer(options = {}) {
         return;
       }
 
-      if (request.method !== 'GET') {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
         sendError(response, 405, '请求方法不支持');
         return;
       }
       serveStatic(request, response, pathname);
     } catch (error) {
       const message = error instanceof Error ? error.message : '服务器处理失败';
-      sendError(response, 500, message);
+      const statusCode =
+        error && Number.isInteger(error.statusCode) ? error.statusCode : 500;
+      sendError(response, statusCode, message);
     }
   });
 }
@@ -489,13 +626,24 @@ function startServer(options = {}) {
     dbPath: options.dbPath || process.env.R2_DB_PATH || DEFAULT_DB,
     productCsvPath: options.productCsvPath || DEFAULT_PRODUCT_CSV,
   });
+  try {
+    const backup = createDailyBackup(repository.db, repository.dbPath, {
+      dir: repository.backupDir,
+    });
+    pruneBackups(repository.backupDir, 45);
+    if (backup.created) {
+      console.log(`  每日备份：${backup.file}`);
+    }
+  } catch (error) {
+    console.warn(`  每日备份失败：${error instanceof Error ? error.message : error}`);
+  }
   const server = createServer({ repository });
   const host = options.host || process.env.HOST || '127.0.0.1';
   const port = Number(options.port || process.env.PORT || 8765);
 
   server.listen(port, host, () => {
     console.log('');
-  console.log('  钱多多已启动');
+    console.log('  钱多多已启动');
     console.log(`  打开：http://${host}:${port}`);
     console.log(`  数据库：${repository.dbPath}`);
     console.log('  按 Ctrl+C 停止服务');
@@ -529,6 +677,8 @@ module.exports = {
   buildCsv,
   createServer,
   dashboardPayload,
+  isAllowedOrigin,
+  resolveProductCsv,
   startServer,
   validateRecordPayload,
 };

@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>军工A股深度调研：地面兵装 · 航空装备 · 船舶舰艇 | 2026-10-16</title>
+<style>
+  :root{
+    --ink:#141b26; --ink2:#3d4a5c; --ink3:#68768a;
+    --line:#dfe4ec; --line2:#eef1f6; --bg:#f4f6f9; --card:#ffffff;
+    --steel:#1b3a5c; --steel2:#2a5480; --accent:#b8860b;
+    --up:#c0392b; --down:#1e7a46; --warn:#b7791f;
+    --badge-high:#fdecea; --badge-high-t:#a52a1a;
+    --badge-mid:#fff6e5; --badge-mid-t:#8a5a10;
+    --badge-watch:#eef2f7; --badge-watch-t:#3d4a5c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",-apple-system,"Segoe UI",sans-serif;
+    font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 20px 80px}
+  header.top{background:linear-gradient(135deg,#0f2337 0%,#1b3a5c 45%,#2f5f8f 100%);
+    color:#fff; padding:46px 20px 40px; margin-bottom:26px; border-bottom:4px solid var(--accent)}
+  header.top .inner{max-width:1160px;margin:0 auto}
+  header.top .kicker{font-size:12.5px; letter-spacing:.22em; text-transform:uppercase; color:#9fb6cd; margin-bottom:14px}
+  header.top h1{margin:0 0 8px; font-size:32px; line-height:1.32; font-weight:700}
+  header.top .sub{font-size:15px; color:#c4d3e2; margin:0 0 22px; max-width:900px}
+  .metabar{display:flex; flex-wrap:wrap; gap:10px}
+  .metabar span{background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.20);
+    border-radius:4px; padding:5px 12px; font-size:12.5px; color:#dce7f1}
+  nav.toc{background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:18px 24px; margin-bottom:20px}
+  nav.toc h2{font-size:14px; margin:0 0 10px; color:var(--steel); border:none; padding:0; display:block}
+  nav.toc ol{margin:0; padding-left:20px; columns:2; column-gap:32px; font-size:13.5px}
+  @media (max-width:760px){ nav.toc ol{columns:1} }
+  nav.toc a{color:var(--steel2); text-decoration:none; border-bottom:1px dotted #c3cfdd}
+  nav.toc a:hover{border-bottom-style:solid}
+  section{background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:28px 30px 30px; margin-bottom:20px}
+  h2{font-size:20px; margin:0 0 6px; padding-bottom:12px; border-bottom:2px solid var(--line2);
+    font-weight:700; color:var(--steel); display:flex; align-items:baseline; gap:10px}
+  h2 .num{font-size:12px; font-weight:600; color:#fff; background:var(--steel2);
+    border-radius:3px; padding:2px 7px; letter-spacing:.06em; position:relative; top:-2px}
+  h3{font-size:16.5px; margin:28px 0 10px; color:var(--steel); font-weight:700}
+  h4{font-size:14.5px; margin:18px 0 8px; font-weight:700}
+  p{margin:10px 0}
+  .lead{font-size:15.5px; color:var(--ink2)}
+  ul,ol{margin:10px 0; padding-left:22px}
+  li{margin:6px 0}
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:13px}
+  caption{caption-side:top; text-align:left; font-size:12.5px; color:var(--ink3); padding-bottom:8px; font-weight:600}
+  th{background:#eef2f7; color:var(--steel); font-weight:700; text-align:left;
+    padding:9px 8px; border-bottom:2px solid #d5dde7; white-space:nowrap; font-size:12.5px}
+  td{padding:8px; border-bottom:1px solid var(--line2); vertical-align:top}
+  tbody tr:hover{background:#fafbfd}
+  .num-cell{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .pos{color:var(--up); font-weight:600}
+  .neg{color:var(--down); font-weight:600}
+  .muted{color:var(--ink3)}
+  .badge{display:inline-block; border-radius:3px; padding:2px 8px; font-size:12px; font-weight:700; white-space:nowrap}
+  .b-high{background:var(--badge-high); color:var(--badge-high-t); border:1px solid #f5c6c0}
+  .b-mid{background:var(--badge-mid); color:var(--badge-mid-t); border:1px solid #f0dcb4}
+  .b-watch{background:var(--badge-watch); color:var(--badge-watch-t); border:1px solid #d5dde7}
+  .verdict{background:linear-gradient(180deg,#fbfcfe,#f3f6fa); border:1px solid var(--line);
+    border-left:4px solid var(--accent); border-radius:6px; padding:18px 20px; margin:18px 0}
+  .verdict .t{font-weight:700; color:var(--steel); margin-bottom:6px; font-size:14.5px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  @media (max-width:860px){ .grid2,.grid3{grid-template-columns:1fr} }
+  .stat{background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:14px 16px}
+  .stat .k{font-size:12.5px; color:var(--ink3); margin-bottom:4px; font-weight:600}
+  .stat .v{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--steel); line-height:1.3}
+  .stat .n{font-size:12px; color:var(--ink3); margin-top:3px; line-height:1.6}
+  .layer{border:1px solid var(--line); border-radius:6px; margin:14px 0; overflow:hidden}
+  .layer .lh{background:#f0f4f9; padding:11px 16px; font-weight:700; color:var(--steel);
+    font-size:14.5px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+  .layer .lb{padding:14px 16px}
+  .layer .lb p:first-child{margin-top:0}
+  .layer .lb p:last-child{margin-bottom:0}
+  .tag{font-size:11.5px; font-weight:600; border-radius:3px; padding:2px 7px; background:#e7eef6; color:var(--steel2); white-space:nowrap}
+  .cand{border:1px solid var(--line); border-radius:8px; margin:22px 0; overflow:hidden}
+  .cand .ch{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px 18px; background:#eef2f7; border-bottom:1px solid var(--line)}
+  .cand .ch .nm{font-size:17px; font-weight:700; color:var(--steel)}
+  .cand .ch .nm small{font-size:12.5px; color:var(--ink3); font-weight:500; margin-left:8px}
+  .cand .cb{padding:16px 18px}
+  .kv{margin:12px 0}
+  .kv .kk{font-size:12.5px; font-weight:700; color:var(--steel2); letter-spacing:.04em; margin-bottom:3px}
+  .kv .vv{margin:0}
+  .src{font-size:12.5px; color:var(--ink3); line-height:1.7}
+  .src a{color:var(--steel2); text-decoration:none; border-bottom:1px dotted #b9c6d6; word-break:break-all}
+  .src a:hover{border-bottom-style:solid}
+  .evidence{background:#f9fbfd; border:1px solid var(--line2); border-radius:5px; padding:12px 14px; margin:10px 0}
+  blockquote{margin:14px 0; padding:12px 16px; background:#f7f9fc; border-left:3px solid var(--steel2);
+    color:var(--ink2); font-size:14px; border-radius:0 4px 4px 0}
+  blockquote p{margin:0}
+  .warnbox{background:#fffaf0; border:1px solid #f0dcb4; border-left:4px solid var(--warn);
+    border-radius:6px; padding:16px 18px; margin:16px 0}
+  .warnbox .t{font-weight:700; color:#8a5a10; margin-bottom:6px; font-size:14.5px}
+  .keybox{background:#f2f7fb; border:1px solid #cfe0ef; border-left:4px solid var(--steel2);
+    border-radius:6px; padding:16px 18px; margin:16px 0}
+  .keybox .t{font-weight:700; color:var(--steel); margin-bottom:6px; font-size:14.5px}
+  .legend{font-size:12.5px; color:var(--ink3); margin-top:6px; line-height:1.75}
+  .sectorhdr{display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    border-left:5px solid var(--steel2); padding-left:14px; margin:30px 0 6px}
+  .sectorhdr .sn{font-size:22px; font-weight:700; color:var(--steel)}
+  footer{max-width:1160px; margin:0 auto; padding:26px 30px 10px; color:var(--ink3);
+    font-size:12.5px; line-height:1.85; border-top:1px solid var(--line)}
+  .anchor{scroll-margin-top:20px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <div class="kicker">Serenity Supply-Chain Bottleneck Research</div>
+    <h1>军工A股深度调研：地面兵装 · 航空装备 · 船舶舰艇</h1>
+    <p class="sub">三个子板块的 26H1 报表指向同一个结论：卡点最硬的地方利润最弱，利润兑现最好的地方不是卡点；而"军贸爆发"在多数公司的海外收入科目里是负增长</p>
+    <div class="metabar">
+      <span>调研日期 2026-10-16</span>
+      <span>财务口径 2026 年半年报（截至 2026-06-30）</span>
+      <span>估值口径 2026-10-15 收盘</span>
+      <span>市场 沪深 A 股</span>
+      <span>类型 主题扫描 + 公司质疑</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#s1">先说判断：三个板块的一句话结论</a></li>
+    <li><a href="#s2">共同的宏观与政策背景</a></li>
+    <li><a href="#s3">三板块系统变化与约束差异</a></li>
+    <li><a href="#s4">地面兵装：名义增速最快，个股最弱</a></li>
+    <li><a href="#s5">内蒙一机深度案例</a></li>
+    <li><a href="#s6">航空装备：卡点最硬，利润最弱</a></li>
+    <li><a href="#s7">船舶舰艇：订单簿最实，非纯军工</a></li>
+    <li><a href="#s8">跨板块关键检验：谁真有海外（军贸）收入</a></li>
+    <li><a href="#s9">估值全景与三板块对比</a></li>
+    <li><a href="#s10">研究优先级与候选池</a></li>
+    <li><a href="#s11">反方理由</a></li>
+    <li><a href="#s12">下一步具体查什么</a></li>
+    <li><a href="#s13">资料范围、证据等级与未解决缺口</a></li>
+  </ol>
+</nav>
+
+<section class="anchor" id="s1">
+  <h2><span class="num">01</span>先说判断：三个板块的一句话结论</h2>
+
+  <div class="verdict">
+    <div class="t">核心结论</div>
+    <p class="lead">把 2026 年半年报按子板块拆开后，三个板块呈现三种完全不同的状态，不能用"军工景气"一句话概括：</p>
+    <ul>
+      <li><b>地面兵装</b>——名义上增速最快的环节（卖方统计归母 +283.56%），但这一增速在代表性个股上<b>无法复现</b>：唯一陆装总装平台内蒙一机 −40.7%、长城军工 −252%、北方导航 −141%。这是一个"统计口径令人误解"的板块。</li>
+      <li><b>航空装备</b>——卡点最硬（整机与发动机总装），但 26H1 报表最弱：三家主机厂营收与利润双降，且合同负债同比 −54%～−84%。<b>卡点硬度与利润兑现在这里是反向的</b>。</li>
+      <li><b>船舶舰艇</b>——订单簿最实（中国船舶合同负债 1498 亿元、同比 +112%；全国手持订单 3.63 亿载重吨、同比 +54.9%），估值最低（中国船舶 PE_TTM 约 19 倍），但业绩里周期属性强于军工属性，<b>不能当作国防军工景气度的代理变量</b>。</li>
+    </ul>
+    <p class="lead" style="margin-bottom:0">贯穿三个板块的一个横切发现：所谓"军贸爆发"，在绝大多数公司的<b>海外收入科目</b>里看不到。内蒙一机海外收入同比 −92%，中船科技 −87%；真正录得增长的只有高德红外（+120%）。而公司层面唯一被点到名的"大额订单"，2026 年 9 月那笔其实是 2.07 亿元的<b>铁路货车</b>采购。</p>
+  </div>
+
+  <h3>跨三板块研究优先级</h3>
+  <table>
+    <caption>优先级 = 下一步该先研究谁，与预期收益无关。判断依据：位置是否难替代 + 26H1 是否已兑现利润 + 前瞻指标（合同负债/存货）方向 + 估值是否透支</caption>
+    <thead><tr><th>公司</th><th>子板块 / 位置</th><th>优先级</th><th>一句话理由</th><th>最关键的未解问题</th></tr></thead>
+    <tbody>
+      <tr><td><b>中国船舶</b><br><small class="muted">600150</small></td><td>船舶 / 总装</td><td><span class="badge b-high">高</span></td><td>合同负债 1498 亿元（+112%）是全板块最强订单簿；PE_TTM 约 19 倍、PB 约 1.75 为板块最低</td><td>吸收合并后的同比口径是否可比；军品占比</td></tr>
+      <tr><td><b>图南股份</b><br><small class="muted">300855</small></td><td>航空 / 高温合金 · 两机零部件</td><td><span class="badge b-high">高</span></td><td>26H1 营收 +70.9%、归母 +167.9%，净利率 24%，存货同比 +157% 是全场最实备产信号</td><td>燃机（含 AIDC 供电）在收入中占多少</td></tr>
+      <tr><td><b>高德红外</b><br><small class="muted">002414</small></td><td>航空/兵器交叉 / 红外装备总体</td><td><span class="badge b-high">高</span></td><td>26H1 归母 +646.8%，海外收入 +120%，从器件跃升到完整装备系统总体，PE_TTM 约 24 倍</td><td>"恢复性采购"成分有多大、能否连续</td></tr>
+      <tr><td><b>中航沈飞</b><br><small class="muted">600760</small></td><td>航空 / 歼击机总装</td><td><span class="badge b-mid">中（观察）</span></td><td>卡点位置最硬、存货 +37% 在备产，但合同负债 −61% 是硬伤</td><td>十五五首批订单是否落到沈飞</td></tr>
+      <tr><td><b>中航光电</b><br><small class="muted">002179</small></td><td>航空/信息化 / 连接器</td><td><span class="badge b-mid">中</span></td><td>营收 +0.5% 但归母 −22.1%，存货 +31% 在备产；PE_TTM 36.8、PB 2.79</td><td>信息化环节何时从"备产"转为"确认收入"</td></tr>
+      <tr><td><b>中兵红箭</b><br><small class="muted">000519</small></td><td>地面兵装 / 弹药 + 超硬材料</td><td><span class="badge b-mid">中</span></td><td>26H1 营收 +38.2%、归母 +191.4%，是地面兵装里营收唯一双位数高增的</td><td>利润高度依赖超硬材料而非军工</td></tr>
+      <tr><td><b>内蒙一机</b><br><small class="muted">600967</small></td><td>地面兵装 / 主战坦克总装</td><td><span class="badge b-watch">观察</span></td><td>位置唯一（主战坦克+轮式战车+中口径火炮一体），但连续三年利润下行、海外收入 −92%</td><td>军贸收入何时恢复；军品豁免导致无法验证</td></tr>
+      <tr><td><b>航发动力</b><br><small class="muted">600893</small></td><td>航空 / 航发总装（唯一）</td><td><span class="badge b-watch">观察</span></td><td>营收 +47.2% 确认排产上行，但净利率 0.7%、应收 521 亿元、PE_TTM 约 148 倍</td><td>采购定价改革能否传导为毛利率改善</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="anchor" id="s2">
+  <h2><span class="num">02</span>共同的宏观与政策背景：三个板块共享同一套闸门</h2>
+
+  <h3>2.1 预算：稳健而非加速</h3>
+  <p>国防部网 2026 年 3 月 10 日发布的解放军和武警部队代表团新闻发言人张晓刚答记者问明确：</p>
+  <blockquote>
+    <p>"2026 年全国一般公共预算安排国防支出 <b>1.94 万亿元</b>，比上年执行数增长 <b>6.9%</b>，其中：中央本级支出 <b>1.91 万亿元</b>，比上年执行数增长 <b>7%</b>。"</p>
+  </blockquote>
+  <p class="src">来源：<a href="http://www.mod.gov.cn/gfbw/qwfb/16447679.html">国防部网，2026-03-10</a>（官方一手）。</p>
+  <p>6.9% 属于近年基准区间。它是"托底"，不是"加速器"。真正的弹性来自结构性方向与订单节奏，而非总量。</p>
+
+  <h3>2.2 十五五规划纲要：方向放在"新域新质"，同时写进了"低成本"</h3>
+  <p>《中华人民共和国国民经济和社会发展第十五个五年（2026—2030 年）规划纲要》（新华社 2026-03-13）第十五篇标题为"如期实现建军一百年奋斗目标 高质量推进国防和军队现代化"。原文关键表述分两类：</p>
+  <div class="grid2">
+    <div class="stat">
+      <div class="k">需求扩张方向（原文摘录）</div>
+      <ul style="margin:8px 0 0; font-size:13.5px">
+        <li>壮大<b>战略威慑力量</b></li>
+        <li>推进<b>新域新质作战力量</b>规模化、实战化、体系化发展</li>
+        <li>加快<b>无人智能作战力量及反制能力</b>建设</li>
+        <li>加强传统作战力量升级改造</li>
+        <li>实施国防发展重大工程……加快先进武器装备发展</li>
+        <li>健全前沿科技成果"民参军"绿色通道</li>
+      </ul>
+    </div>
+    <div class="stat">
+      <div class="k">同时写入的成本约束（原文摘录）</div>
+      <ul style="margin:8px 0 0; font-size:13.5px">
+        <li>推进<b>军费预算管理改革</b></li>
+        <li><b>改进军事采购制度</b></li>
+        <li>全面落实<b>勤俭建军</b>方针</li>
+        <li>走<b>高效益、低成本、可持续发展</b>路子</li>
+        <li>强化军费使用全链条管控和绩效评估</li>
+      </ul>
+    </div>
+  </div>
+  <p class="legend">两列必须合读：对采购方是效率，对供应方是<b>价格与毛利的下行压力</b>。26H1 上游材料毛利率同比 −2.06 个百分点、上游电子元器件及芯片 −1.94 个百分点，与此方向一致。</p>
+
+  <h3>2.3 订单节奏与事件窗口</h3>
+  <ul>
+    <li><b>订单窗口</b>：据证券时报 2026-10-13 转述东方证券观点，2025 年末至 2027 年将迎来<b>多批次、规模化装备采购订单密集落地窗口</b>。这意味着截至 2026 年 6 月的半年报，本来就不该看到主机厂订单放量——事实也确实如此。</li>
+    <li><b>珠海航展</b>：据央视新闻（经<a href="https://finance.ifeng.com/c/8xBp3v0573d">证券时报 / 凤凰财经报道，2026-10-13</a>），第十六届中国国际航空航天博览会将于 <b>2026 年 12 月 7 日至 13 日</b>在珠海举办，空军多型主战装备将首次亮相，无人机与反无体系化展演平台也将亮相。这是 10 月 13 日与 10 月 16 日板块普涨的直接触发事件。</li>
+    <li><b>建军百年</b>：2027 年是硬约束年份，2026—2027 是交付与结算的密集期。</li>
+  </ul>
+
+  <h3>2.4 板块总量（卖方汇总口径）</h3>
+  <table>
+    <caption>来源：中信建投证券《26H1 中报回顾：军工板块盈利加速修复，静候"十五五"规模化订单下达》，2026-09-12；系该机构对 164 家重点公司的汇总，非交易所官方统计</caption>
+    <thead><tr><th>指标</th><th class="num-cell">26H1</th><th class="num-cell">同比</th></tr></thead>
+    <tbody>
+      <tr><td>营业收入</td><td class="num-cell">4,159.95 亿元</td><td class="num-cell pos">+7.93%</td></tr>
+      <tr><td>归母净利润</td><td class="num-cell">253.26 亿元</td><td class="num-cell pos">+20.98%</td></tr>
+      <tr><td>毛利率 / 净利率</td><td class="num-cell">18.85% / 6.09%</td><td class="num-cell pos">+0.92pct / +0.66pct</td></tr>
+      <tr><td>经营性净现金流</td><td class="num-cell">+55.88 亿元</td><td class="num-cell pos">由负转正（25H1 −375.69 亿元）</td></tr>
+      <tr><td>应收账款</td><td class="num-cell">4,417.21 亿元</td><td class="num-cell">+4.60%（占营收 106.18%）</td></tr>
+      <tr><td>存货 / 合同负债</td><td class="num-cell">4,087.40 / 2,412.44 亿元</td><td class="num-cell">+4.01% / <b>+0.55%</b></td></tr>
+    </tbody>
+  </table>
+  <p class="legend">最该注意的两个数字：合同负债仅 +0.55%（远慢于营收 +7.93%）——当期收入靠"交付存量"而非"新增订单"；应收账款占营收 106%，存量包袱仍在。</p>
+
+  <h3>2.5 卖方分环节增速（本报告对其中的"地面兵装"提出明确保留）</h3>
+  <table>
+    <caption>同上来源。第 04 节将说明：地面兵装一行的 +283.56% 在个股层面无法复现</caption>
+    <thead><tr><th>环节</th><th class="num-cell">营收增速</th><th class="num-cell">归母净利增速</th><th>本报告核验结论</th></tr></thead>
+    <tbody>
+      <tr><td>地面兵装</td><td class="num-cell pos">+19.38%</td><td class="num-cell pos">+283.56%</td><td class="neg">个股无法复现，见第 04 节</td></tr>
+      <tr><td>船舶</td><td class="num-cell pos">+18.68%</td><td class="num-cell pos">+86.94%</td><td>与个股一致（中国船舶 +163.5%、中船防务 +58.9%）</td></tr>
+      <tr><td>航空发动机</td><td class="num-cell pos">+16.12%</td><td class="num-cell">+0.62%</td><td>量的修复明确，利润未跟上</td></tr>
+      <tr><td>导弹</td><td class="num-cell pos">+6.07%</td><td class="num-cell pos">+29.37%</td><td>利润弹性显现，红外装备总体为主要亮点</td></tr>
+      <tr><td>国防信息化</td><td class="num-cell pos">+2.58%</td><td class="num-cell neg">−2.61%</td><td>营收转正但利润仍负</td></tr>
+      <tr><td>火箭卫星</td><td class="num-cell neg">−0.60%</td><td class="num-cell neg">−35.39%</td><td>叙事与利润背离最大</td></tr>
+      <tr><td>航空（主机）</td><td class="num-cell neg">−4.54%</td><td class="num-cell neg">−24.97%</td><td>卡点最硬、报表最弱</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="anchor" id="s3">
+  <h2><span class="num">03</span>三个板块的"系统变化"与约束差异</h2>
+
+  <p>用同一套瓶颈分析框架看三个板块，它们的差异不在需求方向，而在<b>约束的性质</b>与<b>议价结构</b>：</p>
+
+  <table>
+    <caption>三板块对照。同一套政策与预算之下，约束性质不同，利润归宿也不同</caption>
+    <thead><tr><th>维度</th><th>地面兵装</th><th>航空装备</th><th>船舶舰艇</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>需求驱动</b></td>
+        <td>陆军装备升级 + 军贸（VT-4/VT-5）+ 无人化</td>
+        <td>机队补充 + 航发放量 + 军贸（歼-10CE 等）</td>
+        <td><b>民船周期主导</b>（全球船队更新+环保替代）+ 军船</td>
+      </tr>
+      <tr>
+        <td><b>真正的约束</b></td>
+        <td>不是产能，而是<b>竞争格局开放化</b></td>
+        <td><b>技术与牌照</b>（总装不可替代）+ <b>采购定价</b>（毛利被压）</td>
+        <td>周期驱动，无替代关系；但产能可扩张、全球船厂竞争</td>
+      </tr>
+      <tr>
+        <td><b>客户替代选择</b></td>
+        <td>可在多家央企、工程机械巨头与民企之间选择；无人装备对传统装甲有替代关系</td>
+        <td>总装环节几乎无替代；上游材料（碳纤维/高温合金/钛合金）彼此不可替代</td>
+        <td>可更换船厂；军船订单不可外流</td>
+      </tr>
+      <tr>
+        <td><b>26H1 实际状态</b></td>
+        <td class="neg">个股普遍负增长；海外收入崩塌</td>
+        <td class="neg">主机厂双降、合同负债塌陷；上游材料分化</td>
+        <td class="pos">营收利润双升、订单簿创纪录</td>
+      </tr>
+      <tr>
+        <td><b>能否转为股东利润</b></td>
+        <td>弱：内蒙一机毛利率仅 8.0%，议价能力最差</td>
+        <td>结构性：总装弱（航发动力净利率 0.7%）、上游材料强（图南净利率 24%）</td>
+        <td>强：规模效应 + 高价订单交付；受汇率/钢价影响</td>
+      </tr>
+      <tr>
+        <td><b>当前估值</b></td>
+        <td>高：内蒙一机 PE_TTM 102 倍、中兵红箭 162 倍、光电股份 170 倍</td>
+        <td>分化：图南 38 倍、中航高科 28 倍 vs 航发动力 148 倍</td>
+        <td>低：中国船舶 19 倍、亚星锚链 24 倍、中船防务 29 倍</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="keybox">
+    <div class="t">这张表最重要的信息</div>
+    <p style="margin:0">三个板块里，<b>估值最低的地方订单最实（船舶），估值最高的地方订单最虚（地面兵装）</b>。而市场 2026 年的定价方向恰好相反——地面兵装与航空主机厂被给予最高估值倍数，船舶被给予最低。这构成本报告后续所有判断的基础矛盾。</p>
+  </div>
+</section>
+
+<section class="anchor" id="s4">
+  <h2><span class="num">04</span>地面兵装：名义增速最快，个股最弱</h2>
+
+  <h3>4.1 一个必须首先澄清的口径问题</h3>
+  <p>卖方统计显示"地面兵装"环节 26H1 归母净利润同比 <b>+283.56%</b>，是全部环节中最高的。但把该环节的代表性上市公司逐一列出来后，这个增速无法复现：</p>
+
+  <table>
+    <caption>地面兵装代表性公司 26H1（财务为 2026 年半年报；估值为 2026-10-15 收盘）。除中兵红箭外，绝大多数公司为负增长或微增</caption>
+    <thead><tr><th>公司</th><th>代码</th><th class="num-cell">营收(亿)</th><th class="num-cell">营收同比</th><th class="num-cell">归母(亿)</th><th class="num-cell">归母同比</th><th class="num-cell">毛利率</th><th class="num-cell">市值(亿)</th><th class="num-cell">PE_TTM</th><th class="num-cell">PB</th></tr></thead>
+    <tbody>
+      <tr><td><b>中兵红箭</b></td><td class="muted">000519</td><td class="num-cell">30.3</td><td class="num-cell pos">+38.2%</td><td class="num-cell">0.37</td><td class="num-cell pos">+191.4%</td><td class="num-cell">18.5%</td><td class="num-cell">193</td><td class="num-cell">161.7</td><td class="num-cell">1.86</td></tr>
+      <tr><td><b>甘化科工</b></td><td class="muted">000576</td><td class="num-cell">5.1</td><td class="num-cell pos">+117.4%</td><td class="num-cell">0.36</td><td class="num-cell pos">+5.4%</td><td class="num-cell">34.2%</td><td class="num-cell">35</td><td class="num-cell">44.8</td><td class="num-cell">2.06</td></tr>
+      <tr><td><b>晋西车轴</b></td><td class="muted">600495</td><td class="num-cell">6.6</td><td class="num-cell pos">+9.1%</td><td class="num-cell">0.20</td><td class="num-cell pos">+42.3%</td><td class="num-cell">13.2%</td><td class="num-cell">48</td><td class="num-cell">139.6</td><td class="num-cell">1.47</td></tr>
+      <tr><td><b>光电股份</b></td><td class="muted">600184</td><td class="num-cell">7.7</td><td class="num-cell neg">−10.6%</td><td class="num-cell">0.16</td><td class="num-cell pos">+28.4%</td><td class="num-cell">24.5%</td><td class="num-cell">93</td><td class="num-cell">169.6</td><td class="num-cell">2.71</td></tr>
+      <tr><td><b>内蒙一机</b></td><td class="muted">600967</td><td class="num-cell">52.3</td><td class="num-cell neg">−8.6%</td><td class="num-cell">1.72</td><td class="num-cell neg">−40.7%</td><td class="num-cell">8.0%</td><td class="num-cell">222</td><td class="num-cell">102.3</td><td class="num-cell">1.85</td></tr>
+      <tr><td><b>北方导航</b></td><td class="muted">600435</td><td class="num-cell">9.3</td><td class="num-cell neg">−45.4%</td><td class="num-cell">−0.48</td><td class="num-cell neg">−141.1%</td><td class="num-cell">17.0%</td><td class="num-cell">169</td><td class="num-cell">亏损</td><td class="num-cell">5.96</td></tr>
+      <tr><td><b>长城军工</b></td><td class="muted">601606</td><td class="num-cell">4.7</td><td class="num-cell neg">−32.9%</td><td class="num-cell">−0.96</td><td class="num-cell neg">−252.0%</td><td class="num-cell">15.6%</td><td class="num-cell">210</td><td class="num-cell">亏损</td><td class="num-cell">9.82</td></tr>
+      <tr><td><b>天秦装备</b></td><td class="muted">300922</td><td class="num-cell">0.5</td><td class="num-cell neg">−50.6%</td><td class="num-cell">0.09</td><td class="num-cell neg">−45.1%</td><td class="num-cell">35.1%</td><td class="num-cell">26</td><td class="num-cell">74.7</td><td class="num-cell">2.64</td></tr>
+      <tr><td><b>北方长龙</b></td><td class="muted">301357</td><td class="num-cell">0.5</td><td class="num-cell neg">−21.2%</td><td class="num-cell">−0.27</td><td class="num-cell neg">−2351.6%</td><td class="num-cell">37.8%</td><td class="num-cell">86</td><td class="num-cell">亏损</td><td class="num-cell">7.67</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warnbox">
+    <div class="t">对卖方口径的明确保留</div>
+    <p style="margin:0">"地面兵装 +283.56%"无法由代表性公司解释：9 家公司中 4 家净利下滑（含两家转亏），口径下规模最大的内蒙一机 −40.7%。该统计更可能由<b>小市值、低基数公司</b>的百分比效应驱动，或该分类包含本报告未纳入的其他成分（如民爆类）。我也核验了民爆方向：广东宏大 26H1 归母 +3.2%、江南化工 −43.7%、金奥博 +2.0%，同样不支撑 +283.56%。<b>结论：不应以该环节增速推断地面兵装景气。</b></p>
+  </div>
+
+  <h3>4.2 地面兵装真正的变化：竞争格局从封闭走向开放</h3>
+  <p>内蒙一机 2026 年半年报在行业描述中首次系统刻画了这一变化（原文）：</p>
+  <blockquote>
+    <p>"国内军品市场的竞争格局已发生深刻变革，曾经相对封闭的军工体系正逐步走向开放。在装甲车辆、后勤保障装备等领域，竞争态势已趋于常态化，且竞争主体日益多元，已从传统的军工集团内部博弈，演变为涵盖各大军工央企、工程机械巨头以及众多民营企业的差异化、全方位竞争。"</p>
+  </blockquote>
+  <p class="src">来源：内蒙一机 2026 年半年度报告"董事会经营评述"（2026-08-28 披露）。</p>
+  <p>这段表述的分量需要单独指出：<b>一家把"唯一"写进自我描述的公司，同时在风险端承认竞争主体已包含"工程机械巨头"与"众多民营企业"</b>。这意味着地面兵装的约束不是产能，而是定价权。结合十五五纲要"改进军事采购制度""勤俭建军、低成本"的表述，这一环节的毛利率长期方向偏向下行。</p>
+  <p>事实上，整个地面兵装板块的毛利率都不高：内蒙一机 8.0%、晋西车轴 13.2%、长城军工 15.6%、北方导航 17.0%、中兵红箭 18.5%。<b>除依赖超硬材料（培育钻石）的公司外，地面兵装是军工体系内毛利率最低的一段。</b></p>
+
+  <h3>4.3 这一环节该看什么</h3>
+  <ul>
+    <li><b>十五五明确点名"无人智能作战力量及反制能力"</b>——这是地面兵装里唯一有政策加速度的方向，但上市公司层面尚未出现可计量的收入（北方长龙 26H1 营收 0.5 亿元、归母 −0.27 亿元）。</li>
+    <li><b>军贸是地面兵装弹性最大的变量</b>（见第 05、08 节），但恰恰是 26H1 最负面的一项。</li>
+    <li><b>弹药/含能材料</b>（中兵红箭、长城军工）受益于实战化训练消耗，但中兵红箭的利润更多来自超硬材料而非军工；长城军工 26H1 转亏。</li>
+  </ul>
+</section>
+
+<section class="anchor" id="s5">
+  <h2><span class="num">05</span>内蒙一机深度案例：唯一陆装总装平台的三年利润下行</h2>
+
+  <p>内蒙一机（600967.SH）是地面兵装板块的位置锚：公司自述为"我国唯一的集主战坦克、轮式战车、中口径火炮为一体的高新武器装备研发制造集团"。作为"唯一"平台，它理应是最受益于建军百年与军贸的标的之一。但它的报表讲的是另一个故事。</p>
+
+  <h3>5.1 位置与角色</h3>
+  <ul>
+    <li><b>主营业务</b>：主战坦克、轮式战车、中口径火炮等高新武器装备的研发制造（公司主营介绍）。</li>
+    <li><b>控股股东体系</b>：中国兵器工业集团。市场长期存在资产注入预期（集团资产证券化率偏低），但该预期主要来自股吧、自媒体与卖方讨论，<b>未见公司公告层面的确认</b>，属未验证线索。</li>
+    <li><b>民品</b>：铁路货车（子公司包头北方创业）、车辆零部件、安全应急装备（森林消防等）。</li>
+  </ul>
+
+  <h3>5.2 财务：连续多个报告期的利润下行</h3>
+  <table>
+    <caption>数据来源：公司定期报告，经东方财富数据中心提取。2026H1 为 2026 年半年报（截至 2026-06-30）</caption>
+    <thead><tr><th>期间</th><th class="num-cell">营业收入</th><th class="num-cell">同比</th><th class="num-cell">归母净利</th><th class="num-cell">同比</th><th class="num-cell">毛利率</th><th class="num-cell">净利率</th><th class="num-cell">ROE</th><th class="num-cell">资产负债率</th></tr></thead>
+    <tbody>
+      <tr><td>2023 年报</td><td class="num-cell">100.10 亿</td><td class="num-cell neg">−30.2%</td><td class="num-cell">8.51 亿</td><td class="num-cell pos">+3.5%</td><td class="num-cell">16.12%</td><td class="num-cell">8.42%</td><td class="num-cell">7.60%</td><td class="num-cell">51.68%</td></tr>
+      <tr><td>2024 年报</td><td class="num-cell">97.92 亿</td><td class="num-cell neg">−2.2%</td><td class="num-cell">5.00 亿</td><td class="num-cell neg">−41.3%</td><td class="num-cell">12.47%</td><td class="num-cell">5.05%</td><td class="num-cell">4.34%</td><td class="num-cell">42.03%</td></tr>
+      <tr><td>2025 年报</td><td class="num-cell">100.25 亿</td><td class="num-cell pos">+2.4%</td><td class="num-cell">3.35 亿</td><td class="num-cell neg">−33.0%</td><td class="num-cell">12.18%</td><td class="num-cell">3.34%</td><td class="num-cell">2.86%</td><td class="num-cell">48.48%</td></tr>
+      <tr><td><b>2026H1</b></td><td class="num-cell"><b>52.32 亿</b></td><td class="num-cell neg"><b>−8.6%</b></td><td class="num-cell"><b>1.72 亿</b></td><td class="num-cell neg"><b>−40.7%</b></td><td class="num-cell"><b>7.97%</b></td><td class="num-cell"><b>3.23%</b></td><td class="num-cell"><b>1.45%</b></td><td class="num-cell"><b>35.19%</b></td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li><b>利润接近腰斩再腰斩</b>：归母净利 8.51 亿（2023）→ 5.00 亿（2024）→ 3.35 亿（2025）。营收基本持平在 100 亿元附近，<b>利润的下滑全部来自毛利率</b>——16.12% → 12.47% → 12.18% → 7.97%。</li>
+    <li><b>二季度已经几乎没有利润</b>：26H1 归母 1.72 亿元，而 Q1 归母 1.38 亿元，推算 <b>Q2 归母仅约 0.34 亿元</b>（2025Q2 约 1.04 亿元，同比约 −67%），单季净利率约 1.3%。</li>
+    <li><b>现金流与利润背离</b>：26H1 经营活动现金流净额 −7.60 亿元（同比 −374.31%），公司解释为"部分产品未到结算期"；投资活动现金流 +17.60 亿元（理财与大额存单集中到期）。</li>
+  </ul>
+
+  <h3>5.3 决定性的一项：海外（军贸）收入同比 −92%</h3>
+  <p>公司按"分地区"披露收入，这是本报告能穿透其军品豁免的唯一科目。结果如下：</p>
+  <table>
+    <caption>数据来源：公司定期报告"营业收入、营业成本的分地区构成"，经东方财富 F10 经营分析接口提取；各期国内+国外收入之和与当期披露营业收入完全一致（如 2026H1：51.47+0.85=52.32 亿元）</caption>
+    <thead><tr><th>期间</th><th class="num-cell">国内销售</th><th class="num-cell">占比</th><th class="num-cell">国内毛利率</th><th class="num-cell">国外销售</th><th class="num-cell">占比</th><th class="num-cell">国外毛利率</th></tr></thead>
+    <tbody>
+      <tr><td>2024H1</td><td class="num-cell">45.08 亿</td><td class="num-cell">94.2%</td><td class="num-cell">9.85%</td><td class="num-cell">2.79 亿</td><td class="num-cell">5.8%</td><td class="num-cell">17.21%</td></tr>
+      <tr><td>2025H1</td><td class="num-cell">46.63 亿</td><td class="num-cell">81.4%</td><td class="num-cell">6.28%</td><td class="num-cell"><b>10.64 亿</b></td><td class="num-cell">18.6%</td><td class="num-cell">24.95%</td></tr>
+      <tr><td>2025 年报</td><td class="num-cell">87.36 亿</td><td class="num-cell">87.1%</td><td class="num-cell">9.79%</td><td class="num-cell"><b>12.89 亿</b></td><td class="num-cell">12.9%</td><td class="num-cell">28.36%</td></tr>
+      <tr><td><b>2026H1</b></td><td class="num-cell"><b>51.47 亿</b></td><td class="num-cell"><b>98.4%</b></td><td class="num-cell"><b>7.92%</b></td><td class="num-cell"><b>0.85 亿</b></td><td class="num-cell"><b>1.6%</b></td><td class="num-cell">10.97%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="keybox">
+    <div class="t">这组数字解释了一切</div>
+    <ul style="margin:6px 0 0">
+      <li><b>国内销售 51.47 亿元，同比 +10.4%</b>（25H1 为 46.63 亿元）——内需其实是增长的。</li>
+      <li><b>国外销售 0.85 亿元，同比 −92%</b>（25H1 为 10.64 亿元），占比从 18.6% 掉到 1.6%。</li>
+      <li>因此营收 −8.6% 几乎完全由海外收入消失造成；而海外毛利率（25H1 为 24.95%）显著高于国内（6.28%），<b>高毛利业务流失同时解释了整体毛利率从 9.75% 降至 7.97%</b>。</li>
+      <li>海外收入的 92% 降幅，也解释了为什么"军贸战略引擎作用日益凸显"这一表述无法在报表中验证。</li>
+      <li>需要严格区分：<b>公司称"军贸订单持续落地、传统核心市场成交稳固"是管理层表述；0.85 亿元的海外收入是已确认的报表事实</b>。两者之间的落差是订单—收入的时间差，还是别的什么，公开信息无法判定。</li>
+    </ul>
+  </div>
+
+  <h3>5.4 军品信息豁免：这家公司的核心变量不可验证</h3>
+  <p>公司 2026 年半年报<b>未拆分各业务板块收入</b>：F10"分产品"科目下，2025 年报与 2026 半年报均只有单一类别"特种装备"（100%）。经第三方分析（<a href="https://stock.stockstar.com/RB2026090200010910.shtml">证券之星经营分析，2026-09-02</a>）确认，这是<b>军品数据受保密要求豁免披露</b>所致。</p>
+  <p>三个后果：</p>
+  <ol>
+    <li>管理层对利润下滑的统一解释（"产品销售结构较上年同期发生变化、综合毛利率下降"）<b>无法被外部验证</b>。</li>
+    <li>无法判断军贸是"未交付"还是"未中标"。</li>
+    <li>可用替代观察窗口只剩三个：分地区收入、合同负债与存货、子公司经营数据。</li>
+  </ol>
+  <p>另有客户集中度问题：据同花顺 F10 披露的最新客户数据（2022 年报），前 1 大客户销售额占营业收入 <b>74.89%</b>（其中单一客户 87.83 亿元、占 61.21%）。单一客户结构意味着几乎没有议价空间，与 8.0% 的毛利率互相印证。<span class="muted">（该数据为 2022 年口径，最新年度未披露同等明细。）</span></p>
+
+  <h3>5.5 可用的替代信号：两个正面、一个反面</h3>
+  <div class="grid3">
+    <div class="stat">
+      <div class="k">正面 · 资产负债表修复（已确认）</div>
+      <div class="v">45.37 亿</div>
+      <div class="n">2026H1 期末货币资金，25H1 为 23.72 亿元，接近翻倍；资产负债率 35.19%（25H1 42.25%）。财务费用 −1,924 万元（净利息收入）。</div>
+    </div>
+    <div class="stat">
+      <div class="k">正面 · 合同负债同比回升</div>
+      <div class="v">13.63 亿</div>
+      <div class="n">2026H1 合同负债，25H1 为 7.32 亿元（<b>+86%</b>）。但注意季节性：2025 年末为 26.69 亿元，半年内下降 49%，公司解释为"部分产品上半年确认收入"。</div>
+    </div>
+    <div class="stat">
+      <div class="k">反面 · 研发费用阶段性收缩</div>
+      <div class="v">1.07 亿</div>
+      <div class="n">2026H1 研发费用，同比 <b>−30.00%</b>。公司解释"上半年以方案论证、需求调研等前期工作为主，实物投入集中在下半年"。2025 全年研发费用 5.57 亿元（占营收 5.56%，资本化 0）。</div>
+    </div>
+  </div>
+
+  <h3>5.6 民品：铁路货车是唯一明确的边际改善</h3>
+  <table>
+    <caption>子公司经营数据。注意口径：2025 年为全年，2026 年为半年度，<b>不可直接同比</b>，只能看方向</caption>
+    <thead><tr><th>子公司</th><th class="num-cell">2025 全年营收</th><th class="num-cell">2025 全年净利</th><th class="num-cell">2026H1 营收</th><th class="num-cell">2026H1 净利</th><th>方向</th></tr></thead>
+    <tbody>
+      <tr><td>包头北方创业（铁路车辆）</td><td class="num-cell">7.43 亿</td><td class="num-cell neg">−3,519.94 万</td><td class="num-cell">5.52 亿</td><td class="num-cell pos">+1,510.56 万</td><td>扭亏为盈</td></tr>
+      <tr><td>山西北方机械</td><td class="num-cell">10.59 亿</td><td class="num-cell neg">−1,540.04 万</td><td class="num-cell">1.20 亿</td><td class="num-cell neg">−25.54 万</td><td>亏损大幅收窄</td></tr>
+      <tr><td>路通弹簧</td><td class="num-cell">1.25 亿</td><td class="num-cell pos">+12.50 万</td><td class="num-cell">0.37 亿</td><td class="num-cell neg">−539.43 万</td><td>由微利转亏</td></tr>
+    </tbody>
+  </table>
+  <p class="src">来源：<a href="https://stock.stockstar.com/RB2026090200010910.shtml">证券之星《内蒙一机2026年中报经营分析》，2026-09-02</a>，数据引自公司 2026 年半年报。</p>
+
+  <h3>5.7 2026 年 9 月的上涨：市场买的是"大额订单"，公告披露的是铁路货车</h3>
+  <p>内蒙一机在 2026 年 9 月出现连续涨停（9 月 1 日、9 月 2 日、9 月 11 日），区间从 8 月 31 日收盘 11.08 元最高涨至 9 月 11 日 14.98 元（<b>+35%</b>）。多个异动分析把原因归结为"军工装备 + 财务优化 + <b>军贸突破 / 大额订单</b>"。</p>
+  <p>把公告逐条核对后：</p>
+  <table>
+    <caption>2026 年内蒙一机可查到的"订单类"公告。来源：新浪财经公告库、采招网及媒体转述</caption>
+    <thead><tr><th>时间</th><th>公告内容</th><th>性质</th></tr></thead>
+    <tbody>
+      <tr><td>2026-09-04 / 09-05</td><td>全资子公司包头北方创业与中国国家铁路集团签订日常经营合同，合计 <b>2.07 亿元</b>（C70E 型通用敞车与 X70 型集装箱专用平车）</td><td class="neg">铁路货车（民品）</td></tr>
+      <tr><td>2026-05-28</td><td>包头北方创业与国铁集团签订重大合同（铁路货运装备）</td><td class="neg">铁路货车（民品）</td></tr>
+    </tbody>
+  </table>
+  <p>也就是说，9 月被市场解读为"大额订单"的公告，实际是一笔 2.07 亿元的<b>铁路货车</b>采购。同期<b>未检索到军贸或军品批量订单的公开公告</b>。这与海外收入 0.85 亿元（−92%）的事实互相印证：<b>军贸的"订单叙事"与"收入事实"之间，目前存在一段公开信息无法弥合的缺口。</b></p>
+
+  <table>
+    <caption>内蒙一机 2026 年 9—10 月股价与资金。来源：交易所行情数据（前复权不复权，日线）</caption>
+    <thead><tr><th>日期</th><th class="num-cell">收盘</th><th class="num-cell">涨跌</th><th class="num-cell">成交额</th><th>备注</th></tr></thead>
+    <tbody>
+      <tr><td>2026-08-31</td><td class="num-cell">11.08</td><td class="num-cell">—</td><td class="num-cell">1.22 亿</td><td>半年报披露后低位</td></tr>
+      <tr><td>2026-09-01</td><td class="num-cell">12.19</td><td class="num-cell pos">+10.02%</td><td class="num-cell">8.16 亿</td><td>涨停，主力净流入约 3.0 亿</td></tr>
+      <tr><td>2026-09-02</td><td class="num-cell">13.41</td><td class="num-cell pos">+10.01%</td><td class="num-cell">8.46 亿</td><td>涨停，上龙虎榜（三日涨幅偏离 20%）</td></tr>
+      <tr><td>2026-09-11</td><td class="num-cell">14.98</td><td class="num-cell pos">+9.99%</td><td class="num-cell">25.64 亿</td><td>阶段高点，成交额显著放大</td></tr>
+      <tr><td>2026-10-12</td><td class="num-cell">12.29</td><td class="num-cell">—</td><td class="num-cell">5.67 亿</td><td>回落</td></tr>
+      <tr><td>2026-10-13</td><td class="num-cell">13.38</td><td class="num-cell pos">+8.87%</td><td class="num-cell">13.88 亿</td><td>珠海航展消息，主力净流入约 2.03 亿</td></tr>
+      <tr><td>2026-10-16</td><td class="num-cell">14.10</td><td class="num-cell pos">+8.21%</td><td class="num-cell">10.25 亿</td><td>本报告调研日；总市值约 240 亿元</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.8 估值与目标缺口</h3>
+  <ul>
+    <li><b>估值</b>：2026-10-16 收 14.10 元，总市值约 240 亿元（总股本 17.02 亿股），对应 PE_TTM 约 <b>110 倍</b>、PB 约 <b>2.0 倍</b>（10-15 口径为 PE_TTM 102.3、PB 1.85）。</li>
+    <li><b>卖方预测</b>：中报点评预计 2026—2028 年 EPS 分别为 0.20 / 0.22 / 0.24 元（对应 8 月 27 日收盘 11.23 元的 PE 为 54.9 / 51.6 / 46.9 倍）；山证 5 月报告为 0.21 / 0.22 / 0.24 元。<b>以 10-16 收盘 14.10 元计，2026E PE 约 70 倍、2027E 约 64 倍、2028E 约 59 倍。</b></li>
+    <li><b>经营目标缺口</b>：公司 2026 年主营业务收入计划 100 亿元（+1.62%），而上半年为 52.32 亿元（−8.64%）。要完成全年目标，下半年需实现约 47.7 亿元、同比增长约 13%，<b>与上半年方向相反</b>。</li>
+    <li><b>分红</b>：2025 年度每 10 股派 0.99 元，合计 1.68 亿元，占当年归母净利 <b>50.32%</b>，已于 2026 年 7 月 9 日实施。这是"提质增效重回报"的实质动作，对 3 年利润下行的公司而言是一个正面信号。</li>
+  </ul>
+
+  <div class="warnbox">
+    <div class="t">内蒙一机的研究判断</div>
+    <p style="margin:0 0 6px">这是一家<b>位置稀缺但当前利润在恶化、且核心变量不可验证</b>的公司。资产负债表确实在修复（现金翻倍、有息负债基本清零、负债率降至 35.19%），分红比例也高（50.32%）。但投资逻辑的核心变量——军贸收入的恢复——不仅没有发生，反而同比 −92%；而军品豁免意味着外界无法提前验证它何时会恢复。</p>
+    <p style="margin:0"><b>研究优先级：观察。</b>它不是"卡点"标的，而是一个"等待订单与收入重新对齐"的期权。在 110 倍 PE_TTM 与 70 倍 2026E PE 的价格上，等待的代价不低。真正有意思的观察点是三季报的<b>分地区科目</b>：如果海外收入从 0.85 亿元回升，说明交付节奏问题；如果继续接近零，那"军贸战略引擎"的表述就需要打问号。</p>
+  </div>
+</section>
+
+<section class="anchor" id="s6">
+  <h2><span class="num">06</span>航空装备：卡点最硬，利润最弱</h2>
+
+  <p>航空装备是三个板块里"卡点"属性最强的：整机总装（沈飞、成飞、西飞）与航空发动机总装（航发动力）都具备近乎不可替代的牌照与体系壁垒。但 26H1 报表是全板块最弱的之一。</p>
+
+  <h3>6.1 航空装备 26H1 全景：三层分化</h3>
+  <table>
+    <caption>财务为 2026 年半年报（截至 2026-06-30），估值为 2026-10-15 收盘。按产业链位置分层</caption>
+    <thead><tr><th>层级</th><th>公司</th><th class="num-cell">营收(亿)</th><th class="num-cell">营收同比</th><th class="num-cell">归母(亿)</th><th class="num-cell">归母同比</th><th class="num-cell">毛利率</th><th class="num-cell">市值(亿)</th><th class="num-cell">PE_TTM</th><th class="num-cell">PB</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="4"><b>整机总装</b></td><td><b>中航成飞</b> <small class="muted">302132</small></td><td class="num-cell">151.7</td><td class="num-cell neg">−26.7%</td><td class="num-cell">7.09</td><td class="num-cell neg">−22.3%</td><td class="num-cell">11.0%</td><td class="num-cell">1,653</td><td class="num-cell">51.2</td><td class="num-cell">7.91</td></tr>
+      <tr><td><b>中航沈飞</b> <small class="muted">600760</small></td><td class="num-cell">61.9</td><td class="num-cell neg">−57.7%</td><td class="num-cell">4.73</td><td class="num-cell neg">−58.4%</td><td class="num-cell">10.6%</td><td class="num-cell">1,262</td><td class="num-cell">44.2</td><td class="num-cell">5.39</td></tr>
+      <tr><td><b>中航西飞</b> <small class="muted">000768</small></td><td class="num-cell">141.9</td><td class="num-cell neg">−26.9%</td><td class="num-cell">4.90</td><td class="num-cell neg">−28.9%</td><td class="num-cell">8.1%</td><td class="num-cell">645</td><td class="num-cell">67.7</td><td class="num-cell">2.88</td></tr>
+      <tr><td><b>中直股份</b> <small class="muted">600038</small></td><td class="num-cell">90.1</td><td class="num-cell neg">−12.0%</td><td class="num-cell">1.88</td><td class="num-cell neg">−33.6%</td><td class="num-cell">9.5%</td><td class="num-cell">216</td><td class="num-cell">38.9</td><td class="num-cell">1.23</td></tr>
+      <tr><td><b>动力系统</b></td><td><b>航发动力</b> <small class="muted">600893</small></td><td class="num-cell">207.5</td><td class="num-cell pos">+47.2%</td><td class="num-cell">1.46</td><td class="num-cell pos">+59.3%</td><td class="num-cell">9.0%</td><td class="num-cell">1,018</td><td class="num-cell">147.8</td><td class="num-cell">2.53</td></tr>
+      <tr><td rowspan="3"><b>机载与信息化</b></td><td><b>中航机载</b> <small class="muted">600372</small></td><td class="num-cell">109.7</td><td class="num-cell neg">−1.9%</td><td class="num-cell">6.07</td><td class="num-cell neg">−5.3%</td><td class="num-cell">26.0%</td><td class="num-cell">532</td><td class="num-cell">51.4</td><td class="num-cell">1.39</td></tr>
+      <tr><td><b>中航光电</b> <small class="muted">002179</small></td><td class="num-cell">112.4</td><td class="num-cell">+0.5%</td><td class="num-cell">11.19</td><td class="num-cell neg">−22.1%</td><td class="num-cell">28.8%</td><td class="num-cell">678</td><td class="num-cell">36.8</td><td class="num-cell">2.79</td></tr>
+      <tr><td><b>航发控制</b> <small class="muted">000738</small></td><td class="num-cell">27.6</td><td class="num-cell">+0.9%</td><td class="num-cell">2.17</td><td class="num-cell neg">−29.7%</td><td class="num-cell">24.3%</td><td class="num-cell">236</td><td class="num-cell">97.1</td><td class="num-cell">1.87</td></tr>
+      <tr><td rowspan="6"><b>材料与零部件</b></td><td><b>图南股份</b> <small class="muted">300855</small></td><td class="num-cell">10.2</td><td class="num-cell pos">+70.9%</td><td class="num-cell">2.49</td><td class="num-cell pos">+167.9%</td><td class="num-cell">40.1%</td><td class="num-cell">119</td><td class="num-cell">38.1</td><td class="num-cell">5.40</td></tr>
+      <tr><td><b>钢研高纳</b> <small class="muted">300034</small></td><td class="num-cell">20.5</td><td class="num-cell pos">+13.0%</td><td class="num-cell">1.03</td><td class="num-cell pos">+61.2%</td><td class="num-cell">21.4%</td><td class="num-cell">116</td><td class="num-cell">91.8</td><td class="num-cell">3.01</td></tr>
+      <tr><td><b>应流股份</b> <small class="muted">603308</small></td><td class="num-cell">18.3</td><td class="num-cell pos">+32.2%</td><td class="num-cell">2.21</td><td class="num-cell pos">+17.5%</td><td class="num-cell">34.0%</td><td class="num-cell">233</td><td class="num-cell">61.0</td><td class="num-cell">4.49</td></tr>
+      <tr><td><b>中航高科</b> <small class="muted">600862</small></td><td class="num-cell">23.6</td><td class="num-cell neg">−14.0%</td><td class="num-cell">4.39</td><td class="num-cell neg">−27.4%</td><td class="num-cell">35.5%</td><td class="num-cell">239</td><td class="num-cell">27.6</td><td class="num-cell">3.06</td></tr>
+      <tr><td><b>西部超导</b> <small class="muted">688122</small></td><td class="num-cell">26.1</td><td class="num-cell neg">−4.1%</td><td class="num-cell">3.45</td><td class="num-cell neg">−36.8%</td><td class="num-cell">30.1%</td><td class="num-cell">340</td><td class="num-cell">53.2</td><td class="num-cell">4.70</td></tr>
+      <tr><td><b>三角防务</b> <small class="muted">300775</small></td><td class="num-cell">4.9</td><td class="num-cell neg">−38.1%</td><td class="num-cell">0.41</td><td class="num-cell neg">−84.9%</td><td class="num-cell">31.8%</td><td class="num-cell">103</td><td class="num-cell">64.4</td><td class="num-cell">1.75</td></tr>
+    </tbody>
+  </table>
+
+  <div class="keybox">
+    <div class="t">三点观察</div>
+    <ol style="margin:6px 0 0">
+      <li><b>整机总装全线负增长</b>，四家中三家营收降幅超 12%（沈飞 −57.7%）。这是"卡点最硬"的位置。</li>
+      <li><b>同为"上游材料"，内部分化极大</b>：高温合金/两机方向（图南 +167.9%、钢研高纳 +61.2%、应流 +17.5%）在增长；碳纤维与锻件方向（中航高科 −27.4%、西部超导 −36.8%、三角防务 −84.9%）在收缩。<b>不能按"上游材料受益"一概而论。</b></li>
+      <li><b>航发动力量起来了，利润没起来</b>：营收 +47.2% 是总装环节少见的放量，但归母仅 1.46 亿元、净利率 0.7%，且应收账款 521 亿元、同比 +36%。</li>
+    </ol>
+  </div>
+
+  <h3>6.2 前瞻指标：合同负债是照妖镜</h3>
+  <p>营收和利润是后视镜，<b>合同负债（客户预付款）才是订单的前瞻信号</b>。26H1 与 25H1 对比：</p>
+  <table>
+    <caption>单位：亿元。数据来源：各公司定期报告资产负债表，经东方财富数据中心提取并与半年报交叉核对</caption>
+    <thead><tr><th>公司</th><th class="num-cell">合同负债 26H1</th><th class="num-cell">合同负债 25H1</th><th class="num-cell">变化</th><th class="num-cell">存货 26H1</th><th class="num-cell">存货 25H1</th><th class="num-cell">变化</th><th>信号解读</th></tr></thead>
+    <tbody>
+      <tr><td><b>中航成飞</b></td><td class="num-cell">30.0</td><td class="num-cell">187.2</td><td class="num-cell neg">−84%</td><td class="num-cell">292.3</td><td class="num-cell">301.1</td><td class="num-cell neg">−3%</td><td>预收大幅消耗、存货未增，成品交付在减速</td></tr>
+      <tr><td><b>中航沈飞</b></td><td class="num-cell">29.7</td><td class="num-cell">75.3</td><td class="num-cell neg">−61%</td><td class="num-cell">158.1</td><td class="num-cell">115.1</td><td class="num-cell pos">+37%</td><td>备产与预收方向相反，矛盾最尖锐</td></tr>
+      <tr><td><b>中航西飞</b></td><td class="num-cell">26.8</td><td class="num-cell">58.5</td><td class="num-cell neg">−54%</td><td class="num-cell">197.1</td><td class="num-cell">212.1</td><td class="num-cell neg">−7%</td><td>预收与存货同步走弱</td></tr>
+      <tr><td><b>航发动力</b></td><td class="num-cell">63.6</td><td class="num-cell">62.5</td><td class="num-cell">+2%</td><td class="num-cell">378.3</td><td class="num-cell">407.6</td><td class="num-cell neg">−7%</td><td>放量靠应收驱动（应收 +36% 至 521 亿元）</td></tr>
+      <tr><td><b>中航光电</b></td><td class="num-cell">4.1</td><td class="num-cell">3.2</td><td class="num-cell pos">+28%</td><td class="num-cell">67.7</td><td class="num-cell">51.7</td><td class="num-cell pos">+31%</td><td>备产转强但利润尚未转正</td></tr>
+      <tr><td><b>图南股份</b></td><td class="num-cell">0.2</td><td class="num-cell">0.1</td><td class="num-cell pos">+100%</td><td class="num-cell">14.4</td><td class="num-cell">5.6</td><td class="num-cell pos">+157%</td><td>全场最激进的备产</td></tr>
+      <tr><td><b>洪都航空</b></td><td class="num-cell">32.2</td><td class="num-cell">41.5</td><td class="num-cell neg">−22%</td><td class="num-cell">23.2</td><td class="num-cell">33.9</td><td class="num-cell neg">−32%</td><td>营收 +80% 靠消化库存，毛利率仅 2.3%</td></tr>
+    </tbody>
+  </table>
+  <p class="legend">主机厂合同负债 −54%～−84% 是本报告认为最重要的单个事实。它意味着：<b>截至 2026 年 6 月，"十五五规模化订单"还没有以预收款的形式落到主机厂报表上</b>。存货增加（沈飞 +37%）可以被解读为积极备产，但预收大幅减少意味着客户尚未打款锁定后续订单——两者方向相反。</p>
+
+  <h3>6.3 航空的两个具体判断</h3>
+  <div class="layer">
+    <div class="lh"><span>判断 A · 总装环节是"用估值换时间"，不是"用业绩说话"</span><span class="tag">卡点硬 / 兑现弱</span></div>
+    <div class="lb">
+      <p>沈飞 PE_TTM 44.2 倍、成飞 51.2 倍、西飞 67.7 倍——这些倍数建立在<b>被压缩的盈利</b>之上（沈飞 TTM 归母约 28.5 亿元，低于其历史正常水平）。如果 2027 建军百年的订单在 2026 下半年至 2027 年集中释放，经营杠杆会带来很大利润弹性；如果订单继续不落地，这些倍数缺乏盈利支撑。</p>
+      <p>卖方普遍用"下半年交付恢复"解释 26H1 的下滑，但"下半年恢复"是前瞻表述，既没有订单公告支撑，也未在已披露报表中体现。</p>
+    </div>
+  </div>
+  <div class="layer">
+    <div class="lh"><span>判断 B · 上游材料的利润捕获能力明显强于总装，但必须区分方向</span><span class="tag">兑现强 / 需分层</span></div>
+    <div class="lb">
+      <p>同一产业链条上，上游材料赚得比总装多：图南股份净利率约 24%、航发动力净利率 0.7%。这提示总装环节的议价结构系统性偏弱——即便订单放量，利润更多留在上游。</p>
+      <p>但"上游材料"不是一个整体。26H1 增长的是<b>高温合金与两机零部件</b>（航空发动机排产上行的直接受益者，也受燃机需求拉动）；收缩的是<b>碳纤维与锻件</b>。研究时应按具体材料方向分层，而不是按"上游"标签。</p>
+    </div>
+  </div>
+</section>
+
+<section class="anchor" id="s7">
+  <h2><span class="num">07</span>船舶舰艇：订单簿最实，但不是纯军工</h2>
+
+  <h3>7.1 行业数据：这一轮是真周期</h3>
+  <p>工业和信息化部 2026 年 7 月 23 日发布的官方统计：</p>
+  <blockquote>
+    <p>"2026 年 1—6 月，我国造船完工量 <b>3650 万载重吨</b>，同比增长 <b>51.2%</b>，占世界总量的 62.2%；新接订单量 <b>12106 万载重吨</b>，同比增长 <b>173.1%</b>，占世界总量的 <b>82.3%</b>；截至 6 月底，手持订单量 <b>36325 万载重吨</b>，同比增长 <b>54.9%</b>，占世界总量的 71.2%。"</p>
+  </blockquote>
+  <p class="src">来源：<a href="https://www.miit.gov.cn/gxsj/tjfx/zbgy/mycb/art/2026/art_f2d924ac33764467a2de5ce8481bc736.html">工业和信息化部装备工业二司，2026-07-23</a>（官方一手）。</p>
+  <p>新接订单 +173.1%、手持订单 3.63 亿载重吨——这是三个板块里唯一有"行业级硬数据"支撑的方向。另有第三方数据称截至 2026 年 3 月新造船价格指数约 182 点、较 2020 年低点上涨约 47%（中投顾问报告，二手来源，未取得原始指数）。</p>
+  <p class="legend">重要区分：上述三个指标是<b>民用船舶</b>口径（工信部"民用船舶"栏目）。军船订单不公开披露，因此不能用这些数据推断军品景气。</p>
+
+  <h3>7.2 船舶舰艇 26H1 全景</h3>
+  <table>
+    <caption>财务为 2026 年半年报（截至 2026-06-30），估值为 2026-10-15 收盘</caption>
+    <thead><tr><th>公司</th><th>代码</th><th>位置</th><th class="num-cell">营收(亿)</th><th class="num-cell">营收同比</th><th class="num-cell">归母(亿)</th><th class="num-cell">归母同比</th><th class="num-cell">毛利率</th><th class="num-cell">市值(亿)</th><th class="num-cell">PE_TTM</th><th class="num-cell">PB</th></tr></thead>
+    <tbody>
+      <tr><td><b>中国船舶</b></td><td class="muted">600150</td><td>总装</td><td class="num-cell">915.3</td><td class="num-cell pos">+26.0%</td><td class="num-cell">99.54</td><td class="num-cell pos">+163.5%</td><td class="num-cell">17.4%</td><td class="num-cell">2,668</td><td class="num-cell">19.0</td><td class="num-cell">1.75</td></tr>
+      <tr><td><b>中国动力</b></td><td class="muted">600482</td><td>动力系统</td><td class="num-cell">308.4</td><td class="num-cell pos">+11.5%</td><td class="num-cell">13.12</td><td class="num-cell pos">+42.7%</td><td class="num-cell">18.5%</td><td class="num-cell">716</td><td class="num-cell">42.3</td><td class="num-cell">1.74</td></tr>
+      <tr><td><b>中船防务</b></td><td class="muted">600685</td><td>总装（华南）</td><td class="num-cell">111.2</td><td class="num-cell pos">+9.3%</td><td class="num-cell">8.37</td><td class="num-cell pos">+58.9%</td><td class="num-cell">10.7%</td><td class="num-cell">387</td><td class="num-cell">29.4</td><td class="num-cell">2.04</td></tr>
+      <tr><td><b>亚星锚链</b></td><td class="muted">601890</td><td>系泊链 / 锚链</td><td class="num-cell">11.1</td><td class="num-cell pos">+12.3%</td><td class="num-cell">1.53</td><td class="num-cell pos">+33.4%</td><td class="num-cell">27.1%</td><td class="num-cell">84</td><td class="num-cell">23.5</td><td class="num-cell">2.14</td></tr>
+      <tr><td><b>中船应急</b></td><td class="muted">300527</td><td>应急交通装备</td><td class="num-cell">4.2</td><td class="num-cell pos">+3.3%</td><td class="num-cell">0.15</td><td class="num-cell pos">+182.4%</td><td class="num-cell">27.3%</td><td class="num-cell">73</td><td class="num-cell">269.3</td><td class="num-cell">2.50</td></tr>
+      <tr><td><b>中国海防</b></td><td class="muted">600764</td><td>水声电子（军品为主）</td><td class="num-cell">12.9</td><td class="num-cell neg">−7.2%</td><td class="num-cell">0.55</td><td class="num-cell neg">−41.5%</td><td class="num-cell">30.6%</td><td class="num-cell">132</td><td class="num-cell">162.2</td><td class="num-cell">1.60</td></tr>
+      <tr><td><b>中船科技</b></td><td class="muted">600072</td><td>风电 / 工程</td><td class="num-cell">46.1</td><td class="num-cell pos">+22.3%</td><td class="num-cell">−5.21</td><td class="num-cell neg">亏损</td><td class="num-cell">−0.8%</td><td class="num-cell">144</td><td class="num-cell">亏损</td><td class="num-cell">1.97</td></tr>
+      <tr><td><b>江龙船艇</b></td><td class="muted">300589</td><td>巡逻艇 / 公务船</td><td class="num-cell">5.1</td><td class="num-cell pos">+45.2%</td><td class="num-cell">−0.16</td><td class="num-cell neg">−13.9%</td><td class="num-cell">9.5%</td><td class="num-cell">50</td><td class="num-cell">亏损</td><td class="num-cell">7.43</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.3 中国船舶：本报告在三板块中标出的最高优先级</h3>
+  <div class="cand">
+    <div class="ch">
+      <div class="nm">中国船舶 <small>600150.SH · 船舶总装（军船 + 民船）</small></div>
+      <span class="badge b-high">优先级 高（附口径警告）</span>
+    </div>
+    <div class="cb">
+      <div class="kv">
+        <div class="kk">已确认的披露（26H1）</div>
+        <ul style="margin:6px 0">
+          <li>营业收入 915.3 亿元，同比 +26.0%；归母净利润 <b>99.54 亿元</b>，同比 +163.5%。</li>
+          <li>合同负债 <b>1,498.2 亿元</b>，较 25H1 的 707.8 亿元增长 <b>+112%</b>；存货 685.9 亿元、同比 +85%。</li>
+          <li>估值：PE_TTM 约 19.0 倍、PB 约 1.75（2026-10-15 收盘），为本报告核心样本中最低。</li>
+        </ul>
+        <p class="src">来源：中国船舶 2026 年半年度报告；估值与资产负债表数据经东方财富数据中心提取（2026-10-15）。</p>
+      </div>
+      <div class="kv">
+        <div class="kk">从业务到利润</div>
+        <p class="vv">26H1 毛利率 17.4%，通过规模与交付效率提升转化为 99.5 亿元净利润。1,498 亿元合同负债相当于 26H1 营收的 1.6 倍，收入可见度远高于军工板块平均水平（板块合同负债/营收约 58%）。低估值 + 高订单可见度的组合，在军工板块中少见。</p>
+      </div>
+      <div class="kv">
+        <div class="kk">最大的缺口（反方理由）</div>
+        <ul style="margin:6px 0">
+          <li><b>口径风险（必须先核对）</b>：公司 2025 年完成对原中国重工的换股吸收合并，2025-06-30 的对比数是否为合并前口径尚需以年报重述可比数确认。<b>+112% 这个数字在核对前不能当作定论</b>，本报告将其标注为待验证。</li>
+          <li><b>军工纯度低</b>：民船订单与军用舰船的利润结构、占比均未单独披露。把它当作国防军工景气度代理变量是不准确的。</li>
+          <li><b>周期属性</b>：民船盈利高度依赖新造船价格、汇率与钢价。新接订单 +173.1% 的另一面是产能扩张与未来供给增加。</li>
+        </ul>
+      </div>
+      <div class="kv">
+        <div class="kk">什么会降低这个优先级</div>
+        <p class="vv">若新造船价格指数与合同负债增速同时转弱，或年报显示民船占比继续上升、军品占比下降，则应把它从"军工标的"重新归类为"船舶周期标的"。</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>7.4 船舶板块内值得注意的三点</h3>
+  <ul>
+    <li><b>军民属性两极分化</b>：民船占主导的中国船舶、中船防务、中国动力业绩强劲；而<b>军品属性最强的中国海防</b>（水声电子）26H1 营收 −7.2%、归母 −41.5%。这与航空板块"卡点硬、利润弱"的模式一致——<b>军品业务在 26H1 普遍弱于民品业务</b>。</li>
+    <li><b>亚星锚链是唯一有真实海外收入的船舶标的</b>：26H1 国外销售 5.86 亿元、占比 <b>52.6%</b>（系泊链，主要配套海工与船舶），毛利率 25.6%。但这也是民品出口，非军贸。</li>
+    <li><b>中船科技是"民品不达预期"的样本</b>：营收 +22.3% 但毛利率 −0.8%、归母 −5.21 亿元；海外收入从 25H1 的 2.46 亿元降至 0.31 亿元（−87%）。</li>
+  </ul>
+</section>
+
+<section class="anchor" id="s8">
+  <h2><span class="num">08</span>跨板块关键检验：谁真有海外（军贸）收入</h2>
+
+  <p>这是本报告在三个板块之间做的最有价值的一次横向检验。"军贸爆发"是 2026 年军工行情最主流的叙事之一，也是 9—10 月多次板块异动的核心题材。要检验它，最直接的办法是看各家财报<b>"分地区"科目中的海外收入</b>——这是唯一能把军贸与民品出口一并量化的公开科目。</p>
+
+  <table>
+    <caption>各公司 2026 年半年报"分地区"收入（国内销售 / 国外销售）。数据来源：各公司 2026 年半年报，经东方财富 F10 经营分析接口提取。"未披露"指该科目在定期报告中未按地区拆分，不代表海外收入为零</caption>
+    <thead><tr><th>公司</th><th>子板块</th><th class="num-cell">国内销售(亿)</th><th class="num-cell">占比</th><th class="num-cell">国内毛利率</th><th class="num-cell">国外销售(亿)</th><th class="num-cell">占比</th><th class="num-cell">国外毛利率</th><th class="num-cell">2025H1 国外</th><th class="num-cell">同比</th></tr></thead>
+    <tbody>
+      <tr><td><b>亚星锚链</b></td><td>船舶</td><td class="num-cell">5.28</td><td class="num-cell">47.4%</td><td class="num-cell">28.8%</td><td class="num-cell">5.86</td><td class="num-cell pos">52.6%</td><td class="num-cell">25.6%</td><td class="num-cell">5.11</td><td class="num-cell pos">+15%</td></tr>
+      <tr><td><b>高德红外</b></td><td>红外装备总体</td><td class="num-cell">39.48</td><td class="num-cell">93.6%</td><td class="num-cell">52.8%</td><td class="num-cell">2.68</td><td class="num-cell">6.4%</td><td class="num-cell">41.5%</td><td class="num-cell">1.22</td><td class="num-cell pos">+120%</td></tr>
+      <tr><td><b>中航西飞</b></td><td>航空</td><td class="num-cell">133.09</td><td class="num-cell">93.8%</td><td class="num-cell">8.4%</td><td class="num-cell">8.77</td><td class="num-cell">6.2%</td><td class="num-cell">3.9%</td><td class="num-cell">8.44</td><td class="num-cell pos">+4%</td></tr>
+      <tr><td><b>中航成飞</b></td><td>航空</td><td class="num-cell">143.76</td><td class="num-cell">94.8%</td><td class="num-cell">11.1%</td><td class="num-cell">7.91</td><td class="num-cell">5.2%</td><td class="num-cell">10.2%</td><td class="num-cell">6.98</td><td class="num-cell pos">+13%</td></tr>
+      <tr><td><b>光电股份</b></td><td>地面兵装</td><td class="num-cell">7.39</td><td class="num-cell">96.2%</td><td class="num-cell">23.8%</td><td class="num-cell">0.29</td><td class="num-cell">3.8%</td><td class="num-cell">42.0%</td><td class="num-cell">0.24</td><td class="num-cell pos">+21%</td></tr>
+      <tr><td><b>中兵红箭</b></td><td>地面兵装</td><td class="num-cell">29.30</td><td class="num-cell">96.7%</td><td class="num-cell">17.8%</td><td class="num-cell">1.00</td><td class="num-cell">3.3%</td><td class="num-cell">37.2%</td><td class="num-cell">1.06</td><td class="num-cell neg">−6%</td></tr>
+      <tr><td><b>内蒙一机</b></td><td>地面兵装</td><td class="num-cell">51.47</td><td class="num-cell">98.4%</td><td class="num-cell">7.9%</td><td class="num-cell">0.85</td><td class="num-cell">1.6%</td><td class="num-cell">11.0%</td><td class="num-cell">10.64</td><td class="num-cell neg"><b>−92%</b></td></tr>
+      <tr><td><b>中船科技</b></td><td>船舶</td><td class="num-cell">45.39</td><td class="num-cell">98.4%</td><td class="num-cell">−1.6%</td><td class="num-cell">0.31</td><td class="num-cell">0.7%</td><td class="num-cell">30.0%</td><td class="num-cell">2.46</td><td class="num-cell neg"><b>−87%</b></td></tr>
+      <tr><td class="muted">中航沈飞</td><td class="muted">航空</td><td class="num-cell muted">61.91</td><td class="num-cell muted">100%</td><td class="num-cell muted">10.6%</td><td class="num-cell muted" colspan="5">未单独披露海外地区收入</td></tr>
+      <tr><td class="muted" colspan="2">中国船舶 / 中船防务 / 中国动力 / 中国海防 / 航发动力 / 洪都航空 / 长城军工 / 北方导航 / 睿创微纳 / 图南股份 / 天秦装备 / 北方长龙 / 江龙船艇 / 晋西车轴</td><td class="num-cell muted" colspan="8">该数据源未收录其披露的分地区拆分（属<b>信息缺口</b>，不等于海外收入为零）</td></tr>
+    </tbody>
+  </table>
+
+  <div class="keybox">
+    <div class="t">这次检验的四个结论</div>
+    <ol style="margin:6px 0 0">
+      <li><b>军贸收入在 A 股军工公司里普遍很小</b>：披露了海外收入的公司中，占比最高的内蒙一机（25H1 的 18.6%）在 26H1 已掉到 1.6%；中航成飞 5.2%、中航西飞 6.2%、高德红外 6.4%、中兵红箭 3.3%、光电股份 3.8%。<b>没有任何一家的军贸收入足以支撑"出口改变业绩曲线"的说法。</b></li>
+      <li><b>唯一录得显著增长的是高德红外</b>（+120%，2.68 亿元）。公司披露已获批多款完整装备系统总体产品的外贸出口立项，相关产品已在多国家实现批量交付。这是三个板块里唯一"军贸在报表上兑现"的案例。</li>
+      <li><b>两个大幅负增长都出现在被热炒的标的上</b>：内蒙一机 −92%（9 月因"军贸突破"被热炒）、中船科技 −87%。</li>
+      <li><b>亚星锚链 52.6% 的海外占比是民品出口</b>（系泊链/锚链，配套海工与船舶），不属于军贸，不能用来支持军工出口逻辑。</li>
+    </ol>
+  </div>
+
+  <h3>8.1 与之对照的第三方数据</h3>
+  <p>斯德哥尔摩国际和平研究所（SIPRI）2026 年 3 月发布的《2025 年国际武器转让趋势》显示，2021—2025 年周期全球武器出口份额为：美国约 42%（第一）、法国约 9.8%（第二）、俄罗斯约 7.8%（第三），<b>德国第四，中国第五、份额约 5.6%</b>——中国份额相对 2016—2020 年周期出现回落，并被德国超越。</p>
+  <p class="src">来源：SIPRI 报告，经多家媒体转载（如<a href="https://news.qq.com/rain/a/20260620A08NR400">腾讯新闻 2026-06-20</a>、<a href="https://www.sohu.com/a/1072219186_122498621">2026-09-05</a>）。<b>证据等级说明：未取得 SIPRI 原始报告全文核对，属二手转述</b>，但多家来源方向一致。</p>
+  <p>市场上流传的"歼-10CE 六国订单突破 250 架"等具体数字，主要来自自媒体与门户转载，<b>没有可核验的一手来源，本报告不采用其数字</b>。</p>
+  <p>两条独立证据（公司海外收入科目、SIPRI 份额数据）指向同一结论：<b>军贸是一个方向正确的长期变量，但在 2026H1 的报表与全球份额数据里都还看不到"爆发"。它目前不足以支撑估值，也不应成为买入某家公司的首要理由。</b></p>
+</section>
+
+<section class="anchor" id="s9">
+  <h2><span class="num">09</span>估值全景与三板块对比</h2>
+
+  <table>
+    <caption>估值口径：2026-10-15 收盘，PE_TTM 为滚动 12 个月、PB 为最近报告期 MRQ。按 PE_TTM 从低到高排列（剔除亏损）</caption>
+    <thead><tr><th>公司</th><th>子板块</th><th class="num-cell">市值(亿)</th><th class="num-cell">PE_TTM</th><th class="num-cell">PB</th><th class="num-cell">PS_TTM</th><th class="num-cell">26H1 归母同比</th><th>备注</th></tr></thead>
+    <tbody>
+      <tr><td>中国船舶</td><td>船舶</td><td class="num-cell">2,668</td><td class="num-cell pos">19.0</td><td class="num-cell">1.75</td><td class="num-cell">—</td><td class="num-cell pos">+163.5%</td><td>低估值 + 最强订单簿</td></tr>
+      <tr><td>振华科技</td><td>信息化</td><td class="num-cell">201</td><td class="num-cell pos">21.0</td><td class="num-cell">1.28</td><td class="num-cell">—</td><td class="num-cell neg">−21.0%</td><td>元器件，PB 最低之一</td></tr>
+      <tr><td>亚星锚链</td><td>船舶</td><td class="num-cell">84</td><td class="num-cell pos">23.5</td><td class="num-cell">2.14</td><td class="num-cell">3.77</td><td class="num-cell pos">+33.4%</td><td>海外占比 52.6%（民品）</td></tr>
+      <tr><td>高德红外</td><td>红外</td><td class="num-cell">449</td><td class="num-cell pos">24.2</td><td class="num-cell">5.35</td><td class="num-cell">—</td><td class="num-cell pos">+646.8%</td><td>利润已兑现 + 海外增长</td></tr>
+      <tr><td>中航高科</td><td>航空材料</td><td class="num-cell">239</td><td class="num-cell pos">27.6</td><td class="num-cell">3.06</td><td class="num-cell">—</td><td class="num-cell neg">−27.4%</td><td>碳纤维方向承压</td></tr>
+      <tr><td>紫光国微</td><td>信息化</td><td class="num-cell">440</td><td class="num-cell pos">28.5</td><td class="num-cell">3.11</td><td class="num-cell">—</td><td class="num-cell pos">+15.3%</td><td>特种芯片</td></tr>
+      <tr><td>中船防务</td><td>船舶</td><td class="num-cell">387</td><td class="num-cell pos">29.4</td><td class="num-cell">2.04</td><td class="num-cell">—</td><td class="num-cell pos">+58.9%</td><td>华南总装</td></tr>
+      <tr><td>中航光电</td><td>航空/信息化</td><td class="num-cell">678</td><td class="num-cell">36.8</td><td class="num-cell">2.79</td><td class="num-cell">—</td><td class="num-cell neg">−22.1%</td><td>存货 +31% 备产中</td></tr>
+      <tr><td>图南股份</td><td>航空材料</td><td class="num-cell">119</td><td class="num-cell">38.1</td><td class="num-cell">5.40</td><td class="num-cell">—</td><td class="num-cell pos">+167.9%</td><td>净利率 24%，体量小</td></tr>
+      <tr><td>睿创微纳</td><td>红外</td><td class="num-cell">780</td><td class="num-cell">38.4</td><td class="num-cell">9.84</td><td class="num-cell">—</td><td class="num-cell pos">+258.8%</td><td>PB 接近 10 倍</td></tr>
+      <tr><td>中直股份</td><td>航空</td><td class="num-cell">216</td><td class="num-cell">38.9</td><td class="num-cell">1.23</td><td class="num-cell">0.78</td><td class="num-cell neg">−33.6%</td><td>PB 与 PS 最低之一</td></tr>
+      <tr><td>中航沈飞</td><td>航空</td><td class="num-cell">1,262</td><td class="num-cell">44.2</td><td class="num-cell">5.39</td><td class="num-cell">—</td><td class="num-cell neg">−58.4%</td><td>用估值换时间</td></tr>
+      <tr><td>中航成飞</td><td>航空</td><td class="num-cell">1,653</td><td class="num-cell">51.2</td><td class="num-cell">7.91</td><td class="num-cell">—</td><td class="num-cell neg">−22.3%</td><td>合同负债 −84%</td></tr>
+      <tr><td>中航机载</td><td>航空</td><td class="num-cell">532</td><td class="num-cell">51.4</td><td class="num-cell">1.39</td><td class="num-cell">—</td><td class="num-cell neg">−5.3%</td><td>PB 低</td></tr>
+      <tr><td>西部超导</td><td>航空材料</td><td class="num-cell">340</td><td class="num-cell">53.2</td><td class="num-cell">4.70</td><td class="num-cell">—</td><td class="num-cell neg">−36.8%</td><td>钛合金/高温合金</td></tr>
+      <tr><td>应流股份</td><td>航空零部件</td><td class="num-cell">233</td><td class="num-cell">61.0</td><td class="num-cell">4.49</td><td class="num-cell">—</td><td class="num-cell pos">+17.5%</td><td>两机叶片</td></tr>
+      <tr><td>中航西飞</td><td>航空</td><td class="num-cell">645</td><td class="num-cell">67.7</td><td class="num-cell">2.88</td><td class="num-cell">—</td><td class="num-cell neg">−28.9%</td><td>合同负债 −54%</td></tr>
+      <tr><td>钢研高纳</td><td>航空材料</td><td class="num-cell">116</td><td class="num-cell">91.8</td><td class="num-cell">3.01</td><td class="num-cell">—</td><td class="num-cell pos">+61.2%</td><td>高温合金</td></tr>
+      <tr><td>内蒙一机</td><td>地面兵装</td><td class="num-cell">222</td><td class="num-cell neg">102.3</td><td class="num-cell">1.85</td><td class="num-cell">2.33</td><td class="num-cell neg">−40.7%</td><td>利润三年下行</td></tr>
+      <tr><td>中兵红箭</td><td>地面兵装</td><td class="num-cell">193</td><td class="num-cell neg">161.7</td><td class="num-cell">1.86</td><td class="num-cell">1.91</td><td class="num-cell pos">+191.4%</td><td>利润基数极低</td></tr>
+      <tr><td>中国海防</td><td>船舶（军品）</td><td class="num-cell">132</td><td class="num-cell neg">162.2</td><td class="num-cell">1.60</td><td class="num-cell">3.84</td><td class="num-cell neg">−41.5%</td><td>军品属性最强却最弱</td></tr>
+      <tr><td>光电股份</td><td>地面兵装</td><td class="num-cell">93</td><td class="num-cell neg">169.6</td><td class="num-cell">2.71</td><td class="num-cell">3.94</td><td class="num-cell pos">+28.4%</td><td>利润体量小</td></tr>
+      <tr><td>航发动力</td><td>航空</td><td class="num-cell">1,018</td><td class="num-cell neg">147.8</td><td class="num-cell">2.53</td><td class="num-cell">—</td><td class="num-cell pos">+59.3%</td><td>净利率 0.7%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid3">
+    <div class="stat">
+      <div class="k">三板块估值中位数（本表样本）</div>
+      <div class="v">船舶 &lt; 航空 &lt; 地面兵装</div>
+      <div class="n">船舶主要标的 PE_TTM 19–42 倍；航空从 27.6 倍（中航高科）分布到 147.8 倍（航发动力），中枢约 51 倍；地面兵装主要标的 102–170 倍。</div>
+    </div>
+    <div class="stat">
+      <div class="k">市场给"订单最实"的溢价</div>
+      <div class="v">负</div>
+      <div class="n">中国船舶订单簿最强（合同负债 1498 亿元）、估值最低（19 倍）。而合同负债大幅下降的主机厂与利润连续下滑的地面兵装，估值最高。</div>
+    </div>
+    <div class="stat">
+      <div class="k">板块整体位置（参考）</div>
+      <div class="v">−37%</div>
+      <div class="n">中证军工指数 2026-10-16 收 10,620.47 点，较 2026-01-12 峰值 16,868.4 点回落 37.0%，但仍高于 2024-02-05 低点 7,386.59 点约 43.8%。</div>
+    </div>
+  </div>
+  <p class="legend">上述中位数与分布是本报告基于所列样本的口径描述，样本非全板块（东财国防军工板块共 431 只成分股，合计总市值约 5.33 万亿元，2026-10-16）。这不是中证指数公司的官方指数估值。</p>
+</section>
+
+<section class="anchor" id="s10">
+  <h2><span class="num">10</span>研究优先级与候选池</h2>
+
+  <div class="cand">
+    <div class="ch">
+      <div class="nm">优先级 高 · 中国船舶 / 图南股份 / 高德红外</div>
+      <span class="tag">三类不同的"证据已到手"</span>
+    </div>
+    <div class="cb">
+      <div class="kv">
+        <div class="kk">中国船舶 —— 订单最实、估值最低（唯一待办是核对口径）</div>
+        <p class="vv">理由已在第 7.3 节展开。它在三个板块里同时满足"利润已兑现（+163.5%）""订单簿最强（合同负债 1498 亿元）""估值最低（19 倍）"。<b>唯一的硬性前提</b>是先以 2025 年报重述可比数确认 +112% 的合同负债增速是否为可比口径。</p>
+      </div>
+      <div class="kv">
+        <div class="kk">图南股份 —— 卡点→利润转化效率最高</div>
+        <p class="vv">高温合金（变形+铸造母合金+精密铸件），国内少数能同时批量生产两类产品的企业；产品用于航空发动机与燃气轮机。26H1 营收 +70.9%、归母 +167.9%、净利率约 24%、存货 +157% 备产。它踩在"航发排产上行"与"民品燃机（含 AI 数据中心供电）"两条曲线上。<b>缺口</b>：燃机占比未单列；体量小（119 亿元市值）；客户集中于航发/燃机主机厂。</p>
+      </div>
+      <div class="kv">
+        <div class="kk">高德红外 —— 唯一"军贸在报表上兑现"的案例</div>
+        <p class="vv">26H1 营收 +117.9%、归母 +646.8%、毛利率 52.1%；海外收入 2.68 亿元、同比 +120%；已获批多款完整装备系统总体外贸出口立项；从红外器件跃升到完整装备系统总体（含一笔 18.51 亿元的整体交付确认）。PE_TTM 约 24 倍。<b>缺口</b>："恢复性采购"说明基数低；增长靠应收账款 +52% 驱动而非预收；单一客户交付确认的可重复性无公开依据。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cand">
+    <div class="ch">
+      <div class="nm">优先级 中 · 中航沈飞 / 中航光电 / 中兵红箭</div>
+      <span class="tag">位置好但有一个明确的待验证项</span>
+    </div>
+    <div class="cb">
+      <ul style="margin:0">
+        <li><b>中航沈飞</b>：卡点位置最硬，存货 +37%、在建工程转固约 19 亿元说明产能在为下半年准备。但合同负债 −61% 与营收 −57.7% 同时出现，是必须解释的矛盾。观察点是三季报的合同负债。</li>
+        <li><b>中航光电</b>：连接器龙头，营收 +0.5%、归母 −22.1%，但存货 +31%、合同负债 +28%，是信息化环节里"备产最强、利润未转正"的样本。PE_TTM 36.8、PB 2.79。它是判断板块复苏从结构性走向全面性的先行观察哨。</li>
+        <li><b>中兵红箭</b>：地面兵装里唯一营收双位数高增（+38.2%），但归母仅 0.37 亿元、PE_TTM 161.7 倍。<b>预警</b>：其利润历史上高度依赖超硬材料（培育钻石/工业金刚石）而非军工，研究前需先拆清利润来源。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cand">
+    <div class="ch">
+      <div class="nm">优先级 观察 · 内蒙一机 / 航发动力</div>
+      <span class="tag">卡点位置最硬，但利润兑现被结构性因素压住</span>
+    </div>
+    <div class="cb">
+      <ul style="margin:0">
+        <li><b>内蒙一机</b>：唯一陆装总装平台，资产负债表在修复（货币资金 45.37 亿元、负债率 35.19%、分红率 50.32%），但利润连续多个报告期下行、毛利率降至 7.97%、海外收入 −92%、军品数据豁免导致核心变量不可验证。约 110 倍 PE_TTM / 70 倍 2026E PE 的价格下，等待成本不低。</li>
+        <li><b>航发动力</b>：唯一航发总装，营收 +47.2% 确认排产上行，但净利率 0.7%、应收 521 亿元（+36%）、PE_TTM 约 148 倍。同一链条上上游材料赚得比总装多，提示总装议价结构系统性偏弱。要研究的是<b>定价与成本的结构性变化</b>，而非营收增速。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="warnbox">
+    <div class="t">明确不进入候选池的方向（及原因）</div>
+    <ul style="margin:6px 0 0">
+      <li><b>以"军贸"为核心逻辑的标的</b>：海外收入科目不支持，SIPRI 份额数据也不支持。除非看到公司公告或海关数据。</li>
+      <li><b>以"资产注入"为核心逻辑的标的</b>（内蒙一机等）：该预期主要来自股吧、自媒体与卖方讨论，公司公告层面无确认，属未验证线索，不应作为估值依据。</li>
+      <li><b>纯主题弹性标的</b>（北方长龙 PE_TTM 逾 2000 倍、长城军工 PB 9.82 且亏损、中船应急 PE_TTM 269 倍）：盈利基数太小或为负，估值缺乏盈利支撑。</li>
+    </ul>
+  </div>
+</section>
+
+<section class="anchor" id="s11">
+  <h2><span class="num">11</span>反方理由：最有力的四个反驳</h2>
+
+  <h3>反驳一：市场定价的方向与本报告的判断正好相反——而市场可能是对的</h3>
+  <p>本报告指出"估值最低的地方订单最实，估值最高的地方订单最虚"。但需要正面回答一个问题：如果市场是有效的，为什么给船舶 19 倍、给主机厂 44–68 倍、给地面兵装 100–170 倍？</p>
+  <p>最有力的市场侧解释是：<b>船舶赚的是周期钱，主机厂赚的是确定性钱。</b>民船周期总会回落，产能会扩张，高价订单交付完成后新签订单的价格可能下行；而 2027 建军百年是写进规划的硬约束，主机厂 2026 年的低基数意味着 2027 年的利润弹性可能很大（经营杠杆）。用 PE_TTM 比较两类资产，本身可能是不公平的比较。</p>
+  <p>这个反驳部分成立，也是本报告把主机厂放进"中等优先级/观察"而不是"低优先级"的原因。但它有一个可以检验的边界：<b>如果"确定性"是真的，它应该体现在合同负债上。</b>而主机厂合同负债同比 −54%～−84%。在预收款没有回升之前，"确定性"仍是一个尚未被报表验证的判断。</p>
+
+  <h3>反驳二：26H1 是"订单空窗期"的产物，用半年报判断全年可能是错的</h3>
+  <p>这是卖方最主流的解释，也是最需要认真对待的。东方证券与中信建投都指出，"十五五"规模化订单窗口是 2025 年末至 2027 年，因此 2026 上半年的报表本来就是过渡期。地面兵装与航空主机厂的双降，可能只是订单节奏而非需求方向的问题。</p>
+  <p>本报告接受这个可能性，并把它转化为具体的可验证条件（见第 12 节）：如果三季报或年报出现合同负债回升与订单公告，那么"空窗期"的解释成立，本报告对主机厂与地面兵装的判断需要整体上调。在此之前，"下半年恢复"仍只是前瞻表述——它既无订单公告支撑，也未在已披露报表中体现。</p>
+
+  <h3>反驳三：军贸数据的"缺口"可能只是披露问题，而非业务不存在</h3>
+  <p>本报告用"海外收入科目"检验军贸，但这有明确的局限：</p>
+  <ul>
+    <li>军品出口往往通过<b>中国北方工业公司、中航技</b>等军贸公司代理，收入可能在不同主体确认；上市公司报表上的"国外销售"未必等于全部军贸额。</li>
+    <li>多家公司（中国船舶、中船防务、中国动力、航发动力、洪都航空等）在该数据源中<b>未收录分地区拆分</b>，这是信息缺口，不等于海外收入为零。</li>
+    <li>军贸订单到收入确认的时间差可能很长（大额装备分年交付），因此某一期的收入下降不必然意味着订单流失。</li>
+  </ul>
+  <p>这些局限成立。但反向的证据同时存在：SIPRI 显示中国出口份额在 2021—2025 周期回落并被德国超越；而唯一披露了海外收入且被市场明确关联军贸的内蒙一机，降幅是 92%。<b>在"数据缺口"与"数据指向相反"之间，本报告选择以后者为主要依据，同时把前者列为研究缺口。</b></p>
+
+  <h3>反驳四：政策同时写入了"低成本"，这对所有供应方都是长期压制</h3>
+  <p>十五五规划纲要第五十五章第二节明确要求"推进军费预算管理改革，改进军事采购制度""全面落实勤俭建军方针，走高效益、低成本、可持续发展路子"。这不是一次性表述，而是写进五年规划的方针。</p>
+  <p>26H1 的数据已经出现对应迹象：上游材料环节毛利率同比 −2.06 个百分点、上游电子元器件及芯片 −1.94 个百分点、中游加工制造 −2.08 个百分点。而毛利率改善的主要是总装与分系统（下游整机 +2.95pct、中游分系统 +1.62pct）。</p>
+  <p>这构成对"上游材料受益"逻辑的直接挑战：涨价空间受限时，上游公司只能靠放量而非提价增长。<b>图南股份 26H1 正是"量在涨（+70.9%）、毛利率在降（至 40.1%）"的组合</b>——这是需要持续跟踪的结构，而不是一次性的好消息。</p>
+
+  <h3>交易面补充：今日上涨本身也是反向信号</h3>
+  <p>2026-10-16 当日，东方财富国防军工板块（BK0490）<b>431 只成分股中 385 只上涨、43 只下跌，15 只涨幅达 9.8% 以上</b>；中证军工指数收 10,620.47 点、涨 1.82%。触发事件是 10 月 13 日央视新闻报道的珠海航展（2026-12-07 至 12-13）——一次典型的<b>事件驱动型普涨</b>。</p>
+  <p>在事件驱动的普涨中，个股基本面差异往往被短期情绪掩盖。这正是需要区分"真便宜"与"假便宜"的时候，而不是跟随涨幅榜的时候。内蒙一机 2026 年 9 月三次涨停后从 14.98 元回落至 10 月 12 日的 12.29 元（−18%），随后再度拉升，就是这种波动的样本。</p>
+</section>
+
+<section class="anchor" id="s12">
+  <h2><span class="num">12</span>下一步具体查什么</h2>
+
+  <table>
+    <caption>按信息价值排序。每条都写清要读什么、以及它如何改变判断</caption>
+    <thead><tr><th>要查的东西</th><th>时间</th><th>会怎样改变判断</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>2026 年三季报</b><br><span class="muted">重点三项：① 主机厂（沈飞/成飞/西飞）合同负债是否回升；② 内蒙一机的"分地区"海外收入是否从 0.85 亿元回升；③ 高德红外、睿创微纳单季增速是否延续</span></td>
+        <td>2026 年 10 月下旬</td>
+        <td>这是最近一次硬验证。主机厂合同负债继续下降 → "下半年恢复"叙事削弱，应下调总装环节优先级；回升 → "十五五订单落地"从预期变为事实，需整体上调</td>
+      </tr>
+      <tr>
+        <td><b>中国船舶合并口径的复核</b><br><span class="muted">查阅 2025 年年报中的重述可比数，确认 2025-06-30 的合同负债与存货是否为含原中国重工口径</span></td>
+        <td>立即可做</td>
+        <td>若口径不可比，+112% 的合同负债增速需重算，该标的"订单可见度最高"判断的强度会下降——这是本报告最高优先级标的的唯一前置条件</td>
+      </tr>
+      <tr>
+        <td><b>十五五首批规模化订单的公开线索</b><br><span class="muted">中航工业、中国航发、兵器工业集团相关公告；公司投资者关系记录（互动易/上证 e 互动/上证路演中心，内蒙一机已于 2026-09-19 公告召开半年度业绩说明会）；军品订货会信息；招标与中标公告</span></td>
+        <td>2026 Q4 起持续</td>
+        <td>这是全板块的总闸门。一旦出现可核验的订单公告，航空主机厂的优先级需整体上调；反之主题行情难以转化为业绩行情</td>
+      </tr>
+      <tr>
+        <td><b>珠海航展的实际内容</b><br><span class="muted">2026-12-07 至 12-13，珠海。重点看：首次亮相型号、是否有出口签约或意向协议、无人装备与反无体系展演</span></td>
+        <td>2026 年 12 月</td>
+        <td>检验"军贸从预期到订单"最直接的一次机会。若只有装备展示而无签约，该叙事权重应进一步下调</td>
+      </tr>
+      <tr>
+        <td><b>军贸的独立交叉验证</b><br><span class="muted">海关总署 HS93 章（武器弹药及零件）出口金额月度数据；SIPRI 下一期（2027 年 3 月）武器转让报告；出口目的国结构</span></td>
+        <td>月度 / 年度</td>
+        <td>用官方贸易数据替代自媒体传闻，是判断"军贸是否真实起量"的唯一可靠路径</td>
+      </tr>
+      <tr>
+        <td><b>图南股份是否单列燃机（含 AI 数据中心供电）收入或订单</b><br><span class="muted">定期报告分产品/分行业数据；投资者关系记录；燃机主机厂（东方电气、上海电气等）的采购口径</span></td>
+        <td>下一次定期报告</td>
+        <td>直接决定其两条驱动曲线能否分别定价。若燃机占比高且可持续，增长久期与估值框架都会改变</td>
+      </tr>
+      <tr>
+        <td><b>地面兵装的"地面兵装 +283.56%"口径还原</b><br><span class="muted">向卖方确认该环节的成分股名单与统计口径，或自行按东财/申万分类重新汇总</span></td>
+        <td>立即可做</td>
+        <td>若还原后发现该增速来自小市值低基数公司，则"地面兵装景气"的说法应被放弃；若来自被本报告遗漏的大公司，则需修正第 04 节结论</td>
+      </tr>
+      <tr>
+        <td><b>航发动力应收与毛利的匹配度</b><br><span class="muted">三季报中应收账款增速 vs 营收增速、毛利率环比变化</span></td>
+        <td>2026 年 10 月</td>
+        <td>若应收增速持续高于营收增速，则"卡点最硬"不能转化为股东回报，可减少在总装环节的研究投入</td>
+      </tr>
+      <tr>
+        <td><b>中国海防（水声电子）军品订单线索</b><br><span class="muted">作为船舶板块内军品属性最强的标的，其 26H1 营收 −7.2%、归母 −41.5%。跟踪其订单与交付口径</span></td>
+        <td>2026 Q4</td>
+        <td>它与航空主机厂形成对照：若军品属性最强的公司持续弱于民船，则"军品在 26H1 普遍弱于民品"这一模式得到确认，可用于推断板块内其他军品标的方向</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="anchor" id="s13">
+  <h2><span class="num">13</span>资料范围、证据等级与未解决缺口</h2>
+
+  <h3>13.1 时间与口径</h3>
+  <ul>
+    <li><b>调研日期</b>：2026 年 10 月 16 日。</li>
+    <li><b>财务数据报告期</b>：2026 年半年报（截至 2026-06-30）。"25H1"指 2025 年半年报（截至 2025-06-30），仅用于同比对照。</li>
+    <li><b>估值数据日期</b>：2026-10-15 收盘（PE_TTM 为滚动 12 个月、PB 为最近报告期 MRQ）。指数与当日涨跌为 2026-10-16。</li>
+    <li><b>行业分类口径</b>：东方财富国防军工板块（BK0490）共 431 只成分股，涵盖部分"军技民用"与民爆类公司，并非纯军工统计；2026-10-16 合计总市值约 5.33 万亿元。</li>
+  </ul>
+
+  <h3>13.2 关键数字的来源与证据等级</h3>
+  <table>
+    <caption>区分"已确认披露"与"推断/未验证线索"，使每个判断都可追溯</caption>
+    <thead><tr><th>结论所依赖的事实</th><th>来源</th><th>证据等级</th></tr></thead>
+    <tbody>
+      <tr><td>2026 年国防支出预算 1.94 万亿元、+6.9%（中央本级 1.91 万亿元、+7%）</td><td>国防部网，2026-03-10</td><td>已确认披露（官方一手）</td></tr>
+      <tr><td>十五五规划纲要关于"新域新质""无人智能作战力量""军费预算管理改革""勤俭建军、低成本"等表述</td><td>《第十五个五年规划纲要》，新华社 2026-03-13，第十五篇</td><td>已确认披露（官方一手，原文核对）</td></tr>
+      <tr><td>2026 上半年造船完工量 3650 万载重吨（+51.2%）、新接订单 12106 万载重吨（+173.1%）、手持订单 36325 万载重吨（+54.9%）</td><td>工业和信息化部装备工业二司，2026-07-23</td><td>已确认披露（官方一手）</td></tr>
+      <tr><td>26H1 板块营收 4,159.95 亿元（+7.93%）、归母 253.26 亿元（+20.98%）及各分环节增速</td><td>中信建投证券《26H1 中报回顾》，2026-09-12</td><td>卖方研究（基于半年报汇总，非官方统计口径）；其中"地面兵装"一项已被本报告质疑</td></tr>
+      <tr><td>各公司 26H1 营收、利润、毛利率、存货、合同负债、应收账款</td><td>各公司 2026 年半年度报告，经东方财富数据中心提取</td><td>已确认披露（定期报告）</td></tr>
+      <tr><td>内蒙一机分地区收入（国内外拆分）、海外收入 −92%</td><td>公司 2026 年半年报"营业收入、营业成本的分地区构成"，经 F10 经营分析接口提取；国内+国外合计与披露营收完全一致</td><td>已确认披露（定期报告，经交叉核对）</td></tr>
+      <tr><td>内蒙一机军品数据豁免披露、子公司经营数据、2026 年经营目标 100 亿元</td><td>公司 2026 年半年报；<a href="https://stock.stockstar.com/RB2026090200010910.shtml">证券之星经营分析，2026-09-02</a></td><td>第三方分析（引自公司披露）</td></tr>
+      <tr><td>内蒙一机客户集中度（前 1 大客户占营收 74.89%）</td><td>同花顺 F10"主要客户及供应商"，口径为 2022 年报</td><td>已确认披露，但<b>期间较旧</b></td></tr>
+      <tr><td>珠海航展 2026-12-07 至 12-13 举办；订单窗口 2025 年末—2027 年</td><td>央视新闻（经证券时报报道，2026-10-13）；东方证券观点</td><td>已确认事件 / 卖方判断</td></tr>
+      <tr><td>SIPRI 2021–2025 年武器出口份额：美国约 42%、法国 9.8%、俄罗斯 7.8%，中国约 5.6% 居第五</td><td>SIPRI《2025 年国际武器转让趋势》，2026-03，经媒体转载</td><td>第三方机构数据（二手转述，未取得原始报告全文）</td></tr>
+      <tr><td>新造船价格指数 182 点（2026-03）、较 2020 年低点 +47%</td><td>中投顾问报告（经媒体转载）</td><td>二手来源，未取得原始指数</td></tr>
+      <tr><td>歼-10CE "六国订单 250 架"等具体数字</td><td>自媒体 / 门户转载</td><td><b>未验证线索</b>——无一手来源，本报告不采用其数字</td></tr>
+      <tr><td>兵器工业集团资产注入预期</td><td>股吧、雪球、自媒体</td><td><b>未验证线索</b>——无公司公告确认</td></tr>
+      <tr><td>三板块估值分布、样本加权 PE 等测算</td><td>本报告基于东方财富 2026-10-15 数据自行测算</td><td>我的推断（抽样测算，非官方指数估值）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>13.3 未解决的缺口（明确列出，不用假设填补）</h3>
+  <ol>
+    <li><b>没有一致预期数据</b>：无法获取 Wind 等平台的卖方一致预期，因此无法给出统一的前瞻 PE（内蒙一机一项使用了公开可见的券商 EPS 预测，已单独标注）。</li>
+    <li><b>军品收入全部不可拆分</b>：内蒙一机、沈飞、成飞、西飞等均不披露军品/民品收入占比。这是本报告多处判断无法收敛到单一结论的根本原因。</li>
+    <li><b>中国船舶合并口径未复核</b>：2025 年吸收合并原中国重工后，2025-06-30 对比数是否为合并前口径未能通过年报重述可比数确认。</li>
+    <li><b>多家公司无分地区披露</b>：中国船舶、中船防务、中国动力、中国海防、航发动力、洪都航空、长城军工、北方导航、睿创微纳、图南股份等在该数据源中未收录分地区拆分。这是信息缺口，不等于海外收入为零。</li>
+    <li><b>地面兵装 +283.56% 的口径未还原</b>：无法确认该环节的成分股名单，本报告的质疑基于代表性个股的反向证据与民爆方向的排除，属<b>supported inference 而非已证实</b>。</li>
+    <li><b>军船订单与价格不公开</b>：船舶板块的军品部分无法量化，工信部数据仅为民用船舶口径。</li>
+    <li><b>未取得 SIPRI 原始报告全文</b>，份额数据来自多家媒体对同一报告的转述；新造船价格指数同样未取得原始序列。</li>
+    <li><b>军工电子/信息化环节未展开</b>：本报告按用户指定的三个方向（地面兵装、航空装备、船舶舰艇）组织，信息化与商业航天仅作为背景提及（振华科技、紫光国微、中国海防等仅在估值表中出现），未做同等深度的独立分析。</li>
+  </ol>
+
+  <div class="warnbox">
+    <div class="t">研究边界</div>
+    <p style="margin:0">本报告是对公开信息的研究整理与推断，用于决定"下一步该读哪份材料、看哪个指标"，<b>不构成投资建议、不包含交易执行建议、不提供目标价或收益预测</b>。文中"研究优先级"仅表示在有限精力下应当先研究的顺序，与预期收益无关。标注为"未验证线索"的内容不应作为决策依据。军工行业受政策、订单节奏与信息披露限制，公开信息本身存在系统性盲区——本报告已尽量将每个判断所依赖的缺口单独列出。</p>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p><b>军工A股深度调研：地面兵装 · 航空装备 · 船舶舰艇</b> · 调研日期 2026-10-16 · 财务口径 2026 年半年报（截至 2026-06-30）· 估值口径 2026-10-15 收盘</p>
+  <p>方法论：Serenity 供应链瓶颈分析路径——从系统需求出发，定位难以扩张的输入环节，再追踪其能否转化为可计量的股东利润。本报告为该方法的独立实践，非任何机构的官方产品。</p>
+  <p>本报告为公开信息的研究整理与推断，不构成投资建议、不提供目标价或收益预测。"研究优先级"仅表示下一步应优先研究的方向，与预期收益无关。</p>
+</footer>
+
+<!-- ↓ 报告导航（通用组件，自动挂载；新增报告无需修改本文件） -->
+<script src="../scripts/report-nav.js" defer></script>
+</body>
+</html>

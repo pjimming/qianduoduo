@@ -883,6 +883,45 @@ mark {
   font-variant-numeric: tabular-nums;
 }
 
+.tm-co.has-report,
+.tm-tree-company.has-report {
+  border-color: rgba(183, 124, 45, 0.42);
+  background: #fffaf0;
+  color: var(--tm-ink, #1c2a24);
+  text-decoration: none;
+}
+
+.tm-co.has-report:hover,
+.tm-tree-company.has-report:hover {
+  border-color: rgba(183, 124, 45, 0.72);
+  box-shadow: 0 3px 10px rgba(120, 84, 24, 0.12);
+}
+
+.tm-co-report {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #f3ead9;
+  color: #85551c;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.tm-company.has-report {
+  box-shadow: inset 0 -2px 0 rgba(183, 124, 45, 0.55);
+}
+
+.tm-co-report-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #b77c2d;
+  vertical-align: middle;
+}
+
 .tm-notes {
   margin-top: 22px;
   padding: 17px 19px;

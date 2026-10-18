@@ -9,3 +9,6 @@ dist/
 run/
 logs/
 *.log
+src/data/reportDocs/
+src/data/reportSearch.json
+public/research/media/

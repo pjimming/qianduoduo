@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import TechMapCanvas from '@/components/techmap/TechMapCanvas.vue'
 import TechMapTable from '@/components/techmap/TechMapTable.vue'
 import TechMapTree from '@/components/techmap/TechMapTree.vue'
 import { techMap, techMapStats } from '@/data/techmap'
+import { reportCoveredCompanyCount } from '@/data/techMapReports'
 import '@/styles/techmap.css'
 
 type TechMapView = 'canvas' | 'tree' | 'table'
@@ -46,6 +47,12 @@ const currentComponent = computed(() => {
 })
 
 const fullscreenActive = computed(() => isFullscreen.value || pseudoFullscreen.value)
+const summaryText = computed(
+  () =>
+    `${techMapStats.groups} 门类 · ${techMapStats.subs} 子行业 · ` +
+    `${techMapStats.leaves} 方向 · ${techMapStats.companies} 公司 · ` +
+    `${techMap.date} 快照 · ${reportCoveredCompanyCount} 家有调研`,
+)
 
 function selectView(view: TechMapView): void {
   if (view === activeView.value) return
@@ -126,10 +133,8 @@ onBeforeUnmount(() => {
         <h1>A股科技<span>全景图</span></h1>
         <p class="research-lede">
           门类 → 子行业 → 细分方向 → 代表公司
-          <span class="research-summary">
-            {{ techMapStats.groups }} 门类 · {{ techMapStats.subs }} 子行业 ·
-            {{ techMapStats.leaves }} 方向 · {{ techMapStats.companies }} 公司 ·
-            {{ techMap.date }} 快照
+          <span class="research-summary" :title="summaryText">
+            {{ summaryText }}
           </span>
         </p>
       </div>
@@ -151,6 +156,12 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div class="research-actions">
+          <RouterLink
+            class="button button-ghost button-small"
+            :to="{ name: 'investment-research' }"
+          >
+            调研报告库
+          </RouterLink>
           <button class="button button-ghost button-small" type="button" @click="printView">
             打印当前视图
           </button>

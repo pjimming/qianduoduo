@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import TechMapHighlight from '@/components/techmap/TechMapHighlight.vue'
+import { firstReportForCompany } from '@/data/techMapReports'
 import {
   groupColor,
   groupCompanyCount,
@@ -90,6 +92,10 @@ function scrollToGroup(groupId: string): void {
 
 function clearSearch(): void {
   searchInput.value = ''
+}
+
+function reportOf(code: string) {
+  return firstReportForCompany(code)
 }
 
 watch(term, async (value) => {
@@ -227,10 +233,25 @@ defineExpose({
               </span>
             </div>
             <div class="tm-cos">
-              <span v-for="company in leaf.cos" :key="company.c" class="tm-co">
-                <TechMapHighlight :text="company.n" :term="term" />
-                <em><TechMapHighlight :text="company.c" :term="term" /></em>
-              </span>
+              <template v-for="company in leaf.cos" :key="company.c">
+                <RouterLink
+                  v-if="reportOf(company.c)"
+                  class="tm-co has-report"
+                  :to="{
+                    name: 'investment-report',
+                    params: { slug: reportOf(company.c)?.slug },
+                  }"
+                  :title="`${reportOf(company.c)?.title} · 打开调研报告`"
+                >
+                  <TechMapHighlight :text="company.n" :term="term" />
+                  <em><TechMapHighlight :text="company.c" :term="term" /></em>
+                  <b class="tm-co-report">调研</b>
+                </RouterLink>
+                <span v-else class="tm-co">
+                  <TechMapHighlight :text="company.n" :term="term" />
+                  <em><TechMapHighlight :text="company.c" :term="term" /></em>
+                </span>
+              </template>
             </div>
           </div>
         </div>

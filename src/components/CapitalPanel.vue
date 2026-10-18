@@ -4,6 +4,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatMoney } from '@/composables/useFormatters'
 import type { CapitalEventType, DashboardPayload } from '@/types/dashboard'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const props = defineProps<{
   dashboard: DashboardPayload
@@ -21,6 +22,7 @@ const eventDate = ref(props.dashboard.meta.today)
 const eventAmount = ref<number | null>(null)
 const eventNote = ref('')
 const saving = ref(false)
+const pendingEventId = ref<number | null>(null)
 
 const capital = computed(() => props.dashboard.capital)
 const initialized = computed(() => capital.value.initialized)
@@ -83,9 +85,14 @@ async function submitEvent(): Promise<void> {
   }
 }
 
-async function deleteEvent(id: number): Promise<void> {
-  const confirmed = window.confirm('确认删除这笔本金变动？历史记录的本金快照会重新计算。')
-  if (!confirmed) return
+function deleteEvent(id: number): void {
+  pendingEventId.value = id
+}
+
+async function confirmDeleteEvent(): Promise<void> {
+  const id = pendingEventId.value
+  pendingEventId.value = null
+  if (id === null) return
   try {
     await dashboardStore.deleteCapitalEvent(id)
     show('本金变动已删除，本金快照已重算')
@@ -105,14 +112,23 @@ async function deleteEvent(id: number): Promise<void> {
         <p class="kicker">本金账户</p>
         <h2 id="capitalTitle">本金管理</h2>
       </div>
-      <button
-        id="editCapitalInit"
-        class="button button-ghost button-small"
-        type="button"
-        @click="emit('openInit')"
-      >
-        {{ initialized ? '调整起始' : '初始化本金' }}
-      </button>
+      <div class="capital-head-actions">
+        <span
+          v-if="dashboard.meta.latest_backup"
+          class="capital-backup-badge"
+          :title="`每日自动备份 · 最近一次 ${dashboard.meta.latest_backup.date}`"
+        >
+          备份 {{ dashboard.meta.latest_backup.date.slice(5) }}
+        </span>
+        <button
+          id="editCapitalInit"
+          class="button button-ghost button-small"
+          type="button"
+          @click="emit('openInit')"
+        >
+          {{ initialized ? '调整起始' : '初始化本金' }}
+        </button>
+      </div>
     </div>
 
     <div class="capital-layout">
@@ -271,6 +287,16 @@ async function deleteEvent(id: number): Promise<void> {
         </p>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="pendingEventId !== null"
+      title="删除这笔本金变动？"
+      message="删除后，历史记录的本金快照会按剩余变动重新计算。"
+      confirm-label="删除变动"
+      danger
+      @confirm="confirmDeleteEvent"
+      @update:open="pendingEventId = null"
+    />
   </section>
 </template>
 

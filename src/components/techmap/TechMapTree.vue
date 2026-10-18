@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import TechMapHighlight from '@/components/techmap/TechMapHighlight.vue'
+import { firstReportForCompany } from '@/data/techMapReports'
 import {
   groupColor,
   groupCompanyCount,
@@ -120,6 +122,10 @@ function clearSearch(): void {
   searchInput.value = ''
 }
 
+function reportOf(code: string) {
+  return firstReportForCompany(code)
+}
+
 function handleBeforePrint(): void {
   clearSearch()
   expandAll()
@@ -228,10 +234,25 @@ defineExpose({
                   <TechMapHighlight :text="leaf.board" :term="term" />
                 </span>
                 <span class="tm-tree-companies">
-                  <span v-for="company in leaf.cos" :key="company.c" class="tm-tree-company">
-                    <TechMapHighlight :text="company.n" :term="term" />
-                    <em><TechMapHighlight :text="company.c" :term="term" /></em>
-                  </span>
+                  <template v-for="company in leaf.cos" :key="company.c">
+                    <RouterLink
+                      v-if="reportOf(company.c)"
+                      class="tm-tree-company has-report"
+                      :to="{
+                        name: 'investment-report',
+                        params: { slug: reportOf(company.c)?.slug },
+                      }"
+                      :title="`${reportOf(company.c)?.title} · 打开调研报告`"
+                    >
+                      <TechMapHighlight :text="company.n" :term="term" />
+                      <em><TechMapHighlight :text="company.c" :term="term" /></em>
+                      <b class="tm-co-report">调研</b>
+                    </RouterLink>
+                    <span v-else class="tm-tree-company">
+                      <TechMapHighlight :text="company.n" :term="term" />
+                      <em><TechMapHighlight :text="company.c" :term="term" /></em>
+                    </span>
+                  </template>
                 </span>
               </div>
             </div>

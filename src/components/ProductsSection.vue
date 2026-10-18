@@ -171,7 +171,9 @@ async function refreshSnapshot(): Promise<void> {
       <div class="product-card">
         <div class="product-name">产品快照暂不可用</div>
         <p class="product-benchmark">
-          请确认 data/cmb_r2_products_2026-10-18.csv 仍在原位，并重新启动服务。
+          请确认 data/ 下的产品快照 CSV 仍在原位（当前读取
+          {{ dashboard.meta.product_csv || 'cmb_r2_products*.csv' }}），或在
+          R2_PRODUCT_CSV 中指定路径后重启服务。
         </p>
       </div>
     </div>

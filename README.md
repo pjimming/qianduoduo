@@ -1,9 +1,10 @@
 # 钱多多
 
-钱多多是一个本地运行的个人财富工作台，左侧分为“理财”和“投资”两个模块。理财模块是 R2 每日收益账本，投资模块是 A 股科技产业资料。前端使用 Vue 3 + Vite + TypeScript，后端继续使用 Node.js 内置 HTTP 与 SQLite。数据只保存在本机，不上传账户信息。
+钱多多是一个本地运行的个人财富工作台，左侧分为“理财”和“投资”两个模块。理财模块是 R2 每日收益账本，投资模块包含股票调研报告库与 A 股科技产业图谱。前端使用 Vue 3 + Vite + TypeScript，后端继续使用 Node.js 内置 HTTP 与 SQLite。数据只保存在本机，不上传账户信息。
 
 ## 功能
 
+- 左侧菜单分为“理财”和“投资”两组并支持折叠：理财下是 R2 收益账本，投资下是科技全景图与调研报告。
 - 本金作为独立账户管理：首次进入初始化起始本金，后续用转入/转出维护；每日收益记录自动读取该日适用的本金。
 - 记录每日收益、操作与备注；收益表单不再要求填写本金或 R2 流动性仓。
 - 自动计算日收益率、累计收益、账户净值、净值指数、最大回撤和近 7/30/90 日年化。
@@ -151,13 +152,35 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 
 产品区不是实时行情，也不是买入建议。页面按近 3/6/12 月历史年化做期限桶内排序，只用于挑出需要进一步核验的对象；没有核验费率、最大回撤、额度和赎回规则。
 
-产品池是本地静态快照，不会自动定时更新。需要更新时，替换或修改 `data/cmb_r2_products_2026-10-18.csv`（保持原有列名），然后在页面点击“刷新快照”。这个按钮只读取本地文件，不会登录招行或抓取实时额度。
+产品池是本地静态快照，不会自动定时更新。需要更新时，把新的 `cmb_r2_products-YYYY-MM-DD.csv` 放进 `data/`（保持原有列名），服务会自动选用文件名日期最新的一份；也可以用 `R2_PRODUCT_CSV` 指定路径。然后在页面点击“刷新快照”。这个按钮只读取本地文件，不会登录招行或抓取实时额度。
 
 购买前必须以招行 App、产品说明书和当日公告为准。R2/PR2 不等于保本，历史年化不代表未来收益。
 
 ## 研究资料模块
 
-- 入口：`/investment/tech-map`，可从左侧“投资”菜单进入；旧地址 `/research/tech-map` 会自动跳转。
+### 股票调研报告库
+
+- 入口：`/investment/research`，是左侧“投资”的默认页面；`/investment` 也会跳转到这里。
+- 内容：13 篇股票、产业链与板块调研报告，按调研日期倒序排列；支持元数据筛选、正文全文检索（命中后跳到对应章节）、研究优先级标签。
+- 详情：`/investment/research/:slug`，报告由 Vue 直接渲染（无 iframe），打开即为报告正文；顶部提供返回报告库和可搜索的报告切换器，左侧目录可折叠并随滚动高亮当前章节，另支持阅读进度、`←/→` 切换报告、打印和打开独立 HTML。
+- 源文件：报告统一放在本工作区 `report/`；独立报告库归档页为 `research/index.html`。
+- 数据：`src/data/stockReports.json` 由同步脚本从 `report/` 生成，包含标题、日期、分类、摘要、关键词和研究优先级。
+- 应用内文档：`src/data/reportDocs/<slug>.json` 保存正文与作用域化 CSS，`src/data/reportSearch.json` 是正文检索索引，`public/research/media/` 存放从报告里外置并转为 WebP 的图片；三者都由 `scripts/build-report-docs.mjs` 生成，不要手工编辑。
+- 归档：独立 HTML 副本在 `public/research/stocks/`，报告导航脚本在 `public/research/scripts/report-nav.js`；同样是生成物。
+- 发布：新增或修改报告后，在根目录运行 `npm run research:publish`。该命令会更新导航清单、同步应用副本与清单，并完成构建和本地生产服务重启。
+- 边界：报告内容为公开信息研究整理，不构成投资建议，也不进入 R2 收益账本、产品池排序或选品结论。
+
+**新增一篇报告的成本与约束**
+
+- 仍然只需在 `report/` 放一个 HTML，然后执行 `npm run research:publish`；目录、全文检索、图片 WebP 化、导航和图谱联动都会自动生成。
+- 报告必须是静态 HTML：不能包含 `<script>`、内联事件（如 `onclick`）或 `javascript:` 链接，否则发布会在转换阶段报错。
+- 每篇需自带 `<style>`；图片会被抽取并转为 WebP（质量 88，`sharp` 不可用时保留原图）。
+- 科技图谱只识别 `keywords` 里的股票代码；只在正文出现的代码，用 `<!-- rpnav-keywords: 002414 -->` 补充。
+- 当前 13 篇：报告转换约 1.2 秒、完整发布约 10 秒、生成物约 128 KB/篇；检索索引约 25 KB/篇，报告数量到 50 篇以上时需要重新评估索引拆分。
+
+### A股科技图谱
+
+- 入口：`/investment/tech-map`，可从报告库页或左侧“投资”进入；旧地址 `/research/tech-map` 会自动跳转。
 - 内容：A股科技全景图，包含脑图、树状和表格三种原生 Vue 视图；静态快照为 2026-09-16，覆盖 8 大门类、40 个子行业、156 个细分方向和 750 家代表公司。
 - 数据与组件：数据在 `src/data/techmap.json`，类型和统计在 `src/data/techmap.ts`，视图组件在 `src/components/techmap/`，共享样式在 `src/styles/techmap.css`。
 - 交互：脑图支持滚轮/按钮缩放、拖拽、逐级展开、搜索定位和适应屏幕；树状支持逐级折叠、全部展开和只留骨架；表格支持门类筛选、方向/公司搜索。三种视图均支持打印当前视图，页面支持全屏查看和 `?view=canvas|tree|table` 视图切换。
@@ -174,6 +197,8 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - `POST /api/capital/events`：记录转入或转出。
 - `DELETE /api/capital/events/:id`：删除一笔转入或转出。
 - `POST /api/products/refresh`：重新读取本地产品 CSV，替换当前产品快照。
+- `GET /api/backups`：列出本地数据库备份。
+- `POST /api/backups`：立即生成当天备份（每天启动时也会自动生成一次）。
 - `POST /api/records`：新增每日记录。
 - `PUT /api/records/:date`：修改指定日期记录。
 - `DELETE /api/records/:date`：删除指定日期记录。
@@ -181,11 +206,28 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 
 服务默认只监听 `127.0.0.1`，不要把它直接暴露到公网。需要换端口时可设置 `PORT` 环境变量。
 
+写接口只接受同源请求和 `application/json`，避免浏览器里的其他网页直接改动本地账本。
+
+## 数据备份
+
+服务每次启动会在 `data/backups/` 生成当天的 `r2_ledger-YYYY-MM-DD.sqlite`，默认保留最近 45 份。也可以手动操作：
+
+```powershell
+npm run db:list
+npm run db:backup
+npm run prod:stop
+npm run db:restore -- 2026-10-18
+npm run prod:restart
+```
+
+恢复前会自动保留一份 `pre-restore-*.sqlite`；服务运行中会拒绝恢复。
+
 ## 测试
 
 ```powershell
 npm test
 npm run check
+npm run test:e2e
 ```
 
-`npm test` 覆盖 API、SQLite、本金快照、指标计算、产品排序和科技图谱快照完整性；`npm run check` 会执行 Vue TypeScript 检查和 Node.js 语法检查。
+`npm test` 覆盖 API、SQLite、本金快照、指标计算、产品排序、静态资源响应和科技图谱快照完整性；`npm run check` 会执行 Vue TypeScript 检查和 Node.js 语法检查。`npm run test:e2e` 会用本机 Chrome/Edge 跑一遍报告检索、报告直达（无 iframe）、目录、键盘切换和首页账本加载，运行前会自动构建。
