@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股科技全景图 · 行业到细分方向</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --fg:#161b22; --muted:#5d6b7a; --line:#e4e8ee;
+    --radius:14px; --shadow:0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.04);
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 72px}
+  a{color:inherit;text-decoration:none}
+
+  /* hero */
+  .hero{padding:44px 0 24px}
+  .hero h1{margin:0;font-size:30px;letter-spacing:-.2px}
+  .hero .tagline{margin:8px 0 0;color:var(--muted);font-size:14px}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0;padding:0;list-style:none}
+  .stats li{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;box-shadow:var(--shadow)}
+  .stats b{font-size:18px;margin-right:6px;font-variant-numeric:tabular-nums}
+  .stats span{color:var(--muted);font-size:12px}
+
+  /* toolbar */
+  .toolbar{
+    position:sticky;top:0;z-index:20;background:rgba(246,247,249,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:8px;
+  }
+  .toolbar-inner{max-width:1180px;margin:0 auto;padding:0 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .search{
+    flex:1 1 260px;min-width:220px;position:relative;
+  }
+  .search input{
+    width:100%;padding:10px 34px 10px 12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--panel);font:inherit;color:inherit;outline:none;
+  }
+  .search input:focus{border-color:#9db8f5;box-shadow:0 0 0 3px rgba(47,111,237,.12)}
+  .search .clr{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 6px;border-radius:6px}
+  .search .clr:hover{background:#eef1f5}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip-btn{
+    border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;
+    padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;
+  }
+  .chip-btn:hover{border-color:#c3ccd8;color:var(--fg)}
+  .chip-btn.is-on{background:#161b22;border-color:#161b22;color:#fff}
+  .hit{color:var(--muted);font-size:12px;min-height:16px;width:100%}
+
+  /* overview */
+  .ov-title{margin:26px 0 10px;font-size:15px;color:var(--muted);font-weight:500}
+  .overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px}
+  .card{
+    display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);
+    border-left:4px solid var(--gc);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);
+  }
+  .card:hover{border-color:#cfd7e2;border-left-color:var(--gc)}
+  .card-name{font-size:16px;font-weight:600}
+  .card-num{font-size:12px;color:var(--gc);font-weight:500}
+  .card-subs{font-size:12px;color:var(--muted);line-height:1.7}
+  .card-subs b{color:var(--fg);font-weight:600}
+
+  /* chain table */
+  .chain-wrap{overflow-x:auto;border-radius:var(--radius)}
+  .chain{width:100%;min-width:620px;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .chain th,.chain td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px}
+  .chain th{background:#fbfcfd;color:var(--muted);font-weight:500;font-size:12px}
+  .chain tr:last-child td{border-bottom:0}
+  .chain td:first-child{white-space:nowrap;font-weight:600}
+
+  /* groups */
+  .group{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 22px 26px;margin-top:22px;box-shadow:var(--shadow);border-top:4px solid var(--gc);
+    scroll-margin-top:80px;
+  }
+  .group-head{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start;padding-bottom:6px}
+  .group-head h2{margin:0;font-size:21px;letter-spacing:-.2px}
+  .gdesc{margin:6px 0 0;color:#2b3540}
+  .gsw{margin:6px 0 0;color:var(--muted);font-size:12px}
+  .gstat{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;background:var(--gcs);border-radius:10px;padding:8px 14px}
+  .gstat strong{font-size:17px;color:var(--gc);font-variant-numeric:tabular-nums}
+  .gstat span{font-size:12px;color:var(--muted);margin-right:8px}
+
+  .sub{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+  .sub:first-of-type{border-top:0;padding-top:2px}
+  .sub h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .sub h3 .bar{width:4px;height:14px;border-radius:2px;background:var(--gc);display:inline-block}
+  .sub h3 .n{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted)}
+
+  .dir{display:grid;grid-template-columns:minmax(190px,230px) 1fr;gap:6px 18px;padding:10px 0;border-top:1px dashed var(--line)}
+  .dir:first-of-type{border-top:0;padding-top:6px}
+  .dir-name{font-weight:600;font-size:13.5px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+  .board{font-weight:400;font-size:11px;color:var(--muted);background:#f2f5f8;border-radius:4px;padding:1px 6px;white-space:nowrap}
+  .cos{display:flex;flex-wrap:wrap;gap:6px}
+  .co{
+    font-size:13px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:2px 8px;
+    white-space:nowrap;line-height:1.5;
+  }
+  .co em{font-style:normal;font-size:11px;color:var(--muted);margin-left:5px;font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted);padding:16px 0 0}
+
+  /* notes */
+  .notes{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow)}
+  .notes h2{margin:0 0 10px;font-size:17px}
+  .notes h3{margin:16px 0 6px;font-size:14px}
+  .notes ul{margin:0;padding-left:20px}
+  .notes li{margin:4px 0;color:#2b3540}
+  .notes .muted{color:var(--muted);font-size:12px;margin:10px 0 0}
+  .kbd{border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;background:#f7f9fb}
+
+  @media (max-width:720px){
+    .hero{padding:28px 0 16px}
+    .hero h1{font-size:22px}
+    .dir{grid-template-columns:1fr;gap:6px}
+    .group{padding:18px 16px 22px}
+    .group-head{flex-direction:column}
+  }
+  @media print{
+    body{background:#fff}
+    .toolbar{position:static;background:#fff;backdrop-filter:none}
+    .chips,.search,.hit,.no-print{display:none !important}
+    .wrap{max-width:none;padding:0}
+    .group,.card,.chain,.notes{box-shadow:none;break-inside:auto}
+    .group{break-before:page;border-top-width:3px}
+    .group:first-of-type{break-before:auto}
+    .dir{break-inside:avoid}
+    .overview{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>A股科技全景图</h1>
+    <p class="tagline">从一级门类 → 子行业 → 细分方向 → 代表公司，一张可以查、可以搜、可以打印的科技产业地图。</p>
+    <p class="gsw">读法：每个细分方向后面是代表公司，深色小字为证券代码，灰色标签是该方向对应的东财板块（可直接拿去行情软件里查成分股）；总览卡片里每个子行业后面的数字，是它包含的细分方向数量。</p>
+    <ul class="stats">
+      <li><b>8</b><span>大门类</span></li>
+      <li><b>40</b><span>子行业</span></li>
+      <li><b>156</b><span>细分方向</span></li>
+      <li><b>750</b><span>代表公司</span></li>
+      <li><b>2026-09-16</b><span>数据日期</span></li>
+    </ul>
+  </div>
+
+  <div class="toolbar no-print">
+    <div class="toolbar-inner">
+      <label class="search">
+        <input id="q" type="search" placeholder="搜索细分方向或公司名，例如：电子布、CPO、存储、中际旭创" autocomplete="off">
+        <button class="clr" id="clr" type="button" title="清空" aria-label="清空搜索">×</button>
+      </label>
+      <div class="chips" role="group" aria-label="按门类筛选">
+      <button class="chip-btn is-on" type="button" data-filter="all">全部</button>
+      <button class="chip-btn" type="button" data-filter="g-semi">半导体</button>
+      <button class="chip-btn" type="button" data-filter="g-pcb">PCB与元器件</button>
+      <button class="chip-btn" type="button" data-filter="g-comm">通信与算力网络</button>
+      <button class="chip-btn" type="button" data-filter="g-ai">计算机与AI</button>
+      <button class="chip-btn" type="button" data-filter="g-power">电力设备与新能源科技</button>
+      <button class="chip-btn" type="button" data-filter="g-robot">高端制造与机器人</button>
+      <button class="chip-btn" type="button" data-filter="g-defense">军工科技与先进材料</button>
+      <button class="chip-btn" type="button" data-filter="g-media">数字内容与传媒AI</button>
+      </div>
+      <p class="hit" id="hit" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <p class="ov-title">总览：八大科技门类</p>
+  <div class="overview">
+<a class="card" href="#g-semi" style="--gc:#2f6fed;--gcs:#eef4ff">
+  <span class="card-name">半导体</span>
+  <span class="card-num">39 个细分 · 192 家公司</span>
+  <span class="card-subs">芯片设计 <b>11</b> · 晶圆制造与IDM <b>3</b> · 封装测试 <b>4</b> · 半导体设备 <b>8</b> · 半导体材料 <b>8</b> · 功率与化合物半导体 <b>4</b> · EDA与IP <b>1</b></span>
+</a>
+<a class="card" href="#g-pcb" style="--gc:#0f9d76;--gcs:#e9f8f3">
+  <span class="card-name">PCB与元器件</span>
+  <span class="card-num">36 个细分 · 164 家公司</span>
+  <span class="card-subs">PCB与封装基板 <b>6</b> · 覆铜板与上游材料 <b>6</b> · 被动元件 <b>5</b> · 连接器与线缆 <b>3</b> · 光学 <b>4</b> · 显示与LED <b>6</b> · 消费电子与终端 <b>6</b></span>
+</a>
+<a class="card" href="#g-comm" style="--gc:#e07b1a;--gcs:#fdf3e6">
+  <span class="card-name">通信与算力网络</span>
+  <span class="card-num">16 个细分 · 86 家公司</span>
+  <span class="card-subs">光通信与光模块 <b>5</b> · 通信设备与网络 <b>4</b> · 卫星互联网与商业航天 <b>4</b> · 运营商与IDC <b>2</b> · 量子科技 <b>1</b></span>
+</a>
+<a class="card" href="#g-ai" style="--gc:#7a5cf0;--gcs:#f1eefe">
+  <span class="card-name">计算机与AI</span>
+  <span class="card-num">19 个细分 · 119 家公司</span>
+  <span class="card-subs">算力硬件 <b>4</b> · 基础软件与信创 <b>3</b> · AI软件与应用 <b>5</b> · 行业软件与金融科技 <b>4</b> · 网络安全 <b>1</b> · 计算机设备与存储模组 <b>2</b></span>
+</a>
+<a class="card" href="#g-power" style="--gc:#1d9bb8;--gcs:#e8f7fa">
+  <span class="card-name">电力设备与新能源科技</span>
+  <span class="card-num">19 个细分 · 121 家公司</span>
+  <span class="card-subs">电网与电力设备 <b>4</b> · 储能与固态电池 <b>3</b> · 电池材料与设备 <b>4</b> · 光伏 <b>4</b> · 风电 <b>1</b> · 核电与可控核聚变 <b>2</b> · 氢能 <b>1</b></span>
+</a>
+<a class="card" href="#g-robot" style="--gc:#c2410c;--gcs:#fdeee7">
+  <span class="card-name">高端制造与机器人</span>
+  <span class="card-num">10 个细分 · 70 家公司</span>
+  <span class="card-subs">人形机器人 <b>5</b> · 工业自动化与母机 <b>2</b> · 激光与增材制造 <b>2</b> · 低空经济 <b>1</b></span>
+</a>
+<a class="card" href="#g-defense" style="--gc:#5b6b7c;--gcs:#eef1f5">
+  <span class="card-name">军工科技与先进材料</span>
+  <span class="card-num">14 个细分 · 72 家公司</span>
+  <span class="card-subs">军工电子 <b>3</b> · 航空航天装备 <b>2</b> · 先进材料 <b>9</b></span>
+</a>
+<a class="card" href="#g-media" style="--gc:#c026a6;--gcs:#fdebf8">
+  <span class="card-name">数字内容与传媒AI</span>
+  <span class="card-num">3 个细分 · 17 家公司</span>
+  <span class="card-subs">内容与平台 <b>3</b></span>
+</a>
+  </div>
+
+  <p class="ov-title">横切视角：同一条产业链上的六层卡位</p>
+  <div class="chain-wrap">
+  <table class="chain">
+    <thead><tr><th>层级</th><th>典型环节</th><th>为什么值得单独看</th></tr></thead>
+    <tbody>
+      <tr><td>材料层</td><td>电子布、特种树脂、HVLP铜箔、光刻胶、电子特气、靶材</td><td>扩产最慢、认证最长，涨价弹性最大</td></tr>
+      <tr><td>设备与零部件</td><td>光刻机与零部件、量测检测、刻蚀薄膜、封装设备、PCB钻孔曝光</td><td>从0到1，单台价值量高，国产化率最低</td></tr>
+      <tr><td>制造层</td><td>晶圆代工、存储晶圆、先进封装产能、面板</td><td>资本开支密集，是算力芯片的物理瓶颈</td></tr>
+      <tr><td>器件与模组</td><td>光模块、光芯片、MLCC、连接器、存储模组、电源</td><td>A股全球话语权最强的一段</td></tr>
+      <tr><td>系统与整机</td><td>AI服务器、液冷、交换机、消费电子组装</td><td>收入体量大，毛利率相对低</td></tr>
+      <tr><td>软件与应用</td><td>信创、工业软件、AI应用、数据要素、网络安全</td><td>弹性来自订单与渗透率，不受产能限制</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+<section class="group" id="g-semi" style="--gc:#2f6fed;--gcs:#eef4ff">
+  <header class="group-head">
+    <div>
+      <h2>半导体</h2>
+      <p class="gdesc">设计—制造—封测—设备—材料，A股科技里分层最完整、卡点最密集的一条链</p>
+      <p class="gsw">东财行业: 半导体(BK1036) / 电子(BK1201)</p>
+    </div>
+    <div class="gstat"><strong>7</strong><span>子行业</span><strong>39</strong><span>细分方向</span><strong>192</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>芯片设计<span class="n">11 个方向</span></h3>
+<div class="dir" data-s="ai算力芯片(gpu/asic/npu) ai芯片 bk1127 寒武纪 海光信息 沐曦股份-u 摩尔线程-u c燧原-u 景嘉微 云天励飞-u">
+  <div class="dir-name"><span>AI算力芯片(GPU/ASIC/NPU)</span><span class="board">AI芯片 BK1127</span></div>
+  <div class="cos"><span class="co">寒武纪<em>688256</em></span><span class="co">海光信息<em>688041</em></span><span class="co">沐曦股份-U<em>688802</em></span><span class="co">摩尔线程-U<em>688795</em></span><span class="co">C燧原-U<em>688801</em></span><span class="co">景嘉微<em>300474</em></span><span class="co">云天励飞-U<em>688343</em></span></div>
+</div>
+<div class="dir" data-s="cpu/ip与设计服务 数字芯片设计 bk1331 龙芯中科 芯原股份 灿芯股份 国芯科技">
+  <div class="dir-name"><span>CPU/IP与设计服务</span><span class="board">数字芯片设计 BK1331</span></div>
+  <div class="cos"><span class="co">龙芯中科<em>688047</em></span><span class="co">芯原股份<em>688521</em></span><span class="co">灿芯股份<em>688691</em></span><span class="co">国芯科技<em>688262</em></span></div>
+</div>
+<div class="dir" data-s="存储芯片设计 存储芯片 bk1137 兆易创新 君正股份 东芯股份 普冉股份 聚辰股份 恒烁股份 复旦微电">
+  <div class="dir-name"><span>存储芯片设计</span><span class="board">存储芯片 BK1137</span></div>
+  <div class="cos"><span class="co">兆易创新<em>603986</em></span><span class="co">君正股份<em>300223</em></span><span class="co">东芯股份<em>688110</em></span><span class="co">普冉股份<em>688766</em></span><span class="co">聚辰股份<em>688123</em></span><span class="co">恒烁股份<em>688416</em></span><span class="co">复旦微电<em>688385</em></span></div>
+</div>
+<div class="dir" data-s="内存接口与配套芯片 高带宽内存 bk1152 澜起科技 聚辰股份">
+  <div class="dir-name"><span>内存接口与配套芯片</span><span class="board">高带宽内存 BK1152</span></div>
+  <div class="cos"><span class="co">澜起科技<em>688008</em></span><span class="co">聚辰股份<em>688123</em></span></div>
+</div>
+<div class="dir" data-s="数字soc与主控 数字芯片设计 bk1331 瑞芯微 晶晨股份 全志科技 恒玄科技 乐鑫科技 富瀚微 星宸科技 中科蓝讯 国科微 泰凌微 新相微">
+  <div class="dir-name"><span>数字SoC与主控</span><span class="board">数字芯片设计 BK1331</span></div>
+  <div class="cos"><span class="co">瑞芯微<em>603893</em></span><span class="co">晶晨股份<em>688099</em></span><span class="co">全志科技<em>300458</em></span><span class="co">恒玄科技<em>688608</em></span><span class="co">乐鑫科技<em>688018</em></span><span class="co">富瀚微<em>300613</em></span><span class="co">星宸科技<em>301536</em></span><span class="co">中科蓝讯<em>688332</em></span><span class="co">国科微<em>300672</em></span><span class="co">泰凌微<em>688591</em></span><span class="co">新相微<em>688593</em></span></div>
+</div>
+<div class="dir" data-s="模拟/电源管理/信号链 模拟芯片设计 bk1330 圣邦股份 思瑞浦 纳芯微 杰华特 芯朋微 南芯科技 英集芯 必易微">
+  <div class="dir-name"><span>模拟/电源管理/信号链</span><span class="board">模拟芯片设计 BK1330</span></div>
+  <div class="cos"><span class="co">圣邦股份<em>300661</em></span><span class="co">思瑞浦<em>688536</em></span><span class="co">纳芯微<em>688052</em></span><span class="co">杰华特<em>688141</em></span><span class="co">芯朋微<em>688508</em></span><span class="co">南芯科技<em>688484</em></span><span class="co">英集芯<em>688209</em></span><span class="co">必易微<em>688045</em></span></div>
+</div>
+<div class="dir" data-s="消费类模拟与驱动芯片 模拟芯片设计 bk1330 艾为电子 力芯微 帝奥微 希荻微 晶丰明源 明微电子 上海贝岭">
+  <div class="dir-name"><span>消费类模拟与驱动芯片</span><span class="board">模拟芯片设计 BK1330</span></div>
+  <div class="cos"><span class="co">艾为电子<em>688798</em></span><span class="co">力芯微<em>688601</em></span><span class="co">帝奥微<em>688381</em></span><span class="co">希荻微<em>688173</em></span><span class="co">晶丰明源<em>688368</em></span><span class="co">明微电子<em>688699</em></span><span class="co">上海贝岭<em>600171</em></span></div>
+</div>
+<div class="dir" data-s="射频前端 — 卓胜微 唯捷创芯 慧智微-u 康希通信 昂瑞微-uw">
+  <div class="dir-name"><span>射频前端</span></div>
+  <div class="cos"><span class="co">卓胜微<em>300782</em></span><span class="co">唯捷创芯<em>688153</em></span><span class="co">慧智微-U<em>688512</em></span><span class="co">康希通信<em>688653</em></span><span class="co">昂瑞微-UW<em>688790</em></span></div>
+</div>
+<div class="dir" data-s="mcu与嵌入式 — 兆易创新 中颖电子 芯海科技 峰岹科技 国民技术">
+  <div class="dir-name"><span>MCU与嵌入式</span></div>
+  <div class="cos"><span class="co">兆易创新<em>603986</em></span><span class="co">中颖电子<em>300327</em></span><span class="co">芯海科技<em>688595</em></span><span class="co">峰岹科技<em>688279</em></span><span class="co">国民技术<em>300077</em></span></div>
+</div>
+<div class="dir" data-s="cis/传感器芯片 传感器 bk0905 豪威集团 格科微 思特威-w 汇顶科技 睿创微纳 高德红外 奥比中光-w 芯动联科">
+  <div class="dir-name"><span>CIS/传感器芯片</span><span class="board">传感器 BK0905</span></div>
+  <div class="cos"><span class="co">豪威集团<em>603501</em></span><span class="co">格科微<em>688728</em></span><span class="co">思特威-W<em>688213</em></span><span class="co">汇顶科技<em>603160</em></span><span class="co">睿创微纳<em>688002</em></span><span class="co">高德红外<em>002414</em></span><span class="co">奥比中光-W<em>688322</em></span><span class="co">芯动联科<em>688582</em></span></div>
+</div>
+<div class="dir" data-s="高速接口与网络芯片 ai芯片 bk1127 盛科通信-u 龙迅股份 裕太微-u 优迅股份">
+  <div class="dir-name"><span>高速接口与网络芯片</span><span class="board">AI芯片 BK1127</span></div>
+  <div class="cos"><span class="co">盛科通信-U<em>688702</em></span><span class="co">龙迅股份<em>688486</em></span><span class="co">裕太微-U<em>688515</em></span><span class="co">优迅股份<em>688807</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>晶圆制造与IDM<span class="n">3 个方向</span></h3>
+<div class="dir" data-s="晶圆代工 集成电路制造 bk1329 中芯国际 华虹宏力 晶合集成 芯联集成-u">
+  <div class="dir-name"><span>晶圆代工</span><span class="board">集成电路制造 BK1329</span></div>
+  <div class="cos"><span class="co">中芯国际<em>688981</em></span><span class="co">华虹宏力<em>688347</em></span><span class="co">晶合集成<em>688249</em></span><span class="co">芯联集成-U<em>688469</em></span></div>
+</div>
+<div class="dir" data-s="idm与特色工艺 集成电路制造 bk1329 华润微 士兰微 燕东微 赛微电子">
+  <div class="dir-name"><span>IDM与特色工艺</span><span class="board">集成电路制造 BK1329</span></div>
+  <div class="cos"><span class="co">华润微<em>688396</em></span><span class="co">士兰微<em>600460</em></span><span class="co">燕东微<em>688172</em></span><span class="co">赛微电子<em>300456</em></span></div>
+</div>
+<div class="dir" data-s="存储晶圆(dram/nand) 存储芯片 bk1137 长鑫科技 兆易创新">
+  <div class="dir-name"><span>存储晶圆(DRAM/NAND)</span><span class="board">存储芯片 BK1137</span></div>
+  <div class="cos"><span class="co">长鑫科技<em>688825</em></span><span class="co">兆易创新<em>603986</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>封装测试<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="封测代工(osat) 集成电路封测 bk1328 长电科技 通富微电 华天科技 甬矽电子 晶方科技 盛合晶微">
+  <div class="dir-name"><span>封测代工(OSAT)</span><span class="board">集成电路封测 BK1328</span></div>
+  <div class="cos"><span class="co">长电科技<em>600584</em></span><span class="co">通富微电<em>002156</em></span><span class="co">华天科技<em>002185</em></span><span class="co">甬矽电子<em>688362</em></span><span class="co">晶方科技<em>603005</em></span><span class="co">盛合晶微<em>688820</em></span></div>
+</div>
+<div class="dir" data-s="显示驱动封测 集成电路封测 bk1328 汇成股份 颀中科技">
+  <div class="dir-name"><span>显示驱动封测</span><span class="board">集成电路封测 BK1328</span></div>
+  <div class="cos"><span class="co">汇成股份<em>688403</em></span><span class="co">颀中科技<em>688352</em></span></div>
+</div>
+<div class="dir" data-s="第三方测试 — 利扬芯片 伟测科技">
+  <div class="dir-name"><span>第三方测试</span></div>
+  <div class="cos"><span class="co">利扬芯片<em>688135</em></span><span class="co">伟测科技<em>688372</em></span></div>
+</div>
+<div class="dir" data-s="封装材料与载板 先进封装 bk1101 兴森科技 深南电路 华海诚科 德邦科技 联瑞新材 壹石通 强一股份 和林微纳">
+  <div class="dir-name"><span>封装材料与载板</span><span class="board">先进封装 BK1101</span></div>
+  <div class="cos"><span class="co">兴森科技<em>002436</em></span><span class="co">深南电路<em>002916</em></span><span class="co">华海诚科<em>688535</em></span><span class="co">德邦科技<em>688035</em></span><span class="co">联瑞新材<em>688300</em></span><span class="co">壹石通<em>688733</em></span><span class="co">强一股份<em>688809</em></span><span class="co">和林微纳<em>688661</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>半导体设备<span class="n">8 个方向</span></h3>
+<div class="dir" data-s="平台型设备龙头 半导体设备 bk1326 北方华创 中微公司">
+  <div class="dir-name"><span>平台型设备龙头</span><span class="board">半导体设备 BK1326</span></div>
+  <div class="cos"><span class="co">北方华创<em>002371</em></span><span class="co">中微公司<em>688012</em></span></div>
+</div>
+<div class="dir" data-s="薄膜沉积/刻蚀/离子注入 半导体设备 bk1326 拓荆科技 微导纳米 中微公司 北方华创 屹唐股份 先导基电">
+  <div class="dir-name"><span>薄膜沉积/刻蚀/离子注入</span><span class="board">半导体设备 BK1326</span></div>
+  <div class="cos"><span class="co">拓荆科技<em>688072</em></span><span class="co">微导纳米<em>688147</em></span><span class="co">中微公司<em>688012</em></span><span class="co">北方华创<em>002371</em></span><span class="co">屹唐股份<em>688729</em></span><span class="co">先导基电<em>600641</em></span></div>
+</div>
+<div class="dir" data-s="清洗/涂胶显影/cmp 半导体设备 bk1326 盛美上海 芯源微 华海清科 至纯科技">
+  <div class="dir-name"><span>清洗/涂胶显影/CMP</span><span class="board">半导体设备 BK1326</span></div>
+  <div class="cos"><span class="co">盛美上海<em>688082</em></span><span class="co">芯源微<em>688037</em></span><span class="co">华海清科<em>688120</em></span><span class="co">至纯科技<em>603690</em></span></div>
+</div>
+<div class="dir" data-s="量测检测设备 半导体设备 bk1326 中科飞测 精测电子 天准科技 日联科技">
+  <div class="dir-name"><span>量测检测设备</span><span class="board">半导体设备 BK1326</span></div>
+  <div class="cos"><span class="co">中科飞测<em>688361</em></span><span class="co">精测电子<em>300567</em></span><span class="co">天准科技<em>688003</em></span><span class="co">日联科技<em>688531</em></span></div>
+</div>
+<div class="dir" data-s="测试设备 半导体设备 bk1326 华峰测控 长川科技 精智达 强一股份 联讯仪器 金海通">
+  <div class="dir-name"><span>测试设备</span><span class="board">半导体设备 BK1326</span></div>
+  <div class="cos"><span class="co">华峰测控<em>688200</em></span><span class="co">长川科技<em>300604</em></span><span class="co">精智达<em>688627</em></span><span class="co">强一股份<em>688809</em></span><span class="co">联讯仪器<em>688808</em></span><span class="co">金海通<em>603061</em></span></div>
+</div>
+<div class="dir" data-s="封装与激光加工设备 先进封装 bk1101 大族激光 芯碁微装 光力科技 新益昌 罗博特科">
+  <div class="dir-name"><span>封装与激光加工设备</span><span class="board">先进封装 BK1101</span></div>
+  <div class="cos"><span class="co">大族激光<em>002008</em></span><span class="co">芯碁微装<em>688630</em></span><span class="co">光力科技<em>300480</em></span><span class="co">新益昌<em>688383</em></span><span class="co">罗博特科<em>300757</em></span></div>
+</div>
+<div class="dir" data-s="光刻机与核心零部件 光刻机 bk0884 张江高科 苏大维格 炬光科技 福晶科技 奥普光电 茂莱光学 波长光电 腾景科技">
+  <div class="dir-name"><span>光刻机与核心零部件</span><span class="board">光刻机 BK0884</span></div>
+  <div class="cos"><span class="co">张江高科<em>600895</em></span><span class="co">苏大维格<em>300331</em></span><span class="co">炬光科技<em>688167</em></span><span class="co">福晶科技<em>002222</em></span><span class="co">奥普光电<em>002338</em></span><span class="co">茂莱光学<em>688502</em></span><span class="co">波长光电<em>301421</em></span><span class="co">腾景科技<em>688195</em></span></div>
+</div>
+<div class="dir" data-s="设备零部件与厂务 光刻机 bk0884 富创精密 新莱应材 正帆科技 英杰电气 汉钟精机 华亚智能 京仪装备 先锋精科 富乐德">
+  <div class="dir-name"><span>设备零部件与厂务</span><span class="board">光刻机 BK0884</span></div>
+  <div class="cos"><span class="co">富创精密<em>688409</em></span><span class="co">新莱应材<em>300260</em></span><span class="co">正帆科技<em>688596</em></span><span class="co">英杰电气<em>300820</em></span><span class="co">汉钟精机<em>002158</em></span><span class="co">华亚智能<em>003043</em></span><span class="co">京仪装备<em>688652</em></span><span class="co">先锋精科<em>688605</em></span><span class="co">富乐德<em>301297</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>半导体材料<span class="n">8 个方向</span></h3>
+<div class="dir" data-s="硅片与衬底 半导体材料 bk1325 沪硅产业 西安奕材-u 立昂微 tcl中环 中晶科技 神工股份 上海合晶">
+  <div class="dir-name"><span>硅片与衬底</span><span class="board">半导体材料 BK1325</span></div>
+  <div class="cos"><span class="co">沪硅产业<em>688126</em></span><span class="co">西安奕材-U<em>688783</em></span><span class="co">立昂微<em>605358</em></span><span class="co">TCL中环<em>002129</em></span><span class="co">中晶科技<em>003026</em></span><span class="co">神工股份<em>688233</em></span><span class="co">上海合晶<em>688584</em></span></div>
+</div>
+<div class="dir" data-s="光刻胶及配套 光刻胶 bk1753 彤程新材 南大光电 晶瑞电材 上海新阳 容大感光 鼎龙股份 艾森股份 恒坤新材">
+  <div class="dir-name"><span>光刻胶及配套</span><span class="board">光刻胶 BK1753</span></div>
+  <div class="cos"><span class="co">彤程新材<em>603650</em></span><span class="co">南大光电<em>300346</em></span><span class="co">晶瑞电材<em>300655</em></span><span class="co">上海新阳<em>300236</em></span><span class="co">容大感光<em>300576</em></span><span class="co">鼎龙股份<em>300054</em></span><span class="co">艾森股份<em>688720</em></span><span class="co">恒坤新材<em>688727</em></span></div>
+</div>
+<div class="dir" data-s="电子特种气体 工业气体 bk0990 中船特气 华特气体 金宏气体 广钢气体 和远气体">
+  <div class="dir-name"><span>电子特种气体</span><span class="board">工业气体 BK0990</span></div>
+  <div class="cos"><span class="co">中船特气<em>688146</em></span><span class="co">华特气体<em>688268</em></span><span class="co">金宏气体<em>688106</em></span><span class="co">广钢气体<em>688548</em></span><span class="co">和远气体<em>002971</em></span></div>
+</div>
+<div class="dir" data-s="湿电子化学品与cmp耗材 电子化学品ⅲ bk1332 安集科技 鼎龙股份 格林达 江化微 晶瑞电材 中巨芯-u 兴福电子 超纯应材">
+  <div class="dir-name"><span>湿电子化学品与CMP耗材</span><span class="board">电子化学品Ⅲ BK1332</span></div>
+  <div class="cos"><span class="co">安集科技<em>688019</em></span><span class="co">鼎龙股份<em>300054</em></span><span class="co">格林达<em>603931</em></span><span class="co">江化微<em>603078</em></span><span class="co">晶瑞电材<em>300655</em></span><span class="co">中巨芯-U<em>688549</em></span><span class="co">兴福电子<em>688545</em></span><span class="co">超纯应材<em>301717</em></span></div>
+</div>
+<div class="dir" data-s="靶材与前驱体 半导体材料 bk1325 江丰电子 有研新材 隆华科技 雅克科技 欧莱新材 有研粉材">
+  <div class="dir-name"><span>靶材与前驱体</span><span class="board">半导体材料 BK1325</span></div>
+  <div class="cos"><span class="co">江丰电子<em>300666</em></span><span class="co">有研新材<em>600206</em></span><span class="co">隆华科技<em>300263</em></span><span class="co">雅克科技<em>002409</em></span><span class="co">欧莱新材<em>688530</em></span><span class="co">有研粉材<em>688456</em></span></div>
+</div>
+<div class="dir" data-s="封装材料 先进封装 bk1101 联瑞新材 华海诚科 德邦科技 壹石通 天承科技">
+  <div class="dir-name"><span>封装材料</span><span class="board">先进封装 BK1101</span></div>
+  <div class="cos"><span class="co">联瑞新材<em>688300</em></span><span class="co">华海诚科<em>688535</em></span><span class="co">德邦科技<em>688035</em></span><span class="co">壹石通<em>688733</em></span><span class="co">天承科技<em>688603</em></span></div>
+</div>
+<div class="dir" data-s="掩膜版 半导体材料 bk1325 路维光电 清溢光电">
+  <div class="dir-name"><span>掩膜版</span><span class="board">半导体材料 BK1325</span></div>
+  <div class="cos"><span class="co">路维光电<em>688401</em></span><span class="co">清溢光电<em>688138</em></span></div>
+</div>
+<div class="dir" data-s="石英与陶瓷零部件 非金属材料ⅱ bk1020 石英股份 菲利华 国瓷材料 珂玛科技 天通股份">
+  <div class="dir-name"><span>石英与陶瓷零部件</span><span class="board">非金属材料Ⅱ BK1020</span></div>
+  <div class="cos"><span class="co">石英股份<em>603688</em></span><span class="co">菲利华<em>300395</em></span><span class="co">国瓷材料<em>300285</em></span><span class="co">珂玛科技<em>301611</em></span><span class="co">天通股份<em>600330</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>功率与化合物半导体<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="碳化硅(sic)衬底与外延 碳化硅 bk0977 天岳先进 露笑科技 晶盛机电">
+  <div class="dir-name"><span>碳化硅(SiC)衬底与外延</span><span class="board">碳化硅 BK0977</span></div>
+  <div class="cos"><span class="co">天岳先进<em>688234</em></span><span class="co">露笑科技<em>002617</em></span><span class="co">晶盛机电<em>300316</em></span></div>
+</div>
+<div class="dir" data-s="功率器件/igbt/mosfet 第三代半导体 bk0952 斯达半导 时代电气 士兰微 新洁能 东微半导 宏微科技 扬杰科技 捷捷微电 华润微">
+  <div class="dir-name"><span>功率器件/IGBT/MOSFET</span><span class="board">第三代半导体 BK0952</span></div>
+  <div class="cos"><span class="co">斯达半导<em>603290</em></span><span class="co">时代电气<em>688187</em></span><span class="co">士兰微<em>600460</em></span><span class="co">新洁能<em>605111</em></span><span class="co">东微半导<em>688261</em></span><span class="co">宏微科技<em>688711</em></span><span class="co">扬杰科技<em>300373</em></span><span class="co">捷捷微电<em>300623</em></span><span class="co">华润微<em>688396</em></span></div>
+</div>
+<div class="dir" data-s="氮化镓(gan)与化合物光电 氮化镓 bk0916 三安光电 乾照光电 华灿光电">
+  <div class="dir-name"><span>氮化镓(GaN)与化合物光电</span><span class="board">氮化镓 BK0916</span></div>
+  <div class="cos"><span class="co">三安光电<em>600703</em></span><span class="co">乾照光电<em>300102</em></span><span class="co">华灿光电<em>300323</em></span></div>
+</div>
+<div class="dir" data-s="第四代半导体(氧化镓/金刚石) 第四代半导体 bk1121 南大光电 蓝晓科技 东微半导 衢州发展">
+  <div class="dir-name"><span>第四代半导体(氧化镓/金刚石)</span><span class="board">第四代半导体 BK1121</span></div>
+  <div class="cos"><span class="co">南大光电<em>300346</em></span><span class="co">蓝晓科技<em>300487</em></span><span class="co">东微半导<em>688261</em></span><span class="co">衢州发展<em>600208</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>EDA与IP<span class="n">1 个方向</span></h3>
+<div class="dir" data-s="eda工具 eda概念 bk1050 华大九天 概伦电子 广立微">
+  <div class="dir-name"><span>EDA工具</span><span class="board">EDA概念 BK1050</span></div>
+  <div class="cos"><span class="co">华大九天<em>301269</em></span><span class="co">概伦电子<em>688206</em></span><span class="co">广立微<em>301095</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-pcb" style="--gc:#0f9d76;--gcs:#e9f8f3">
+  <header class="group-head">
+    <div>
+      <h2>PCB与元器件</h2>
+      <p class="gdesc">AI服务器把PCB抬升为算力系统的结构性瓶颈，往上游牵出覆铜板、电子布、树脂、铜箔</p>
+      <p class="gsw">东财行业: 元件(BK0459) / 其他电子(BK1336) / 电子化学品(BK1039)</p>
+    </div>
+    <div class="gstat"><strong>7</strong><span>子行业</span><strong>36</strong><span>细分方向</span><strong>164</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>PCB与封装基板<span class="n">6 个方向</span></h3>
+<div class="dir" data-s="ai服务器/高多层板 pcb bk0877 沪电股份 胜宏科技 深南电路 生益电子 景旺电子 崇达技术 奥士康 方正科技 广合科技 超颖电子">
+  <div class="dir-name"><span>AI服务器/高多层板</span><span class="board">PCB BK0877</span></div>
+  <div class="cos"><span class="co">沪电股份<em>002463</em></span><span class="co">胜宏科技<em>300476</em></span><span class="co">深南电路<em>002916</em></span><span class="co">生益电子<em>688183</em></span><span class="co">景旺电子<em>603228</em></span><span class="co">崇达技术<em>002815</em></span><span class="co">奥士康<em>002913</em></span><span class="co">方正科技<em>600601</em></span><span class="co">广合科技<em>001389</em></span><span class="co">超颖电子<em>603175</em></span></div>
+</div>
+<div class="dir" data-s="汽车/工控/中小批量pcb 印制电路板 bk1340 世运电路 超声电子 景旺电子 崇达技术 科翔股份 中富电路 迅捷兴">
+  <div class="dir-name"><span>汽车/工控/中小批量PCB</span><span class="board">印制电路板 BK1340</span></div>
+  <div class="cos"><span class="co">世运电路<em>603920</em></span><span class="co">超声电子<em>000823</em></span><span class="co">景旺电子<em>603228</em></span><span class="co">崇达技术<em>002815</em></span><span class="co">科翔股份<em>300903</em></span><span class="co">中富电路<em>300814</em></span><span class="co">迅捷兴<em>688655</em></span></div>
+</div>
+<div class="dir" data-s="fpc与软硬结合板 印制电路板 bk1340 鹏鼎控股 东山精密 弘信电子 奕东电子 传艺科技">
+  <div class="dir-name"><span>FPC与软硬结合板</span><span class="board">印制电路板 BK1340</span></div>
+  <div class="cos"><span class="co">鹏鼎控股<em>002938</em></span><span class="co">东山精密<em>002384</em></span><span class="co">弘信电子<em>300657</em></span><span class="co">奕东电子<em>301123</em></span><span class="co">传艺科技<em>002866</em></span></div>
+</div>
+<div class="dir" data-s="封装基板(abf/bt) 先进封装 bk1101 深南电路 兴森科技 红板科技">
+  <div class="dir-name"><span>封装基板(ABF/BT)</span><span class="board">先进封装 BK1101</span></div>
+  <div class="cos"><span class="co">深南电路<em>002916</em></span><span class="co">兴森科技<em>002436</em></span><span class="co">红板科技<em>603459</em></span></div>
+</div>
+<div class="dir" data-s="玻璃基板/tgv 玻璃基板 bk1175 京东方ａ 沃格光电 蓝思科技 凯盛科技 大族数控">
+  <div class="dir-name"><span>玻璃基板/TGV</span><span class="board">玻璃基板 BK1175</span></div>
+  <div class="cos"><span class="co">京东方Ａ<em>000725</em></span><span class="co">沃格光电<em>603773</em></span><span class="co">蓝思科技<em>300433</em></span><span class="co">凯盛科技<em>600552</em></span><span class="co">大族数控<em>301200</em></span></div>
+</div>
+<div class="dir" data-s="pcb打样与柔性制造 pcb bk0877 嘉立创">
+  <div class="dir-name"><span>PCB打样与柔性制造</span><span class="board">PCB BK0877</span></div>
+  <div class="cos"><span class="co">嘉立创<em>001232</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>覆铜板与上游材料<span class="n">6 个方向</span></h3>
+<div class="dir" data-s="覆铜板(ccl) pcb bk0877 生益科技 南亚新材 华正新材 金安国纪 超声电子">
+  <div class="dir-name"><span>覆铜板(CCL)</span><span class="board">PCB BK0877</span></div>
+  <div class="cos"><span class="co">生益科技<em>600183</em></span><span class="co">南亚新材<em>688519</em></span><span class="co">华正新材<em>603186</em></span><span class="co">金安国纪<em>002636</em></span><span class="co">超声电子<em>000823</em></span></div>
+</div>
+<div class="dir" data-s="电子布/玻纤布 玻纤制造 bk1462 宏和科技 中国巨石 中材科技 国际复材 山东玻纤 长海股份">
+  <div class="dir-name"><span>电子布/玻纤布</span><span class="board">玻纤制造 BK1462</span></div>
+  <div class="cos"><span class="co">宏和科技<em>603256</em></span><span class="co">中国巨石<em>600176</em></span><span class="co">中材科技<em>002080</em></span><span class="co">国际复材<em>301526</em></span><span class="co">山东玻纤<em>605006</em></span><span class="co">长海股份<em>300196</em></span></div>
+</div>
+<div class="dir" data-s="特种树脂 合成树脂 bk1438 圣泉集团 东材科技 宏昌电子 同宇新材">
+  <div class="dir-name"><span>特种树脂</span><span class="board">合成树脂 BK1438</span></div>
+  <div class="cos"><span class="co">圣泉集团<em>605589</em></span><span class="co">东材科技<em>601208</em></span><span class="co">宏昌电子<em>603002</em></span><span class="co">同宇新材<em>301630</em></span></div>
+</div>
+<div class="dir" data-s="电子铜箔 — 诺德股份 德福科技 中一科技 逸豪新材 铜冠铜箔">
+  <div class="dir-name"><span>电子铜箔</span></div>
+  <div class="cos"><span class="co">诺德股份<em>600110</em></span><span class="co">德福科技<em>301511</em></span><span class="co">中一科技<em>301150</em></span><span class="co">逸豪新材<em>301176</em></span><span class="co">铜冠铜箔<em>301217</em></span></div>
+</div>
+<div class="dir" data-s="干膜/油墨/化学品 电子化学品ⅲ bk1332 容大感光 广信材料 飞凯材料 三孚新科">
+  <div class="dir-name"><span>干膜/油墨/化学品</span><span class="board">电子化学品Ⅲ BK1332</span></div>
+  <div class="cos"><span class="co">容大感光<em>300576</em></span><span class="co">广信材料<em>300537</em></span><span class="co">飞凯材料<em>300398</em></span><span class="co">三孚新科<em>688359</em></span></div>
+</div>
+<div class="dir" data-s="pcb设备与耗材 专用设备 bk0910 大族数控 鼎泰高科 天准科技 东威科技 泰金新能">
+  <div class="dir-name"><span>PCB设备与耗材</span><span class="board">专用设备 BK0910</span></div>
+  <div class="cos"><span class="co">大族数控<em>301200</em></span><span class="co">鼎泰高科<em>301377</em></span><span class="co">天准科技<em>688003</em></span><span class="co">东威科技<em>688700</em></span><span class="co">泰金新能<em>688813</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>被动元件<span class="n">5 个方向</span></h3>
+<div class="dir" data-s="mlcc mlcc bk0890 三环集团 风华高科 火炬电子 鸿远电子 宏达电子 达利凯普">
+  <div class="dir-name"><span>MLCC</span><span class="board">MLCC BK0890</span></div>
+  <div class="cos"><span class="co">三环集团<em>300408</em></span><span class="co">风华高科<em>000636</em></span><span class="co">火炬电子<em>603678</em></span><span class="co">鸿远电子<em>603267</em></span><span class="co">宏达电子<em>300726</em></span><span class="co">达利凯普<em>301566</em></span></div>
+</div>
+<div class="dir" data-s="被动元件上游材料 被动元件概念 bk0976 国瓷材料 博迁新材 洁美科技">
+  <div class="dir-name"><span>被动元件上游材料</span><span class="board">被动元件概念 BK0976</span></div>
+  <div class="cos"><span class="co">国瓷材料<em>300285</em></span><span class="co">博迁新材<em>605376</em></span><span class="co">洁美科技<em>002859</em></span></div>
+</div>
+<div class="dir" data-s="电感与磁性元件 被动元件 bk1339 顺络电子 麦捷科技 铂科新材 可立克 京泉华">
+  <div class="dir-name"><span>电感与磁性元件</span><span class="board">被动元件 BK1339</span></div>
+  <div class="cos"><span class="co">顺络电子<em>002138</em></span><span class="co">麦捷科技<em>300319</em></span><span class="co">铂科新材<em>300811</em></span><span class="co">可立克<em>002782</em></span><span class="co">京泉华<em>002885</em></span></div>
+</div>
+<div class="dir" data-s="电容/超级电容 被动元件 bk1339 江海股份 艾华集团 法拉电子 铜峰电子 海星股份">
+  <div class="dir-name"><span>电容/超级电容</span><span class="board">被动元件 BK1339</span></div>
+  <div class="cos"><span class="co">江海股份<em>002484</em></span><span class="co">艾华集团<em>603989</em></span><span class="co">法拉电子<em>600563</em></span><span class="co">铜峰电子<em>600237</em></span><span class="co">海星股份<em>603115</em></span></div>
+</div>
+<div class="dir" data-s="晶振与频率器件 被动元件 bk1339 泰晶科技">
+  <div class="dir-name"><span>晶振与频率器件</span><span class="board">被动元件 BK1339</span></div>
+  <div class="cos"><span class="co">泰晶科技<em>603738</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>连接器与线缆<span class="n">3 个方向</span></h3>
+<div class="dir" data-s="高速铜连接(dac/aec/背板) 铜缆高速连接 bk1168 立讯精密 沃尔核材 兆龙互连 金信诺 神宇股份 新亚电子 长芯博创">
+  <div class="dir-name"><span>高速铜连接(DAC/AEC/背板)</span><span class="board">铜缆高速连接 BK1168</span></div>
+  <div class="cos"><span class="co">立讯精密<em>002475</em></span><span class="co">沃尔核材<em>002130</em></span><span class="co">兆龙互连<em>300913</em></span><span class="co">金信诺<em>300252</em></span><span class="co">神宇股份<em>300563</em></span><span class="co">新亚电子<em>605277</em></span><span class="co">长芯博创<em>300548</em></span></div>
+</div>
+<div class="dir" data-s="连接器 元件 bk0459 中航光电 电连技术 瑞可达 鼎通科技 意华股份 华丰科技 鸿日达">
+  <div class="dir-name"><span>连接器</span><span class="board">元件 BK0459</span></div>
+  <div class="cos"><span class="co">中航光电<em>002179</em></span><span class="co">电连技术<em>300679</em></span><span class="co">瑞可达<em>688800</em></span><span class="co">鼎通科技<em>688668</em></span><span class="co">意华股份<em>002897</em></span><span class="co">华丰科技<em>688629</em></span><span class="co">鸿日达<em>301285</em></span></div>
+</div>
+<div class="dir" data-s="线缆与光连接 通信线缆及配套 bk1592 长芯博创 太辰光 永鼎股份">
+  <div class="dir-name"><span>线缆与光连接</span><span class="board">通信线缆及配套 BK1592</span></div>
+  <div class="cos"><span class="co">长芯博创<em>300548</em></span><span class="co">太辰光<em>300570</em></span><span class="co">永鼎股份<em>600105</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>光学<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="光学元件与镜头 光学元件 bk1334 水晶光电 蓝特光学 永新光学 联创电子 联合光电 中光学 福光股份 欧菲光 东田微 光智科技">
+  <div class="dir-name"><span>光学元件与镜头</span><span class="board">光学元件 BK1334</span></div>
+  <div class="cos"><span class="co">水晶光电<em>002273</em></span><span class="co">蓝特光学<em>688127</em></span><span class="co">永新光学<em>603297</em></span><span class="co">联创电子<em>002036</em></span><span class="co">联合光电<em>300691</em></span><span class="co">中光学<em>002189</em></span><span class="co">福光股份<em>688010</em></span><span class="co">欧菲光<em>002456</em></span><span class="co">东田微<em>301183</em></span><span class="co">光智科技<em>300489</em></span></div>
+</div>
+<div class="dir" data-s="激光光学与模组 激光设备 bk1409 炬光科技 腾景科技 福晶科技 奥普光电 茂莱光学 波长光电">
+  <div class="dir-name"><span>激光光学与模组</span><span class="board">激光设备 BK1409</span></div>
+  <div class="cos"><span class="co">炬光科技<em>688167</em></span><span class="co">腾景科技<em>688195</em></span><span class="co">福晶科技<em>002222</em></span><span class="co">奥普光电<em>002338</em></span><span class="co">茂莱光学<em>688502</em></span><span class="co">波长光电<em>301421</em></span></div>
+</div>
+<div class="dir" data-s="偏光片与光学膜 膜材料 bk1439 三利谱 杉杉股份 东材科技 斯迪克">
+  <div class="dir-name"><span>偏光片与光学膜</span><span class="board">膜材料 BK1439</span></div>
+  <div class="cos"><span class="co">三利谱<em>002876</em></span><span class="co">杉杉股份<em>600884</em></span><span class="co">东材科技<em>601208</em></span><span class="co">斯迪克<em>300806</em></span></div>
+</div>
+<div class="dir" data-s="光学玻璃与utg 3d玻璃 bk0881 凯盛科技 沃格光电 蓝思科技 戈碧迦">
+  <div class="dir-name"><span>光学玻璃与UTG</span><span class="board">3D玻璃 BK0881</span></div>
+  <div class="cos"><span class="co">凯盛科技<em>600552</em></span><span class="co">沃格光电<em>603773</em></span><span class="co">蓝思科技<em>300433</em></span><span class="co">戈碧迦<em>920438</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>显示与LED<span class="n">6 个方向</span></h3>
+<div class="dir" data-s="面板 面板 bk1335 京东方ａ tcl科技 深天马ａ 维信诺 和辉光电-u 龙腾光电 惠科股份 彩虹股份">
+  <div class="dir-name"><span>面板</span><span class="board">面板 BK1335</span></div>
+  <div class="cos"><span class="co">京东方Ａ<em>000725</em></span><span class="co">TCL科技<em>000100</em></span><span class="co">深天马Ａ<em>000050</em></span><span class="co">维信诺<em>002387</em></span><span class="co">和辉光电-U<em>688538</em></span><span class="co">龙腾光电<em>688055</em></span><span class="co">惠科股份<em>001399</em></span><span class="co">彩虹股份<em>600707</em></span></div>
+</div>
+<div class="dir" data-s="硅基oled/微显示 microled bk0948 视涯科技-uw 京东方ａ">
+  <div class="dir-name"><span>硅基OLED/微显示</span><span class="board">MicroLED BK0948</span></div>
+  <div class="cos"><span class="co">视涯科技-UW<em>688781</em></span><span class="co">京东方Ａ<em>000725</em></span></div>
+</div>
+<div class="dir" data-s="显示材料 oled bk0840 莱特光电 奥来德 濮阳惠成 万润股份 鼎龙股份 瑞联新材">
+  <div class="dir-name"><span>显示材料</span><span class="board">OLED BK0840</span></div>
+  <div class="cos"><span class="co">莱特光电<em>688150</em></span><span class="co">奥来德<em>688378</em></span><span class="co">濮阳惠成<em>300481</em></span><span class="co">万润股份<em>002643</em></span><span class="co">鼎龙股份<em>300054</em></span><span class="co">瑞联新材<em>688550</em></span></div>
+</div>
+<div class="dir" data-s="显示设备与检测 显示技术 bk1651 精测电子 华兴源创 联得装备 易天股份 智云股份">
+  <div class="dir-name"><span>显示设备与检测</span><span class="board">显示技术 BK1651</span></div>
+  <div class="cos"><span class="co">精测电子<em>300567</em></span><span class="co">华兴源创<em>688001</em></span><span class="co">联得装备<em>300545</em></span><span class="co">易天股份<em>300812</em></span><span class="co">智云股份<em>300097</em></span></div>
+</div>
+<div class="dir" data-s="led芯片与封装 led bk1333 三安光电 兆驰股份 国星光电 鸿利智汇 聚灿光电 乾照光电 华灿光电 木林森">
+  <div class="dir-name"><span>LED芯片与封装</span><span class="board">LED BK1333</span></div>
+  <div class="cos"><span class="co">三安光电<em>600703</em></span><span class="co">兆驰股份<em>002429</em></span><span class="co">国星光电<em>002449</em></span><span class="co">鸿利智汇<em>300219</em></span><span class="co">聚灿光电<em>300708</em></span><span class="co">乾照光电<em>300102</em></span><span class="co">华灿光电<em>300323</em></span><span class="co">木林森<em>002745</em></span></div>
+</div>
+<div class="dir" data-s="mini/micro led与直显 microled bk0948 利亚德 洲明科技 雷曼光电 兆驰股份 京东方ａ">
+  <div class="dir-name"><span>Mini/Micro LED与直显</span><span class="board">MicroLED BK0948</span></div>
+  <div class="cos"><span class="co">利亚德<em>300296</em></span><span class="co">洲明科技<em>300232</em></span><span class="co">雷曼光电<em>300162</em></span><span class="co">兆驰股份<em>002429</em></span><span class="co">京东方Ａ<em>000725</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>消费电子与终端<span class="n">6 个方向</span></h3>
+<div class="dir" data-s="整机组装与代工 消费电子零部件及组装 bk1338 工业富联 立讯精密 华勤技术 龙旗科技 光弘科技 环旭电子">
+  <div class="dir-name"><span>整机组装与代工</span><span class="board">消费电子零部件及组装 BK1338</span></div>
+  <div class="cos"><span class="co">工业富联<em>601138</em></span><span class="co">立讯精密<em>002475</em></span><span class="co">华勤技术<em>603296</em></span><span class="co">龙旗科技<em>603341</em></span><span class="co">光弘科技<em>300735</em></span><span class="co">环旭电子<em>601231</em></span></div>
+</div>
+<div class="dir" data-s="声学/天线/马达/结构件 消费电子零部件及组装 bk1338 歌尔股份 领益智造 长盈精密 科森科技 兆威机电 佳禾智能 天键股份 国光电器 信维通信">
+  <div class="dir-name"><span>声学/天线/马达/结构件</span><span class="board">消费电子零部件及组装 BK1338</span></div>
+  <div class="cos"><span class="co">歌尔股份<em>002241</em></span><span class="co">领益智造<em>002600</em></span><span class="co">长盈精密<em>300115</em></span><span class="co">科森科技<em>603626</em></span><span class="co">兆威机电<em>003021</em></span><span class="co">佳禾智能<em>300793</em></span><span class="co">天键股份<em>301383</em></span><span class="co">国光电器<em>002045</em></span><span class="co">信维通信<em>300136</em></span></div>
+</div>
+<div class="dir" data-s="外观件与玻璃盖板 3d玻璃 bk0881 蓝思科技 水晶光电 沃格光电">
+  <div class="dir-name"><span>外观件与玻璃盖板</span><span class="board">3D玻璃 BK0881</span></div>
+  <div class="cos"><span class="co">蓝思科技<em>300433</em></span><span class="co">水晶光电<em>002273</em></span><span class="co">沃格光电<em>603773</em></span></div>
+</div>
+<div class="dir" data-s="品牌终端 品牌消费电子 bk1337 传音控股 安克创新 视源股份 影石创新 绿联科技 漫步者">
+  <div class="dir-name"><span>品牌终端</span><span class="board">品牌消费电子 BK1337</span></div>
+  <div class="cos"><span class="co">传音控股<em>688036</em></span><span class="co">安克创新<em>300866</em></span><span class="co">视源股份<em>002841</em></span><span class="co">影石创新<em>688775</em></span><span class="co">绿联科技<em>301606</em></span><span class="co">漫步者<em>002351</em></span></div>
+</div>
+<div class="dir" data-s="xr/ai眼镜 ai眼镜 bk1178 歌尔股份 立讯精密 水晶光电 蓝特光学 兆威机电 创维数字 亿道信息">
+  <div class="dir-name"><span>XR/AI眼镜</span><span class="board">AI眼镜 BK1178</span></div>
+  <div class="cos"><span class="co">歌尔股份<em>002241</em></span><span class="co">立讯精密<em>002475</em></span><span class="co">水晶光电<em>002273</em></span><span class="co">蓝特光学<em>688127</em></span><span class="co">兆威机电<em>003021</em></span><span class="co">创维数字<em>000810</em></span><span class="co">亿道信息<em>001314</em></span></div>
+</div>
+<div class="dir" data-s="ai手机/aipc aipc bk1164 立讯精密 鹏鼎控股 领益智造 华勤技术 中科创达">
+  <div class="dir-name"><span>AI手机/AIPC</span><span class="board">AIPC BK1164</span></div>
+  <div class="cos"><span class="co">立讯精密<em>002475</em></span><span class="co">鹏鼎控股<em>002938</em></span><span class="co">领益智造<em>002600</em></span><span class="co">华勤技术<em>603296</em></span><span class="co">中科创达<em>300496</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-comm" style="--gc:#e07b1a;--gcs:#fdf3e6">
+  <header class="group-head">
+    <div>
+      <h2>通信与算力网络</h2>
+      <p class="gdesc">从光模块到光芯片、光纤、卫星，是AI算力外溢最强的方向</p>
+      <p class="gsw">东财行业: 通信(BK1215) / 通信设备(BK0448) / 通信服务(BK0736)</p>
+    </div>
+    <div class="gstat"><strong>5</strong><span>子行业</span><strong>16</strong><span>细分方向</span><strong>86</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>光通信与光模块<span class="n">5 个方向</span></h3>
+<div class="dir" data-s="光模块整机 光通信模块 bk1136 中际旭创 新易盛 华工科技 光迅科技 剑桥科技 联特科技 德科立">
+  <div class="dir-name"><span>光模块整机</span><span class="board">光通信模块 BK1136</span></div>
+  <div class="cos"><span class="co">中际旭创<em>300308</em></span><span class="co">新易盛<em>300502</em></span><span class="co">华工科技<em>000988</em></span><span class="co">光迅科技<em>002281</em></span><span class="co">剑桥科技<em>603083</em></span><span class="co">联特科技<em>301205</em></span><span class="co">德科立<em>688205</em></span></div>
+</div>
+<div class="dir" data-s="光器件/无源器件 光通信模块 bk1136 天孚通信 太辰光 光库科技 腾景科技 仕佳光子 长芯博创 中瓷电子 长进光子">
+  <div class="dir-name"><span>光器件/无源器件</span><span class="board">光通信模块 BK1136</span></div>
+  <div class="cos"><span class="co">天孚通信<em>300394</em></span><span class="co">太辰光<em>300570</em></span><span class="co">光库科技<em>300620</em></span><span class="co">腾景科技<em>688195</em></span><span class="co">仕佳光子<em>688313</em></span><span class="co">长芯博创<em>300548</em></span><span class="co">中瓷电子<em>003031</em></span><span class="co">长进光子<em>688635</em></span></div>
+</div>
+<div class="dir" data-s="光芯片与光通信电芯片 光纤概念 bk1660 源杰科技 长光华芯 仕佳光子 优迅股份">
+  <div class="dir-name"><span>光芯片与光通信电芯片</span><span class="board">光纤概念 BK1660</span></div>
+  <div class="cos"><span class="co">源杰科技<em>688498</em></span><span class="co">长光华芯<em>688048</em></span><span class="co">仕佳光子<em>688313</em></span><span class="co">优迅股份<em>688807</em></span></div>
+</div>
+<div class="dir" data-s="光纤光缆 光纤概念 bk1660 长飞光纤 亨通光电 中天科技 烽火通信 永鼎股份 特发信息">
+  <div class="dir-name"><span>光纤光缆</span><span class="board">光纤概念 BK1660</span></div>
+  <div class="cos"><span class="co">长飞光纤<em>601869</em></span><span class="co">亨通光电<em>600487</em></span><span class="co">中天科技<em>600522</em></span><span class="co">烽火通信<em>600498</em></span><span class="co">永鼎股份<em>600105</em></span><span class="co">特发信息<em>000070</em></span></div>
+</div>
+<div class="dir" data-s="cpo/硅光 cpo概念 bk1128 中际旭创 新易盛 天孚通信 光迅科技 罗博特科">
+  <div class="dir-name"><span>CPO/硅光</span><span class="board">CPO概念 BK1128</span></div>
+  <div class="cos"><span class="co">中际旭创<em>300308</em></span><span class="co">新易盛<em>300502</em></span><span class="co">天孚通信<em>300394</em></span><span class="co">光迅科技<em>002281</em></span><span class="co">罗博特科<em>300757</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>通信设备与网络<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="主设备与网络设备 通信网络设备及器件 bk1591 中兴通讯 烽火通信 紫光股份 星网锐捷 锐捷网络 共进股份 瑞斯康达">
+  <div class="dir-name"><span>主设备与网络设备</span><span class="board">通信网络设备及器件 BK1591</span></div>
+  <div class="cos"><span class="co">中兴通讯<em>000063</em></span><span class="co">烽火通信<em>600498</em></span><span class="co">紫光股份<em>000938</em></span><span class="co">星网锐捷<em>002396</em></span><span class="co">锐捷网络<em>301165</em></span><span class="co">共进股份<em>603118</em></span><span class="co">瑞斯康达<em>603803</em></span></div>
+</div>
+<div class="dir" data-s="交换/网络芯片 ai芯片 bk1127 盛科通信-u 海光信息">
+  <div class="dir-name"><span>交换/网络芯片</span><span class="board">AI芯片 BK1127</span></div>
+  <div class="cos"><span class="co">盛科通信-U<em>688702</em></span><span class="co">海光信息<em>688041</em></span></div>
+</div>
+<div class="dir" data-s="物联网模组与终端 通信终端及配件 bk1593 移远通信 广和通 美格智能 有方科技 亿联网络 震有科技">
+  <div class="dir-name"><span>物联网模组与终端</span><span class="board">通信终端及配件 BK1593</span></div>
+  <div class="cos"><span class="co">移远通信<em>603236</em></span><span class="co">广和通<em>300638</em></span><span class="co">美格智能<em>002881</em></span><span class="co">有方科技<em>688159</em></span><span class="co">亿联网络<em>300628</em></span><span class="co">震有科技<em>688418</em></span></div>
+</div>
+<div class="dir" data-s="通信工程与运维 通信工程及服务 bk1588 润建股份 普天科技 中贝通信 三维通信 超讯科技">
+  <div class="dir-name"><span>通信工程与运维</span><span class="board">通信工程及服务 BK1588</span></div>
+  <div class="cos"><span class="co">润建股份<em>002929</em></span><span class="co">普天科技<em>002544</em></span><span class="co">中贝通信<em>603220</em></span><span class="co">三维通信<em>002115</em></span><span class="co">超讯科技<em>603322</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>卫星互联网与商业航天<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="卫星制造与载荷 卫星互联网 bk0921 中国卫星 上海瀚讯 信科移动-u 铖昌科技 国博电子 雷电微力 成都华微">
+  <div class="dir-name"><span>卫星制造与载荷</span><span class="board">卫星互联网 BK0921</span></div>
+  <div class="cos"><span class="co">中国卫星<em>600118</em></span><span class="co">上海瀚讯<em>300762</em></span><span class="co">信科移动-U<em>688387</em></span><span class="co">铖昌科技<em>001270</em></span><span class="co">国博电子<em>688375</em></span><span class="co">雷电微力<em>301050</em></span><span class="co">成都华微<em>688709</em></span></div>
+</div>
+<div class="dir" data-s="地面站与终端 卫星互联网 bk0921 海格通信 盟升电子 华力创通 天奥电子 中国卫通 电科蓝天">
+  <div class="dir-name"><span>地面站与终端</span><span class="board">卫星互联网 BK0921</span></div>
+  <div class="cos"><span class="co">海格通信<em>002465</em></span><span class="co">盟升电子<em>688311</em></span><span class="co">华力创通<em>300045</em></span><span class="co">天奥电子<em>002935</em></span><span class="co">中国卫通<em>601698</em></span><span class="co">电科蓝天<em>688818</em></span></div>
+</div>
+<div class="dir" data-s="火箭与结构配套 商业航天 bk0963 航天电子 航天环宇 超捷股份 中天火箭 纳睿雷达">
+  <div class="dir-name"><span>火箭与结构配套</span><span class="board">商业航天 BK0963</span></div>
+  <div class="cos"><span class="co">航天电子<em>600879</em></span><span class="co">航天环宇<em>688523</em></span><span class="co">超捷股份<em>301005</em></span><span class="co">中天火箭<em>003009</em></span><span class="co">纳睿雷达<em>688522</em></span></div>
+</div>
+<div class="dir" data-s="卫星导航与遥感应用 卫星导航 bk0629 华测导航 北斗星通 合众思壮 振芯科技 中科星图">
+  <div class="dir-name"><span>卫星导航与遥感应用</span><span class="board">卫星导航 BK0629</span></div>
+  <div class="cos"><span class="co">华测导航<em>300627</em></span><span class="co">北斗星通<em>002151</em></span><span class="co">合众思壮<em>002383</em></span><span class="co">振芯科技<em>300101</em></span><span class="co">中科星图<em>688568</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>运营商与IDC<span class="n">2 个方向</span></h3>
+<div class="dir" data-s="电信运营商 电信运营商 bk1587 中国移动 中国电信 中国联通">
+  <div class="dir-name"><span>电信运营商</span><span class="board">电信运营商 BK1587</span></div>
+  <div class="cos"><span class="co">中国移动<em>600941</em></span><span class="co">中国电信<em>601728</em></span><span class="co">中国联通<em>600050</em></span></div>
+</div>
+<div class="dir" data-s="idc与算力租赁 数据中心 bk0922 润泽科技 数据港 光环新网 奥飞数据 科华数据 宝信软件 云赛智联 首都在线 网宿科技 宏景科技 南网数字">
+  <div class="dir-name"><span>IDC与算力租赁</span><span class="board">数据中心 BK0922</span></div>
+  <div class="cos"><span class="co">润泽科技<em>300442</em></span><span class="co">数据港<em>603881</em></span><span class="co">光环新网<em>300383</em></span><span class="co">奥飞数据<em>300738</em></span><span class="co">科华数据<em>002335</em></span><span class="co">宝信软件<em>600845</em></span><span class="co">云赛智联<em>600602</em></span><span class="co">首都在线<em>300846</em></span><span class="co">网宿科技<em>300017</em></span><span class="co">宏景科技<em>301396</em></span><span class="co">南网数字<em>301638</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>量子科技<span class="n">1 个方向</span></h3>
+<div class="dir" data-s="量子通信与量子计算 量子科技 bk0710 国盾量子 科大国创 三未信安 格尔软件 神州信息 光迅科技">
+  <div class="dir-name"><span>量子通信与量子计算</span><span class="board">量子科技 BK0710</span></div>
+  <div class="cos"><span class="co">国盾量子<em>688027</em></span><span class="co">科大国创<em>300520</em></span><span class="co">三未信安<em>688489</em></span><span class="co">格尔软件<em>603232</em></span><span class="co">神州信息<em>000555</em></span><span class="co">光迅科技<em>002281</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-ai" style="--gc:#7a5cf0;--gcs:#f1eefe">
+  <header class="group-head">
+    <div>
+      <h2>计算机与AI</h2>
+      <p class="gdesc">算力硬件 + 软件应用两层：硬件看服务器/液冷/电源，软件看信创、模型与应用落地</p>
+      <p class="gsw">东财行业: 计算机(BK1207) / 软件开发(BK0737) / IT服务(BK1444)</p>
+    </div>
+    <div class="gstat"><strong>6</strong><span>子行业</span><strong>19</strong><span>细分方向</span><strong>119</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>算力硬件<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="服务器与算力整机 算力概念 bk1134 工业富联 浪潮信息 中科曙光 紫光股份 神州数码 拓维信息 华勤技术 中国长城 协创数据">
+  <div class="dir-name"><span>服务器与算力整机</span><span class="board">算力概念 BK1134</span></div>
+  <div class="cos"><span class="co">工业富联<em>601138</em></span><span class="co">浪潮信息<em>000977</em></span><span class="co">中科曙光<em>603019</em></span><span class="co">紫光股份<em>000938</em></span><span class="co">神州数码<em>000034</em></span><span class="co">拓维信息<em>002261</em></span><span class="co">华勤技术<em>603296</em></span><span class="co">中国长城<em>000066</em></span><span class="co">协创数据<em>300857</em></span></div>
+</div>
+<div class="dir" data-s="液冷与温控 液冷服务器 bk1138 英维克 申菱环境 高澜股份 同飞股份 飞荣达 中石科技 思泉新材 银轮股份 冰轮环境">
+  <div class="dir-name"><span>液冷与温控</span><span class="board">液冷服务器 BK1138</span></div>
+  <div class="cos"><span class="co">英维克<em>002837</em></span><span class="co">申菱环境<em>301018</em></span><span class="co">高澜股份<em>300499</em></span><span class="co">同飞股份<em>300990</em></span><span class="co">飞荣达<em>300602</em></span><span class="co">中石科技<em>300684</em></span><span class="co">思泉新材<em>301489</em></span><span class="co">银轮股份<em>002126</em></span><span class="co">冰轮环境<em>000811</em></span></div>
+</div>
+<div class="dir" data-s="数据中心电源与供配电 数据中心 bk0922 欧陆通 麦格米特 中恒电气 科士达 科华数据 通合科技 盛弘股份">
+  <div class="dir-name"><span>数据中心电源与供配电</span><span class="board">数据中心 BK0922</span></div>
+  <div class="cos"><span class="co">欧陆通<em>300870</em></span><span class="co">麦格米特<em>002851</em></span><span class="co">中恒电气<em>002364</em></span><span class="co">科士达<em>002518</em></span><span class="co">科华数据<em>002335</em></span><span class="co">通合科技<em>300491</em></span><span class="co">盛弘股份<em>300693</em></span></div>
+</div>
+<div class="dir" data-s="算力租赁与服务 算力概念 bk1134 云赛智联 首都在线 铜牛信息 亚康股份 优刻得-w 青云科技-u">
+  <div class="dir-name"><span>算力租赁与服务</span><span class="board">算力概念 BK1134</span></div>
+  <div class="cos"><span class="co">云赛智联<em>600602</em></span><span class="co">首都在线<em>300846</em></span><span class="co">铜牛信息<em>300895</em></span><span class="co">亚康股份<em>301085</em></span><span class="co">优刻得-W<em>688158</em></span><span class="co">青云科技-U<em>688316</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>基础软件与信创<span class="n">3 个方向</span></h3>
+<div class="dir" data-s="信创与国产os/数据库 信创 bk1104 中国软件 太极股份 诚迈科技 软通动力 润和软件 常山北明 海光信息">
+  <div class="dir-name"><span>信创与国产OS/数据库</span><span class="board">信创 BK1104</span></div>
+  <div class="cos"><span class="co">中国软件<em>600536</em></span><span class="co">太极股份<em>002368</em></span><span class="co">诚迈科技<em>300598</em></span><span class="co">软通动力<em>301236</em></span><span class="co">润和软件<em>300339</em></span><span class="co">常山北明<em>000158</em></span><span class="co">海光信息<em>688041</em></span></div>
+</div>
+<div class="dir" data-s="数据库/中间件/大数据平台 国产软件 bk0696 达梦数据 宝兰德 普元信息 星环科技-u">
+  <div class="dir-name"><span>数据库/中间件/大数据平台</span><span class="board">国产软件 BK0696</span></div>
+  <div class="cos"><span class="co">达梦数据<em>688692</em></span><span class="co">宝兰德<em>688058</em></span><span class="co">普元信息<em>688118</em></span><span class="co">星环科技-U<em>688031</em></span></div>
+</div>
+<div class="dir" data-s="华为算力生态(昇腾/欧拉/鸿蒙) 华为昇腾 bk0995 拓维信息 神州数码 软通动力 润和软件 常山北明 广电运通">
+  <div class="dir-name"><span>华为算力生态(昇腾/欧拉/鸿蒙)</span><span class="board">华为昇腾 BK0995</span></div>
+  <div class="cos"><span class="co">拓维信息<em>002261</em></span><span class="co">神州数码<em>000034</em></span><span class="co">软通动力<em>301236</em></span><span class="co">润和软件<em>300339</em></span><span class="co">常山北明<em>000158</em></span><span class="co">广电运通<em>002152</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>AI软件与应用<span class="n">5 个方向</span></h3>
+<div class="dir" data-s="ai平台与大模型 ai应用 bk1629 科大讯飞 三六零 昆仑万维 云从科技-uw 格灵深瞳 拓尔思 合合信息 岩山科技">
+  <div class="dir-name"><span>AI平台与大模型</span><span class="board">AI应用 BK1629</span></div>
+  <div class="cos"><span class="co">科大讯飞<em>002230</em></span><span class="co">三六零<em>601360</em></span><span class="co">昆仑万维<em>300418</em></span><span class="co">云从科技-UW<em>688327</em></span><span class="co">格灵深瞳<em>688207</em></span><span class="co">拓尔思<em>300229</em></span><span class="co">合合信息<em>688615</em></span><span class="co">岩山科技<em>002195</em></span></div>
+</div>
+<div class="dir" data-s="办公与生产力软件 aigc概念 bk1111 金山办公 万兴科技 汉王科技 福昕软件">
+  <div class="dir-name"><span>办公与生产力软件</span><span class="board">AIGC概念 BK1111</span></div>
+  <div class="cos"><span class="co">金山办公<em>688111</em></span><span class="co">万兴科技<em>300624</em></span><span class="co">汉王科技<em>002362</em></span><span class="co">福昕软件<em>688095</em></span></div>
+</div>
+<div class="dir" data-s="ai营销与内容生成 aigc概念 bk1111 易点天下 值得买 蓝色光标 利欧股份 每日互动">
+  <div class="dir-name"><span>AI营销与内容生成</span><span class="board">AIGC概念 BK1111</span></div>
+  <div class="cos"><span class="co">易点天下<em>301171</em></span><span class="co">值得买<em>300785</em></span><span class="co">蓝色光标<em>300058</em></span><span class="co">利欧股份<em>002131</em></span><span class="co">每日互动<em>300766</em></span></div>
+</div>
+<div class="dir" data-s="智能驾驶软件与操作系统 智能驾驶 bk0802 中科创达 虹软科技 光庭信息 四维图新 均胜电子">
+  <div class="dir-name"><span>智能驾驶软件与操作系统</span><span class="board">智能驾驶 BK0802</span></div>
+  <div class="cos"><span class="co">中科创达<em>300496</em></span><span class="co">虹软科技<em>688088</em></span><span class="co">光庭信息<em>301221</em></span><span class="co">四维图新<em>002405</em></span><span class="co">均胜电子<em>600699</em></span></div>
+</div>
+<div class="dir" data-s="安防与aiot视觉 智慧城市 bk0628 海康威视 大华股份 萤石网络 苏州科达">
+  <div class="dir-name"><span>安防与AIoT视觉</span><span class="board">智慧城市 BK0628</span></div>
+  <div class="cos"><span class="co">海康威视<em>002415</em></span><span class="co">大华股份<em>002236</em></span><span class="co">萤石网络<em>688475</em></span><span class="co">苏州科达<em>603660</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>行业软件与金融科技<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="金融科技与证券it 金融信息服务 bk1360 恒生电子 同花顺 财富趋势 指南针 顶点软件 宇信科技 长亮科技">
+  <div class="dir-name"><span>金融科技与证券IT</span><span class="board">金融信息服务 BK1360</span></div>
+  <div class="cos"><span class="co">恒生电子<em>600570</em></span><span class="co">同花顺<em>300033</em></span><span class="co">财富趋势<em>688318</em></span><span class="co">指南针<em>300803</em></span><span class="co">顶点软件<em>603383</em></span><span class="co">宇信科技<em>300674</em></span><span class="co">长亮科技<em>300348</em></span></div>
+</div>
+<div class="dir" data-s="企业服务与工业软件 横向通用软件 bk1448 用友网络 广联达 中望软件 索辰科技 鼎捷数智 汉得信息 赛意信息 能科科技">
+  <div class="dir-name"><span>企业服务与工业软件</span><span class="board">横向通用软件 BK1448</span></div>
+  <div class="cos"><span class="co">用友网络<em>600588</em></span><span class="co">广联达<em>002410</em></span><span class="co">中望软件<em>688083</em></span><span class="co">索辰科技<em>688507</em></span><span class="co">鼎捷数智<em>300378</em></span><span class="co">汉得信息<em>300170</em></span><span class="co">赛意信息<em>300687</em></span><span class="co">能科科技<em>603859</em></span></div>
+</div>
+<div class="dir" data-s="医疗与政务信息化 垂直应用软件 bk1447 卫宁健康 创业慧康 中科软 京北方 太极股份 东华软件 石基信息 行云科技">
+  <div class="dir-name"><span>医疗与政务信息化</span><span class="board">垂直应用软件 BK1447</span></div>
+  <div class="cos"><span class="co">卫宁健康<em>300253</em></span><span class="co">创业慧康<em>300451</em></span><span class="co">中科软<em>603927</em></span><span class="co">京北方<em>002987</em></span><span class="co">太极股份<em>002368</em></span><span class="co">东华软件<em>002065</em></span><span class="co">石基信息<em>002153</em></span><span class="co">行云科技<em>300209</em></span></div>
+</div>
+<div class="dir" data-s="数据要素与大数据 数据要素 bk1135 每日互动 拓尔思 广电运通 人民网 中文在线 浙数文化 上海钢联">
+  <div class="dir-name"><span>数据要素与大数据</span><span class="board">数据要素 BK1135</span></div>
+  <div class="cos"><span class="co">每日互动<em>300766</em></span><span class="co">拓尔思<em>300229</em></span><span class="co">广电运通<em>002152</em></span><span class="co">人民网<em>603000</em></span><span class="co">中文在线<em>300364</em></span><span class="co">浙数文化<em>600633</em></span><span class="co">上海钢联<em>300226</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>网络安全<span class="n">1 个方向</span></h3>
+<div class="dir" data-s="网络安全与数据安全 网络安全 bk0655 奇安信-u 深信服 启明星辰 绿盟科技 安恒信息 天融信 山石网科 安博通 迪普科技 电科网安 亚信安全 麒麟信安">
+  <div class="dir-name"><span>网络安全与数据安全</span><span class="board">网络安全 BK0655</span></div>
+  <div class="cos"><span class="co">奇安信-U<em>688561</em></span><span class="co">深信服<em>300454</em></span><span class="co">启明星辰<em>002439</em></span><span class="co">绿盟科技<em>300369</em></span><span class="co">安恒信息<em>688023</em></span><span class="co">天融信<em>002212</em></span><span class="co">山石网科<em>688030</em></span><span class="co">安博通<em>688168</em></span><span class="co">迪普科技<em>300768</em></span><span class="co">电科网安<em>002268</em></span><span class="co">亚信安全<em>688225</em></span><span class="co">麒麟信安<em>688152</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>计算机设备与存储模组<span class="n">2 个方向</span></h3>
+<div class="dir" data-s="存储模组与主控 存储芯片 bk1137 江波龙 佰维存储 德明利 香农芯创 大普微-uw 深科技 朗科科技">
+  <div class="dir-name"><span>存储模组与主控</span><span class="board">存储芯片 BK1137</span></div>
+  <div class="cos"><span class="co">江波龙<em>301308</em></span><span class="co">佰维存储<em>688525</em></span><span class="co">德明利<em>001309</em></span><span class="co">香农芯创<em>300475</em></span><span class="co">大普微-UW<em>301666</em></span><span class="co">深科技<em>000021</em></span><span class="co">朗科科技<em>300042</em></span></div>
+</div>
+<div class="dir" data-s="计算机外设与算力硬件 计算机设备 bk0735 广电运通 新 大 陆 优博讯 智微智能 奔图科技 同方股份">
+  <div class="dir-name"><span>计算机外设与算力硬件</span><span class="board">计算机设备 BK0735</span></div>
+  <div class="cos"><span class="co">广电运通<em>002152</em></span><span class="co">新 大 陆<em>000997</em></span><span class="co">优博讯<em>300531</em></span><span class="co">智微智能<em>001339</em></span><span class="co">奔图科技<em>002180</em></span><span class="co">同方股份<em>600100</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-power" style="--gc:#1d9bb8;--gcs:#e8f7fa">
+  <header class="group-head">
+    <div>
+      <h2>电力设备与新能源科技</h2>
+      <p class="gdesc">电网、储能、光伏、风电、核电属于A股科技成长股的重要组成，与算力用电直接相关</p>
+      <p class="gsw">东财行业: 电力设备(BK1200) / 电池(BK1033) / 光伏设备(BK1031)</p>
+    </div>
+    <div class="gstat"><strong>7</strong><span>子行业</span><strong>19</strong><span>细分方向</span><strong>121</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>电网与电力设备<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="一次设备与特高压 电网设备 bk0457 特变电工 中国西电 思源电气 平高电气 许继电气 明阳电气 金盘科技">
+  <div class="dir-name"><span>一次设备与特高压</span><span class="board">电网设备 BK0457</span></div>
+  <div class="cos"><span class="co">特变电工<em>600089</em></span><span class="co">中国西电<em>601179</em></span><span class="co">思源电气<em>002028</em></span><span class="co">平高电气<em>600312</em></span><span class="co">许继电气<em>000400</em></span><span class="co">明阳电气<em>301291</em></span><span class="co">金盘科技<em>688676</em></span></div>
+</div>
+<div class="dir" data-s="二次设备与电网自动化 电网自动化设备 bk1309 国电南瑞 四方股份 南网科技 东方电子 许继电气">
+  <div class="dir-name"><span>二次设备与电网自动化</span><span class="board">电网自动化设备 BK1309</span></div>
+  <div class="cos"><span class="co">国电南瑞<em>600406</em></span><span class="co">四方股份<em>601126</em></span><span class="co">南网科技<em>688248</em></span><span class="co">东方电子<em>000682</em></span><span class="co">许继电气<em>000400</em></span></div>
+</div>
+<div class="dir" data-s="低压电器与继电器 配电设备 bk1310 正泰电器 宏发股份 良信股份 众业达">
+  <div class="dir-name"><span>低压电器与继电器</span><span class="board">配电设备 BK1310</span></div>
+  <div class="cos"><span class="co">正泰电器<em>601877</em></span><span class="co">宏发股份<em>600885</em></span><span class="co">良信股份<em>002706</em></span><span class="co">众业达<em>002441</em></span></div>
+</div>
+<div class="dir" data-s="电线电缆与海缆 线缆部件及其他 bk1312 东方电缆 中天科技 亨通光电 远东股份 汉缆股份 杭电股份">
+  <div class="dir-name"><span>电线电缆与海缆</span><span class="board">线缆部件及其他 BK1312</span></div>
+  <div class="cos"><span class="co">东方电缆<em>603606</em></span><span class="co">中天科技<em>600522</em></span><span class="co">亨通光电<em>600487</em></span><span class="co">远东股份<em>600869</em></span><span class="co">汉缆股份<em>002498</em></span><span class="co">杭电股份<em>603618</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>储能与固态电池<span class="n">3 个方向</span></h3>
+<div class="dir" data-s="储能电池与系统 储能概念 bk0989 宁德时代 亿纬锂能 国轩高科 欣旺达 派能科技 鹏辉能源 天能股份 珠海冠宇 孚能科技">
+  <div class="dir-name"><span>储能电池与系统</span><span class="board">储能概念 BK0989</span></div>
+  <div class="cos"><span class="co">宁德时代<em>300750</em></span><span class="co">亿纬锂能<em>300014</em></span><span class="co">国轩高科<em>002074</em></span><span class="co">欣旺达<em>300207</em></span><span class="co">派能科技<em>688063</em></span><span class="co">鹏辉能源<em>300438</em></span><span class="co">天能股份<em>688819</em></span><span class="co">珠海冠宇<em>688772</em></span><span class="co">孚能科技<em>688567</em></span></div>
+</div>
+<div class="dir" data-s="固态电池 固态电池 bk0968 宁德时代 当升科技 赣锋锂业 天赐材料 恩捷股份 三祥新材 上海洗霸">
+  <div class="dir-name"><span>固态电池</span><span class="board">固态电池 BK0968</span></div>
+  <div class="cos"><span class="co">宁德时代<em>300750</em></span><span class="co">当升科技<em>300073</em></span><span class="co">赣锋锂业<em>002460</em></span><span class="co">天赐材料<em>002709</em></span><span class="co">恩捷股份<em>002812</em></span><span class="co">三祥新材<em>603663</em></span><span class="co">上海洗霸<em>603200</em></span></div>
+</div>
+<div class="dir" data-s="储能变流器与系统集成 逆变器 bk1320 阳光电源 盛弘股份 上能电气 科华数据 科士达">
+  <div class="dir-name"><span>储能变流器与系统集成</span><span class="board">逆变器 BK1320</span></div>
+  <div class="cos"><span class="co">阳光电源<em>300274</em></span><span class="co">盛弘股份<em>300693</em></span><span class="co">上能电气<em>300827</em></span><span class="co">科华数据<em>002335</em></span><span class="co">科士达<em>002518</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>电池材料与设备<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="正极材料与前驱体 电池化学品 bk1302 容百科技 当升科技 厦钨新能 振华新材 五矿新能 湖南裕能 中伟新材 天华新能 格林美">
+  <div class="dir-name"><span>正极材料与前驱体</span><span class="board">电池化学品 BK1302</span></div>
+  <div class="cos"><span class="co">容百科技<em>688005</em></span><span class="co">当升科技<em>300073</em></span><span class="co">厦钨新能<em>688778</em></span><span class="co">振华新材<em>688707</em></span><span class="co">五矿新能<em>688779</em></span><span class="co">湖南裕能<em>301358</em></span><span class="co">中伟新材<em>300919</em></span><span class="co">天华新能<em>300390</em></span><span class="co">格林美<em>002340</em></span></div>
+</div>
+<div class="dir" data-s="负极材料 电池化学品 bk1302 璞泰来 杉杉股份 尚太科技 中科电气 贝特瑞">
+  <div class="dir-name"><span>负极材料</span><span class="board">电池化学品 BK1302</span></div>
+  <div class="cos"><span class="co">璞泰来<em>603659</em></span><span class="co">杉杉股份<em>600884</em></span><span class="co">尚太科技<em>001301</em></span><span class="co">中科电气<em>300035</em></span><span class="co">贝特瑞<em>920185</em></span></div>
+</div>
+<div class="dir" data-s="电解液与隔膜 电池化学品 bk1302 天赐材料 新宙邦 多氟多 恩捷股份 星源材质">
+  <div class="dir-name"><span>电解液与隔膜</span><span class="board">电池化学品 BK1302</span></div>
+  <div class="cos"><span class="co">天赐材料<em>002709</em></span><span class="co">新宙邦<em>300037</em></span><span class="co">多氟多<em>002407</em></span><span class="co">恩捷股份<em>002812</em></span><span class="co">星源材质<em>300568</em></span></div>
+</div>
+<div class="dir" data-s="锂电设备与结构件 锂电专用设备 bk1304 先导智能 杭可科技 赢合科技 科达利 震裕科技 利元亨 联赢激光 逸飞激光">
+  <div class="dir-name"><span>锂电设备与结构件</span><span class="board">锂电专用设备 BK1304</span></div>
+  <div class="cos"><span class="co">先导智能<em>300450</em></span><span class="co">杭可科技<em>688006</em></span><span class="co">赢合科技<em>300457</em></span><span class="co">科达利<em>002850</em></span><span class="co">震裕科技<em>300953</em></span><span class="co">利元亨<em>688499</em></span><span class="co">联赢激光<em>688518</em></span><span class="co">逸飞激光<em>688646</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>光伏<span class="n">4 个方向</span></h3>
+<div class="dir" data-s="主链(硅料/硅片/电池/组件) 光伏电池组件 bk1315 隆基绿能 通威股份 晶科能源 天合光能 晶澳科技 爱旭股份 tcl中环 大全能源 阿特斯 横店东磁">
+  <div class="dir-name"><span>主链(硅料/硅片/电池/组件)</span><span class="board">光伏电池组件 BK1315</span></div>
+  <div class="cos"><span class="co">隆基绿能<em>601012</em></span><span class="co">通威股份<em>600438</em></span><span class="co">晶科能源<em>688223</em></span><span class="co">天合光能<em>688599</em></span><span class="co">晶澳科技<em>002459</em></span><span class="co">爱旭股份<em>600732</em></span><span class="co">TCL中环<em>002129</em></span><span class="co">大全能源<em>688303</em></span><span class="co">阿特斯<em>688472</em></span><span class="co">横店东磁<em>002056</em></span></div>
+</div>
+<div class="dir" data-s="逆变器与储能 逆变器 bk1320 阳光电源 德业股份 锦浪科技 固德威 禾迈股份 昱能科技 艾罗能源">
+  <div class="dir-name"><span>逆变器与储能</span><span class="board">逆变器 BK1320</span></div>
+  <div class="cos"><span class="co">阳光电源<em>300274</em></span><span class="co">德业股份<em>605117</em></span><span class="co">锦浪科技<em>300763</em></span><span class="co">固德威<em>688390</em></span><span class="co">禾迈股份<em>688032</em></span><span class="co">昱能科技<em>688348</em></span><span class="co">艾罗能源<em>688717</em></span></div>
+</div>
+<div class="dir" data-s="光伏辅材 光伏辅材 bk1316 福斯特 福莱特 聚和材料 帝科股份 海优新材 联泓新科">
+  <div class="dir-name"><span>光伏辅材</span><span class="board">光伏辅材 BK1316</span></div>
+  <div class="cos"><span class="co">福斯特<em>603806</em></span><span class="co">福莱特<em>601865</em></span><span class="co">聚和材料<em>688503</em></span><span class="co">帝科股份<em>300842</em></span><span class="co">海优新材<em>688680</em></span><span class="co">联泓新科<em>003022</em></span></div>
+</div>
+<div class="dir" data-s="光伏设备 光伏加工设备 bk1317 迈为股份 捷佳伟创 晶盛机电 奥特维 拉普拉斯 帝尔激光 高测股份">
+  <div class="dir-name"><span>光伏设备</span><span class="board">光伏加工设备 BK1317</span></div>
+  <div class="cos"><span class="co">迈为股份<em>300751</em></span><span class="co">捷佳伟创<em>300724</em></span><span class="co">晶盛机电<em>300316</em></span><span class="co">奥特维<em>688516</em></span><span class="co">拉普拉斯<em>688726</em></span><span class="co">帝尔激光<em>300776</em></span><span class="co">高测股份<em>688556</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>风电<span class="n">1 个方向</span></h3>
+<div class="dir" data-s="风电整机与零部件 风电设备 bk1032 金风科技 明阳智能 运达股份 三一重能 东方电缆 大金重工 中际联合 日月股份 新强联 金雷股份">
+  <div class="dir-name"><span>风电整机与零部件</span><span class="board">风电设备 BK1032</span></div>
+  <div class="cos"><span class="co">金风科技<em>002202</em></span><span class="co">明阳智能<em>601615</em></span><span class="co">运达股份<em>300772</em></span><span class="co">三一重能<em>688349</em></span><span class="co">东方电缆<em>603606</em></span><span class="co">大金重工<em>002487</em></span><span class="co">中际联合<em>605305</em></span><span class="co">日月股份<em>603218</em></span><span class="co">新强联<em>300850</em></span><span class="co">金雷股份<em>300443</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>核电与可控核聚变<span class="n">2 个方向</span></h3>
+<div class="dir" data-s="核电设备与运营 核力发电 bk1376 中国核电 中国广核 上海电气 东方电气 中核科技 久立特材">
+  <div class="dir-name"><span>核电设备与运营</span><span class="board">核力发电 BK1376</span></div>
+  <div class="cos"><span class="co">中国核电<em>601985</em></span><span class="co">中国广核<em>003816</em></span><span class="co">上海电气<em>601727</em></span><span class="co">东方电气<em>600875</em></span><span class="co">中核科技<em>000777</em></span><span class="co">久立特材<em>002318</em></span></div>
+</div>
+<div class="dir" data-s="可控核聚变 可控核聚变 bk1163 联创光电 西部超导 安泰科技 国光电气 精达股份 永鼎股份 融发核电">
+  <div class="dir-name"><span>可控核聚变</span><span class="board">可控核聚变 BK1163</span></div>
+  <div class="cos"><span class="co">联创光电<em>600363</em></span><span class="co">西部超导<em>688122</em></span><span class="co">安泰科技<em>000969</em></span><span class="co">国光电气<em>688776</em></span><span class="co">精达股份<em>600577</em></span><span class="co">永鼎股份<em>600105</em></span><span class="co">融发核电<em>002366</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>氢能<span class="n">1 个方向</span></h3>
+<div class="dir" data-s="氢能与燃料电池 燃料电池概念 bk0913 亿华通-u 美锦能源 京城股份 雪人集团 厚普股份">
+  <div class="dir-name"><span>氢能与燃料电池</span><span class="board">燃料电池概念 BK0913</span></div>
+  <div class="cos"><span class="co">亿华通-U<em>688339</em></span><span class="co">美锦能源<em>000723</em></span><span class="co">京城股份<em>600860</em></span><span class="co">雪人集团<em>002639</em></span><span class="co">厚普股份<em>300471</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-robot" style="--gc:#c2410c;--gcs:#fdeee7">
+  <header class="group-head">
+    <div>
+      <h2>高端制造与机器人</h2>
+      <p class="gdesc">人形机器人把A股的减速器、丝杠、电机、传感器产业链重新定价</p>
+      <p class="gsw">东财行业: 机械设备(BK1205) / 自动化设备(BK1237) / 通用设备(BK0545)</p>
+    </div>
+    <div class="gstat"><strong>4</strong><span>子行业</span><strong>10</strong><span>细分方向</span><strong>70</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>人形机器人<span class="n">5 个方向</span></h3>
+<div class="dir" data-s="本体与整机 人形机器人 bk1184 宇树科技-w 埃斯顿 拓斯达 均普智能 博实股份">
+  <div class="dir-name"><span>本体与整机</span><span class="board">人形机器人 BK1184</span></div>
+  <div class="cos"><span class="co">宇树科技-W<em>688836</em></span><span class="co">埃斯顿<em>002747</em></span><span class="co">拓斯达<em>300607</em></span><span class="co">均普智能<em>688306</em></span><span class="co">博实股份<em>002698</em></span></div>
+</div>
+<div class="dir" data-s="减速器/丝杠/轴承 机器人执行器 bk1145 绿的谐波 双环传动 中大力德 五洲新春 长盛轴承 贝斯特 北特科技 恒工精密 夏厦精密">
+  <div class="dir-name"><span>减速器/丝杠/轴承</span><span class="board">机器人执行器 BK1145</span></div>
+  <div class="cos"><span class="co">绿的谐波<em>688017</em></span><span class="co">双环传动<em>002472</em></span><span class="co">中大力德<em>002896</em></span><span class="co">五洲新春<em>603667</em></span><span class="co">长盛轴承<em>300718</em></span><span class="co">贝斯特<em>300580</em></span><span class="co">北特科技<em>603009</em></span><span class="co">恒工精密<em>301261</em></span><span class="co">夏厦精密<em>001306</em></span></div>
+</div>
+<div class="dir" data-s="电机与执行器 机器人执行器 bk1145 三花智控 拓普集团 鸣志电器 兆威机电 步科股份 江苏雷利 鼎智科技 恒帅股份">
+  <div class="dir-name"><span>电机与执行器</span><span class="board">机器人执行器 BK1145</span></div>
+  <div class="cos"><span class="co">三花智控<em>002050</em></span><span class="co">拓普集团<em>601689</em></span><span class="co">鸣志电器<em>603728</em></span><span class="co">兆威机电<em>003021</em></span><span class="co">步科股份<em>688160</em></span><span class="co">江苏雷利<em>300660</em></span><span class="co">鼎智科技<em>920593</em></span><span class="co">恒帅股份<em>300969</em></span></div>
+</div>
+<div class="dir" data-s="运控与驱动 机器人 bk1408 汇川技术 雷赛智能 禾川科技 峰岹科技">
+  <div class="dir-name"><span>运控与驱动</span><span class="board">机器人 BK1408</span></div>
+  <div class="cos"><span class="co">汇川技术<em>300124</em></span><span class="co">雷赛智能<em>002979</em></span><span class="co">禾川科技<em>688320</em></span><span class="co">峰岹科技<em>688279</em></span></div>
+</div>
+<div class="dir" data-s="感知与视觉 机器视觉 bk0998 奥比中光-w 柯力传感 汉威科技 东华测试 凌云光 奥普特 天准科技 埃科光电 思看科技">
+  <div class="dir-name"><span>感知与视觉</span><span class="board">机器视觉 BK0998</span></div>
+  <div class="cos"><span class="co">奥比中光-W<em>688322</em></span><span class="co">柯力传感<em>603662</em></span><span class="co">汉威科技<em>300007</em></span><span class="co">东华测试<em>300354</em></span><span class="co">凌云光<em>688400</em></span><span class="co">奥普特<em>688686</em></span><span class="co">天准科技<em>688003</em></span><span class="co">埃科光电<em>688610</em></span><span class="co">思看科技<em>688583</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>工业自动化与母机<span class="n">2 个方向</span></h3>
+<div class="dir" data-s="工控与自动化 工控设备 bk1407 汇川技术 中控技术 麦格米特 信捷电气 英威腾 伟创电气 博杰股份 天玛智控 国机精工">
+  <div class="dir-name"><span>工控与自动化</span><span class="board">工控设备 BK1407</span></div>
+  <div class="cos"><span class="co">汇川技术<em>300124</em></span><span class="co">中控技术<em>688777</em></span><span class="co">麦格米特<em>002851</em></span><span class="co">信捷电气<em>603416</em></span><span class="co">英威腾<em>002334</em></span><span class="co">伟创电气<em>688698</em></span><span class="co">博杰股份<em>002975</em></span><span class="co">天玛智控<em>688570</em></span><span class="co">国机精工<em>002046</em></span></div>
+</div>
+<div class="dir" data-s="工业母机与机床 工业母机 bk1004 科德数控 海天精工 创世纪 纽威数控 秦川机床 华中数控 国盛智科 浙海德曼 鼎泰高科">
+  <div class="dir-name"><span>工业母机与机床</span><span class="board">工业母机 BK1004</span></div>
+  <div class="cos"><span class="co">科德数控<em>688305</em></span><span class="co">海天精工<em>601882</em></span><span class="co">创世纪<em>300083</em></span><span class="co">纽威数控<em>688697</em></span><span class="co">秦川机床<em>000837</em></span><span class="co">华中数控<em>300161</em></span><span class="co">国盛智科<em>688558</em></span><span class="co">浙海德曼<em>688577</em></span><span class="co">鼎泰高科<em>301377</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>激光与增材制造<span class="n">2 个方向</span></h3>
+<div class="dir" data-s="激光设备与器件 激光设备 bk1409 大族激光 华工科技 锐科激光 杰普特 海目星 英诺激光 频准激光">
+  <div class="dir-name"><span>激光设备与器件</span><span class="board">激光设备 BK1409</span></div>
+  <div class="cos"><span class="co">大族激光<em>002008</em></span><span class="co">华工科技<em>000988</em></span><span class="co">锐科激光<em>300747</em></span><span class="co">杰普特<em>688025</em></span><span class="co">海目星<em>688559</em></span><span class="co">英诺激光<em>301021</em></span><span class="co">频准激光<em>688826</em></span></div>
+</div>
+<div class="dir" data-s="增材制造(3d打印) 3d打印 bk0619 铂力特 华曙高科 嘉立创">
+  <div class="dir-name"><span>增材制造(3D打印)</span><span class="board">3D打印 BK0619</span></div>
+  <div class="cos"><span class="co">铂力特<em>688333</em></span><span class="co">华曙高科<em>688433</em></span><span class="co">嘉立创<em>001232</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>低空经济<span class="n">1 个方向</span></h3>
+<div class="dir" data-s="无人机与evtol 低空经济 bk1166 中无人机 航天彩虹 纵横股份 万丰奥威 卧龙电驱 宗申动力 莱斯信息 深城交">
+  <div class="dir-name"><span>无人机与eVTOL</span><span class="board">低空经济 BK1166</span></div>
+  <div class="cos"><span class="co">中无人机<em>688297</em></span><span class="co">航天彩虹<em>002389</em></span><span class="co">纵横股份<em>688070</em></span><span class="co">万丰奥威<em>002085</em></span><span class="co">卧龙电驱<em>600580</em></span><span class="co">宗申动力<em>001696</em></span><span class="co">莱斯信息<em>688631</em></span><span class="co">深城交<em>301091</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-defense" style="--gc:#5b6b7c;--gcs:#eef1f5">
+  <header class="group-head">
+    <div>
+      <h2>军工科技与先进材料</h2>
+      <p class="gdesc">军工电子与新材料是科技链条的上游底座，很多材料同时服务半导体与算力</p>
+      <p class="gsw">东财行业: 国防军工(BK1204) / 军工电子(BK1233) / 金属新材料(BK1288)</p>
+    </div>
+    <div class="gstat"><strong>3</strong><span>子行业</span><strong>14</strong><span>细分方向</span><strong>72</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>军工电子<span class="n">3 个方向</span></h3>
+<div class="dir" data-s="军工连接器与元件 军工电子ⅲ bk1386 中航光电 航天电器 鸿远电子 火炬电子 宏达电子 振华科技 华丰科技">
+  <div class="dir-name"><span>军工连接器与元件</span><span class="board">军工电子Ⅲ BK1386</span></div>
+  <div class="cos"><span class="co">中航光电<em>002179</em></span><span class="co">航天电器<em>002025</em></span><span class="co">鸿远电子<em>603267</em></span><span class="co">火炬电子<em>603678</em></span><span class="co">宏达电子<em>300726</em></span><span class="co">振华科技<em>000733</em></span><span class="co">华丰科技<em>688629</em></span></div>
+</div>
+<div class="dir" data-s="红外与探测 军工电子ⅲ bk1386 睿创微纳 高德红外 大立科技 国睿科技">
+  <div class="dir-name"><span>红外与探测</span><span class="board">军工电子Ⅲ BK1386</span></div>
+  <div class="cos"><span class="co">睿创微纳<em>688002</em></span><span class="co">高德红外<em>002414</em></span><span class="co">大立科技<em>002214</em></span><span class="co">国睿科技<em>600562</em></span></div>
+</div>
+<div class="dir" data-s="微波射频与特种芯片 毫米波概念 bk1061 国博电子 铖昌科技 雷电微力 紫光国微 复旦微电 成都华微">
+  <div class="dir-name"><span>微波射频与特种芯片</span><span class="board">毫米波概念 BK1061</span></div>
+  <div class="cos"><span class="co">国博电子<em>688375</em></span><span class="co">铖昌科技<em>001270</em></span><span class="co">雷电微力<em>301050</em></span><span class="co">紫光国微<em>002049</em></span><span class="co">复旦微电<em>688385</em></span><span class="co">成都华微<em>688709</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>航空航天装备<span class="n">2 个方向</span></h3>
+<div class="dir" data-s="航空整机与发动机 航空装备ⅲ bk1384 中航成飞 中航沈飞 航发动力 中航西飞 中直股份">
+  <div class="dir-name"><span>航空整机与发动机</span><span class="board">航空装备Ⅲ BK1384</span></div>
+  <div class="cos"><span class="co">中航成飞<em>302132</em></span><span class="co">中航沈飞<em>600760</em></span><span class="co">航发动力<em>600893</em></span><span class="co">中航西飞<em>000768</em></span><span class="co">中直股份<em>600038</em></span></div>
+</div>
+<div class="dir" data-s="航天与卫星装备 航天装备ⅲ bk1385 中国卫星 中国卫通 航天电子 航天环宇 中天火箭 电科蓝天">
+  <div class="dir-name"><span>航天与卫星装备</span><span class="board">航天装备Ⅲ BK1385</span></div>
+  <div class="cos"><span class="co">中国卫星<em>600118</em></span><span class="co">中国卫通<em>601698</em></span><span class="co">航天电子<em>600879</em></span><span class="co">航天环宇<em>688523</em></span><span class="co">中天火箭<em>003009</em></span><span class="co">电科蓝天<em>688818</em></span></div>
+</div>
+</div>
+<div class="sub">
+  <h3><i class="bar"></i>先进材料<span class="n">9 个方向</span></h3>
+<div class="dir" data-s="碳纤维与复合材料 碳纤维 bk1171 光威复材 中复神鹰 中简科技 吉林碳谷 光启技术">
+  <div class="dir-name"><span>碳纤维与复合材料</span><span class="board">碳纤维 BK1171</span></div>
+  <div class="cos"><span class="co">光威复材<em>300699</em></span><span class="co">中复神鹰<em>688295</em></span><span class="co">中简科技<em>300777</em></span><span class="co">吉林碳谷<em>920077</em></span><span class="co">光启技术<em>002625</em></span></div>
+</div>
+<div class="dir" data-s="电子陶瓷与封装外壳 元件 bk0459 中瓷电子 三环集团 国瓷材料 博迁新材">
+  <div class="dir-name"><span>电子陶瓷与封装外壳</span><span class="board">元件 BK0459</span></div>
+  <div class="cos"><span class="co">中瓷电子<em>003031</em></span><span class="co">三环集团<em>300408</em></span><span class="co">国瓷材料<em>300285</em></span><span class="co">博迁新材<em>605376</em></span></div>
+</div>
+<div class="dir" data-s="peek与特种工程塑料 peek材料概念 bk1156 中研股份 新瀚新材 沃特股份 金发科技 国恩股份">
+  <div class="dir-name"><span>PEEK与特种工程塑料</span><span class="board">PEEK材料概念 BK1156</span></div>
+  <div class="cos"><span class="co">中研股份<em>688716</em></span><span class="co">新瀚新材<em>301076</em></span><span class="co">沃特股份<em>002886</em></span><span class="co">金发科技<em>600143</em></span><span class="co">国恩股份<em>002768</em></span></div>
+</div>
+<div class="dir" data-s="石英与玻璃材料 非金属材料ⅱ bk1020 石英股份 菲利华 凯盛科技 中国巨石 宏和科技">
+  <div class="dir-name"><span>石英与玻璃材料</span><span class="board">非金属材料Ⅱ BK1020</span></div>
+  <div class="cos"><span class="co">石英股份<em>603688</em></span><span class="co">菲利华<em>300395</em></span><span class="co">凯盛科技<em>600552</em></span><span class="co">中国巨石<em>600176</em></span><span class="co">宏和科技<em>603256</em></span></div>
+</div>
+<div class="dir" data-s="金刚石与超硬材料 培育钻石 bk0970 力量钻石 黄河旋风 四方达 沃尔德">
+  <div class="dir-name"><span>金刚石与超硬材料</span><span class="board">培育钻石 BK0970</span></div>
+  <div class="cos"><span class="co">力量钻石<em>301071</em></span><span class="co">黄河旋风<em>600172</em></span><span class="co">四方达<em>300179</em></span><span class="co">沃尔德<em>688028</em></span></div>
+</div>
+<div class="dir" data-s="稀土永磁与磁材 稀土永磁 bk0578 北方稀土 中国稀土 金力永磁 中科三环 宁波韵升 正海磁材 横店东磁 铂科新材">
+  <div class="dir-name"><span>稀土永磁与磁材</span><span class="board">稀土永磁 BK0578</span></div>
+  <div class="cos"><span class="co">北方稀土<em>600111</em></span><span class="co">中国稀土<em>000831</em></span><span class="co">金力永磁<em>300748</em></span><span class="co">中科三环<em>000970</em></span><span class="co">宁波韵升<em>600366</em></span><span class="co">正海磁材<em>300224</em></span><span class="co">横店东磁<em>002056</em></span><span class="co">铂科新材<em>300811</em></span></div>
+</div>
+<div class="dir" data-s="超导材料 超导概念 bk0679 西部超导 永鼎股份 精达股份 联创光电 东方钽业">
+  <div class="dir-name"><span>超导材料</span><span class="board">超导概念 BK0679</span></div>
+  <div class="cos"><span class="co">西部超导<em>688122</em></span><span class="co">永鼎股份<em>600105</em></span><span class="co">精达股份<em>600577</em></span><span class="co">联创光电<em>600363</em></span><span class="co">东方钽业<em>000962</em></span></div>
+</div>
+<div class="dir" data-s="导热与散热材料 液冷服务器 bk1138 中石科技 飞荣达 思泉新材 苏州天脉 博迁新材">
+  <div class="dir-name"><span>导热与散热材料</span><span class="board">液冷服务器 BK1138</span></div>
+  <div class="cos"><span class="co">中石科技<em>300684</em></span><span class="co">飞荣达<em>300602</em></span><span class="co">思泉新材<em>301489</em></span><span class="co">苏州天脉<em>301626</em></span><span class="co">博迁新材<em>605376</em></span></div>
+</div>
+<div class="dir" data-s="金属新材料 金属新材料 bk1288 博迁新材 斯瑞新材 博威合金 悦安新材 江南新材">
+  <div class="dir-name"><span>金属新材料</span><span class="board">金属新材料 BK1288</span></div>
+  <div class="cos"><span class="co">博迁新材<em>605376</em></span><span class="co">斯瑞新材<em>688102</em></span><span class="co">博威合金<em>601137</em></span><span class="co">悦安新材<em>688786</em></span><span class="co">江南新材<em>603124</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+<section class="group" id="g-media" style="--gc:#c026a6;--gcs:#fdebf8">
+  <header class="group-head">
+    <div>
+      <h2>数字内容与传媒AI</h2>
+      <p class="gdesc">AI降本增效最先兑现的C端内容侧，属于泛科技范围</p>
+      <p class="gsw">东财行业: 传媒(BK0486) / 游戏(BK1046) / 数字媒体(BK1221)</p>
+    </div>
+    <div class="gstat"><strong>1</strong><span>子行业</span><strong>3</strong><span>细分方向</span><strong>17</strong><span>代表公司</span></div>
+  </header>
+<div class="sub">
+  <h3><i class="bar"></i>内容与平台<span class="n">3 个方向</span></h3>
+<div class="dir" data-s="游戏与互动娱乐 游戏ⅱ bk1046 世纪华通 三七互娱 恺英网络 巨人网络 完美世界 昆仑万维">
+  <div class="dir-name"><span>游戏与互动娱乐</span><span class="board">游戏Ⅱ BK1046</span></div>
+  <div class="cos"><span class="co">世纪华通<em>002602</em></span><span class="co">三七互娱<em>002555</em></span><span class="co">恺英网络<em>002517</em></span><span class="co">巨人网络<em>002558</em></span><span class="co">完美世界<em>002624</em></span><span class="co">昆仑万维<em>300418</em></span></div>
+</div>
+<div class="dir" data-s="影视与ip 影视院线 bk1222 光线传媒 华策影视 上海电影 芒果超媒 中文在线 掌阅科技">
+  <div class="dir-name"><span>影视与IP</span><span class="board">影视院线 BK1222</span></div>
+  <div class="cos"><span class="co">光线传媒<em>300251</em></span><span class="co">华策影视<em>300133</em></span><span class="co">上海电影<em>601595</em></span><span class="co">芒果超媒<em>300413</em></span><span class="co">中文在线<em>300364</em></span><span class="co">掌阅科技<em>603533</em></span></div>
+</div>
+<div class="dir" data-s="营销与数字广告 广告营销 bk1220 分众传媒 蓝色光标 利欧股份 易点天下 视觉中国">
+  <div class="dir-name"><span>营销与数字广告</span><span class="board">广告营销 BK1220</span></div>
+  <div class="cos"><span class="co">分众传媒<em>002027</em></span><span class="co">蓝色光标<em>300058</em></span><span class="co">利欧股份<em>002131</em></span><span class="co">易点天下<em>301171</em></span><span class="co">视觉中国<em>000681</em></span></div>
+</div>
+</div>
+  <p class="empty" hidden>没有匹配的方向。</p>
+</section>
+
+  <section class="notes">
+    <h2>口径、边界与阅读提示</h2>
+    <ul>
+      <li><b>分类口径：</b>以东财行业分类（三级）为骨架，叠加市场概念板块（当日共 504 个概念板块）作为交叉校验；一个细分可能对应多个概念板块。</li>
+      <li><b>公司选取：</b>按该板块真实成分股 + 市值排序筛选代表公司，共 750 家，括号内为证券代码，全部与 2026-09-16 的实时名称逐条核对过。</li>
+      <li><b>重叠提醒：</b>概念板块是市场标签，同一家公司会同时出现在多个方向，按板块加总会重复计算，不能直接当作某方向的规模。</li>
+      <li><b>不含范围：</b>港股与中概股、医药生物、券商地产等非科技行业；传媒只保留了一个泛科技分支。</li>
+      <li><b>名称变更：</b>韦尔股份→豪威集团、博创科技→长芯博创、万业企业→先导基电、北京君正→君正股份、中电科网安→电科网安、长远锂科→五矿新能、华虹公司→华虹宏力；闻泰科技现为 *ST闻泰，东方通已退市，臻镭科技/佳缘科技/惠伦晶体/东尼电子/信安世纪带 ST，这类标的已从名单中剔除或改名。</li>
+    </ul>
+    <h3>怎么用这张图</h3>
+    <ul>
+      <li>顶部搜索框可同时搜方向名和公司名；门类按钮可只看某一门类；<span class="kbd">Esc</span> 清空搜索。<span class="no-print">打印时可另存为 PDF。</span></li>
+      <li>先定位你熟悉的那家公司属于哪条链，再看它的上下游分别对应哪些方向，判断逻辑比记标签更稳。</li>
+      <li>本图是产业地图与事实索引，不构成投资建议；涉及个股请以最新公告与定期报告为准。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function(){
+  var q = document.getElementById("q");
+  var clr = document.getElementById("clr");
+  var hit = document.getElementById("hit");
+  var buttons = Array.prototype.slice.call(document.querySelectorAll("[data-filter]"));
+  var groups = Array.prototype.slice.call(document.querySelectorAll(".group"));
+  var total = document.querySelectorAll(".dir").length;
+  var active = "all";
+
+  function apply(){
+    var term = (q.value || "").trim().toLowerCase();
+    var shown = 0;
+    groups.forEach(function(g){
+      var groupOk = (active === "all" || active === g.id);
+      var anyInGroup = false;
+      Array.prototype.forEach.call(g.querySelectorAll(".sub"), function(sub){
+        var anyInSub = false;
+        Array.prototype.forEach.call(sub.querySelectorAll(".dir"), function(d){
+          var ok = groupOk && (!term || (d.getAttribute("data-s") || "").indexOf(term) !== -1);
+          if (ok) { anyInSub = true; shown++; }
+          if (ok) { d.removeAttribute("hidden"); } else { d.setAttribute("hidden", ""); }
+        });
+        if (anyInSub) { sub.removeAttribute("hidden"); anyInGroup = true; }
+        else { sub.setAttribute("hidden", ""); }
+      });
+      if (anyInGroup) { g.removeAttribute("hidden"); } else { g.setAttribute("hidden", ""); }
+      var empty = g.querySelector(".empty");
+      if (empty) { if (anyInGroup) { empty.setAttribute("hidden", ""); } else { empty.removeAttribute("hidden"); } }
+    });
+    if (!term && active === "all") { hit.textContent = ""; }
+    else { hit.textContent = "匹配 " + shown + " / " + total + " 个细分方向"; }
+  }
+
+  q.addEventListener("input", apply);
+  clr.addEventListener("click", function(){ q.value = ""; q.focus(); apply(); });
+  q.addEventListener("keydown", function(e){ if (e.key === "Escape") { q.value = ""; apply(); } });
+  buttons.forEach(function(b){
+    b.addEventListener("click", function(){
+      active = b.getAttribute("data-filter");
+      buttons.forEach(function(x){ x.classList.toggle("is-on", x === b); });
+      apply();
+    });
+  });
+  apply();
+})();
+</script>
+
+<style>
+  #vn{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;gap:6px;align-items:center;
+    background:rgba(255,255,255,.95);border:1px solid #dde3ea;border-radius:999px;padding:6px 8px;
+    box-shadow:0 2px 10px rgba(16,24,40,.10);font:12px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  #vn b{color:#5d6b7a;font-weight:500;padding:0 6px 0 4px}
+  #vn a{color:#161b22;text-decoration:none;padding:4px 10px;border-radius:999px;border:1px solid #dde3ea}
+  #vn a:hover{background:#f4f6f9}
+  #vn a[aria-current="page"]{background:#161b22;border-color:#161b22;color:#fff}
+  @media print{#vn{display:none}}
+</style>
+<div id="vn" class="no-print"><b>版本</b><a href="./index.html">脑图版</a><a href="./tree.html">树状版</a><a href="./table.html" aria-current="page">表格版</a></div>
+</body>
+</html>

@@ -1,6 +1,6 @@
-# R2 收益账本
+# 钱多多
 
-一个本地运行的 R2 理财每日收益记录页。前端使用 Vue 3 + Vite + TypeScript，后端继续使用 Node.js 内置 HTTP 与 SQLite。数据只保存在本机，不上传账户信息。
+钱多多是一个本地运行的个人财富工作台，左侧分为“理财”和“投资”两个模块。理财模块是 R2 每日收益账本，投资模块是 A 股科技产业资料。前端使用 Vue 3 + Vite + TypeScript，后端继续使用 Node.js 内置 HTTP 与 SQLite。数据只保存在本机，不上传账户信息。
 
 ## 功能
 
@@ -76,6 +76,32 @@ npm run server
 
 或使用 `npm start` 一次完成构建和服务启动。数据库文件在 `data/r2_ledger.sqlite`。
 
+## 生产守护部署（Windows）
+
+首次部署或发布新版本时运行：
+
+```powershell
+npm run prod:deploy
+```
+
+脚本会依次执行生产构建、回归测试、后台守护进程启动和健康检查，并尝试注册计划任务 `QianDuoDuo-Production`。该任务在用户登录后启动，并每 5 分钟检查一次守护进程是否存活。如果当前用户没有创建计划任务的权限，脚本会自动把启动快捷方式安装到当前用户的 Startup 目录。
+
+日常运维命令：
+
+```powershell
+npm run prod:status
+npm run prod:start
+npm run prod:restart
+npm run prod:stop
+```
+
+- 生产地址：`http://127.0.0.1:8765`
+- 守护脚本：`scripts/daemon.ps1`
+- 部署脚本：`scripts/deploy-production.ps1`
+- PID 文件：`run/daemon.pid`、`run/server.pid`
+- 日志目录：`logs/`（`daemon.log` 记录守护事件，`server-*.out.log` / `server-*.err.log` 记录 Node 输出）
+- 服务只监听 `127.0.0.1`；`prod:stop` 会停止并暂时禁用自动巡检，`prod:start` 会重新启用。
+
 ## 环境变量
 
 复制 `.env.example` 为 `.env`，按需修改：
@@ -129,6 +155,17 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 
 购买前必须以招行 App、产品说明书和当日公告为准。R2/PR2 不等于保本，历史年化不代表未来收益。
 
+## 研究资料模块
+
+- 入口：`/investment/tech-map`，可从左侧“投资”菜单进入；旧地址 `/research/tech-map` 会自动跳转。
+- 内容：A股科技全景图，包含脑图、树状和表格三种原生 Vue 视图；静态快照为 2026-09-16，覆盖 8 大门类、40 个子行业、156 个细分方向和 750 家代表公司。
+- 数据与组件：数据在 `src/data/techmap.json`，类型和统计在 `src/data/techmap.ts`，视图组件在 `src/components/techmap/`，共享样式在 `src/styles/techmap.css`。
+- 交互：脑图支持滚轮/按钮缩放、拖拽、逐级展开、搜索定位和适应屏幕；树状支持逐级折叠、全部展开和只留骨架；表格支持门类筛选、方向/公司搜索。三种视图均支持打印当前视图，页面支持全屏查看和 `?view=canvas|tree|table` 视图切换。
+- 布局：采用紧凑标题、顶部视图切换栏和全高内容区；桌面端三种视图填满剩余视口，移动端树状与表格使用页面自然滚动。
+- 边界：该模块是 A 股产业资料，不属于 R2 理财产品，不进入收益账本、产品池排序或选品结论，也不构成投资建议。
+- 归档：`public/research/techmap/` 保留原始静态 HTML，仅作资料来源归档，运行时不加载。
+- 更新：更新 `src/data/techmap.json` 中的快照，并同步核对类型、统计和 `test/techmap.test.mjs` 的数量断言；数据日期与风险边界不得随意改变。
+
 ## 数据与接口
 
 - `GET /api/dashboard`：记录、指标、本金账户、窗口汇总和产品观察池。
@@ -151,4 +188,4 @@ npm test
 npm run check
 ```
 
-`npm test` 覆盖 API、SQLite、本金快照、指标计算和产品排序；`npm run check` 会执行 Vue TypeScript 检查和 Node.js 语法检查。
+`npm test` 覆盖 API、SQLite、本金快照、指标计算、产品排序和科技图谱快照完整性；`npm run check` 会执行 Vue TypeScript 检查和 Node.js 语法检查。

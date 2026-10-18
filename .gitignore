@@ -6,4 +6,6 @@ node_modules/
 dist/
 .env
 .env.local
+run/
+logs/
 *.log

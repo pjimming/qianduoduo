@@ -495,7 +495,7 @@ function startServer(options = {}) {
 
   server.listen(port, host, () => {
     console.log('');
-    console.log('  R2 收益账本已启动');
+  console.log('  钱多多已启动');
     console.log(`  打开：http://${host}:${port}`);
     console.log(`  数据库：${repository.dbPath}`);
     console.log('  按 Ctrl+C 停止服务');
