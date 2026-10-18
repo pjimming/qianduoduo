@@ -78,7 +78,7 @@ test('monthly grades use the 0.16/0.20/0.25/0.30 thresholds', () => {
   assert.equal(gradeMonthReturn(0.30), '卓越');
 });
 
-test('buildReview summarizes the latest day and monthly cumulative return', () => {
+test('buildReview keeps a provisional month ungraded and exposes target progress', () => {
   const enriched = enrichRecords([
     ...baseRecords,
     {
@@ -101,11 +101,100 @@ test('buildReview summarizes the latest day and monthly cumulative return', () =
   assert.equal(review.current_month.pnl, 1000);
   assert.equal(review.current_month.avg_principal, 540000);
   assert.equal(review.current_month.return_pct, 0.185185);
-  assert.equal(review.current_month.grade, '及格');
+  assert.equal(review.current_month.grade, null);
+  assert.equal(review.current_month.grade_preview, '及格');
+  assert.equal(review.current_month.grade_display, '进行中');
+  assert.equal(review.current_month.final, false);
   assert.equal(review.current_month.provisional, true);
+  assert.ok(review.current_month.annualized_pct !== null);
+  assert.ok(review.current_month.target_progress_pct !== null);
+  assert.ok(review.current_month.max_drawdown_pct < 0);
   assert.equal(review.daily.date, '2026-10-02');
   assert.equal(review.daily.month_pnl, 1000);
-  assert.equal(review.daily.month_grade, '及格');
+  assert.equal(review.daily.month_grade, '进行中');
+  assert.equal(review.daily.month_grade_preview, '及格');
   assert.equal(review.monthly[0].month, '2026-10');
   assert.equal(review.monthly[1].month, '2026-09');
+  assert.equal(review.monthly[0].compare.prev_month, '2026-09');
+  assert.equal(review.target_annualized_pct, 3);
+  assert.ok(review.target_month_pct > 0.24 && review.target_month_pct < 0.25);
+  assert.ok(Array.isArray(review.alerts));
+  assert.ok(review.weekly);
+});
+
+test('a closed month with enough samples receives a final grade', () => {
+  const rows = [];
+  for (let day = 1; day <= 30; day += 1) {
+    rows.push({
+      date: `2026-09-${String(day).padStart(2, '0')}`,
+      principal: 500000,
+      daily_pnl: 50,
+      action: '无操作',
+      notes: '',
+    });
+  }
+  const review = buildReview(enrichRecords(rows), '2026-10-05');
+  assert.equal(review.current_month, null);
+  const september = review.monthly.find((item) => item.month === '2026-09');
+  assert.equal(september.sample_sufficient, true);
+  assert.equal(september.final, true);
+  assert.equal(september.grade, '卓越');
+  assert.equal(september.grade_display, '卓越');
+  assert.equal(september.record_days, 30);
+  assert.equal(september.missing_days, 0);
+  assert.equal(september.record_coverage_pct, 100);
+  assert.ok(september.annualized_pct > 0);
+  assert.ok(september.target_gap_pct !== null);
+});
+
+test('weekly block covers the current Monday-to-Sunday window', () => {
+  const rows = [
+    { date: '2026-10-12', principal: 500000, daily_pnl: 60, action: '无操作', notes: '' },
+    { date: '2026-10-13', principal: 500000, daily_pnl: 40, action: '买入', notes: '' },
+    { date: '2026-10-14', principal: 500000, daily_pnl: -30, action: '无操作', notes: '' },
+    { date: '2026-10-15', principal: 500000, daily_pnl: -20, action: '无操作', notes: '' },
+    { date: '2026-10-16', principal: 500000, daily_pnl: -10, action: '无操作', notes: '' },
+  ];
+  const review = buildReview(enrichRecords(rows), '2026-10-16');
+  assert.equal(review.weekly.week_start, '2026-10-12');
+  assert.equal(review.weekly.week_end, '2026-10-18');
+  assert.equal(review.weekly.record_days, 5);
+  assert.equal(review.weekly.elapsed_days, 5);
+  assert.equal(review.weekly.missing_days, 0);
+  assert.equal(review.weekly.pnl, 40);
+  assert.equal(review.weekly.action_count, 1);
+  assert.equal(review.weekly.consecutive_negative_days, 3);
+  assert.ok(review.alerts.some((alert) => alert.code === 'negative-streak'));
+});
+
+test('monthly coverage reports missing records and stays provisional', () => {
+  const rows = [];
+  for (let day = 1; day <= 10; day += 1) {
+    rows.push({
+      date: `2026-10-${String(day).padStart(2, '0')}`,
+      principal: 500000,
+      daily_pnl: 40,
+      action: '无操作',
+      notes: '',
+    });
+  }
+  const review = buildReview(enrichRecords(rows), '2026-10-19');
+  assert.equal(review.current_month.elapsed_days, 19);
+  assert.equal(review.current_month.missing_days, 9);
+  assert.equal(review.current_month.record_coverage_pct, 52.63);
+  assert.equal(review.current_month.provisional, true);
+  assert.equal(review.current_month.grade, null);
+  assert.equal(review.current_month.grade_display, '进行中');
+  assert.ok(review.alerts.some((alert) => alert.code === 'missing-days'));
+  assert.ok(review.alerts.some((alert) => alert.code === 'target-behind'));
+});
+
+test('alerts flag a large single-day drop and a recording gap', () => {
+  const rows = [
+    { date: '2026-10-01', principal: 500000, daily_pnl: 60, action: '无操作', notes: '' },
+    { date: '2026-10-02', principal: 500000, daily_pnl: -600, action: '无操作', notes: '' },
+  ];
+  const review = buildReview(enrichRecords(rows), '2026-10-05');
+  assert.ok(review.alerts.some((alert) => alert.code === 'single-day-drop'));
+  assert.ok(review.alerts.some((alert) => alert.code === 'record-gap'));
 });

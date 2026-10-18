@@ -22,6 +22,7 @@ const {
   todayShanghai,
 } = require('./lib/metrics');
 const { buildProductView } = require('./lib/products');
+const { shiftMonth } = require('./lib/review-store');
 
 const ROOT = __dirname;
 const DIST_DIR = path.join(ROOT, 'dist');
@@ -29,6 +30,17 @@ const PUBLIC_DIR = path.join(ROOT, 'public');
 const STATIC_DIR = fs.existsSync(path.join(DIST_DIR, 'index.html')) ? DIST_DIR : PUBLIC_DIR;
 const DEFAULT_DB = path.join(ROOT, 'data', 'r2_ledger.sqlite');
 const ACTIONS = new Set(['无操作', '买入', '赎回', '切换']);
+const DECISION_ACTIONS = new Set(['买入', '赎回', '切换', '观察']);
+const DECISION_RATINGS = new Set([
+  '待评估',
+  '流程正确，结果好',
+  '流程正确，结果差',
+  '流程错误，结果好',
+  '流程错误，结果差',
+]);
+const EVENT_TYPES = new Set(['费率', '经理', '底层', '赎回规则', '额度', '其他']);
+const EVENT_IMPACTS = new Set(['低', '中', '高']);
+const EVENT_STATUSES = new Set(['待复核', '已处理']);
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -257,6 +269,161 @@ function validateCapitalEventPayload(payload) {
   };
 }
 
+function validateDecisionPayload(payload, options = {}) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: '决策日志格式不正确' };
+  }
+  const today = options.today || todayShanghai();
+  const date = String(payload.date ?? options.date ?? '').trim();
+  if (!parseYmd(date)) return { error: '决策日期格式应为 YYYY-MM-DD' };
+  if (date > today) return { error: '不能记录未来日期' };
+  const productName = String(payload.product_name || '').trim();
+  if (!productName) return { error: '请填写产品名称' };
+  if (productName.length > 100) return { error: '产品名称不能超过 100 个字符' };
+  const action = String(payload.action || '').trim();
+  if (!DECISION_ACTIONS.has(action)) {
+    return { error: '动作必须是买入、赎回、切换或观察' };
+  }
+  const reason = String(payload.reason || '').trim();
+  if (!reason) return { error: '请填写当时的理由' };
+  if (reason.length > 1000) return { error: '理由不能超过 1000 个字符' };
+  const expectation = String(payload.expectation || '').trim();
+  if (expectation.length > 1000) return { error: '预期不能超过 1000 个字符' };
+  const actualResult = String(payload.actual_result || '').trim();
+  if (actualResult.length > 1000) return { error: '实际结果不能超过 1000 个字符' };
+  const rating = String(payload.rating || '待评估').trim();
+  if (!DECISION_RATINGS.has(rating)) {
+    return { error: '事后评价不在允许范围内' };
+  }
+  return {
+    value: {
+      date,
+      product_name: productName,
+      action,
+      reason,
+      expectation,
+      actual_result: actualResult,
+      rating,
+    },
+  };
+}
+
+function validateHoldingPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: '持仓格式不正确' };
+  }
+  const today = todayShanghai();
+  const productName = String(payload.product_name || '').trim();
+  if (!productName) return { error: '请填写产品名称' };
+  if (productName.length > 100) return { error: '产品名称不能超过 100 个字符' };
+  const productCode = String(payload.product_code || '').trim();
+  if (productCode.length > 50) return { error: '产品代码不能超过 50 个字符' };
+  const issuer = String(payload.issuer || '').trim();
+  if (issuer.length > 100) return { error: '发行方不能超过 100 个字符' };
+  const riskRaw = String(payload.risk_level || 'R2').trim().toUpperCase();
+  const riskLevel = riskRaw === 'R2' || riskRaw === 'PR2' ? riskRaw : null;
+  if (!riskLevel) return { error: '风险等级只能是 R2 或 PR2' };
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12) {
+    return { error: '持仓金额需要是大于 0 的数字' };
+  }
+  const purchaseDate = String(payload.purchase_date || '').trim();
+  if (!parseYmd(purchaseDate)) return { error: '买入日期格式应为 YYYY-MM-DD' };
+  if (purchaseDate > today) return { error: '买入日期不能晚于今天' };
+  let termDays = null;
+  const rawTerm = payload.term_days;
+  if (rawTerm !== '' && rawTerm !== null && rawTerm !== undefined) {
+    const parsed = Number(rawTerm);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 3650) {
+      return { error: '期限需要是 0–3650 的整数天，0 表示日开' };
+    }
+    termDays = parsed;
+  }
+  const maturityRaw = String(payload.maturity_date || '').trim();
+  let maturityDate = null;
+  if (maturityRaw) {
+    if (!parseYmd(maturityRaw)) {
+      return { error: '到期日格式应为 YYYY-MM-DD' };
+    }
+    if (maturityRaw < purchaseDate) {
+      return { error: '到期日不能早于买入日' };
+    }
+    maturityDate = maturityRaw;
+  }
+  const notes = String(payload.notes || '').trim();
+  if (notes.length > 500) return { error: '持仓备注不能超过 500 个字符' };
+  return {
+    value: {
+      product_name: productName,
+      product_code: productCode,
+      issuer,
+      risk_level: riskLevel,
+      amount: Math.round(amount * 100) / 100,
+      purchase_date: purchaseDate,
+      term_days: termDays,
+      maturity_date: maturityDate,
+      notes,
+    },
+  };
+}
+
+function validateProductEventPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: '产品事件格式不正确' };
+  }
+  const today = todayShanghai();
+  const date = String(payload.date || '').trim();
+  if (!parseYmd(date)) return { error: '事件日期格式应为 YYYY-MM-DD' };
+  if (date > today) return { error: '不能记录未来日期' };
+  const productName = String(payload.product_name || '').trim();
+  if (!productName) return { error: '请填写产品名称' };
+  if (productName.length > 100) return { error: '产品名称不能超过 100 个字符' };
+  const eventType = String(payload.event_type || '').trim();
+  if (!EVENT_TYPES.has(eventType)) {
+    return { error: '事件类型不在允许范围内' };
+  }
+  const description = String(payload.description || '').trim();
+  if (!description) return { error: '请填写事件说明' };
+  if (description.length > 1000) return { error: '事件说明不能超过 1000 个字符' };
+  const impact = String(payload.impact || '中').trim();
+  if (!EVENT_IMPACTS.has(impact)) return { error: '影响程度只能是低、中、高' };
+  const status = String(payload.status || '待复核').trim();
+  if (!EVENT_STATUSES.has(status)) {
+    return { error: '事件状态只能是待复核或已处理' };
+  }
+  return {
+    value: {
+      date,
+      product_name: productName,
+      event_type: eventType,
+      description,
+      impact,
+      status,
+    },
+  };
+}
+
+function validateReviewNotePayload(payload, period, count, label) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: `${label}格式不正确` };
+  }
+  const answers = Array.isArray(payload.answers)
+    ? payload.answers.map((item) => String(item ?? '').trim())
+    : [];
+  while (answers.length < count) answers.push('');
+  if (answers.length > count) answers.length = count;
+  for (const answer of answers) {
+    if (answer.length > 2000) {
+      return { error: `${label}单条回答不能超过 2000 个字符` };
+    }
+  }
+  const conclusion = String(payload.conclusion || '').trim();
+  if (conclusion.length > 4000) {
+    return { error: `${label}结论不能超过 4000 个字符` };
+  }
+  return { value: { period, answers, conclusion } };
+}
+
 function csvEscape(value) {
   const text = value === null || value === undefined ? '' : String(value);
   if (/[",\r\n]/.test(text)) {
@@ -283,6 +450,228 @@ function buildCsv(records) {
   return `\uFEFF${lines.join('\r\n')}\r\n`;
 }
 
+function markdownCell(value) {
+  const text = String(value ?? '')
+    .replaceAll('|', '\\|')
+    .replace(/\r?\n/g, ' ')
+    .trim();
+  return text || '—';
+}
+
+function moneyText(value) {
+  const number = Number(value || 0);
+  const prefix = number < 0 ? '−' : '';
+  return `${prefix}¥${Math.abs(number).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function pctText(value, digits = 3, signed = false) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return '—';
+  }
+  const number = Number(value);
+  const prefix = signed && number > 0 ? '+' : number < 0 ? '−' : '';
+  return `${prefix}${Math.abs(number).toFixed(digits)}%`;
+}
+
+function ppText(value, digits = 2, signed = false) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return '—';
+  }
+  const number = Number(value);
+  const prefix = signed && number > 0 ? '+' : number < 0 ? '−' : '';
+  return `${prefix}${Math.abs(number).toFixed(digits)}pp`;
+}
+
+function buildMonthlyReviewMarkdown({
+  month,
+  review,
+  decisions,
+  events,
+  note,
+  holdings,
+  holdingsSummary,
+  generatedAt,
+}) {
+  const row = review.monthly.find((item) => item.month === month) || null;
+  const lines = [];
+  lines.push(`# R2 月度复盘 ${month}`);
+  lines.push('');
+  lines.push(
+    `> 生成时间：${generatedAt}；数据来源：钱多多 R2 收益账本；币种：人民币。`,
+  );
+  lines.push('> R2 不保本，以下为个人复盘记录，不构成投资建议。');
+  lines.push('');
+  lines.push('## 一、月度指标');
+  lines.push('');
+  if (!row) {
+    lines.push('该月没有收益记录。');
+  } else {
+    lines.push('| 指标 | 数值 |');
+    lines.push('| --- | ---: |');
+    lines.push(`| 月收益 | ${moneyText(row.pnl)} |`);
+    lines.push(`| 月均本金 | ${moneyText(row.avg_principal)} |`);
+    lines.push(`| 月收益率 | ${pctText(row.return_pct, 3, true)} |`);
+    lines.push(`| 年化参考 | ${pctText(row.annualized_pct, 2, true)} |`);
+    lines.push(`| 最大回撤 | ${pctText(row.max_drawdown_pct, 3)} |`);
+    lines.push(`| 负收益天数占比 | ${pctText(row.negative_day_ratio_pct, 1)} |`);
+    lines.push(`| 最好单日 | ${moneyText(row.best_day)} |`);
+    lines.push(`| 最差单日 | ${moneyText(row.worst_day)} |`);
+    lines.push(`| 目标缺口 | ${ppText(row.target_gap_pct, 2, true)} |`);
+    lines.push(
+      `| 记录完整度 | ${row.record_days}/${row.elapsed_days} 天，缺记 ${row.missing_days} 天 |`,
+    );
+    lines.push(`| 评级 | ${row.grade_display} |`);
+  }
+  lines.push('');
+  lines.push('## 二、目标进度');
+  lines.push('');
+  if (!row) {
+    lines.push('该月没有收益记录。');
+  } else {
+    lines.push(`- 按天折算目标：${pctText(row.target_mtd_pct, 3)}`);
+    lines.push(`- 当前月收益率：${pctText(row.return_pct, 3, true)}`);
+    lines.push(`- 完成进度：${pctText(row.target_progress_pct, 1)}`);
+    lines.push(
+      `- 按当前速度月底预估：${pctText(row.projected_pct, 3, true)}（短样本仅参考）`,
+    );
+  }
+  lines.push('');
+  lines.push('## 三、环比');
+  lines.push('');
+  if (!row) {
+    lines.push('该月没有收益记录。');
+  } else if (row.compare) {
+    lines.push(`对比 ${row.compare.prev_month_label}：`);
+    lines.push('');
+    lines.push(`- 收益变化：${moneyText(row.compare.pnl_delta)}`);
+    lines.push(`- 收益率变化：${ppText(row.compare.return_delta_pp, 3, true)}`);
+    lines.push(`- 回撤变化：${ppText(row.compare.drawdown_delta_pp, 3, true)}`);
+    lines.push(
+      `- 负收益天数占比变化：${ppText(
+        row.compare.negative_ratio_delta_pp,
+        1,
+        true,
+      )}`,
+    );
+    lines.push(
+      `- 操作次数变化：${row.compare.action_delta > 0 ? '+' : ''}${row.compare.action_delta}`,
+    );
+  } else {
+    lines.push('首月记录，暂无环比。');
+  }
+  lines.push('');
+  lines.push('## 四、决策日志');
+  lines.push('');
+  if (!decisions.length) {
+    lines.push('本月没有决策记录。');
+  } else {
+    lines.push('| 日期 | 产品 | 动作 | 理由 | 预期 | 实际结果 | 事后评价 |');
+    lines.push('| --- | --- | --- | --- | --- | --- | --- |');
+    for (const item of decisions) {
+      lines.push(
+        `| ${markdownCell(item.date)} | ${markdownCell(item.product_name)} | ${markdownCell(
+          item.action,
+        )} | ${markdownCell(item.reason)} | ${markdownCell(
+          item.expectation,
+        )} | ${markdownCell(item.actual_result)} | ${markdownCell(item.rating)} |`,
+      );
+    }
+  }
+  lines.push('');
+  lines.push('## 五、产品事件');
+  lines.push('');
+  if (!events.length) {
+    lines.push('本月没有产品事件记录。');
+  } else {
+    lines.push('| 日期 | 产品 | 类型 | 影响 | 状态 | 说明 |');
+    lines.push('| --- | --- | --- | --- | --- | --- |');
+    for (const item of events) {
+      lines.push(
+        `| ${markdownCell(item.date)} | ${markdownCell(item.product_name)} | ${markdownCell(
+          item.event_type,
+        )} | ${markdownCell(item.impact)} | ${markdownCell(
+          item.status,
+        )} | ${markdownCell(item.description)} |`,
+      );
+    }
+  }
+  lines.push('');
+  lines.push('## 六、月度五问');
+  lines.push('');
+  if (!note) {
+    lines.push('本月五问尚未填写。');
+  } else {
+    const questions = [
+      '这个月有没有按计划执行？哪一次偏离了，为什么？',
+      '哪笔操作真正增加了收益，哪笔只是增加了忙碌？',
+      '闲置资金拖累是否接近 0？近 3M/6M/1Y 年化离 3% 差多少？',
+      '有没有产品触发风险、流动性或费率红线？',
+      '下个月只改一件事，改什么？',
+    ];
+    questions.forEach((question, index) => {
+      lines.push(`${index + 1}. ${question}`);
+      lines.push(`   答：${markdownCell(note.answers[index])}`);
+    });
+  }
+  lines.push('');
+  lines.push('## 七、当月结论与下月只改一件事');
+  lines.push('');
+  lines.push(`- 当月结论：${markdownCell(note?.conclusion)}`);
+  lines.push(`- 下月只改一件事：${markdownCell(note?.answers?.[4])}`);
+  lines.push('');
+  lines.push('## 八、当前持仓快照');
+  lines.push('');
+  lines.push('> 这是导出时的当前持仓，不是月末持仓快照。');
+  lines.push('');
+  lines.push(`- 总持仓金额：${moneyText(holdingsSummary.total_amount)}`);
+  lines.push(
+    `- 单只最高占比：${
+      holdingsSummary.max_product
+        ? `${holdingsSummary.max_product.name} ${pctText(holdingsSummary.max_product.pct, 1)}`
+        : '—'
+    }`,
+  );
+  lines.push(
+    `- 日开 + 30 天内占比：${pctText(holdingsSummary.liquidity_ratio_pct, 1)}`,
+  );
+  lines.push(
+    `- 已到期持仓：${holdingsSummary.overdue_count} 笔，${moneyText(
+      holdingsSummary.overdue_amount,
+    )}`,
+  );
+  lines.push('');
+  if (!holdings.length) {
+    lines.push('尚未录入持仓。');
+  } else {
+    lines.push('| 产品 | 金额 | 买入日 | 期限 | 到期日 | 发行方 | 风险 |');
+    lines.push('| --- | ---: | --- | ---: | --- | --- | --- |');
+    for (const item of holdings) {
+      lines.push(
+        `| ${markdownCell(item.product_name)} | ${moneyText(item.amount)} | ${markdownCell(
+          item.purchase_date,
+        )} | ${item.term_days === 0 ? '日开' : item.term_days ? `${item.term_days} 天` : '未填'} | ${markdownCell(
+          item.maturity_date,
+        )} | ${markdownCell(item.issuer)} | ${markdownCell(item.risk_level)} |`,
+      );
+    }
+  }
+  lines.push('');
+  lines.push('## 九、复盘口径');
+  lines.push('');
+  lines.push(
+    '- 月收益率 = 月收益 ÷ 月均本金；评级：0.16% 及格、0.20% 良好、0.25% 优秀、0.30% 卓越。',
+  );
+  lines.push(
+    '- 当前月份只显示进度和参考区间；月末且满 28 天、20 条记录后才落最终评级。',
+  );
+  lines.push('- 年化、回撤和环比只用于个人复盘，不代表未来收益。');
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
 function dashboardPayload(repository) {
   const rawRecords = repository.listRecords();
   const records = enrichRecords(rawRecords);
@@ -303,6 +692,7 @@ function dashboardPayload(repository) {
       .sort()
       .at(-1) || snapshotDate;
   const backups = repository.backupDir ? listBackups(repository.backupDir) : [];
+  const review = buildReview(records, today);
 
   return {
     meta: {
@@ -321,7 +711,8 @@ function dashboardPayload(repository) {
     records,
     summary: summarize(records),
     windows: buildWindows(records),
-    review: buildReview(records, today),
+    review,
+    workspace: repository.getReviewWorkspace({ today, records, review }),
     capital: repository.getCapitalState(today),
     products: productView,
   };
@@ -520,11 +911,243 @@ function createServer(options = {}) {
       }
 
       if (pathname === '/api/products/refresh' && request.method === 'POST') {
-        const refreshed = repository.refreshProducts();
+        const refreshed = repository.refreshProducts(resolveProductCsv(ROOT));
         sendJson(response, 200, {
           refreshed,
           dashboard: dashboardPayload(repository),
         });
+        return;
+      }
+
+      if (pathname === '/api/review/workspace' && request.method === 'GET') {
+        sendJson(response, 200, {
+          workspace: dashboardPayload(repository).workspace,
+        });
+        return;
+      }
+
+      if (pathname === '/api/review/decisions' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const validation = validateDecisionPayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const decision = repository.createDecision(validation.value);
+        sendJson(response, 201, {
+          decision,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const decisionMatch = pathname.match(/^\/api\/review\/decisions\/(\d+)$/);
+      if (decisionMatch && request.method === 'PUT') {
+        const id = Number(decisionMatch[1]);
+        const body = await readJsonBody(request);
+        const validation = validateDecisionPayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const decision = repository.updateDecision(id, validation.value);
+        if (!decision) {
+          sendError(response, 404, '没有找到这条决策记录');
+          return;
+        }
+        sendJson(response, 200, {
+          decision,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (decisionMatch && request.method === 'DELETE') {
+        const deleted = repository.deleteDecision(Number(decisionMatch[1]));
+        if (!deleted) {
+          sendError(response, 404, '没有找到这条决策记录');
+          return;
+        }
+        sendJson(response, 200, {
+          deleted: true,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/review/holdings' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const validation = validateHoldingPayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const holding = repository.createHolding(validation.value);
+        sendJson(response, 201, {
+          holding,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const holdingMatch = pathname.match(/^\/api\/review\/holdings\/(\d+)$/);
+      if (holdingMatch && request.method === 'PUT') {
+        const id = Number(holdingMatch[1]);
+        const body = await readJsonBody(request);
+        const validation = validateHoldingPayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const holding = repository.updateHolding(id, validation.value);
+        if (!holding) {
+          sendError(response, 404, '没有找到这笔持仓');
+          return;
+        }
+        sendJson(response, 200, {
+          holding,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (holdingMatch && request.method === 'DELETE') {
+        const deleted = repository.deleteHolding(Number(holdingMatch[1]));
+        if (!deleted) {
+          sendError(response, 404, '没有找到这笔持仓');
+          return;
+        }
+        sendJson(response, 200, {
+          deleted: true,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/review/events' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const validation = validateProductEventPayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const event = repository.createProductEvent(validation.value);
+        sendJson(response, 201, {
+          event,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const eventMatch = pathname.match(/^\/api\/review\/events\/(\d+)$/);
+      if (eventMatch && request.method === 'PUT') {
+        const id = Number(eventMatch[1]);
+        const body = await readJsonBody(request);
+        const validation = validateProductEventPayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const event = repository.updateProductEvent(id, validation.value);
+        if (!event) {
+          sendError(response, 404, '没有找到这条产品事件');
+          return;
+        }
+        sendJson(response, 200, {
+          event,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (eventMatch && request.method === 'DELETE') {
+        const deleted = repository.deleteProductEvent(Number(eventMatch[1]));
+        if (!deleted) {
+          sendError(response, 404, '没有找到这条产品事件');
+          return;
+        }
+        sendJson(response, 200, {
+          deleted: true,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const noteMatch = pathname.match(
+        /^\/api\/review\/notes\/(\d{4}-(?:0[1-9]|1[0-2]))$/,
+      );
+      if (noteMatch && request.method === 'PUT') {
+        const month = noteMatch[1];
+        const body = await readJsonBody(request);
+        const validation = validateReviewNotePayload(body, month, 5, '月度五问');
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const note = repository.saveReviewNote(month, validation.value);
+        sendJson(response, 200, {
+          note,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const quarterMatch = pathname.match(/^\/api\/review\/quarterly\/(\d{4}-Q[1-4])$/);
+      if (quarterMatch && request.method === 'PUT') {
+        const quarter = quarterMatch[1];
+        const body = await readJsonBody(request);
+        const validation = validateReviewNotePayload(body, quarter, 6, '季度清单');
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const note = repository.saveQuarterlyNote(quarter, validation.value);
+        sendJson(response, 200, {
+          note,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/review/export' && request.method === 'GET') {
+        const month =
+          requestUrl.searchParams.get('month') || shiftMonth(todayShanghai(), -1);
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+          sendError(response, 400, '月份格式应为 YYYY-MM');
+          return;
+        }
+        const payload = dashboardPayload(repository);
+        const markdown = buildMonthlyReviewMarkdown({
+          month,
+          review: payload.review,
+          decisions: payload.workspace.decisions.filter((item) =>
+            item.date.startsWith(month),
+          ),
+          events: payload.workspace.events.filter((item) =>
+            item.date.startsWith(month),
+          ),
+          note: repository.getReviewNote(month),
+          holdings: payload.workspace.holdings,
+          holdingsSummary: payload.workspace.holdings_summary,
+          generatedAt: new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          }).format(new Date()),
+        });
+        response.writeHead(200, {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Content-Disposition': `attachment; filename="r2-review-${month}.md"`,
+          'Content-Length': Buffer.byteLength(markdown),
+          'Cache-Control': 'no-store',
+          ...SECURITY_HEADERS,
+        });
+        response.end(markdown);
         return;
       }
 

@@ -8,11 +8,19 @@ import type {
   CapitalState,
   DashboardMutationResponse,
   DashboardPayload,
+  DecisionInput,
+  DecisionMutationResponse,
   DeleteResponse,
+  HoldingInput,
+  HoldingMutationResponse,
   LedgerRecord,
+  ProductEventInput,
+  ProductEventMutationResponse,
   ProductRefreshResponse,
   RecordInput,
   RecordMutationResponse,
+  ReviewNoteInput,
+  ReviewNoteMutationResponse,
 } from '@/types/dashboard'
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -124,6 +132,136 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return response
   }
 
+  async function createDecision(
+    input: DecisionInput,
+  ): Promise<DecisionMutationResponse> {
+    const response = await apiRequest<DecisionMutationResponse>('/api/review/decisions', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function updateDecision(
+    id: number,
+    input: DecisionInput,
+  ): Promise<DecisionMutationResponse> {
+    const response = await apiRequest<DecisionMutationResponse>(
+      `/api/review/decisions/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function deleteDecision(id: number): Promise<DeleteResponse> {
+    const response = await apiRequest<DeleteResponse>(`/api/review/decisions/${id}`, {
+      method: 'DELETE',
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function createHolding(input: HoldingInput): Promise<HoldingMutationResponse> {
+    const response = await apiRequest<HoldingMutationResponse>('/api/review/holdings', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function updateHolding(
+    id: number,
+    input: HoldingInput,
+  ): Promise<HoldingMutationResponse> {
+    const response = await apiRequest<HoldingMutationResponse>(
+      `/api/review/holdings/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function deleteHolding(id: number): Promise<DeleteResponse> {
+    const response = await apiRequest<DeleteResponse>(`/api/review/holdings/${id}`, {
+      method: 'DELETE',
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function createProductEvent(
+    input: ProductEventInput,
+  ): Promise<ProductEventMutationResponse> {
+    const response = await apiRequest<ProductEventMutationResponse>('/api/review/events', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function updateProductEvent(
+    id: number,
+    input: ProductEventInput,
+  ): Promise<ProductEventMutationResponse> {
+    const response = await apiRequest<ProductEventMutationResponse>(
+      `/api/review/events/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function deleteProductEvent(id: number): Promise<DeleteResponse> {
+    const response = await apiRequest<DeleteResponse>(`/api/review/events/${id}`, {
+      method: 'DELETE',
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function saveReviewNote(
+    month: string,
+    input: ReviewNoteInput,
+  ): Promise<ReviewNoteMutationResponse> {
+    const response = await apiRequest<ReviewNoteMutationResponse>(
+      `/api/review/notes/${encodeURIComponent(month)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function saveQuarterlyNote(
+    quarter: string,
+    input: ReviewNoteInput,
+  ): Promise<ReviewNoteMutationResponse> {
+    const response = await apiRequest<ReviewNoteMutationResponse>(
+      `/api/review/quarterly/${encodeURIComponent(quarter)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
   return {
     dashboard,
     loading,
@@ -139,5 +277,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
     createCapitalEvent,
     deleteCapitalEvent,
     refreshProducts,
+    createDecision,
+    updateDecision,
+    deleteDecision,
+    createHolding,
+    updateHolding,
+    deleteHolding,
+    createProductEvent,
+    updateProductEvent,
+    deleteProductEvent,
+    saveReviewNote,
+    saveQuarterlyNote,
   }
 })

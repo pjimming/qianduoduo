@@ -9,6 +9,7 @@ import './styles/capital.css'
 import './styles/panels.css'
 import './styles/readability.css'
 import './styles/dashboard.css'
+import './styles/review-workspace.css'
 import './styles/research.css'
 import './styles/report.css'
 

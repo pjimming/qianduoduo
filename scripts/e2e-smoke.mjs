@@ -143,6 +143,26 @@ async function main() {
     await page.goto(`${base}/`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.ledger-panel')
     assert((await page.locator('.stats-grid').count()) === 1, '首页统计区没有渲染')
+    await page.waitForSelector('.review-workspace')
+    assert(
+      (await page.locator('.rw-tab').count()) === 5,
+      '复盘工作台应有 5 个标签页',
+    )
+    assert(
+      (await page.locator('.rw-node').count()) === 4,
+      '复盘时间轴应有 4 个节点',
+    )
+    await page.getByRole('tab', { name: '持仓结构' }).click()
+    await page.waitForSelector('.rw-bucket-grid')
+    assert(
+      (await page.locator('.rw-bucket').count()) >= 4,
+      '期限桶没有渲染',
+    )
+    await page.getByRole('tab', { name: '月度五问' }).click()
+    assert(
+      (await page.locator('.rw-question:visible').count()) === 5,
+      '月度五问应有 5 个问题',
+    )
 
     await page.locator('.ledger-table .icon-button.is-danger').first().click()
     await page.waitForSelector('.confirm-dialog')

@@ -11,6 +11,7 @@ import AssetChart from '@/components/AssetChart.vue'
 import EntryForm from '@/components/EntryForm.vue'
 import PnlChart from '@/components/PnlChart.vue'
 import ReviewSection from '@/components/ReviewSection.vue'
+import ReviewWorkspace from '@/components/review/ReviewWorkspace.vue'
 import ProductsSection from '@/components/ProductsSection.vue'
 import LedgerTable from '@/components/LedgerTable.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -126,7 +127,8 @@ onUnmounted(() => {
       <EntryForm ref="entryRef" :dashboard="dashboard" @saved="handleRecordSaved" />
     </section>
     <PnlChart :records="dashboard.records" />
-    <ReviewSection :review="dashboard.review" />
+    <ReviewSection :review="dashboard.review" :notes="dashboard.workspace.notes" />
+    <ReviewWorkspace :workspace="dashboard.workspace" :review="dashboard.review" />
     <ProductsSection :dashboard="dashboard" />
     <LedgerTable
       ref="ledgerRef"
