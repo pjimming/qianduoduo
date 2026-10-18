@@ -1,0 +1,15 @@
+{
+  "name": "r2-daily-ledger",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local R2 wealth-management daily return ledger with SQLite and dependency-free charts.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --check lib/db.js && node --check lib/metrics.js && node --check lib/products.js && node --check public/app.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

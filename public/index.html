@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="本地 R2 理财每日收益账本：记录本金与收益，查看净值、日收益率和回撤。"
+    />
+    <title>R2 收益账本</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="paper-glow" aria-hidden="true"></div>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="R2 收益账本首页">
+          <span class="brand-mark">R2</span>
+          <span class="brand-copy">
+            <strong>收益账本</strong>
+            <small>DAILY WEALTH LEDGER</small>
+          </span>
+        </a>
+        <div class="topbar-actions">
+          <span class="local-pill"><span class="status-dot"></span>本地 SQLite</span>
+          <a class="button button-ghost button-small" href="/api/export.csv">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 2v10m0 0 4-4m-4 4L6 8M4 14v3h12v-3" />
+            </svg>
+            导出 CSV
+          </a>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">R2 DAILY LEDGER · <span id="heroDate">今天</span></p>
+            <h1>每天一笔，<br /><em>看见复利。</em></h1>
+          </div>
+
+          <aside class="target-card" aria-label="3% 年化目标进度">
+            <div class="target-head">
+              <span class="target-label">3% 进取目标</span>
+              <span class="target-status" id="targetStatus">等待记录</span>
+            </div>
+            <div class="target-value-row">
+              <strong id="targetAnnualized">—</strong>
+              <span>记录期年化（参考）</span>
+            </div>
+            <div class="target-track" aria-hidden="true">
+              <span id="targetBar"></span>
+            </div>
+            <p class="target-hint" id="targetHint">记录满 28 天、20 条后，年化与目标差距才具参考意义。</p>
+            <p class="target-disclaimer">目标不是承诺。R2 不保本，短期年化噪音较大。</p>
+          </aside>
+        </section>
+
+        <section class="stats-grid" aria-label="收益概览">
+          <article class="stat-card stat-primary">
+            <div class="stat-head">
+              <span>账户净值</span>
+              <span class="soft-badge" id="netValueDate">最新</span>
+            </div>
+            <strong class="stat-value" id="statNetValue">—</strong>
+            <p class="stat-sub" id="statNetSub">本金 + 累计收益</p>
+            <svg class="stat-spark" id="netSparkline" viewBox="0 0 180 44" aria-hidden="true"></svg>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-head"><span>累计收益</span><span class="stat-index">01</span></div>
+            <strong class="stat-value" id="statTotalPnl">—</strong>
+            <p class="stat-sub" id="statPnlSub">记录期累计</p>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-head"><span>最新日收益</span><span class="stat-index">02</span></div>
+            <strong class="stat-value" id="statDailyPnl">—</strong>
+            <p class="stat-sub" id="statDailySub">等待第一条记录</p>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-head"><span>近 30 日年化</span><span class="stat-index">03</span></div>
+            <strong class="stat-value" id="statAnnualized">—</strong>
+            <p class="stat-sub" id="statAnnualizedSub">样本不足时仅作参考</p>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-head"><span>最大回撤</span><span class="stat-index">04</span></div>
+            <strong class="stat-value" id="statDrawdown">—</strong>
+            <p class="stat-sub" id="statDrawdownSub">按日收益复利净值计算</p>
+          </article>
+        </section>
+
+        <section class="panel capital-panel" id="capitalPanel" aria-labelledby="capitalTitle">
+          <div class="panel-head">
+            <div>
+              <p class="kicker">本金账户</p>
+              <h2 id="capitalTitle">本金管理</h2>
+            </div>
+            <button class="button button-ghost button-small" id="editCapitalInit" type="button">
+              调整起始
+            </button>
+          </div>
+
+          <div class="capital-layout">
+            <div class="capital-overview">
+              <span class="capital-label">当前 R2 本金</span>
+              <strong class="capital-current" id="capitalCurrent">—</strong>
+              <p class="capital-breakdown" id="capitalBreakdown">起始本金 + 累计转入 − 累计转出</p>
+              <div class="capital-metrics">
+                <div>
+                  <span>起始本金</span>
+                  <strong id="capitalInitial">—</strong>
+                </div>
+                <div>
+                  <span>累计转入</span>
+                  <strong id="capitalDeposits">—</strong>
+                </div>
+                <div>
+                  <span>累计转出</span>
+                  <strong id="capitalWithdrawals">—</strong>
+                </div>
+              </div>
+              <div class="capital-uninitialized" id="capitalUninitialized" hidden>
+                <p>本金账户尚未初始化，初始化后才能记录收益。</p>
+                <button class="button button-primary button-small" id="capitalInitButton" type="button">
+                  设定起始本金
+                </button>
+              </div>
+            </div>
+
+            <form class="capital-event-form" id="capitalEventForm" novalidate>
+              <div class="capital-type-switch" role="group" aria-label="资金变动类型">
+                <button type="button" data-capital-type="deposit" class="is-active">转入</button>
+                <button type="button" data-capital-type="withdraw">转出</button>
+              </div>
+              <input type="hidden" id="capitalEventType" value="deposit" />
+              <div class="field-row">
+                <div class="field">
+                  <label for="capitalEventDate">日期</label>
+                  <input id="capitalEventDate" type="date" required />
+                </div>
+                <div class="field">
+                  <label for="capitalEventAmount">金额</label>
+                  <div class="input-affix">
+                    <span>¥</span>
+                    <input
+                      id="capitalEventAmount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      inputmode="decimal"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label for="capitalEventNote">备注 <span class="field-help">可选</span></label>
+                <input
+                  id="capitalEventNote"
+                  type="text"
+                  maxlength="200"
+                  placeholder="例如：工资转入、赎回后转出"
+                />
+              </div>
+              <button class="button button-primary capital-event-submit" id="capitalEventSubmit" type="submit">
+                记录转入
+              </button>
+              <p class="form-note">转入和转出只改变本金，不计入当日收益。历史记录的本金快照会自动重算。</p>
+            </form>
+
+            <div class="capital-history">
+              <div class="capital-history-head">
+                <span>最近变动</span>
+                <span id="capitalEventCount">0 笔</span>
+              </div>
+              <ul class="capital-event-list" id="capitalEventList"></ul>
+              <p class="capital-history-empty" id="capitalHistoryEmpty">还没有转入或转出记录。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="work-grid">
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">累计收益</p>
+                <h2>累计收益曲线</h2>
+              </div>
+              <div class="range-switch" data-range-group="assets" aria-label="累计收益曲线时间范围">
+                <button type="button" data-range="7">7天</button>
+                <button type="button" data-range="30" class="is-active">30天</button>
+                <button type="button" data-range="90">90天</button>
+                <button type="button" data-range="all">全部</button>
+              </div>
+            </div>
+            <div class="chart-summary">
+              <span id="assetChartRange">暂无记录</span>
+              <span class="chart-summary-strong" id="assetChartDelta">—</span>
+            </div>
+            <div class="chart-wrap">
+              <div class="chart-canvas" id="assetChart"></div>
+              <div class="chart-tooltip" id="assetTooltip" hidden></div>
+            </div>
+            <div class="chart-legend">
+              <span><i class="legend-line legend-net"></i>累计收益</span>
+              <span class="legend-note">按每日收益累加，不含本金变化</span>
+            </div>
+          </article>
+
+          <aside class="panel entry-panel">
+            <div class="panel-head entry-head">
+              <div>
+                <p class="kicker">每日一分钟</p>
+                <h2 id="formTitle">记一笔收益</h2>
+              </div>
+              <span class="entry-date-chip" id="entryDateChip">今天</span>
+            </div>
+
+            <div class="today-notice" id="todayNotice" hidden>
+              <span>今天已有记录</span>
+              <button type="button" id="loadTodayButton">载入修改</button>
+            </div>
+
+            <form id="recordForm" novalidate>
+              <input id="formMode" type="hidden" value="create" />
+              <div class="field">
+                <label for="recordDate">日期</label>
+                <input id="recordDate" name="date" type="date" required />
+              </div>
+
+              <div class="field">
+                <label for="dailyPnl">
+                  当日收益
+                  <span class="field-help">亏损填负数</span>
+                </label>
+                <div class="input-affix">
+                  <span>¥</span>
+                  <input
+                    id="dailyPnl"
+                    name="daily_pnl"
+                    type="number"
+                    step="0.01"
+                    inputmode="decimal"
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="rate-preview">
+                <span>当日收益率</span>
+                <strong id="previewRate">—</strong>
+              </div>
+
+              <div class="field">
+                <label for="action">操作</label>
+                <select id="action" name="action">
+                  <option value="无操作">无操作</option>
+                  <option value="买入">买入</option>
+                  <option value="赎回">赎回</option>
+                  <option value="切换">切换</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="notes">备注</label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows="2"
+                  maxlength="500"
+                  placeholder="额度、到账、异常或当日判断…"
+                ></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button class="button button-primary" id="submitButton" type="submit">
+                  <span>保存记录</span>
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M4 10h12m0 0-4-4m4 4-4 4" />
+                  </svg>
+                </button>
+                <button class="button button-ghost" id="cancelEdit" type="button" hidden>
+                  取消修改
+                </button>
+              </div>
+            </form>
+            <p class="form-note">
+              本金在“本金管理”中统一维护，收益记录会自动读取该日适用的本金。日收益率 = 当日收益 ÷ 当日本金。
+            </p>
+          </aside>
+        </section>
+
+        <section class="panel chart-panel wide-panel">
+          <div class="panel-head">
+            <div>
+              <p class="kicker">收益波动</p>
+              <h2>每日收益与收益率</h2>
+            </div>
+            <div class="range-switch" data-range-group="pnl" aria-label="收益曲线时间范围">
+              <button type="button" data-range="7">7天</button>
+              <button type="button" data-range="30" class="is-active">30天</button>
+              <button type="button" data-range="90">90天</button>
+              <button type="button" data-range="all">全部</button>
+            </div>
+          </div>
+          <div class="chart-summary">
+            <span id="pnlChartRange">暂无记录</span>
+            <span class="chart-summary-strong" id="pnlChartSummary">—</span>
+          </div>
+          <div class="chart-wrap chart-wrap-tall">
+            <div class="chart-canvas" id="pnlChart"></div>
+            <div class="chart-tooltip" id="pnlTooltip" hidden></div>
+          </div>
+          <div class="chart-legend">
+            <span><i class="legend-bar legend-gain"></i>正收益</span>
+            <span><i class="legend-bar legend-loss"></i>负收益</span>
+            <span><i class="legend-line legend-rate"></i>当日收益率（右轴）</span>
+          </div>
+        </section>
+
+        <section class="review-section" aria-labelledby="reviewTitle">
+          <div class="section-head">
+            <div>
+              <p class="kicker">自动复盘</p>
+              <h2 id="reviewTitle">每天看一眼，每月给自己打分</h2>
+            </div>
+            <span class="review-auto-badge">自动计算</span>
+          </div>
+
+          <div class="review-grid">
+            <article class="panel review-card daily-review-card">
+              <div class="review-card-head">
+                <span>每日复盘</span>
+                <span id="dailyReviewDate">—</span>
+              </div>
+              <div class="daily-review-main">
+                <span>最新日收益</span>
+                <strong id="dailyReviewPnl">—</strong>
+                <small id="dailyReviewRate">—</small>
+              </div>
+              <div class="review-metrics">
+                <div>
+                  <span>当日本金</span>
+                  <strong id="dailyReviewPrincipal">—</strong>
+                </div>
+                <div>
+                  <span>月累计</span>
+                  <strong id="dailyReviewMonthPnl">—</strong>
+                </div>
+                <div>
+                  <span>月收益率</span>
+                  <strong id="dailyReviewMonthReturn">—</strong>
+                </div>
+              </div>
+              <div class="review-grade-line">
+                <span>本月当前评级</span>
+                <strong class="grade-badge" id="dailyReviewGrade">—</strong>
+                <small id="dailyReviewProvisional"></small>
+              </div>
+            </article>
+
+            <article class="panel review-card monthly-review-card">
+              <div class="review-card-head">
+                <span>月度评分与记录</span>
+                <select class="review-month-select" id="reviewMonthSelect" aria-label="选择复盘月份">
+                  <option value="">暂无记录</option>
+                </select>
+              </div>
+              <div class="monthly-review-layout">
+                <div class="monthly-review-summary">
+                  <div class="monthly-score-main">
+                    <div>
+                      <span>月收益率</span>
+                      <strong id="monthlyReviewReturn">—</strong>
+                    </div>
+                    <strong class="grade-badge monthly-grade" id="monthlyReviewGrade">—</strong>
+                  </div>
+                  <p class="review-next" id="monthlyReviewNext">—</p>
+                  <div class="review-metrics">
+                    <div>
+                      <span>月收益</span>
+                      <strong id="monthlyReviewPnl">—</strong>
+                    </div>
+                    <div>
+                      <span>月均本金</span>
+                      <strong id="monthlyReviewPrincipal">—</strong>
+                    </div>
+                    <div>
+                      <span>记录天数</span>
+                      <strong id="monthlyReviewDays">—</strong>
+                    </div>
+                  </div>
+                  <div class="grade-steps" id="gradeSteps" aria-label="月度评分标准">
+                    <span data-grade="不及格">不及格 <small>&lt;0.16%</small></span>
+                    <span data-grade="及格">及格 <small>0.16%</small></span>
+                    <span data-grade="良好">良好 <small>0.20%</small></span>
+                    <span data-grade="优秀">优秀 <small>0.25%</small></span>
+                    <span data-grade="卓越">卓越 <small>0.30%</small></span>
+                  </div>
+                </div>
+                <div class="monthly-review-history">
+                  <div class="monthly-history-head">
+                    <span>历史月份</span>
+                    <span id="reviewHistoryCount">0 个月</span>
+                  </div>
+                  <div class="review-history-list" id="reviewHistoryList"></div>
+                  <div class="review-empty" id="reviewHistoryEmpty" hidden>还没有月度数据。</div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <p class="review-footnote">
+            评分口径：月收益 ÷ 月均本金。当前月份标记为“月中参考”；评分只用于个人复盘，不代表未来收益。
+          </p>
+        </section>
+
+        <section class="products-section" aria-labelledby="productsTitle">
+          <div class="section-head">
+            <div>
+              <p class="kicker">R2 观察池</p>
+              <h2 id="productsTitle">短、中、长三个期限，各留一个复核对象</h2>
+            </div>
+            <div class="section-actions">
+              <button class="button button-ghost button-small" id="refreshProducts" type="button">
+                刷新快照
+              </button>
+              <button class="button button-ghost button-small" id="showAllProducts" type="button">
+                查看全部产品
+              </button>
+            </div>
+          </div>
+
+          <div class="product-goal-strip">
+            <div class="product-goal-copy">
+              <span class="goal-dot"></span>
+              <div>
+                <strong id="poolGoalTitle">观察池目标可行性</strong>
+                <p id="poolGoalText">正在读取产品快照…</p>
+              </div>
+            </div>
+            <div class="pool-progress" aria-hidden="true">
+              <span id="poolProgressBar"></span>
+            </div>
+            <span class="pool-gap" id="poolGap">—</span>
+          </div>
+
+          <div class="watchlist" id="watchlist"></div>
+
+          <p class="product-disclaimer">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 2 3.5 4.5v5.2c0 3.8 2.5 6.6 6.5 8.3 4-1.7 6.5-4.5 6.5-8.3V4.5L10 2Z" />
+              <path d="M7.5 10.2 9.2 12l3.5-4" />
+            </svg>
+            <span>
+              这里只按近 3/6/12 月年化做“观察排序”，未核验费率、最大回撤、额度和赎回规则，不构成推荐或买入建议。产品池是静态历史快照，不会自动定时更新；替换 CSV 后可点“刷新快照”重新读取。购买前以招行 App、产品说明书和当日额度为准。
+            </span>
+          </p>
+        </section>
+
+        <section class="panel ledger-panel" aria-labelledby="ledgerTitle">
+          <div class="panel-head">
+            <div>
+              <p class="kicker">流水</p>
+              <h2 id="ledgerTitle">每日记录</h2>
+            </div>
+            <div class="ledger-actions">
+              <span class="record-count" id="recordCount">0 条</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="ledger-table">
+              <colgroup>
+                <col class="ledger-col-date" />
+                <col class="ledger-col-principal" />
+                <col class="ledger-col-pnl" />
+                <col class="ledger-col-return" />
+                <col class="ledger-col-net" />
+                <col class="ledger-col-action" />
+                <col class="ledger-col-notes" />
+                <col class="ledger-col-manage" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="sortable" scope="col" aria-sort="none" data-sort-key="date">
+                    <button class="table-sort-button" type="button" data-sort-key="date">
+                      日期 <span class="sort-glyph">↕</span>
+                    </button>
+                  </th>
+                  <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="principal">
+                    <button class="table-sort-button" type="button" data-sort-key="principal">
+                      R2 本金 <span class="sort-glyph">↕</span>
+                    </button>
+                  </th>
+                  <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="daily_pnl">
+                    <button class="table-sort-button" type="button" data-sort-key="daily_pnl">
+                      当日收益 <span class="sort-glyph">↕</span>
+                    </button>
+                  </th>
+                  <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="daily_return">
+                    <button class="table-sort-button" type="button" data-sort-key="daily_return">
+                      日收益率 <span class="sort-glyph">↕</span>
+                    </button>
+                  </th>
+                  <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="net_value">
+                    <button class="table-sort-button" type="button" data-sort-key="net_value">
+                      账户净值 <span class="sort-glyph">↕</span>
+                    </button>
+                  </th>
+                  <th>操作</th>
+                  <th>备注</th>
+                  <th class="align-right">管理</th>
+                </tr>
+              </thead>
+              <tbody id="ledgerBody"></tbody>
+            </table>
+            <div class="empty-ledger" id="emptyLedger" hidden>
+              <span class="empty-mark">+</span>
+              <p>还没有记录。先在右侧记下第一天的收益。</p>
+            </div>
+          </div>
+          <div class="ledger-pagination" id="ledgerPagination" hidden>
+            <label class="ledger-page-size">
+              每页
+              <select id="ledgerPageSize" aria-label="每日记录每页显示条数">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="all">全部</option>
+              </select>
+              条
+            </label>
+            <button class="button button-ghost button-small" id="ledgerPrevPage" type="button">
+              上一页
+            </button>
+            <span id="ledgerPageInfo">第 1 / 1 页</span>
+            <button class="button button-ghost button-small" id="ledgerNextPage" type="button">
+              下一页
+            </button>
+            <label class="ledger-page-jump">
+              跳至
+              <input id="ledgerJumpPage" type="number" min="1" value="1" inputmode="numeric" />
+              页
+            </label>
+            <button class="button button-ghost button-small" id="ledgerJumpButton" type="button">
+              跳转
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>R2 理财不保本，过往收益不代表未来表现。本页只做个人记录与计算，不提供代下单或资金操作。</p>
+        <p class="footer-meta">数据保存在本机 <code>data/r2_ledger.sqlite</code> · 可随时导出 CSV</p>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog class="product-dialog" id="productsDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="kicker">历史快照</p>
+          <h2>全部 R2 产品</h2>
+          <p id="dialogSubtitle">数据日期以产品卡片为准</p>
+        </div>
+        <button class="icon-button" id="closeProductsDialog" type="button" aria-label="关闭">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M5 5l10 10M15 5 5 15" />
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-filter-bar">
+        <span class="filter-label">期限筛选</span>
+        <div class="term-filter" id="productTermFilter" role="group" aria-label="按期限筛选产品">
+          <button type="button" data-term-filter="all" class="is-active">全部</button>
+          <button type="button" data-term-filter="short">短期 0–30 天</button>
+          <button type="button" data-term-filter="medium">中期 31–179 天</button>
+          <button type="button" data-term-filter="long">长期 180 天+</button>
+        </div>
+        <span class="filter-count" id="productFilterCount">0 只</span>
+      </div>
+      <div class="dialog-sort-bar">
+        <span>点击收益率列可切换升序 / 降序，空缺值始终排在最后</span>
+        <strong id="productSortState">当前：按期限</strong>
+      </div>
+      <div class="table-wrap dialog-table-wrap">
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th class="sortable" scope="col" aria-sort="none" data-sort-key="term">
+                <button class="table-sort-button" type="button" data-sort-key="term">
+                  期限 <span class="sort-glyph">↕</span>
+                </button>
+              </th>
+              <th>产品</th>
+              <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="return_1m">
+                <button class="table-sort-button" type="button" data-sort-key="return_1m">
+                  近 1 月 <span class="sort-glyph">↕</span>
+                </button>
+              </th>
+              <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="return_3m">
+                <button class="table-sort-button" type="button" data-sort-key="return_3m">
+                  近 3 月 <span class="sort-glyph">↕</span>
+                </button>
+              </th>
+              <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="return_6m">
+                <button class="table-sort-button" type="button" data-sort-key="return_6m">
+                  近 6 月 <span class="sort-glyph">↕</span>
+                </button>
+              </th>
+              <th class="align-right sortable" scope="col" aria-sort="none" data-sort-key="return_1y">
+                <button class="table-sort-button" type="button" data-sort-key="return_1y">
+                  近 1 年 <span class="sort-glyph">↕</span>
+                </button>
+              </th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+      <p class="dialog-note">
+        新发产品没有 3 个月历史，单独标为“新品观察”，不参与观察排序。任何产品在买入前都要重新核对风险等级、额度、费率和赎回规则。
+      </p>
+    </dialog>
+
+    <dialog class="capital-dialog" id="capitalInitDialog">
+      <form id="capitalInitForm" novalidate>
+        <div class="dialog-head">
+          <div>
+            <p class="kicker">本金账户</p>
+            <h2 id="capitalInitTitle">设定起始本金</h2>
+            <p id="capitalInitHint">先确定进入本账本时的 R2 本金，之后资金变化用转入/转出记录。</p>
+          </div>
+          <button class="icon-button" id="closeCapitalInit" type="button" aria-label="关闭">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M5 5l10 10M15 5 5 15" />
+            </svg>
+          </button>
+        </div>
+        <div class="capital-dialog-body">
+          <div class="field-row">
+            <div class="field">
+              <label for="capitalInitDate">起始日期</label>
+              <input id="capitalInitDate" type="date" required />
+            </div>
+            <div class="field">
+              <label for="capitalInitAmount">起始本金</label>
+              <div class="input-affix">
+                <span>¥</span>
+                <input
+                  id="capitalInitAmount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  inputmode="decimal"
+                  value="540000"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+          <p class="capital-dialog-note" id="capitalInitNote">
+            起始本金是进入账本时的 R2 总本金，不包含累计收益，也不包含组合外应急金。
+          </p>
+          <div class="capital-dialog-actions">
+            <button class="button button-primary" id="capitalInitSubmit" type="submit">
+              完成初始化
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

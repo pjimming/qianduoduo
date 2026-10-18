@@ -1,0 +1,6 @@
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/backups/
+node_modules/
+*.log
