@@ -148,7 +148,7 @@ C:\Users\Administrator\.codex\skills\equity-research\
 2. 把三个 skill 目录复制到 `%USERPROFILE%\.codex\skills\`；
 3. 如果你有自己的 skill 仓库，按仓库的安装说明部署。
 
-> 根目录的 `r2-wealth-management.zip` 是 2026-10-18 的旧打包，缺少当前版本里的 `references/cmb-automation.md`。分享时优先复制当前安装目录，或在打包前先更新这个 zip。
+分享 skill 时直接复制当前安装目录；仓库不再保留旧版打包压缩包，避免误用缺少最新参考文件的版本。
 
 ### 3.2 检查
 
