@@ -64,6 +64,33 @@ test('trade parser recognizes redemption and pending states', () => {
   assert.equal(parsed.confirm_date, null);
 });
 
+test('trade parser keeps the date out of the amount on spaced screenshot text', () => {
+  const text =
+    '购 买 招 银 理 财 招 睿 添 金 （ 和 享 ） 14 天 持 有 期 6A ' +
+    '2026 一 10 一 19 6 ， 000 · 00 元 交 易 进 行 中';
+  assert.equal(extractAmount(text), 6000);
+});
+
+test('trade parser tolerates a dropped character in the product name', () => {
+  const parsed = parseTradeText(
+    '购买 招银理财招睿添金90天持有期6A 2026-10-19 7,500.00元 交易进行中',
+    {
+      products: [
+        {
+          code: '120056A',
+          name: '招银理财招睿添金90天持有期6号固定收益类理财计划',
+          issuer: '招银理财',
+          risk_level: 'R2',
+          term_days: 90,
+        },
+      ],
+      today: '2026-10-19',
+    },
+  );
+  assert.equal(parsed.product_code, '120056A');
+  assert.equal(parsed.amount, 7500);
+});
+
 test('trade parser falls back to manual correction when OCR is empty', () => {
   const parsed = parseTradeText('', { products, today: '2026-10-19' });
   assert.equal(parsed.trade_date, '2026-10-19');

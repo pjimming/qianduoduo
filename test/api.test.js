@@ -33,7 +33,9 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
 
   const dashboard = await fetch(`${base}/api/dashboard`).then((response) => response.json());
   assert.equal(dashboard.records.length, 0);
-  assert.equal(dashboard.products.watchlist.length, 9);
+  assert.equal(dashboard.products.watchlist.length, 0);
+  assert.equal(dashboard.products.allocation.status, 'no_principal');
+  assert.ok(dashboard.products.observation_list.length > 0);
   const productCount = dashboard.products.all.length;
   assert.ok(productCount > 0);
   assert.equal(dashboard.meta.target_annualized, 3);
@@ -43,7 +45,7 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   const refreshed = await refreshResponse.json();
   assert.equal(refreshed.refreshed, productCount);
   assert.equal(refreshed.dashboard.products.all.length, productCount);
-  assert.equal(refreshed.dashboard.products.watchlist.length, 9);
+  assert.equal(refreshed.dashboard.products.watchlist.length, 0);
 
   const capitalInitResponse = await fetch(`${base}/api/capital/init`, {
     method: 'POST',
@@ -54,6 +56,43 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
     }),
   });
   assert.equal(capitalInitResponse.status, 201);
+  const capitalInitialized = await capitalInitResponse.json();
+  assert.equal(capitalInitialized.dashboard.products.allocation.principal, 540000);
+  assert.ok(capitalInitialized.dashboard.products.watchlist.length > 0);
+  assert.ok(
+    capitalInitialized.dashboard.products.allocation.allocated_amount <=
+      capitalInitialized.dashboard.products.allocation.available_cash + 0.01,
+  );
+
+  const allocationCode = capitalInitialized.dashboard.products.watchlist[0].code;
+  const allocationResponse = await fetch(`${base}/api/products/allocation`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      max_single_pct: 25,
+      max_issuer_pct: 40,
+      bucket_targets: { short: 30, medium: 35, long: 35 },
+      quota_by_code: {
+        [allocationCode]: { available: 1000, max_order: 800 },
+      },
+    }),
+  });
+  assert.equal(allocationResponse.status, 200);
+  const allocationResult = await allocationResponse.json();
+  assert.equal(allocationResult.settings.max_single_pct, 25);
+  const quotaProduct = allocationResult.dashboard.products.watchlist.find(
+    (item) => item.code === allocationCode,
+  );
+  assert.ok(quotaProduct);
+  assert.ok(quotaProduct.target_amount <= 800.01);
+  assert.equal(quotaProduct.quota_status, 'verified');
+
+  const invalidAllocation = await fetch(`${base}/api/products/allocation`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ max_single_pct: 50 }),
+  });
+  assert.equal(invalidAllocation.status, 400);
 
   const depositResponse = await fetch(`${base}/api/capital/events`, {
     method: 'POST',

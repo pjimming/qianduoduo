@@ -93,6 +93,19 @@ function loadToday(): void {
   loadRecordForEdit(props.dashboard.meta.today)
 }
 
+function startRecord(date: string): void {
+  if (!date) return
+  editingDate.value = null
+  formMode.value = 'create'
+  recordDate.value = date
+  dailyPnl.value = ''
+  action.value = '无操作'
+  notes.value = ''
+  panel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  window.clearTimeout(focusTimer)
+  focusTimer = window.setTimeout(() => dailyPnlInput.value?.focus(), 380)
+}
+
 async function handleSubmit(): Promise<void> {
   if (!recordDate.value) {
     show('请选择日期', { error: true })
@@ -150,6 +163,7 @@ onUnmounted(() => {
 
 defineExpose({
   loadRecordForEdit,
+  startRecord,
   resetForm,
   isEditingDate: (date: string): boolean => editingDate.value === date,
 })

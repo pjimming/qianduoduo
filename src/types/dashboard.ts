@@ -80,12 +80,16 @@ export interface Summary {
 export interface MonthlyReview {
   month: string
   month_label: string
-  first_date: string
-  last_date: string
+  first_date: string | null
+  last_date: string | null
+  has_records: boolean
   record_days: number
   calendar_days: number
   elapsed_days: number
+  days_remaining: number
   missing_days: number
+  recorded_dates: string[]
+  missing_dates: string[]
   record_coverage_pct: number | null
   pnl: number
   avg_principal: number
@@ -110,6 +114,10 @@ export interface MonthlyReview {
   final: boolean
   is_current: boolean
   provisional: boolean
+  records_needed_for_grade: number
+  days_needed_for_grade: number
+  grade_eligible: boolean
+  score_status: 'no_records' | 'missing' | 'in_progress' | 'insufficient' | 'scored'
   action_count: number
   buy_count: number
   redeem_count: number
@@ -651,13 +659,113 @@ export interface Product {
   observation_ready: boolean
   selected: boolean
   selection_rank: number | null
+  target_amount: number
+  target_pct: number
+  allocation_bucket: ProductBucket | null
+  existing_exposure: number
+  issuer_exposure: number
+  quota_status: 'unverified' | 'limited' | 'verified' | null
+  quota_available: number | null
+  quota_max_order: number | null
+  quota_window: string
+  quota_verified_at: string
+  allocation_reason: string
   target_gap_pct: number | null
+}
+
+export interface ProductAllocationBucket {
+  key: 'short' | 'medium' | 'long'
+  label: string
+  target_amount: number
+  target_pct: number
+  existing_amount: number
+  budget_amount: number
+  new_amount: number
+  unallocated_amount: number
+  final_amount: number
+  final_pct: number
+  status: 'filled' | 'partial' | 'no_budget'
+  reasons: string[]
+}
+
+export interface ProductAllocationSettings {
+  principal_override: number | null
+  liquidity_floor_pct: number
+  max_single_pct: number
+  max_issuer_pct: number
+  target_slice_pct: number
+  cashflow_0_3: number
+  cashflow_3_6: number
+  cashflow_6_12: number
+  bucket_targets: { short: number; medium: number; long: number }
+  quota_by_code: Record<
+    string,
+    {
+      available: number | null
+      max_order: number | null
+      window: string
+      verified_at: string
+    }
+  >
+  updated_at?: string | null
+}
+
+export interface ProductAllocation {
+  version: string
+  status:
+    | 'ready'
+    | 'partial'
+    | 'quota_unverified'
+    | 'no_cash'
+    | 'no_allocation'
+    | 'no_principal'
+  principal: number
+  committed_amount: number
+  available_cash: number
+  allocated_amount: number
+  unallocated_amount: number
+  overcommitted: boolean
+  liquidity: {
+    floor_pct: number
+    target_amount: number
+    existing_amount: number
+    final_amount: number
+    shortfall_amount: number
+    status: 'covered' | 'shortfall'
+  }
+  cashflow: Array<{
+    key: string
+    label: string
+    required_amount: number
+    covered_amount: number
+    status: 'covered' | 'shortfall'
+  }>
+  pending: {
+    count: number
+    amount: number
+    items: Array<{
+      code: string
+      name: string
+      issuer: string
+      amount: number
+      term_days: number | null
+      bucket: ProductBucket
+      source: string
+    }>
+  }
+  holdings: { count: number; amount: number }
+  settings: ProductAllocationSettings
+  effective_issuer_cap_pct: number
+  buckets: ProductAllocationBucket[]
+  reasons: string[]
+  quota_unverified_count: number
 }
 
 export interface ProductStats {
   total: number
   observation_ready: number
   selected_count: number
+  observation_count: number
   median_1y: number | null
   median_3m: number | null
   median_6m: number | null
@@ -673,10 +781,13 @@ export interface ProductStats {
 export interface ProductView {
   all: Product[]
   watchlist: Product[]
+  observation_list: Product[]
+  allocation: ProductAllocation
   selection: {
     version: string
-    per_bucket: number
+    per_bucket: number | null
     max_per_issuer: number
+    max_single_pct: number
     min_history_months: number
     selected_count: number
     rules: string[]

@@ -1018,7 +1018,19 @@ function dashboardPayload(repository) {
   const records = enrichRecords(rawRecords);
   const today = todayShanghai();
   const todayRecord = rawRecords.find((record) => record.date === today) || null;
-  const productView = buildProductView(repository.listProducts());
+  const capital = repository.getCapitalState(today);
+  const tradeOverview = repository.tradeStore.getOverview(today);
+  const allocationSettings = repository.getAllocationSettings();
+  const principal =
+    allocationSettings.principal_override ??
+    (Number.isFinite(capital.current_principal) ? capital.current_principal : 0);
+  const productView = buildProductView(repository.listProducts(), {
+    principal,
+    settings: allocationSettings,
+    decisions: repository.listDecisions(),
+    holdings: tradeOverview.holdings,
+    pending_trades: tradeOverview.trades.filter((item) => item.status === 'pending'),
+  });
   const snapshotDate =
     productView.all
       .map((product) => product.data_date)
@@ -1053,9 +1065,14 @@ function dashboardPayload(repository) {
     summary: summarize(records),
     windows: buildWindows(records),
     review,
-    workspace: repository.getReviewWorkspace({ today, records, review }),
+    workspace: repository.getReviewWorkspace({
+      today,
+      records,
+      review,
+      trades: tradeOverview,
+    }),
     automation: repository.automationStore.getWorkspace(today),
-    capital: repository.getCapitalState(today),
+    capital,
     products: productView,
   };
 }
@@ -1256,6 +1273,96 @@ function createServer(options = {}) {
         const refreshed = repository.refreshProducts(resolveProductCsv(ROOT));
         sendJson(response, 200, {
           refreshed,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/products/allocation' && request.method === 'PUT') {
+        const body = await readJsonBody(request);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+          sendError(response, 400, '分配设置格式不正确');
+          return;
+        }
+        if (
+          body.principal_override !== null &&
+          body.principal_override !== undefined &&
+          body.principal_override !== ''
+        ) {
+          const principal = Number(body.principal_override);
+          if (!Number.isFinite(principal) || principal < 0 || principal > 1e12) {
+            sendError(response, 400, '可投资本金需要是 0 以上的数字');
+            return;
+          }
+        }
+        const ranges = {
+          liquidity_floor_pct: [0, 100],
+          max_single_pct: [25, 30],
+          max_issuer_pct: [40, 100],
+          target_slice_pct: [5, 25],
+          cashflow_0_3: [0, 1e12],
+          cashflow_3_6: [0, 1e12],
+          cashflow_6_12: [0, 1e12],
+        };
+        for (const [key, [min, max]] of Object.entries(ranges)) {
+          if (body[key] === undefined || body[key] === null || body[key] === '') continue;
+          const value = Number(body[key]);
+          if (!Number.isFinite(value) || value < min || value > max) {
+            sendError(response, 400, `${key} 需要在 ${min}–${max} 之间`);
+            return;
+          }
+        }
+        const targets = body.bucket_targets;
+        if (targets !== undefined) {
+          if (!targets || typeof targets !== 'object' || Array.isArray(targets)) {
+            sendError(response, 400, '期限桶目标格式不正确');
+            return;
+          }
+          let total = 0;
+          for (const key of ['short', 'medium', 'long']) {
+            const value = Number(targets[key] ?? 0);
+            if (!Number.isFinite(value) || value < 0 || value > 100) {
+              sendError(response, 400, '期限桶目标需要是 0–100 的数字');
+              return;
+            }
+            total += value;
+          }
+          if (total > 100.001) {
+            sendError(response, 400, '期限桶目标合计不能超过 100%');
+            return;
+          }
+        }
+        if (body.quota_by_code !== undefined) {
+          if (
+            !body.quota_by_code ||
+            typeof body.quota_by_code !== 'object' ||
+            Array.isArray(body.quota_by_code)
+          ) {
+            sendError(response, 400, '产品额度格式不正确');
+            return;
+          }
+          for (const [code, quota] of Object.entries(body.quota_by_code)) {
+            if (!code || code.length > 80) {
+              sendError(response, 400, '产品代码格式不正确');
+              return;
+            }
+            if (!quota || typeof quota !== 'object' || Array.isArray(quota)) {
+              sendError(response, 400, '单只产品额度格式不正确');
+              return;
+            }
+            for (const key of ['available', 'max_order']) {
+              if (quota[key] === null || quota[key] === undefined || quota[key] === '') continue;
+              const value = Number(quota[key]);
+              if (!Number.isFinite(value) || value < 0 || value > 1e12) {
+                sendError(response, 400, '产品额度需要是 0 以上的数字');
+                return;
+              }
+            }
+          }
+        }
+        const settings = repository.saveAllocationSettings(body);
+        sendJson(response, 200, {
+          settings,
           dashboard: dashboardPayload(repository),
         });
         return;
@@ -1822,6 +1929,135 @@ function createServer(options = {}) {
       const inboxIgnoreMatch = pathname.match(
         /^\/api\/trades\/inbox\/(\d+)\/ignore$/,
       );
+
+      const inboxVisionMatch = pathname.match(
+        /^\/api\/trades\/inbox\/(\d+)\/vision-apply$/,
+      );
+      if (inboxVisionMatch && request.method === 'POST') {
+        const id = Number(inboxVisionMatch[1]);
+        const item = repository.tradeStore.getInboxItem(id);
+        if (!item) {
+          sendError(response, 404, '没有找到这张截图');
+          return;
+        }
+        const body = await readJsonBody(request);
+        const validation = validateTradePayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const fields = validation.value;
+        const parsed = item.parsed || {};
+        const checks = [];
+        const ocrAmount = Number(parsed.amount);
+        if (Number.isFinite(ocrAmount) && ocrAmount > 0) {
+          const pass = Math.abs(ocrAmount - fields.amount) <= 0.01;
+          checks.push({
+            key: 'amount',
+            pass,
+            ocr: ocrAmount,
+            vision: fields.amount,
+          });
+          if (!pass && body.confirm_mismatch !== true) {
+            sendJson(response, 409, {
+              error: 'OCR 参考金额与视觉识别金额不一致，请人工确认后重试',
+              code: 'OCR_AMOUNT_MISMATCH',
+              ocr_amount: ocrAmount,
+              vision_amount: fields.amount,
+              checks,
+            });
+            return;
+          }
+        } else {
+          checks.push({
+            key: 'amount',
+            pass: null,
+            detail: 'OCR 未给出参考金额',
+          });
+        }
+        const ocrCode = String(parsed.product_code || '').toUpperCase();
+        if (ocrCode) {
+          const pass = ocrCode === fields.product_code.toUpperCase();
+          checks.push({
+            key: 'product_code',
+            pass,
+            ocr: ocrCode,
+            vision: fields.product_code,
+          });
+          if (!pass && body.confirm_mismatch !== true) {
+            sendJson(response, 409, {
+              error: 'OCR 参考代码与视觉识别代码不一致，请人工确认后重试',
+              code: 'OCR_CODE_MISMATCH',
+              ocr_code: ocrCode,
+              vision_code: fields.product_code,
+              checks,
+            });
+            return;
+          }
+        } else {
+          checks.push({
+            key: 'product_code',
+            pass: null,
+            detail: 'OCR 未识别到产品代码',
+          });
+        }
+        const known = repository
+          .listProducts()
+          .find(
+            (product) =>
+              String(product.code).toUpperCase() ===
+              fields.product_code.toUpperCase(),
+          );
+        checks.push({
+          key: 'catalog',
+          pass: Boolean(known),
+          detail: known ? known.name : '产品库未收录该代码',
+        });
+        if (!known && body.allow_unknown_code !== true) {
+          sendJson(response, 409, {
+            error: '产品库中没有这个代码；如确认无误请允许未收录代码后重试',
+            code: 'UNKNOWN_PRODUCT_CODE',
+            checks,
+          });
+          return;
+        }
+        const existing = repository.tradeStore.findMatchingTrade(fields);
+        if (!existing && body.create !== true) {
+          sendJson(response, 409, {
+            error: '没有找到匹配的已有交易；如确需新建请显式允许 create',
+            code: 'NO_MATCHING_TRADE',
+            checks,
+          });
+          return;
+        }
+        const confidence = Number(body.confidence);
+        const inbox = repository.tradeStore.updateInbox(id, {
+          parsed: {
+            ...parsed,
+            ...fields,
+            ocr_reference: {
+              amount: Number.isFinite(ocrAmount) ? ocrAmount : null,
+              product_code: ocrCode || '',
+            },
+            vision: { at: new Date().toISOString(), checks },
+          },
+          parse_confidence: Number.isFinite(confidence)
+            ? Math.max(0, Math.min(100, confidence))
+            : 95,
+          notes: String(body.note || '视觉识别写入').slice(0, 500),
+        });
+        const result = repository.tradeStore.applyInbox(id, fields);
+        sendJson(response, 200, {
+          ...result,
+          inbox,
+          checks,
+          vision: true,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
       if (inboxIgnoreMatch && request.method === 'POST') {
         const id = Number(inboxIgnoreMatch[1]);
         const body = await readJsonBody(request);

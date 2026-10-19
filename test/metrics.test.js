@@ -78,6 +78,48 @@ test('monthly grades use the 0.16/0.20/0.25/0.30 thresholds', () => {
   assert.equal(gradeMonthReturn(0.30), '卓越');
 });
 
+test('empty ledger still exposes the current month, missing dates and next action', () => {
+  const review = buildReview([], '2026-10-19');
+  assert.equal(review.daily, null);
+  assert.equal(review.weekly, null);
+  assert.equal(review.current_month.month, '2026-10');
+  assert.equal(review.current_month.has_records, false);
+  assert.equal(review.current_month.record_days, 0);
+  assert.equal(review.current_month.elapsed_days, 19);
+  assert.equal(review.current_month.days_remaining, 12);
+  assert.equal(review.current_month.missing_dates.length, 19);
+  assert.equal(review.current_month.records_needed_for_grade, 20);
+  assert.equal(review.current_month.score_status, 'no_records');
+  assert.equal(review.monthly.length, 1);
+  assert.ok(review.alerts.some((item) => item.code === 'no-month-records'));
+});
+
+test('monthly history fills missing months instead of hiding the gap', () => {
+  const rows = [
+    {
+      date: '2026-08-01',
+      principal: 500000,
+      daily_pnl: 10,
+      action: '无操作',
+      notes: '',
+    },
+    {
+      date: '2026-10-01',
+      principal: 500000,
+      daily_pnl: 20,
+      action: '无操作',
+      notes: '',
+    },
+  ];
+  const review = buildReview(enrichRecords(rows), '2026-10-19');
+  const september = review.monthly.find((item) => item.month === '2026-09');
+  assert.ok(september);
+  assert.equal(september.has_records, false);
+  assert.equal(september.grade_display, '未记录');
+  assert.equal(september.elapsed_days, 30);
+  assert.equal(september.missing_dates.length, 30);
+});
+
 test('buildReview keeps a provisional month ungraded and exposes target progress', () => {
   const enriched = enrichRecords([
     ...baseRecords,
@@ -134,7 +176,12 @@ test('a closed month with enough samples receives a final grade', () => {
     });
   }
   const review = buildReview(enrichRecords(rows), '2026-10-05');
-  assert.equal(review.current_month, null);
+  assert.equal(review.current_month.month, '2026-10');
+  assert.equal(review.current_month.has_records, false);
+  assert.equal(review.current_month.grade_display, '待记录');
+  assert.equal(review.current_month.missing_days, 5);
+  assert.equal(review.current_month.missing_dates.length, 5);
+  assert.ok(review.monthly.some((item) => item.month === '2026-10'));
   const september = review.monthly.find((item) => item.month === '2026-09');
   assert.equal(september.sample_sufficient, true);
   assert.equal(september.final, true);
@@ -142,6 +189,8 @@ test('a closed month with enough samples receives a final grade', () => {
   assert.equal(september.grade_display, '卓越');
   assert.equal(september.record_days, 30);
   assert.equal(september.missing_days, 0);
+  assert.equal(september.missing_dates.length, 0);
+  assert.equal(september.recorded_dates.length, 30);
   assert.equal(september.record_coverage_pct, 100);
   assert.ok(september.annualized_pct > 0);
   assert.ok(september.target_gap_pct !== null);

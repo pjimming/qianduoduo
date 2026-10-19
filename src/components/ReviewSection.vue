@@ -13,6 +13,11 @@ import {
 const props = defineProps<{
   review: ReviewData
   notes?: ReviewNote[]
+  today: string
+}>()
+
+const emit = defineEmits<{
+  record: [date: string]
 }>()
 
 const selectedMonth = ref<string>(
@@ -47,7 +52,7 @@ const highlightGrade = computed(() => {
     ? monthly.value.grade_preview
     : monthly.value.grade
 })
-const hasData = computed(() => Boolean(daily.value && monthly.value))
+const hasData = computed(() => Boolean(monthly.value?.has_records))
 const gradeScale = computed(() => {
   const thresholds = props.review.thresholds ?? []
   return [
@@ -122,6 +127,9 @@ function nextGradeMessage(returnPct: number | null): string {
 
 function monthlyMessage(item: MonthlyReview | null): string {
   if (!item) return '记录收益后自动生成月度评分。'
+  if (!item.has_records) {
+    return `本月已过 ${item.elapsed_days} 天，还没有收益记录；先补今天，评分会在记录后自动生成。`
+  }
   if (item.provisional) {
     const range = item.grade_range
       ? `${item.grade_range.low}–${item.grade_range.high} 档`
@@ -136,6 +144,126 @@ function monthlyMessage(item: MonthlyReview | null): string {
     return `样本不足：仅 ${item.record_days} 条记录、覆盖 ${item.calendar_days} 天，不参与评级。`
   }
   return nextGradeMessage(item.return_pct)
+}
+
+const recordedSet = computed(() => new Set(monthly.value?.recorded_dates || []))
+const calendarCells = computed(() => {
+  if (!monthly.value) return []
+  const [year, month] = monthly.value.month.split('-').map(Number)
+  const totalDays = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const leading = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7
+  const cells: Array<{
+    key: string
+    day: number
+    date: string
+    status: 'recorded' | 'missing' | 'future' | 'outside'
+  }> = []
+  for (let index = 0; index < leading; index += 1) {
+    cells.push({ key: `blank-${index}`, day: 0, date: '', status: 'outside' })
+  }
+  for (let day = 1; day <= totalDays; day += 1) {
+    const date = `${monthly.value.month}-${String(day).padStart(2, '0')}`
+    const status =
+      recordedSet.value.has(date)
+        ? 'recorded'
+        : day > monthly.value.elapsed_days
+          ? 'future'
+          : 'missing'
+    cells.push({ key: date, day, date, status })
+  }
+  return cells
+})
+const recordProgress = computed(() =>
+  monthly.value && monthly.value.elapsed_days > 0
+    ? Math.min(100, (monthly.value.record_days / monthly.value.elapsed_days) * 100)
+    : 0,
+)
+const recentDays = computed(() => {
+  if (!monthly.value || monthly.value.elapsed_days <= 0) return []
+  const days = []
+  const start = Math.max(1, monthly.value.elapsed_days - 6)
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  for (let day = start; day <= monthly.value.elapsed_days; day += 1) {
+    const date = `${monthly.value.month}-${String(day).padStart(2, '0')}`
+    days.push({
+      date,
+      day,
+      weekday: weekdays[new Date(`${date}T00:00:00Z`).getUTCDay()],
+      status: recordedSet.value.has(date) ? 'recorded' : 'missing',
+    })
+  }
+  return days
+})
+const recentRecordedCount = computed(
+  () => recentDays.value.filter((item) => item.status === 'recorded').length,
+)
+const recordHint = computed(() => {
+  if (!monthly.value) return ''
+  if (!monthly.value.has_records) {
+    return `点下面任一天补记录；本月已过 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天。`
+  }
+  if (monthly.value.provisional) {
+    return `已记录 ${monthly.value.record_days}/${monthly.value.elapsed_days} 天，还差 ${monthly.value.missing_days} 天；月末满 28 天且 20 条记录才会落最终评级。`
+  }
+  return `该月共记录 ${monthly.value.record_days} 天，覆盖 ${monthly.value.record_coverage_pct ?? 0}%；最终评级：${monthly.value.grade_display}。`
+})
+const gradeRequirementText = computed(() => {
+  if (!monthly.value) return ''
+  if (monthly.value.final) return '已达到最终评分条件'
+  const parts: string[] = []
+  if (monthly.value.days_needed_for_grade > 0) {
+    parts.push(`还需 ${monthly.value.days_needed_for_grade} 天日历覆盖`)
+  }
+  if (monthly.value.records_needed_for_grade > 0) {
+    parts.push(`还需 ${monthly.value.records_needed_for_grade} 条记录`)
+  }
+  return parts.length ? parts.join(' · ') : '样本条件已满足，等待月末结算'
+})
+
+const gradeConditions = computed(() => {
+  if (!monthly.value) return []
+  return [
+    {
+      label: '日历覆盖 ≥ 28 天',
+      done: monthly.value.calendar_days >= 28,
+      value: `${monthly.value.calendar_days}/28 天`,
+    },
+    {
+      label: '有效记录 ≥ 20 条',
+      done: monthly.value.record_days >= 20,
+      value: `${monthly.value.record_days}/20 条`,
+    },
+    {
+      label: '月份已结束',
+      done: !monthly.value.is_current,
+      value: monthly.value.is_current ? '进行中' : '已结束',
+    },
+    {
+      label: '五问已保存',
+      done: hasNote(monthly.value.month),
+      value: hasNote(monthly.value.month) ? '已保存' : '待填写',
+    },
+  ]
+})
+
+const actionItems = computed(() => {
+  if (!monthly.value) return []
+  if (!monthly.value.has_records) {
+    return ['先补今天', '连续记满 7 天', '月末前至少 20 条']
+  }
+  if (monthly.value.provisional && monthly.value.missing_days > 0) {
+    return [
+      `补 ${monthly.value.missing_days} 天记录`,
+      '核对交易流水与截图',
+      '月底前保存五问',
+    ]
+  }
+  return ['复核异常与偏离', '写当月结论', '定下月只改一件事']
+})
+
+function startRecord(date: string): void {
+  if (!date) return
+  emit('record', date)
 }
 
 function monthOptionLabel(item: MonthlyReview): string {
@@ -185,7 +313,7 @@ function selectMonth(month: string): void {
         <div class="daily-review-main">
           <span>最新日收益</span>
           <strong :class="tone(daily?.daily_pnl)">
-            {{ daily ? formatSignedMoney(daily.daily_pnl) : '—' }}
+            {{ daily ? formatSignedMoney(daily.daily_pnl) : '待记录' }}
           </strong>
           <small>
             {{
@@ -198,17 +326,17 @@ function selectMonth(month: string): void {
         <div class="review-metrics">
           <div>
             <span>当日本金</span>
-            <strong>{{ daily ? `¥${formatMoney(daily.principal, 0)}` : '—' }}</strong>
+            <strong>{{ daily ? `¥${formatMoney(daily.principal, 0)}` : '待记录' }}</strong>
           </div>
           <div>
             <span>月累计</span>
             <strong :class="tone(daily?.month_pnl)">
-              {{ daily ? formatSignedMoney(daily.month_pnl) : '—' }}
+              {{ daily ? formatSignedMoney(daily.month_pnl) : '待记录' }}
             </strong>
           </div>
           <div>
             <span>月收益率</span>
-            <strong>{{ daily ? formatPct(daily.month_return_pct, 3, true) : '—' }}</strong>
+            <strong>{{ daily ? formatPct(daily.month_return_pct, 3, true) : '待记录' }}</strong>
           </div>
         </div>
         <div class="review-note-line">
@@ -220,7 +348,7 @@ function selectMonth(month: string): void {
         <div class="review-grade-line">
           <span>最新月评级</span>
           <strong class="grade-badge" :class="dailyGradeClass()">
-            {{ daily?.month_grade || '—' }}
+            {{ daily?.month_grade || '待记录' }}
           </strong>
           <small>
             {{
@@ -246,7 +374,7 @@ function selectMonth(month: string): void {
           <div class="daily-review-main weekly-review-main">
             <span>本周收益</span>
             <strong :class="tone(weekly?.pnl)">
-              {{ weekly ? formatSignedMoney(weekly.pnl) : '—' }}
+              {{ weekly ? formatSignedMoney(weekly.pnl) : '待记录' }}
             </strong>
             <small>
               {{
@@ -259,15 +387,15 @@ function selectMonth(month: string): void {
           <div class="review-metrics">
             <div>
               <span>记录天数</span>
-              <strong>{{ weekly ? `${weekly.record_days}/${weekly.elapsed_days}` : '—' }}</strong>
+              <strong>{{ weekly ? `${weekly.record_days}/${weekly.elapsed_days}` : '0/0' }}</strong>
             </div>
             <div>
               <span>负收益天数</span>
-              <strong>{{ weekly ? `${weekly.negative_days} 天` : '—' }}</strong>
+              <strong>{{ weekly ? `${weekly.negative_days} 天` : '0 天' }}</strong>
             </div>
             <div>
               <span>操作次数</span>
-              <strong>{{ weekly ? `${weekly.action_count} 次` : '—' }}</strong>
+              <strong>{{ weekly ? `${weekly.action_count} 次` : '0 次' }}</strong>
             </div>
           </div>
           <div class="review-grade-line weekly-streak-line">
@@ -276,7 +404,7 @@ function selectMonth(month: string): void {
               class="streak-badge"
               :class="{ 'is-warn': (weekly?.consecutive_negative_days ?? 0) >= 3 }"
             >
-              {{ weekly ? `${weekly.consecutive_negative_days} 天` : '—' }}
+              {{ weekly ? `${weekly.consecutive_negative_days} 天` : '0 天' }}
             </strong>
             <small>
               {{
@@ -285,6 +413,38 @@ function selectMonth(month: string): void {
                   : '按周复核即可'
               }}
             </small>
+          </div>
+        </article>
+
+        <article class="panel review-card recent-review-card">
+          <div class="review-card-head">
+            <span>最近 7 天</span>
+            <span>{{ monthly?.month_label || '本月' }} · {{ recentRecordedCount }}/7 天</span>
+          </div>
+          <div v-if="recentDays.length" class="recent-day-list">
+            <button
+              v-for="item in recentDays"
+              :key="item.date"
+              type="button"
+              class="recent-day-row"
+              :class="`is-${item.status}`"
+              :aria-label="`${item.date} ${item.status === 'recorded' ? '已记录，点击修改' : '缺记，点击补记'}`"
+              @click="startRecord(item.date)"
+            >
+              <span class="recent-day-date">
+                {{ item.day }} 日
+                <small>周{{ item.weekday }}</small>
+              </span>
+              <span class="recent-day-status">
+                {{ item.status === 'recorded' ? '已记录' : '缺记' }}
+              </span>
+              <em class="recent-day-dot"></em>
+            </button>
+          </div>
+          <div v-else class="recent-day-empty">本月还没有可显示的日期。</div>
+          <div class="recent-day-foot">
+            <span>点任意一天直接补记或修改</span>
+            <button type="button" @click="startRecord(today)">补今天</button>
           </div>
         </article>
       </div>
@@ -310,7 +470,13 @@ function selectMonth(month: string): void {
               <div>
                 <span>月收益率</span>
                 <strong :class="tone(monthly?.return_pct)">
-                  {{ monthly ? formatPct(monthly.return_pct, 3, true) : '—' }}
+                  {{
+                    monthly
+                      ? monthly.has_records
+                        ? formatPct(monthly.return_pct, 3, true)
+                        : '待记录'
+                      : '—'
+                  }}
                 </strong>
               </div>
               <div class="monthly-grade-block">
@@ -345,8 +511,16 @@ function selectMonth(month: string): void {
               </div>
               <div>
                 <span>年化参考</span>
-                <strong>{{ monthly ? formatPct(monthly.annualized_pct, 2, true) : '—' }}</strong>
-                <small>{{ monthly?.sample_sufficient ? '按记录期复利' : '短样本仅参考' }}</small>
+                <strong>
+                  {{
+                    monthly && monthly.has_records
+                      ? formatPct(monthly.annualized_pct, 2, true)
+                      : '待记录'
+                  }}
+                </strong>
+                <small>{{
+                  monthly?.sample_sufficient ? '按记录期复利' : '满 20 条后参考'
+                }}</small>
               </div>
               <div>
                 <span>最大回撤</span>
@@ -373,7 +547,11 @@ function selectMonth(month: string): void {
               <div>
                 <span>目标缺口</span>
                 <strong :class="deltaClass(monthly?.target_gap_pct)">
-                  {{ monthly ? formatPp(monthly.target_gap_pct, 2, true) : '—' }}
+                  {{
+                    monthly?.target_gap_pct !== null && monthly?.target_gap_pct !== undefined
+                      ? formatPp(monthly.target_gap_pct, 2, true)
+                      : '待计算'
+                  }}
                 </strong>
               </div>
             </div>
@@ -382,7 +560,11 @@ function selectMonth(month: string): void {
               <div class="target-progress-head">
                 <span>{{ monthly.provisional ? '本月目标进度' : '月度目标进度' }}</span>
                 <strong :class="tone((monthly.target_progress_pct ?? 0) - 100)">
-                  {{ formatPct(monthly.target_progress_pct, 1) }}
+                  {{
+                    monthly.has_records
+                      ? formatPct(monthly.target_progress_pct, 1)
+                      : '待记录'
+                  }}
                 </strong>
               </div>
               <div
@@ -395,13 +577,18 @@ function selectMonth(month: string): void {
                 <span :style="{ width: progressWidth(monthly.target_progress_pct) }"></span>
               </div>
               <p>
-                按天折算目标 {{ formatPct(monthly.target_mtd_pct, 3) }}，当前
-                {{ formatPct(monthly.return_pct, 3, true) }}；
-                <template v-if="monthly.provisional">
-                  按当前速度月底约 {{ formatPct(monthly.projected_pct, 3, true) }}
+                <template v-if="monthly.has_records">
+                  按天折算目标 {{ formatPct(monthly.target_mtd_pct, 3) }}，当前
+                  {{ formatPct(monthly.return_pct, 3, true) }}；
+                  <template v-if="monthly.provisional">
+                    按当前速度月底约 {{ formatPct(monthly.projected_pct, 3, true) }}
+                  </template>
+                  <template v-else>
+                    整月目标 {{ formatPct(monthly.target_month_pct, 3) }}
+                  </template>
                 </template>
                 <template v-else>
-                  整月目标 {{ formatPct(monthly.target_month_pct, 3) }}
+                  本月按天折算目标 {{ formatPct(monthly.target_mtd_pct, 3) }}；记录第一笔收益后开始计算进度。
                 </template>
               </p>
             </div>
@@ -444,7 +631,9 @@ function selectMonth(month: string): void {
                 </span>
               </div>
             </div>
-            <p v-else-if="monthly" class="review-compare-empty">首月记录，暂无环比。</p>
+            <p v-else-if="monthly" class="review-compare-empty">
+              {{ monthly.has_records ? '暂无可比月份。' : '记录第一笔收益后生成环比。' }}
+            </p>
 
             <div v-if="selectedNote" class="review-conclusion">
               <div class="review-conclusion-head">
@@ -457,10 +646,6 @@ function selectMonth(month: string): void {
                 {{ selectedNote.answers[4] || '未填写' }}
               </p>
             </div>
-            <p v-else-if="monthly" class="review-conclusion is-empty">
-              这个月还没有五问结论，可以在下方复盘工作台补上。
-            </p>
-
             <div class="grade-steps" aria-label="月度评分标准">
               <span :class="{ 'is-current': highlightGrade === '不及格' }">
                 不及格
@@ -474,6 +659,65 @@ function selectMonth(month: string): void {
                 {{ step.grade }}
                 <small>{{ step.min.toFixed(2) }}%</small>
               </span>
+            </div>
+
+            <div v-if="monthly" class="monthly-record-panel">
+              <div class="monthly-record-head">
+                <div>
+                  <strong>本月记录日历</strong>
+                  <span>{{ monthly.record_days }}/{{ monthly.elapsed_days }} 天已记录</span>
+                </div>
+                <button
+                  class="monthly-record-cta"
+                  type="button"
+                  @click="startRecord(today)"
+                >
+                  补今天
+                </button>
+              </div>
+              <div class="monthly-record-progress" aria-hidden="true">
+                <span :style="{ width: `${recordProgress}%` }"></span>
+              </div>
+              <p class="monthly-record-hint">{{ recordHint }}</p>
+              <div class="record-calendar" aria-label="每日记录状态">
+                <span
+                  v-for="weekday in ['一', '二', '三', '四', '五', '六', '日']"
+                  :key="weekday"
+                  class="record-weekday"
+                >
+                  {{ weekday }}
+                </span>
+                <button
+                  v-for="cell in calendarCells"
+                  :key="cell.key"
+                  type="button"
+                  class="record-day"
+                  :class="`is-${cell.status}`"
+                  :disabled="cell.status === 'outside' || cell.status === 'future'"
+                  :aria-label="
+                    cell.status === 'outside'
+                      ? ''
+                      : `${cell.date} ${
+                          cell.status === 'recorded'
+                            ? '已记录'
+                            : cell.status === 'missing'
+                              ? '缺记'
+                              : '未到'
+                        }`
+                  "
+                  @click="startRecord(cell.date)"
+                >
+                  {{ cell.day || '' }}
+                </button>
+              </div>
+              <div class="monthly-record-foot">
+                <span class="record-legend">
+                  <em class="is-recorded"></em>已记录
+                  <em class="is-missing"></em>缺记
+                  <em class="is-future"></em>未到
+                </span>
+                <span>{{ gradeRequirementText }}</span>
+              </div>
             </div>
           </div>
           <div class="monthly-review-history">
@@ -499,13 +743,17 @@ function selectMonth(month: string): void {
                 <div class="review-history-main">
                   <strong>{{ item.month_label }}</strong>
                   <span>
-                    {{ item.record_days }} 天 · 月均 ¥{{ formatMoney(item.avg_principal) }}
+                    {{ item.record_days }}/{{ item.elapsed_days }} 天 · 月均 ¥{{
+                      formatMoney(item.avg_principal)
+                    }}
                     <em v-if="hasNote(item.month)" class="review-note-flag">已复盘</em>
                   </span>
                 </div>
                 <div class="review-history-value">
                   <strong>{{ formatSignedMoney(item.pnl) }}</strong>
-                  <span>{{ formatPct(item.return_pct, 3, true) }}</span>
+                  <span>{{
+                    item.has_records ? formatPct(item.return_pct, 3, true) : '待记录'
+                  }}</span>
                 </div>
                 <span class="grade-badge" :class="gradeClass(item.grade)">
                   {{ item.grade_display }}
@@ -514,6 +762,22 @@ function selectMonth(month: string): void {
             </div>
             <div v-if="history.length === 0" class="review-empty">
               还没有月度数据。
+            </div>
+            <div v-if="monthly" class="history-action-card">
+              <div class="history-action-head">
+                <strong>本月先做这几件事</strong>
+                <span>{{ monthly.month_label }}</span>
+              </div>
+              <ol>
+                <li v-for="item in actionItems" :key="item">{{ item }}</li>
+              </ol>
+              <div class="grade-condition-list">
+                <div v-for="condition in gradeConditions" :key="condition.label">
+                  <span class="condition-dot" :class="{ 'is-done': condition.done }"></span>
+                  <span>{{ condition.label }}</span>
+                  <strong>{{ condition.value }}</strong>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -530,5 +794,376 @@ function selectMonth(month: string): void {
 <style scoped>
 .review-history-row {
   cursor: pointer;
+}
+
+.review-side {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-side > .review-card {
+  flex: 0 0 auto;
+}
+
+.recent-review-card {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 250px;
+  flex-direction: column;
+}
+
+.review-side > .recent-review-card {
+  flex: 1 1 auto;
+}
+
+.recent-day-list {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  margin-top: 14px;
+  grid-auto-rows: minmax(36px, 1fr);
+  align-content: stretch;
+}
+
+.recent-day-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 8px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-day-row:hover {
+  border-color: rgba(23, 100, 86, 0.3);
+}
+
+.recent-day-row.is-missing {
+  border-color: rgba(161, 77, 64, 0.16);
+  background: #fdf6f3;
+}
+
+.recent-day-date {
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.recent-day-date small {
+  margin-left: 5px;
+  color: var(--muted-light);
+  font-size: 12px !important;
+}
+
+.recent-day-status {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.recent-day-row.is-missing .recent-day-status {
+  color: #a14d40;
+}
+
+.recent-day-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--green);
+}
+
+.recent-day-row.is-missing .recent-day-dot {
+  background: #c98a7d;
+}
+
+.recent-day-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.recent-day-foot button {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border: 1px solid rgba(23, 100, 86, 0.22);
+  border-radius: 999px;
+  background: var(--green-wash);
+  color: var(--green);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.recent-day-empty {
+  flex: 1;
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.monthly-record-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-soft);
+}
+
+.monthly-record-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.monthly-record-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.monthly-record-head strong {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.monthly-record-head span {
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.monthly-record-cta {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border: 1px solid rgba(23, 100, 86, 0.24);
+  border-radius: 999px;
+  background: var(--green-wash);
+  color: var(--green);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.monthly-record-progress {
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(23, 100, 86, 0.1);
+}
+
+.monthly-record-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 180ms ease;
+}
+
+.monthly-record-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.record-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.record-weekday {
+  padding: 2px 0;
+  color: var(--muted-light);
+  font-size: 12px;
+  text-align: center;
+}
+
+.record-day {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.record-day.is-recorded {
+  border-color: rgba(23, 100, 86, 0.18);
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 700;
+}
+
+.record-day.is-missing {
+  border-color: rgba(161, 77, 64, 0.18);
+  background: #fbf0ed;
+  color: #a14d40;
+}
+
+.record-day.is-missing:hover {
+  border-color: rgba(161, 77, 64, 0.42);
+  background: #f7e5e1;
+}
+
+.record-day.is-future,
+.record-day.is-outside {
+  color: var(--muted-light);
+  cursor: default;
+  opacity: 0.4;
+}
+
+.monthly-record-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--muted-light);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.record-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.record-legend em {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 4px;
+  border-radius: 2px;
+}
+
+.record-legend em.is-recorded {
+  background: var(--green-soft);
+}
+
+.record-legend em.is-missing {
+  background: #fbf0ed;
+}
+
+.record-legend em.is-future {
+  background: var(--line);
+}
+
+.history-action-card {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card-soft);
+}
+
+.history-action-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.history-action-head strong {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.history-action-head span {
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.history-action-card ol {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 17px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.grade-condition-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed var(--line);
+}
+
+.grade-condition-list > div {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.grade-condition-list strong {
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.condition-dot {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.condition-dot.is-done {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+@media (max-width: 720px) {
+  .monthly-record-foot {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 1080px) and (min-width: 621px) {
+  .review-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .review-side > .review-card {
+    flex: 1 1 calc(50% - 7px);
+  }
+
+  .recent-review-card {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .recent-review-card {
+    min-height: 0;
+  }
 }
 </style>

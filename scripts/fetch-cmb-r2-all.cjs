@@ -5,7 +5,7 @@
  * 拉取招行 R2 公开全量池，并生成：
  *   data/cmb_r2_all-YYYY-MM-DD.csv       全量原始结果
  *   data/cmb_r2_universe-YYYY-MM-DD.csv  普通可买候选池
- *   data/cmb_r2_selected-YYYY-MM-DD.csv  当前规则精选池
+ *   data/cmb_r2_selected-YYYY-MM-DD.csv  研究观察池（不含资金分配）
  *
  * 只使用公开接口，不登录账户、不抓取实时额度、不替用户下单。
  */
@@ -369,7 +369,7 @@ async function main() {
     const selectedPath = path.join(DATA_DIR, `cmb_r2_selected-${today}.csv`);
     writeCsv(allPath, products);
     writeCsv(universePath, universe);
-    writeCsv(selectedPath, view.watchlist);
+    writeCsv(selectedPath, view.observation_list);
 
     let refresh = null;
     try {
@@ -389,9 +389,9 @@ async function main() {
           today,
           total: products.length,
           universe: universe.length,
-          selected: view.watchlist.length,
+          selected: view.observation_list.length,
           bucket_counts: view.stats.bucket_counts,
-          selected_codes: view.watchlist.map((product) => product.code),
+          selected_codes: view.observation_list.map((product) => product.code),
           files: { allPath, universePath, selectedPath },
           refresh,
         },

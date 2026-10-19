@@ -16,9 +16,8 @@
 | ID（本机） | 名称 | 时间 | RRULE | 模型 | Reasoning | 执行环境 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2-2` | 钱多多R2每日复盘巡检 | 每天 21:30 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=30;BYSECOND=0` | `deepseek-v4-pro` | `high` | `local` | `ACTIVE` |
-| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-v4-pro` | `high` | `local` | `ACTIVE` |
-| `automation` | 钱多多自动化队列巡检 | 每天 21:10 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=10;BYSECOND=0` | `deepseek-v4-pro` | `high` | `local` | `ACTIVE` |
+| `r2-2` | 钱多多R2每日巡检（含队列处理） | 每天 21:00 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
+| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 
 > `ID` 是当前机器上 `%USERPROFILE%\.codex\automations\<id>\automation.toml` 的目录名。新建任务时 Codex 可能生成不同的 ID，**以任务名称、时间、提示词和运行配置为准**，不要为了复刻 ID 去手工改 Codex 内部目录。
 >
@@ -29,8 +28,8 @@
 | 任务 | 依赖 |
 | --- | --- |
 | `r2` | Node.js 24+、可访问招行公开接口、本地服务用于 `/api/products/refresh` |
-| `r2-2` / `r2-3` | 本地服务 `http://127.0.0.1:8765` 正在运行 |
-| `automation` | 本地服务正在运行，且 SQLite 中已有或即将产生判断任务 |
+| `r2-2` | 本地服务 `http://127.0.0.1:8765` 正在运行，SQLite 中可能已有 Codex 判断任务 |
+| `r2-3` | 本地服务 `http://127.0.0.1:8765` 正在运行 |
 
 ## 2. 每个任务做什么
 
@@ -44,11 +43,13 @@
 
 提示词：[r2-product-snapshot.md](r2-product-snapshot.md)
 
-### `r2-2` — 钱多多R2每日复盘巡检
+### `r2-2` — 钱多多R2每日巡检（含队列处理）
 
-- 每天 21:30 读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
-- 巡检今日收益、待确认交易、收件箱、对账、到期、自动评估、复盘节点和服务状态；
-- 没有异常时保持安静，不发送“今日无异常”；
+- 每天 21:00 读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
+- 第 0 步处理 Codex 判断队列：`screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
+- 第 1–8 步巡检收益记录、待确认交易、收件箱、对账、到期、自动评估、复盘节点和服务状态；
+- 晚上运行，收益记录按当天口径检查；个别产品净值未发布时允许标注待更新；
+- 没有异常、没有待办时保持安静，不发送“今日无异常”；
 - 只维护账本事实和流程，不写投资建议、不做收益预测。
 
 提示词：[r2-daily-review.md](r2-daily-review.md)
@@ -62,15 +63,6 @@
 提示词：[r2-weekly-structure.md](r2-weekly-structure.md)
 
 > 当前线上提示词仍引用旧文件 `cmb_r2_products-*.csv`；新环境请按提示词文件里的模板改用 `cmb_r2_selected-*.csv`（精选）或 `cmb_r2_universe-*.csv`（全量候选）。
-
-### `automation` — 钱多多自动化队列巡检
-
-- 每天 21:10 读取 `/api/automation/workspace`；
-- 处理 `screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary` 四类 Codex 判断任务；
-- 队列为空、服务不可用或状态未变化时保持安静；
-- 不删除/撤销交易，不替用户下单，不登录银行，不修改收益记录。
-
-提示词：[codex-queue.md](codex-queue.md)
 
 ## 3. 在另一台机器上创建
 
@@ -93,7 +85,7 @@
 7. 保存并启用；
 8. 先手动运行一次，确认能读到本地 API，再等下一次定时触发。
 
-如果你的 Codex 没有 `deepseek-flash` 或 `deepseek-v4-pro`，选择同等能力、支持工具调用的模型，并把 reasoning 设为 `high`。模型名是当前环境快照，不是项目的硬依赖。
+如果你的 Codex 没有 `deepseek-flash`，选择同等能力、支持工具调用的模型，并把 reasoning 设为 `high`。模型名是当前环境快照，不是项目的硬依赖。
 
 ### 3.3 替换占位符
 
@@ -133,8 +125,8 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 ### 4.4 任务本身
 
 - `r2`：手动运行后检查 `data/` 是否生成当天 CSV，`/api/dashboard` 是否切换快照；
-- `r2-2` / `r2-3`：没有异常时应该“无消息”，有异常时只发一张不超过 8 行的巡检卡/周卡；
-- `automation`：队列为空时应该无消息；有任务时只处理判断队列，不改交易流水。
+- `r2-2`：没有异常或待办时应该“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
+- `r2-3`：没有结构风险时应该“无消息”，有内容时只发一张周卡。
 
 ## 5. 常见问题
 
@@ -184,7 +176,7 @@ cwds = ["<WORKSPACE>"]
 | 工作区 | `D:\codex\钱多多财富工作台` |
 | 本地服务 | `http://127.0.0.1:8765` |
 | 时区 | `Asia/Shanghai` |
-| Codex 定时任务 | 4 个，全部 `ACTIVE`，全部 `local` |
+| Codex 定时任务 | 3 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
 | 生产守护 | Supervisor 运行中，Health OK |
 | Windows 看门狗任务 | `QianDuoDuo-Production` 未安装 |
 | 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，流动性下限 30%，置信度 75%，巡检 5 分钟 |

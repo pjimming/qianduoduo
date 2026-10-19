@@ -243,7 +243,7 @@ date,principal,daily_pnl,action,notes
 
 ### 5.1 它是什么
 
-应用先读取 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买候选池，再按期限桶和评分规则每桶精选 3 只。以 2026-10-19 快照为例：432 只普通候选，首页展示 9 个复核对象。
+应用先读取 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买候选池，再按评分、期限桶、本金、已确认持仓、待确认买入、流动性下限、未来现金流和逐只额度动态决定产品数量与目标金额。以 2026-10-19 快照为例：432 只普通候选；实际分配数量随本金和约束变化，不再固定每桶 3 只。
 
 ### 5.2 怎么刷新
 
@@ -255,7 +255,7 @@ npm run r2:refresh-all
 
 - `cmb_r2_all-*.csv`：全量原始池；
 - `cmb_r2_universe-*.csv`：普通可买候选池；
-- `cmb_r2_selected-*.csv`：当前规则精选池。
+- `cmb_r2_selected-*.csv`：研究观察池，不含资金分配。
 
 页面“刷新快照”会重新解析日期最新的 universe CSV；也可以用 `R2_PRODUCT_CSV` 指定路径。
 
@@ -772,7 +772,7 @@ npm run research:publish
 | `npm run prod:stop` | 停止生产守护 |
 | `npm run prod:restart` | 重启生产服务 |
 | `npm run research:publish` | 发布报告：导航、同步、构建、重启 |
-| `npm run r2:refresh-all` | 刷新招行 R2 全量/候选/精选池 |
+| `npm run r2:refresh-all` | 刷新招行 R2 全量/候选/观察池 |
 | `npm test` | 运行单元/API 测试 |
 | `npm run check` | TypeScript 与 Node 语法检查 |
 | `npm run test:e2e` | 浏览器端到端冒烟测试 |
@@ -829,9 +829,8 @@ npm run prod:restart
 | ID | 名称 | 时间 | 模型 | 做什么 |
 | --- | --- | --- | --- | --- |
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `deepseek-flash` | 刷新招行 R2 全量/候选/精选 CSV 并刷新应用 |
-| `r2-2` | 钱多多R2每日复盘巡检 | 每日 21:30 | `deepseek-v4-pro` | 巡检今日收益、待确认交易、到期/对账、自动评估和复盘节点；无异常保持安静 |
-| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `deepseek-v4-pro` | 检查记录完整度、集中度、流动性、到期阶梯和下周动作；只在有风险/待办时发周卡 |
-| `automation` | 钱多多自动化队列巡检 | 每日 21:10 | `deepseek-v4-pro` | 处理 Codex 判断队列：截图歧义、评估复核、月度/季度草稿 |
+| `r2-2` | 钱多多R2每日巡检（含队列处理） | 每日 21:00 | `deepseek-flash` | 先处理 Codex 判断队列（截图歧义、评估复核、月度/季度草稿），再巡检收益记录、待确认交易、到期/对账、自动评估和复盘节点；无异常保持安静 |
+| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `deepseek-flash` | 检查记录完整度、集中度、流动性、到期阶梯和下周动作；只在有风险/待办时发周卡 |
 
 完整提示词、模型/reasoning 配置和跨机器创建步骤见 [codex-automations/README.md](codex-automations/README.md)；从零初始化、分享清单和个人数据边界见 [SETUP.md](SETUP.md)。
 

@@ -27,7 +27,7 @@
 如果自动化 shell 找不到 npm，使用本机 Node.js 24+ 的绝对路径执行：
 <NODE_EXE> <WORKSPACE>\scripts\fetch-cmb-r2-all.cjs
 
-脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买候选池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、成立满 12 个月、期限可解析且 1M/3M/6M/1Y 完整）和 data/cmb_r2_selected-YYYY-MM-DD.csv（短/中/长每桶 3 只精选），并调用本地 /api/products/refresh 让应用立即使用新候选池。
+脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买候选池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、成立满 12 个月、期限可解析且 1M/3M/6M/1Y 完整）和 data/cmb_r2_selected-YYYY-MM-DD.csv（研究观察池，不含资金分配），并调用本地 /api/products/refresh 让应用立即使用新候选池。实际买什么、买多少由应用按本金、持仓、待确认买入、流动性和额度动态计算。
 
 运行后检查 http://127.0.0.1:8765/api/dashboard 的 meta.product_csv、products.all.length、products.watchlist.length，确认候选池和精选池已生效。
 

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import {
   bucketLabel,
+  formatMoney,
   formatPct,
   formatPp,
   formatTerm,
 } from '@/composables/useFormatters'
-import type { DashboardPayload, Product } from '@/types/dashboard'
+import type { DashboardPayload, Product, ProductAllocationSettings } from '@/types/dashboard'
 import ProductDialog from './ProductDialog.vue'
 
 const props = defineProps<{
@@ -19,43 +20,128 @@ const dashboardStore = useDashboardStore()
 const { show } = useToast()
 const dialogOpen = ref(false)
 const refreshing = ref(false)
+const settingsOpen = ref(false)
+const savingSettings = ref(false)
+const savingQuota = ref(false)
 
 const products = computed(() => props.dashboard.products)
 const stats = computed(() => props.dashboard.products.stats)
+const allocation = computed(() => props.dashboard.products.allocation)
+const settings = computed<ProductAllocationSettings>(() => allocation.value.settings)
+
+const settingsForm = reactive({
+  principal_override: '' as string | number,
+  liquidity_floor_pct: 30,
+  max_single_pct: 30,
+  max_issuer_pct: 50,
+  cashflow_0_3: 0,
+  cashflow_3_6: 0,
+  cashflow_6_12: 0,
+  short: 30,
+  medium: 35,
+  long: 35,
+})
+
+const quotaDrafts = reactive<
+  Record<
+    string,
+    { available: string | number; max_order: string | number; window: string }
+  >
+>({})
+
+watch(
+  settings,
+  (value) => {
+    settingsForm.principal_override = value.principal_override ?? ''
+    settingsForm.liquidity_floor_pct = value.liquidity_floor_pct
+    settingsForm.max_single_pct = value.max_single_pct
+    settingsForm.max_issuer_pct = value.max_issuer_pct
+    settingsForm.cashflow_0_3 = value.cashflow_0_3
+    settingsForm.cashflow_3_6 = value.cashflow_3_6
+    settingsForm.cashflow_6_12 = value.cashflow_6_12
+    settingsForm.short = value.bucket_targets.short
+    settingsForm.medium = value.bucket_targets.medium
+    settingsForm.long = value.bucket_targets.long
+  },
+  { immediate: true },
+)
+
+watch(
+  () => products.value.watchlist.map((item) => item.code),
+  (codes) => {
+    for (const code of codes) {
+      if (quotaDrafts[code]) continue
+      const item = products.value.watchlist.find((product) => product.code === code)
+      quotaDrafts[code] = {
+        available: item?.quota_available ?? '',
+        max_order: item?.quota_max_order ?? '',
+        window: item?.quota_window || '',
+      }
+    }
+  },
+  { immediate: true },
+)
+
+const statusLabel = computed(() => {
+  const status = allocation.value.status
+  if (status === 'ready') return '已按目标配满'
+  if (status === 'quota_unverified') return '金额已分配 · 额度待核'
+  if (status === 'partial') return '部分分配'
+  if (status === 'no_cash') return '暂无新增资金'
+  if (status === 'no_allocation') return '无法完成分配'
+  return '等待本金'
+})
 
 const goalTitle = computed(() => {
-  if (!products.value.watchlist.length) return '精选池目标可行性'
-  if (stats.value.median_1y === null) return '产品池数据不足'
-  return `精选池近 1 年中位 ${formatPct(stats.value.median_1y, 2)}`
+  if (allocation.value.principal <= 0) return '先初始化本金，再生成配置'
+  if (allocation.value.available_cash <= 0) return '当前资金已被持仓和待确认买入占用'
+  return `新增可分配 ¥${formatMoney(allocation.value.available_cash, 0)} · 已分配 ${formatPct(
+    (allocation.value.allocated_amount / Math.max(allocation.value.available_cash, 1)) * 100,
+    0,
+  )}`
 })
 
 const goalText = computed(() => {
-  if (!products.value.watchlist.length) return '没有可读取的普通可买产品池。'
-  if (stats.value.median_1y === null) return '没有足够的近 1 年历史数据。'
+  const value = allocation.value
   const counts = stats.value.bucket_counts
-  return `普通可买 ${stats.value.total} 只（日开 ${counts.cash} / 短 ${counts.short} / 中 ${
-    counts.medium
-  } / 长 ${counts.long}）· 精选 ${stats.value.selected_count} 只 · 全池 1Y 中位 ${formatPct(
-    stats.value.universe_median_1y,
-    2,
-  )} · 目标覆盖 ${formatPct(stats.value.target_coverage_pct, 1)}`
-})
-
-const goalGap = computed(() => {
-  if (!products.value.watchlist.length || stats.value.target_gap_pct === null) return '—'
-  return `距 3% ${formatPp(stats.value.target_gap_pct, 2, true)}`
+  return `本金 ¥${formatMoney(value.principal, 0)} · 已确认持仓 ¥${formatMoney(
+    value.holdings.amount,
+    0,
+  )} · 待确认买入 ¥${formatMoney(value.pending.amount, 0)} · 新增分配 ¥${formatMoney(
+    value.allocated_amount,
+    0,
+  )} · 未分配 ¥${formatMoney(value.unallocated_amount, 0)} · 候选池 ${stats.value.total} 只（短 ${
+    counts.short
+  } / 中 ${counts.medium} / 长 ${counts.long}）`
 })
 
 const progressStyle = computed(() => ({
   width: `${
-    stats.value.median_1y === null
+    allocation.value.available_cash <= 0
       ? 0
-      : Math.max(0, Math.min(100, stats.value.target_coverage_pct || 0))
+      : Math.max(
+          0,
+          Math.min(
+            100,
+            (allocation.value.allocated_amount / allocation.value.available_cash) * 100,
+          ),
+        )
   }%`,
 }))
 
+const observationCandidates = computed(() => {
+  const selected = new Set(products.value.watchlist.map((item) => item.code))
+  return products.value.observation_list.filter((item) => !selected.has(item.code))
+})
+
 function gapClass(product: Product): string {
   return product.target_gap_pct !== null && product.target_gap_pct >= 0 ? 'positive' : ''
+}
+
+function quotaLabel(product: Product): string {
+  if (product.quota_status === 'verified') return '额度已核验'
+  if (product.quota_status === 'limited') return '额度不足，已截断'
+  return '额度未核验'
 }
 
 async function refreshSnapshot(): Promise<void> {
@@ -77,16 +163,80 @@ async function refreshSnapshot(): Promise<void> {
     refreshing.value = false
   }
 }
+
+async function saveSettings(): Promise<void> {
+  savingSettings.value = true
+  try {
+    await dashboardStore.updateAllocationSettings({
+      principal_override:
+        settingsForm.principal_override === '' ? null : Number(settingsForm.principal_override),
+      liquidity_floor_pct: Number(settingsForm.liquidity_floor_pct),
+      max_single_pct: Number(settingsForm.max_single_pct),
+      max_issuer_pct: Number(settingsForm.max_issuer_pct),
+      cashflow_0_3: Number(settingsForm.cashflow_0_3),
+      cashflow_3_6: Number(settingsForm.cashflow_3_6),
+      cashflow_6_12: Number(settingsForm.cashflow_6_12),
+      bucket_targets: {
+        short: Number(settingsForm.short),
+        medium: Number(settingsForm.medium),
+        long: Number(settingsForm.long),
+      },
+    })
+    show('分配假设已保存，目标金额已重算')
+  } catch (error) {
+    show(error instanceof Error ? error.message : '分配设置保存失败', { error: true })
+  } finally {
+    savingSettings.value = false
+  }
+}
+
+async function useLedgerPrincipal(): Promise<void> {
+  settingsForm.principal_override = ''
+  await saveSettings()
+}
+
+async function saveQuotas(): Promise<void> {
+  savingQuota.value = true
+  try {
+    const quotaByCode = Object.fromEntries(
+      Object.entries(quotaDrafts).map(([code, value]) => [
+        code,
+        {
+          available: value.available === '' ? null : Number(value.available),
+          max_order: value.max_order === '' ? null : Number(value.max_order),
+          window: value.window || settings.value.quota_by_code[code]?.window || '',
+          verified_at:
+            value.available === ''
+              ? ''
+              : new Date().toISOString().slice(0, 10),
+        },
+      ]),
+    )
+    await dashboardStore.updateAllocationSettings({ quota_by_code: quotaByCode })
+    show('产品额度已保存，金额已按额度重算')
+  } catch (error) {
+    show(error instanceof Error ? error.message : '额度保存失败', { error: true })
+  } finally {
+    savingQuota.value = false
+  }
+}
 </script>
 
 <template>
   <section class="products-section" aria-labelledby="productsTitle">
     <div class="section-head">
       <div>
-        <p class="kicker">R2 候选池 → 精选池</p>
-        <h2 id="productsTitle">全量普通候选池，每个期限按规则精选 3 只</h2>
+        <p class="kicker">R2 候选池 → 动态配置</p>
+        <h2 id="productsTitle">按本金、持仓、现金流和额度动态决定买什么、买多少</h2>
       </div>
       <div class="section-actions">
+        <button
+          class="button button-ghost button-small"
+          type="button"
+          @click="settingsOpen = !settingsOpen"
+        >
+          {{ settingsOpen ? '收起假设' : '调整假设' }}
+        </button>
         <button
           class="button button-ghost button-small"
           type="button"
@@ -116,12 +266,116 @@ async function refreshSnapshot(): Promise<void> {
       <div class="pool-progress" aria-hidden="true">
         <span :style="progressStyle"></span>
       </div>
-      <span
-        class="pool-gap"
-        :class="{ positive: stats.target_gap_pct !== null && stats.target_gap_pct >= 0 }"
-      >
-        {{ goalGap }}
+      <span class="pool-gap" :class="{ positive: allocation.status === 'ready' }">
+        {{ statusLabel }}
       </span>
+    </div>
+
+    <form v-if="settingsOpen" class="allocation-settings" @submit.prevent="saveSettings">
+      <label>
+        <span>可投资本金</span>
+        <input
+          v-model="settingsForm.principal_override"
+          type="number"
+          min="0"
+          step="100"
+          placeholder="留空使用本金账户"
+        />
+      </label>
+      <label>
+        <span>短期目标 %</span>
+        <input v-model.number="settingsForm.short" type="number" min="0" max="100" step="1" />
+      </label>
+      <label>
+        <span>中期目标 %</span>
+        <input v-model.number="settingsForm.medium" type="number" min="0" max="100" step="1" />
+      </label>
+      <label>
+        <span>长期目标 %</span>
+        <input v-model.number="settingsForm.long" type="number" min="0" max="100" step="1" />
+      </label>
+      <label>
+        <span>流动性下限 %</span>
+        <input
+          v-model.number="settingsForm.liquidity_floor_pct"
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+        />
+      </label>
+      <label>
+        <span>单只上限 %</span>
+        <input
+          v-model.number="settingsForm.max_single_pct"
+          type="number"
+          min="25"
+          max="30"
+          step="1"
+        />
+      </label>
+      <label>
+        <span>单发行方上限 %</span>
+        <input
+          v-model.number="settingsForm.max_issuer_pct"
+          type="number"
+          min="40"
+          max="100"
+          step="1"
+        />
+      </label>
+      <label>
+        <span>0–3 月支出</span>
+        <input v-model.number="settingsForm.cashflow_0_3" type="number" min="0" step="100" />
+      </label>
+      <label>
+        <span>3–6 月支出</span>
+        <input v-model.number="settingsForm.cashflow_3_6" type="number" min="0" step="100" />
+      </label>
+      <label>
+        <span>6–12 月支出</span>
+        <input v-model.number="settingsForm.cashflow_6_12" type="number" min="0" step="100" />
+      </label>
+      <div class="allocation-settings-actions">
+        <button class="button button-primary button-small" type="submit" :disabled="savingSettings">
+          {{ savingSettings ? '保存中…' : '保存并重算' }}
+        </button>
+        <button
+          class="button button-ghost button-small"
+          type="button"
+          :disabled="savingSettings"
+          @click="useLedgerPrincipal"
+        >
+          用本金账户
+        </button>
+      </div>
+    </form>
+
+    <div class="allocation-buckets">
+      <article
+        v-for="bucket in allocation.buckets"
+        :key="bucket.key"
+        class="allocation-bucket"
+        :class="[`bucket-${bucket.key}`, `is-${bucket.status}`]"
+      >
+        <div class="allocation-bucket-head">
+          <strong>{{ bucket.label }}</strong>
+          <span>{{ bucket.final_pct.toFixed(1) }}% / 目标 {{ bucket.target_pct }}%</span>
+        </div>
+        <div class="allocation-bucket-amount">
+          <strong>¥{{ formatMoney(bucket.final_amount, 0) }}</strong>
+          <span>新增 ¥{{ formatMoney(bucket.new_amount, 0) }}</span>
+        </div>
+        <div class="allocation-bucket-meta">
+          <span>已有 ¥{{ formatMoney(bucket.existing_amount, 0) }}</span>
+          <span>待配 ¥{{ formatMoney(bucket.budget_amount, 0) }}</span>
+        </div>
+        <p v-if="bucket.reasons.length">{{ bucket.reasons.join('；') }}</p>
+      </article>
+    </div>
+
+    <div v-if="allocation.reasons.length" class="allocation-reasons">
+      <span v-for="reason in allocation.reasons" :key="reason">{{ reason }}</span>
     </div>
 
     <div v-if="products.watchlist.length" class="watchlist">
@@ -138,6 +392,10 @@ async function refreshSnapshot(): Promise<void> {
           <span class="product-code">{{ product.code }}</span>
         </div>
         <h3 class="product-name">{{ product.name }}</h3>
+        <div class="allocation-target">
+          <strong>¥{{ formatMoney(product.target_amount, 0) }}</strong>
+          <span>目标占比 {{ product.target_pct.toFixed(1) }}%</span>
+        </div>
         <div class="product-yield">
           <strong>{{ formatPct(product.return_1y, 2) }}</strong>
           <span>近 1 年历史年化</span>
@@ -152,11 +410,11 @@ async function refreshSnapshot(): Promise<void> {
             <strong>{{ formatPct(product.return_6m, 2) }}</strong>
           </div>
         </div>
-        <p class="product-benchmark" :title="product.benchmark">
-          {{ product.benchmark || '底层与业绩基准待核验' }}
-        </p>
+        <p class="allocation-reason">{{ product.allocation_reason }}</p>
         <div class="product-foot">
-          <span>{{ product.data_date || '日期待核' }} · 历史快照</span>
+          <span class="quota-badge" :class="`is-${product.quota_status}`">
+            {{ quotaLabel(product) }}
+          </span>
           <span class="product-gap" :class="gapClass(product)">
             距 3%
             {{
@@ -168,14 +426,75 @@ async function refreshSnapshot(): Promise<void> {
         </div>
       </article>
     </div>
-    <div v-else class="watchlist">
-      <div class="product-card">
-        <div class="product-name">产品快照暂不可用</div>
-        <p class="product-benchmark">
-          请确认 data/ 下的产品快照 CSV 仍在原位（当前读取
-          {{ dashboard.meta.product_csv || 'cmb_r2_universe*.csv' }}），或在
-          R2_PRODUCT_CSV 中指定路径后重启服务。
-        </p>
+    <div v-else class="allocation-empty">
+      <strong>{{ allocation.principal > 0 ? '没有新增可分配金额' : '尚未初始化本金' }}</strong>
+      <p>
+        {{
+          allocation.principal > 0
+            ? '当前本金已被已确认持仓和待确认买入占用。下面保留观察名单，等资金释放或本金转入后再生成金额。'
+            : '先在“本金管理”中初始化本金，系统会按期限桶、流动性和集中度生成配置。'
+        }}
+      </p>
+    </div>
+
+    <div v-if="products.watchlist.length" class="quota-editor">
+      <div class="quota-editor-head">
+        <div>
+          <strong>买入前额度核验</strong>
+          <p>公开 CSV 没有实时额度。填了额度就按额度截断；留空则保留计算金额并标记“额度未核验”。</p>
+        </div>
+        <button
+          class="button button-primary button-small"
+          type="button"
+          :disabled="savingQuota"
+          @click="saveQuotas"
+        >
+          {{ savingQuota ? '保存中…' : '保存额度并重算' }}
+        </button>
+      </div>
+      <div class="quota-editor-grid">
+        <label v-for="product in products.watchlist" :key="product.code">
+          <span>{{ product.code }} · 可用额度</span>
+          <input
+            v-model="quotaDrafts[product.code].available"
+            type="number"
+            min="0"
+            step="100"
+            placeholder="未核验"
+          />
+          <span>单笔上限</span>
+          <input
+            v-model="quotaDrafts[product.code].max_order"
+            type="number"
+            min="0"
+            step="100"
+            placeholder="不限"
+          />
+          <span>额度窗口</span>
+          <input
+            v-model="quotaDrafts[product.code].window"
+            type="text"
+            maxlength="80"
+            placeholder="如 10/20 09:00"
+          />
+        </label>
+      </div>
+    </div>
+
+    <div v-if="observationCandidates.length" class="observation-list">
+      <div class="observation-head">
+        <strong>观察名单</strong>
+        <span>研究排序，不代表已分配金额</span>
+      </div>
+      <div class="observation-grid">
+        <div v-for="product in observationCandidates" :key="product.code">
+          <span>{{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}</span>
+          <strong>{{ product.name }}</strong>
+          <small>
+            近 1 年 {{ formatPct(product.return_1y, 2) }} · 评分
+            {{ product.selection_score.toFixed(2) }}
+          </small>
+        </div>
       </div>
     </div>
 
@@ -185,9 +504,9 @@ async function refreshSnapshot(): Promise<void> {
         <path d="M7.5 10.2 9.2 12l3.5-4" />
       </svg>
       <span>
-        候选池只保留人民币、公募、R2/PR2、开放中、成立满 12 个月且有完整 1M/3M/6M/1Y
-        的普通可买产品，并剔除私行/私银/私享/尊享/企享/专属/私募产品。精选规则以近
-        3M/6M 为主，对 1Y 明显高于 6M 的前视偏差扣分，并对单一发行方做分散；未核验实时额度、赎回规则和产品说明书，不构成推荐或买入建议。
+        目标金额由本金、已确认持仓、待确认买入、期限桶目标、流动性下限、未来现金流和集中度共同计算。
+        公开额度缺失时只给分配上限，不假装可买；买入前必须在招行 App 核对额度、起购金额、赎回规则和产品说明书。
+        未分配金额不会为了凑数强行买入，不构成推荐或买入建议。
       </span>
     </p>
 
@@ -207,5 +526,295 @@ async function refreshSnapshot(): Promise<void> {
 
 .watchlist {
   align-items: stretch;
+}
+
+.allocation-settings {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-soft);
+}
+
+.allocation-settings label,
+.quota-editor-grid label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.allocation-settings input,
+.quota-editor-grid input {
+  width: 100%;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.allocation-settings-actions {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.allocation-buckets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.allocation-bucket {
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+}
+
+.allocation-bucket.is-filled {
+  border-color: rgba(23, 100, 86, 0.24);
+  background: var(--green-wash);
+}
+
+.allocation-bucket-head,
+.allocation-bucket-meta,
+.allocation-bucket-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.allocation-bucket-head strong {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.allocation-bucket-head span,
+.allocation-bucket-meta {
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.allocation-bucket-amount {
+  margin-top: 10px;
+}
+
+.allocation-bucket-amount strong {
+  font-family: var(--serif);
+  font-size: 25px;
+  font-weight: 400;
+}
+
+.allocation-bucket-amount span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.allocation-bucket-meta {
+  justify-content: flex-start;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.allocation-bucket p {
+  margin: 8px 0 0;
+  color: #a14d40;
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.allocation-reasons {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0 16px;
+  padding: 10px 12px;
+  border-left: 3px solid #b9893a;
+  border-radius: 4px 8px 8px 4px;
+  background: #fbf7ed;
+  color: #7b6129;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.allocation-target {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--green-wash);
+}
+
+.allocation-target strong {
+  color: var(--green);
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.allocation-target span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.allocation-reason {
+  margin: 9px 0 0;
+  color: var(--muted-light);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.quota-badge {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f7f0e3;
+  color: #8a6a2f;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.quota-badge.is-verified {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.quota-badge.is-limited {
+  background: #f7e9e5;
+  color: #a14d40;
+}
+
+.allocation-empty {
+  margin: 14px 0;
+  padding: 22px;
+  border: 1px dashed rgba(23, 100, 86, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.allocation-empty strong {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.allocation-empty p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.quota-editor {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-soft);
+}
+
+.quota-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.quota-editor-head strong {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.quota-editor-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+.quota-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.quota-editor-grid label {
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+}
+
+.observation-list {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+
+.observation-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.observation-head span {
+  color: var(--muted-light);
+  font-size: 10.5px;
+}
+
+.observation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.observation-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+}
+
+.observation-grid span,
+.observation-grid small {
+  color: var(--muted-light);
+  font-size: 10.5px;
+}
+
+.observation-grid strong {
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .allocation-settings {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .allocation-buckets,
+  .quota-editor-grid,
+  .observation-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

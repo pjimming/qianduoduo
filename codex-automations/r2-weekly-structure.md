@@ -6,7 +6,7 @@
 | 名称 | 钱多多R2周五结构巡检 |
 | 时间 | 每周五 18:30（Asia/Shanghai） |
 | RRULE | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` |
-| 模型 | `deepseek-v4-pro` |
+| 模型 | `deepseek-flash` |
 | Reasoning | `high` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |

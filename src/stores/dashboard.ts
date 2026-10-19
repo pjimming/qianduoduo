@@ -153,6 +153,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return response
   }
 
+  async function updateAllocationSettings(
+    patch: Record<string, unknown>,
+  ): Promise<DashboardPayload> {
+    const response = await apiRequest<{
+      settings: unknown
+      dashboard: DashboardPayload
+    }>('/api/products/allocation', {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    })
+    dashboard.value = response.dashboard
+    return response.dashboard
+  }
+
   async function loadAutomation(): Promise<AutomationWorkspace> {
     const response = await apiRequest<{ automation: AutomationWorkspace }>(
       '/api/automation/workspace',
@@ -555,6 +569,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     createCapitalEvent,
     deleteCapitalEvent,
     refreshProducts,
+    updateAllocationSettings,
     loadAutomation,
     runAutomation,
     updateAutomationSettings,

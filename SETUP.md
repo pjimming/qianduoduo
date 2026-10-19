@@ -182,14 +182,13 @@ $equity-research 帮我研究一只股票。
 codex-automations/README.md
 ```
 
-四个任务：
+三个任务：
 
 | 任务 | 时间 | 作用 |
 | --- | --- | --- |
 | R2产品快照每周更新 | 每周一 08:30 | 刷新 R2 产品池 |
-| 钱多多R2每日复盘巡检 | 每天 21:30 | 检查收益、交易、对账、评估 |
+| 钱多多R2每日巡检（含队列处理） | 每天 21:00 | 先处理 Codex 判断队列，再检查收益、交易、对账、评估 |
 | 钱多多R2周五结构巡检 | 每周五 18:30 | 检查记录、集中度、流动性、到期 |
-| 钱多多自动化队列巡检 | 每天 21:10 | 处理 Codex 判断队列 |
 
 ### 4.1 创建顺序
 
@@ -214,8 +213,7 @@ codex-automations/README.md
 
 当前机器的任务使用：
 
-- `r2`：`deepseek-flash`，reasoning `high`；
-- 其余三个：`deepseek-v4-pro`，reasoning `high`；
+- 三个任务统一：`deepseek-flash`，reasoning `high`；
 - 全部 `local`，时区 `Asia/Shanghai`。
 
 如果对方没有同名模型，选择同等能力、支持工具调用的模型，并保持 `high` reasoning。关键是“本地执行 + 项目工作目录 + 完整提示词”，不是模型名字完全一样。
@@ -350,12 +348,11 @@ http://127.0.0.1:8765/investment/research
 
 ### 7.6 Codex 定时任务
 
-在 Codex Automations 页面确认四个任务都存在、状态为启用、时间正确。手动运行一次，检查：
+在 Codex Automations 页面确认三个任务都存在、状态为启用、时间正确。手动运行一次，检查：
 
 - `r2`：生成当天 CSV；
-- `r2-2`：没有异常时无消息；
+- `r2-2`：没有异常或待办时无消息，有内容时只有一张巡检卡；
 - `r2-3`：没有结构风险时无消息；
-- `automation`：队列为空时无消息。
 
 ---
 
@@ -399,9 +396,9 @@ http://127.0.0.1:8765/investment/research
 | 本地服务 | `http://127.0.0.1:8765` |
 | 生产守护 | Supervisor 运行中，Health OK |
 | Windows 看门狗 | `QianDuoDuo-Production` 未安装 |
-| Codex 定时任务 | 4 个，全部 ACTIVE，全部 local |
+| Codex 定时任务 | 3 个，全部 ACTIVE，全部 deepseek-flash，全部 local |
 | 应用自动化 | 目标 3.0%，hurdle 2.5/2.8/3.0%，单只 30%，流动性 30%，置信度 75%，巡检 5 分钟 |
-| 产品快照 | 2026-10-19：全量 980 / 候选 432 / 精选 9 |
+| 产品快照 | 2026-10-19：全量 980 / 候选 432 / 研究观察池 9 |
 | 报告数量 | 13 篇（截至 2026-10-19） |
 | skill | `r2-wealth-management` 1.3.0、`serenity-skill` 1.1.0、`equity-research` 当前安装版 |
 

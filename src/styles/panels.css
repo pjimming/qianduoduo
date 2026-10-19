@@ -692,13 +692,6 @@
   background: var(--green-wash);
 }
 
-.review-conclusion.is-empty {
-  border-style: dashed;
-  background: transparent;
-  color: var(--muted-light);
-  font-size: 8.5px;
-}
-
 .review-conclusion-head {
   display: flex;
   align-items: baseline;

@@ -18,6 +18,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 interface EntryFormExposed {
   loadRecordForEdit: (date: string, focus?: boolean) => void
+  startRecord: (date: string) => void
   resetForm: () => void
   isEditingDate: (date: string) => boolean
 }
@@ -88,6 +89,14 @@ function handleRecordSaved(): void {
   ledgerRef.value?.resetPage()
 }
 
+function handleReviewRecord(date: string): void {
+  if (dashboardStore.recordByDate(date)) {
+    entryRef.value?.loadRecordForEdit(date)
+  } else {
+    entryRef.value?.startRecord(date)
+  }
+}
+
 async function loadDashboard(): Promise<void> {
   loadError.value = ''
   try {
@@ -127,7 +136,12 @@ onUnmounted(() => {
       <EntryForm ref="entryRef" :dashboard="dashboard" @saved="handleRecordSaved" />
     </section>
     <PnlChart :records="dashboard.records" />
-    <ReviewSection :review="dashboard.review" :notes="dashboard.workspace.notes" />
+    <ReviewSection
+      :review="dashboard.review"
+      :notes="dashboard.workspace.notes"
+      :today="dashboard.meta.today"
+      @record="handleReviewRecord"
+    />
     <ReviewWorkspace
       :workspace="dashboard.workspace"
       :review="dashboard.review"

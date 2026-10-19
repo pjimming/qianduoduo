@@ -168,7 +168,7 @@ body {
 }
 
 small {
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   line-height: 1.5;
 }
 
@@ -329,4 +329,129 @@ small {
 
 .research-footnote {
   font-size: 10.5px !important;
+}
+
+/* Ledger and review type floor: keep dense financial data legible. */
+.ledger-table,
+.ledger-table td,
+.ledger-table .money-cell,
+.ledger-date,
+.notes-cell {
+  font-size: 12.5px !important;
+}
+
+.ledger-table th {
+  font-size: 11.5px !important;
+}
+
+.action-badge,
+.record-count,
+.ledger-pagination span,
+.ledger-page-size,
+.ledger-page-jump,
+.ledger-page-size select,
+.ledger-page-jump input {
+  font-size: 11.5px !important;
+}
+
+.review-card-head,
+.review-grade-line,
+.grade-badge {
+  font-size: 12px !important;
+}
+
+.review-card-head span:last-child,
+.monthly-history-head span:last-child {
+  font-size: 12px !important;
+}
+
+.review-metrics span,
+.review-metrics small {
+  font-size: 12px !important;
+}
+
+.review-metrics strong {
+  font-size: 13px !important;
+}
+
+.review-note-text,
+.review-next,
+.review-conclusion p,
+.review-compare-grid span,
+.target-progress p {
+  font-size: 12px !important;
+}
+
+.review-grade-line small,
+.review-compare-head,
+.review-compare-head small,
+.review-compare-grid strong,
+.review-conclusion-head,
+.review-conclusion-head small {
+  font-size: 12px !important;
+}
+
+.review-one-change em {
+  font-size: 12px !important;
+}
+
+.review-footnote {
+  font-size: 12.5px !important;
+  line-height: 1.8;
+}
+
+.grade-steps span {
+  font-size: 12px !important;
+}
+
+.grade-steps small {
+  font-size: 12px !important;
+}
+
+.recent-day-date,
+.recent-day-status,
+.recent-day-foot,
+.recent-day-foot button {
+  font-size: 12px !important;
+}
+
+.review-alert,
+.action-tag,
+.review-auto-badge,
+.review-history-main span,
+.review-history-value span,
+.monthly-history-head,
+.review-month-select {
+  font-size: 12px !important;
+}
+
+.daily-review-main > span,
+.monthly-score-main span,
+.daily-review-main small,
+.monthly-score-main small,
+.review-empty,
+.review-compare-empty {
+  font-size: 12px !important;
+}
+
+.monthly-record-head strong,
+.history-action-head strong {
+  font-size: 13px !important;
+}
+
+.review-history-main strong,
+.review-history-value strong {
+  font-size: 12.5px !important;
+}
+
+.monthly-record-head span,
+.monthly-record-hint,
+.record-weekday,
+.record-day,
+.monthly-record-foot,
+.record-legend,
+.history-action-head span,
+.grade-condition-list > div,
+.grade-condition-list strong {
+  font-size: 12px !important;
 }

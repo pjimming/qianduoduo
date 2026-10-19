@@ -152,6 +152,40 @@ async function main() {
       (await page.locator('.rw-node').count()) === 4,
       '复盘时间轴应有 4 个节点',
     )
+    await page.waitForSelector('.monthly-record-panel')
+    assert(
+      (await page.locator('.monthly-record-panel').count()) === 1,
+      '月度评分卡缺少记录日历',
+    )
+    assert(
+      (await page.locator('.record-day').count()) >= 28,
+      '月度记录日历没有渲染完整月份',
+    )
+    assert(
+      (await page.locator('.recent-review-card').count()) === 1,
+      '左侧复盘区缺少最近 7 天卡片',
+    )
+    assert(
+      (await page.locator('.recent-day-row').count()) === 7,
+      '最近 7 天卡片行数不正确',
+    )
+    const missingDay = page.locator('.record-day.is-missing').first()
+    const missingText = (await missingDay.textContent())?.trim() || ''
+    await missingDay.click()
+    assert(
+      (await page.locator('#recordDate').inputValue()).endsWith(
+        missingText.padStart(2, '0'),
+      ),
+      '点击缺记日期没有带入记账表单',
+    )
+    assert(
+      (await page.locator('.allocation-bucket').count()) === 3,
+      '产品区没有渲染三个期限桶的分配结果',
+    )
+    assert(
+      (await page.locator('.allocation-target').count()) >= 1,
+      '产品区没有渲染目标金额',
+    )
     await page.getByRole('tab', { name: '持仓结构' }).click()
     await page.waitForSelector('.rw-bucket-grid')
     assert(

@@ -136,6 +136,7 @@ const tabs = computed(() => [
         :today="workspace.timeline.today"
         :review="review"
         :automation="automation"
+        :workspace="workspace"
       />
       <ReviewNotesPanel
         v-show="activeTab === 'quarterly'"
@@ -144,6 +145,7 @@ const tabs = computed(() => [
         :today="workspace.timeline.today"
         :review="review"
         :automation="automation"
+        :workspace="workspace"
       />
     </div>
   </section>

@@ -223,3 +223,73 @@ test('trade reconciliation flags missing screenshots and stale pending trades', 
   assert.ok(payload.overview.reconciliation.counts.warn >= 1);
   assert.equal(payload.overview.inbox.length, 0);
 });
+
+test('vision apply refuses OCR amount mismatch and links the screenshot when confirmed', async (t) => {
+  const { base } = await startTestServer(t);
+  const created = await postJson(
+    `${base}/api/trades`,
+    tradePayload({
+      trade_date: '2026-10-19',
+      confirm_date: null,
+      status: 'pending',
+      amount: 10000,
+    }),
+  );
+  assert.equal(created.status, 201);
+
+  const upload = await postJson(`${base}/api/trades/inbox`, {
+    data: PNG_BASE64,
+    mime: 'image/png',
+    original_name: 'vision.png',
+  });
+  assert.equal(upload.status, 201);
+  const uploaded = await upload.json();
+
+  const corrected = await postJson(
+    `${base}/api/trades/inbox/${uploaded.inbox.id}`,
+    { amount: 9999, trade_date: '2026-10-19' },
+    'PUT',
+  );
+  assert.equal(corrected.status, 200);
+
+  const visionTrade = {
+    trade_date: '2026-10-19',
+    trade_type: 'buy',
+    status: 'pending',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 10000,
+  };
+
+  const mismatch = await postJson(
+    `${base}/api/trades/inbox/${uploaded.inbox.id}/vision-apply`,
+    visionTrade,
+  );
+  assert.equal(mismatch.status, 409);
+  const mismatchPayload = await mismatch.json();
+  assert.equal(mismatchPayload.code, 'OCR_AMOUNT_MISMATCH');
+  assert.equal(mismatchPayload.ocr_amount, 9999);
+
+  const applied = await postJson(
+    `${base}/api/trades/inbox/${uploaded.inbox.id}/vision-apply`,
+    {
+      ...visionTrade,
+      confirm_mismatch: true,
+      allow_unknown_code: true,
+      confidence: 97,
+    },
+  );
+  assert.equal(applied.status, 200);
+  const payload = await applied.json();
+  assert.equal(payload.trade.screenshot_id, uploaded.inbox.id);
+  assert.equal(payload.trade.status, 'pending');
+  assert.equal(payload.inbox.parse_confidence, 97);
+  assert.equal(payload.inbox.parsed.trade_date, '2026-10-19');
+  assert.ok(payload.checks.some((check) => check.key === 'amount'));
+
+  const overview = await (await fetch(`${base}/api/trades`)).json();
+  const codes = overview.overview.reconciliation.items.map((item) => item.code);
+  assert.ok(!codes.includes('missing-screenshot'));
+});
