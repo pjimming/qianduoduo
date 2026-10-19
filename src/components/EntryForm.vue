@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatPct } from '@/composables/useFormatters'
@@ -7,6 +7,7 @@ import type { DashboardPayload, LedgerAction, LedgerRecord } from '@/types/dashb
 
 const props = defineProps<{
   dashboard: DashboardPayload
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -192,6 +193,11 @@ onUnmounted(() => {
   window.clearTimeout(focusTimer)
 })
 
+onMounted(() => {
+  const record = dashboardStore.recordByDate(props.dashboard.meta.today)
+  if (record) applyRecord(record)
+})
+
 defineExpose({
   loadRecordForEdit,
   startRecord,
@@ -201,11 +207,13 @@ defineExpose({
 </script>
 
 <template>
-  <aside ref="panel" class="panel entry-panel">
+  <aside ref="panel" class="panel entry-panel" :class="{ 'is-compact': compact }">
     <div class="panel-head entry-head">
       <div>
-        <p class="kicker">每日一分钟</p>
-        <h2 id="formTitle">{{ isEditing ? '修改这笔记录' : '记一笔收益' }}</h2>
+        <p class="kicker">{{ compact ? '每日收益' : '每日一分钟' }}</p>
+        <h2 id="formTitle">
+          {{ isEditing ? '修改这笔记录' : compact ? '今天赚了多少' : '记一笔收益' }}
+        </h2>
       </div>
       <span id="entryDateChip" class="entry-date-chip">{{ entryDateChip }}</span>
     </div>
@@ -259,7 +267,7 @@ defineExpose({
         <strong id="previewRate" :class="preview.tone">{{ preview.text }}</strong>
       </div>
 
-      <div class="field">
+      <div v-if="!compact" class="field">
         <label for="action">操作</label>
         <select id="action" v-model="action" name="action">
           <option value="无操作">无操作</option>
@@ -275,7 +283,7 @@ defineExpose({
           id="notes"
           v-model="notes"
           name="notes"
-          rows="2"
+          :rows="compact ? 3 : 2"
           maxlength="500"
           placeholder="额度、到账、异常或当日判断…"
         ></textarea>
@@ -289,7 +297,7 @@ defineExpose({
           </svg>
         </button>
         <button
-          v-if="isEditing"
+          v-if="isEditing && !compact"
           id="cancelEdit"
           class="button button-ghost"
           type="button"
@@ -299,7 +307,7 @@ defineExpose({
         </button>
       </div>
     </form>
-    <p class="form-note">
+    <p v-if="!compact" class="form-note">
       本金在“本金管理”中统一维护，收益记录会自动读取该日适用的本金。日收益率 = 当日收益 ÷ 当日本金。
     </p>
   </aside>

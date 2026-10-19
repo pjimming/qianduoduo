@@ -145,8 +145,12 @@ async function main() {
     assert((await page.locator('.stats-grid').count()) === 1, '首页统计区没有渲染')
     await page.waitForSelector('.review-workspace')
     assert(
-      (await page.locator('.rw-tab').count()) === 8,
-      '复盘工作台应有 8 个标签页',
+      (await page.locator('.rw-tab').count()) === 3,
+      '复盘工作台应有 3 个标签页',
+    )
+    assert(
+      (await page.locator('.rw-quick-card').count()) === 3,
+      '复盘工作台应有 3 个提交入口',
     )
     assert(
       (await page.locator('.rw-node').count()) === 4,
@@ -186,14 +190,14 @@ async function main() {
       (await page.locator('.allocation-target').count()) >= 1,
       '产品区没有渲染目标金额',
     )
-    await page.getByRole('tab', { name: '持仓结构' }).click()
+    await page.locator('#rw-fold-holdings > summary').click()
     await page.waitForSelector('.rw-bucket-grid')
     assert(
       (await page.locator('.rw-bucket').count()) >= 4,
       '期限桶没有渲染',
     )
-    await page.getByRole('tab', { name: '交易流水' }).click()
-    await page.getByRole('button', { name: '记一笔交易' }).click()
+    await page.locator('#rw-fold-trades > summary').click()
+    await page.getByRole('button', { name: '记一笔交易', exact: true }).click()
     await page.getByLabel('产品代码').fill('120026A')
     await page.getByLabel('产品名称').fill('招银理财14天')
     await page.getByLabel('买入金额').fill('5000')
@@ -214,13 +218,14 @@ async function main() {
       )?.includes('5,000'),
       '待确认金额没有正确显示',
     )
-    await page.getByRole('tab', { name: '交易收件箱' }).click()
-    await page.waitForSelector('.rw-dropzone')
+    await page.locator('#rw-fold-inbox > summary').click()
+    await page.waitForSelector('#rw-fold-inbox .rw-dropzone')
     assert(
-      (await page.locator('.rw-dropzone').count()) === 1,
+      (await page.locator('#rw-fold-inbox .rw-dropzone').count()) === 1,
       '交易收件箱拖拽区没有渲染',
     )
-    await page.getByRole('tab', { name: '自动评估' }).click()
+    await page.getByRole('tab', { name: '决策与评估' }).click()
+    await page.locator('#rw-fold-automation > summary').click()
     await page.waitForSelector('.rw-automation-grid')
     assert(
       (await page.getByRole('button', { name: '立即运行自动化' }).count()) === 1,
@@ -230,10 +235,26 @@ async function main() {
       (await page.locator('.rw-draft-list, .rw-empty').count()) >= 1,
       '自动评估面板没有渲染',
     )
-    await page.getByRole('tab', { name: '月度五问' }).click()
+    await page.getByRole('tab', { name: '月度与季度' }).click()
+    await page.locator('#rw-fold-monthly > summary').click()
     assert(
       (await page.locator('.rw-question:visible').count()) === 5,
       '月度五问应有 5 个问题',
+    )
+
+    await page.getByRole('tab', { name: '账本' }).click()
+    await page.getByLabel('发生了什么').fill('E2E 特殊事项：额度临时关闭')
+    await page.getByRole('button', { name: '提交给 AI' }).click()
+    await page.waitForFunction(
+      () => document.querySelector('.toast')?.textContent?.includes('特殊事项已提交'),
+      null,
+      { timeout: 5000 },
+    )
+    assert(
+      (
+        (await page.locator('#rw-fold-events > summary').textContent()) ?? ''
+      ).includes('1 条待复核'),
+      '特殊事项没有进入待复核',
     )
 
     await page.locator('.ledger-table .icon-button.is-danger').first().click()
@@ -259,7 +280,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、首页账本、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、首页账本、三入口工作台、特殊事项提交、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

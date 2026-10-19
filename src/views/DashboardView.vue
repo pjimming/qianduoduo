@@ -8,7 +8,6 @@ import StatsGrid from '@/components/StatsGrid.vue'
 import CapitalPanel from '@/components/CapitalPanel.vue'
 import CapitalInitDialog from '@/components/CapitalInitDialog.vue'
 import AssetChart from '@/components/AssetChart.vue'
-import EntryForm from '@/components/EntryForm.vue'
 import PnlChart from '@/components/PnlChart.vue'
 import ReviewSection from '@/components/ReviewSection.vue'
 import ReviewWorkspace from '@/components/review/ReviewWorkspace.vue'
@@ -16,9 +15,9 @@ import ProductsSection from '@/components/ProductsSection.vue'
 import LedgerTable from '@/components/LedgerTable.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
-interface EntryFormExposed {
-  loadRecordForEdit: (date: string, focus?: boolean) => void
+interface ReviewWorkspaceExposed {
   startRecord: (date: string) => void
+  loadRecordForEdit: (date: string) => void
   resetForm: () => void
   isEditingDate: (date: string) => boolean
 }
@@ -31,7 +30,7 @@ const dashboardStore = useDashboardStore()
 const { dashboard } = storeToRefs(dashboardStore)
 const { show } = useToast()
 
-const entryRef = ref<EntryFormExposed | null>(null)
+const reviewRef = ref<ReviewWorkspaceExposed | null>(null)
 const ledgerRef = ref<LedgerTableExposed | null>(null)
 const capitalDialogOpen = ref(false)
 const capitalDialogMode = ref<'init' | 'edit'>('init')
@@ -76,8 +75,8 @@ async function confirmDeleteRecord(): Promise<void> {
   if (!date) return
   try {
     await dashboardStore.deleteRecord(date)
-    if (entryRef.value?.isEditingDate(date)) {
-      entryRef.value.resetForm()
+    if (reviewRef.value?.isEditingDate(date)) {
+      reviewRef.value.resetForm()
     }
     show('记录已删除')
   } catch (error) {
@@ -91,9 +90,9 @@ function handleRecordSaved(): void {
 
 function handleReviewRecord(date: string): void {
   if (dashboardStore.recordByDate(date)) {
-    entryRef.value?.loadRecordForEdit(date)
+    reviewRef.value?.loadRecordForEdit(date)
   } else {
-    entryRef.value?.startRecord(date)
+    reviewRef.value?.startRecord(date)
   }
 }
 
@@ -102,7 +101,6 @@ async function loadDashboard(): Promise<void> {
   try {
     await dashboardStore.load()
     await nextTick()
-    entryRef.value?.resetForm()
     maybePromptCapital()
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : '读取数据失败'
@@ -131,9 +129,8 @@ onUnmounted(() => {
       :records="dashboard.records"
     />
     <CapitalPanel :dashboard="dashboard" @open-init="openCapitalDialog()" />
-    <section class="work-grid">
+    <section class="work-grid is-single">
       <AssetChart :records="dashboard.records" />
-      <EntryForm ref="entryRef" :dashboard="dashboard" @saved="handleRecordSaved" />
     </section>
     <PnlChart :records="dashboard.records" />
     <ReviewSection
@@ -143,15 +140,18 @@ onUnmounted(() => {
       @record="handleReviewRecord"
     />
     <ReviewWorkspace
+      ref="reviewRef"
+      :dashboard="dashboard"
       :workspace="dashboard.workspace"
       :review="dashboard.review"
       :automation="dashboard.automation"
+      @saved="handleRecordSaved"
     />
     <ProductsSection :dashboard="dashboard" />
     <LedgerTable
       ref="ledgerRef"
       :records="dashboard.records"
-      @edit="entryRef?.loadRecordForEdit($event)"
+      @edit="reviewRef?.loadRecordForEdit($event)"
       @delete="handleDeleteRecord"
     />
 

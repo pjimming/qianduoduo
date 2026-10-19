@@ -53,7 +53,7 @@
 - 月收益率 = 当月累计收益 ÷ 当月平均本金。
 - 月度评级：低于 0.16% 不及格；0.16% 及格；0.20% 良好；0.25% 优秀；0.30% 卓越。
 - 复盘区：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计账本期内收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负日占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间；自本金起始日起可记录天数满 28 天且账本期内达到 20 条记录、月份结束后才落最终评级。
-- 复盘工作台：首页 `ReviewWorkspace` 提供决策日志、交易流水、交易收件箱、持仓结构、产品事件、自动评估、月度五问、季度复盘八个标签页；决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
+- 复盘工作台：首页 `ReviewWorkspace` 顶部是 `QuickEntryPanel` 的三个提交入口（成交截图、每日收益、特殊事项），下面是「账本 / 决策与评估 / 月度与季度」三个标签页，各模块用折叠区默认只显示摘要；决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现收益。待确认交易只进入待确认金额，不进入已确认持仓、期限桶和流动性比例。
 - 交易收件箱支持本地拖入 PNG/JPEG/WebP；每日巡检以视觉识别原图为准，`scripts/split-trade-rows.mjs` 负责把多笔总览按行切分；`lib/ocr.js` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），只用于金额与代码的交叉校验，`POST /api/trades/inbox/:id/vision-apply` 在冲突时返回 409 拒绝写入。`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`，已处理/已忽略的 180 天后自动清理。
@@ -85,7 +85,7 @@
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 当前 84 项测试通过；`npm run test:e2e` 会检查 8 个标签页、4 个时间轴节点、月度记录日历、产品分配桶、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
+- 当前测试通过；`npm run test:e2e` 会检查 3 个提交入口、3 个标签页、4 个时间轴节点、月度记录日历、产品分配桶、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git
