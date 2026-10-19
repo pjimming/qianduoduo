@@ -141,120 +141,37 @@ async function main() {
     })
 
     await page.goto(`${base}/`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.ledger-panel')
-    assert((await page.locator('.stats-grid').count()) === 1, '首页统计区没有渲染')
-    await page.waitForSelector('.review-workspace')
+    await page.waitForSelector('.stats-grid')
     assert(
-      (await page.locator('.rw-tab').count()) === 3,
-      '复盘工作台应有 3 个标签页',
+      new URL(page.url()).pathname === '/ledger/overview',
+      '根路径应重定向到收益概览',
     )
     assert(
-      (await page.locator('.rw-quick-card').count()) === 3,
-      '复盘工作台应有 3 个提交入口',
+      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 6,
+      '侧边栏理财分区应有 6 个入口',
     )
     assert(
-      (await page.locator('.rw-node').count()) === 4,
-      '复盘时间轴应有 4 个节点',
-    )
-    await page.waitForSelector('.monthly-record-panel')
-    assert(
-      (await page.locator('.monthly-record-panel').count()) === 1,
-      '月度评分卡缺少记录日历',
-    )
-    assert(
-      (await page.locator('.record-day').count()) >= 28,
-      '月度记录日历没有渲染完整月份',
-    )
-    assert(
-      (await page.locator('.recent-review-card').count()) === 1,
-      '左侧复盘区缺少最近 7 天卡片',
-    )
-    assert(
-      (await page.locator('.recent-day-row').count()) === 7,
-      '最近 7 天卡片行数不正确',
-    )
-    const missingDay = page.locator('.record-day.is-missing').first()
-    const missingText = (await missingDay.textContent())?.trim() || ''
-    await missingDay.click()
-    assert(
-      (await page.locator('#recordDate').inputValue()).endsWith(
-        missingText.padStart(2, '0'),
-      ),
-      '点击缺记日期没有带入记账表单',
-    )
-    assert(
-      (await page.locator('.allocation-bucket').count()) === 3,
-      '产品区没有渲染三个期限桶的分配结果',
-    )
-    assert(
-      (await page.locator('.allocation-target').count()) >= 1,
-      '产品区没有渲染目标金额',
-    )
-    await page.locator('#rw-fold-holdings > summary').click()
-    await page.waitForSelector('.rw-bucket-grid')
-    assert(
-      (await page.locator('.rw-bucket').count()) >= 4,
-      '期限桶没有渲染',
-    )
-    await page.locator('#rw-fold-trades > summary').click()
-    await page.getByRole('button', { name: '记一笔交易', exact: true }).click()
-    await page.getByLabel('产品代码').fill('120026A')
-    await page.getByLabel('产品名称').fill('招银理财14天')
-    await page.getByLabel('买入金额').fill('5000')
-    await page.getByLabel('期限（天，0 = 日开）').fill('14')
-    await page.getByRole('button', { name: '保存交易' }).click()
-    await page.waitForSelector('.rw-trade-status.is-pending')
-    assert(
-      (await page.locator('.rw-trade-status.is-pending').count()) >= 1,
-      '交易流水没有显示待确认交易',
-    )
-    assert(
-      (
-        await page
-          .locator('.rw-stat-chip:visible')
-          .filter({ hasText: '待确认 1 笔' })
-          .first()
-          .textContent()
-      )?.includes('5,000'),
-      '待确认金额没有正确显示',
-    )
-    await page.locator('#rw-fold-inbox > summary').click()
-    await page.waitForSelector('#rw-fold-inbox .rw-dropzone')
-    assert(
-      (await page.locator('#rw-fold-inbox .rw-dropzone').count()) === 1,
-      '交易收件箱拖拽区没有渲染',
-    )
-    await page.getByRole('tab', { name: '决策与评估' }).click()
-    await page.locator('#rw-fold-automation > summary').click()
-    await page.waitForSelector('.rw-automation-grid')
-    assert(
-      (await page.getByRole('button', { name: '立即运行自动化' }).count()) === 1,
-      '自动评估面板没有运行入口',
-    )
-    assert(
-      (await page.locator('.rw-draft-list, .rw-empty').count()) >= 1,
-      '自动评估面板没有渲染',
-    )
-    await page.getByRole('tab', { name: '月度与季度' }).click()
-    await page.locator('#rw-fold-monthly > summary').click()
-    assert(
-      (await page.locator('.rw-question:visible').count()) === 5,
-      '月度五问应有 5 个问题',
+      (await page.locator('.r2-jump-card').count()) === 4,
+      '收益概览应有 4 个待办入口',
     )
 
-    await page.getByRole('tab', { name: '账本' }).click()
+    await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.ledger-panel')
+    assert(
+      (await page.locator('.rw-quick-card').count()) === 3,
+      '每日记账应有 3 个提交入口',
+    )
+    assert(
+      (await page.locator('.ledger-table tbody tr').count()) === 1,
+      '每日记账没有渲染历史记录',
+    )
+
     await page.getByLabel('发生了什么').fill('E2E 特殊事项：额度临时关闭')
     await page.getByRole('button', { name: '提交给 AI' }).click()
     await page.waitForFunction(
       () => document.querySelector('.toast')?.textContent?.includes('特殊事项已提交'),
       null,
       { timeout: 5000 },
-    )
-    assert(
-      (
-        (await page.locator('#rw-fold-events > summary').textContent()) ?? ''
-      ).includes('1 条待复核'),
-      '特殊事项没有进入待复核',
     )
 
     await page.locator('.ledger-table .icon-button.is-danger').first().click()
@@ -263,6 +180,120 @@ async function main() {
     assert(
       (await page.locator('.ledger-table tbody tr').count()) === 1,
       '取消删除后记录不应消失',
+    )
+
+    await page.goto(`${base}/ledger/review`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.monthly-record-panel')
+    assert(
+      (await page.locator('.review-module-card').count()) === 2,
+      '复盘页应有复盘节奏和自动复盘两张模块卡',
+    )
+    assert(
+      (await page.locator('.rw-node').count()) === 4,
+      '复盘时间轴应有 4 个节点',
+    )
+    assert(
+      (await page.locator('.record-day').count()) >= 28,
+      '月度记录日历没有渲染完整月份',
+    )
+    assert(
+      (await page.locator('.recent-day-row').count()) === 7,
+      '最近 7 天卡片行数不正确',
+    )
+    assert(
+      (await page.locator('#monthly-notes .rw-question').count()) === 5,
+      '月度五问应有 5 个问题',
+    )
+    await page.locator('#monthly-notes > summary').click()
+    assert(
+      (await page.locator('#monthly-notes .rw-question:visible').count()) === 5,
+      '展开月度五问后应显示 5 个问题',
+    )
+    const missingDay = page.locator('.record-day.is-missing').first()
+    const missingText = (await missingDay.textContent())?.trim() || ''
+    await missingDay.click()
+    await page.waitForSelector('#recordDate')
+    assert(
+      new URL(page.url()).pathname === '/ledger/daily',
+      '点击缺记日期应跳到每日记账',
+    )
+    assert(
+      (await page.locator('#recordDate').inputValue()).endsWith(
+        missingText.padStart(2, '0'),
+      ),
+      '点击缺记日期没有带入记账表单',
+    )
+
+    await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('#inbox .rw-dropzone')
+    assert(
+      (await page.locator('#inbox .rw-dropzone').count()) === 1,
+      '交易收件箱拖拽区没有渲染',
+    )
+    assert(
+      (await page.locator('#holdings .rw-bucket').count()) >= 4,
+      '持仓期限桶没有渲染',
+    )
+    await page.getByRole('button', { name: '记一笔交易', exact: true }).click()
+    await page.getByLabel('产品代码').fill('120026A')
+    await page.getByLabel('产品名称').fill('招银理财14天')
+    await page.getByLabel('买入金额').fill('5000')
+    await page.getByLabel('期限（天，0 = 日开）').fill('14')
+    await page.getByRole('button', { name: '保存交易' }).click()
+    await page.waitForSelector('.rw-trade-status.is-pending')
+    assert(
+      (
+        await page
+          .locator('#trades .rw-stat-chip')
+          .filter({ hasText: '待确认 1 笔' })
+          .first()
+          .textContent()
+      )?.includes('5,000'),
+      '待确认金额没有正确显示',
+    )
+
+    await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.allocation-bucket')
+    assert(
+      (await page.locator('.allocation-bucket').count()) === 3,
+      '产品区没有渲染三个期限桶的分配结果',
+    )
+    assert(
+      (await page.locator('.allocation-target').count()) >= 1,
+      '产品区没有渲染目标金额',
+    )
+    assert(
+      (await page.locator('.product-module-card').count()) >= 4,
+      '产品页应有配置、目标产品、观察名单和风险边界模块卡',
+    )
+    const observationCards = page.locator('.observation-card')
+    assert((await observationCards.count()) > 0, '观察名单没有可点击产品')
+    await observationCards.first().click()
+    await page.waitForSelector('.product-detail-dialog[open]')
+    assert(
+      ((await page.locator('.product-detail-dialog h2').first().textContent()) ?? '').trim()
+        .length > 0,
+      '产品详情弹窗没有显示产品名称',
+    )
+    await page.locator('.product-detail-dialog .icon-button').first().click()
+    const eventChip = page
+      .locator('#events .rw-stat-chip')
+      .filter({ hasText: '待复核' })
+      .first()
+    assert(
+      ((await eventChip.textContent()) ?? '').replace(/\s+/g, '').includes('待复核1'),
+      '特殊事项没有进入待复核',
+    )
+
+    await page.goto(`${base}/ledger/evaluation`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('#automation .rw-automation-grid')
+    assert(
+      (await page.getByRole('button', { name: '立即运行自动化' }).count()) === 1,
+      '自动评估面板没有运行入口',
+    )
+    assert(
+      (await page.locator('#decisions .rw-panel-body').count()) === 1,
+      '决策日志没有渲染',
     )
 
     const errorPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
@@ -280,7 +311,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、首页账本、三入口工作台、特殊事项提交、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏六分区、每日记账、复盘模块卡与跨页补记、产品配置与产品详情、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

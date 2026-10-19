@@ -323,8 +323,11 @@ function selectMonth(month: string): void {
   <section class="review-section" aria-labelledby="reviewTitle">
     <div class="section-head">
       <div>
-        <p class="kicker">自动复盘</p>
-        <h2 id="reviewTitle">每天记一笔，每周查一次，每月给自己打分</h2>
+        <p class="kicker">AUTO REVIEW</p>
+        <h2 id="reviewTitle">自动复盘评分与记录</h2>
+        <p class="section-sub">
+          每天记一笔，每周查一次，每月给自己打分；记录日历和评分按账本起始日自动计算。
+        </p>
       </div>
       <span class="review-auto-badge">自动计算</span>
     </div>
@@ -854,6 +857,14 @@ function selectMonth(month: string): void {
 .review-section .target-progress-head strong,
 .review-section .grade-steps small {
   font-size: 12px !important;
+}
+
+.section-sub {
+  max-width: 720px;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .review-period-note {

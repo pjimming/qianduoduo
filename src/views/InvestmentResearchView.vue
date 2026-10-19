@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   stockReportLibrary,
@@ -75,10 +75,6 @@ function clearFilters(): void {
 
 onMounted(() => {
   document.title = '钱多多 · 投资 · 股票调研报告库'
-})
-
-onBeforeUnmount(() => {
-  document.title = '钱多多 · 理财与投资'
 })
 </script>
 

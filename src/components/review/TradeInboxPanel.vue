@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatMoney } from '@/composables/useFormatters'
@@ -16,7 +16,16 @@ const dragActive = ref(false)
 const uploading = ref(false)
 const busyId = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const showProcessed = ref(false)
 const drafts = reactive<Record<number, TradeInboxParsed>>({})
+
+const pendingItems = computed(() =>
+  props.inbox.filter((item) => item.status === 'pending'),
+)
+const processedCount = computed(() => props.inbox.length - pendingItems.value.length)
+const visibleItems = computed(() =>
+  showProcessed.value ? props.inbox : pendingItems.value,
+)
 
 watch(
   () => props.inbox,
@@ -176,16 +185,19 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
 <template>
   <div class="rw-panel-body">
     <div class="rw-toolbar">
-      <div>
+      <div class="rw-card-heading">
+        <p class="kicker">TRADE INBOX</p>
         <strong class="rw-panel-title">把成交截图拖进来</strong>
         <p class="rw-panel-sub">
           图片只在本地识别并归档，不上传银行。OCR 也会看错数字，
           生成交易前请逐项核对产品、金额和状态。
         </p>
       </div>
-      <button type="button" class="rw-button is-secondary" @click="prune">
-        清理 180 天前原图
-      </button>
+      <div class="rw-toolbar-actions">
+        <button type="button" class="rw-button is-secondary" @click="prune">
+          清理 180 天前原图
+        </button>
+      </div>
     </div>
 
     <div
@@ -215,10 +227,14 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
     <div v-if="inbox.length === 0" class="rw-empty">
       收件箱还是空的。买入或赎回后，把招行 App 的成交截图拖到上方即可。
     </div>
+    <div v-else-if="pendingItems.length === 0 && !showProcessed" class="rw-empty">
+      没有待校正截图。已处理的
+      {{ processedCount }} 张仍保留在本地，可展开核对。
+    </div>
 
-    <div v-else class="rw-inbox-list">
+    <div v-if="visibleItems.length" class="rw-inbox-list">
       <article
-        v-for="item in inbox"
+        v-for="item in visibleItems"
         :key="item.id"
         class="rw-inbox-card"
         :class="{ 'is-applied': item.status === 'applied', 'is-ignored': item.status === 'ignored' }"
@@ -337,6 +353,17 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
           </div>
         </div>
       </article>
+    </div>
+
+    <div v-if="processedCount > 0" class="rw-inbox-processed">
+      <button
+        type="button"
+        class="rw-link-button"
+        :aria-expanded="showProcessed"
+        @click="showProcessed = !showProcessed"
+      >
+        {{ showProcessed ? '收起已处理截图' : `显示已处理截图 ${processedCount} 张` }}
+      </button>
     </div>
   </div>
 </template>

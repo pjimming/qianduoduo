@@ -181,18 +181,28 @@ function statusLabel(status: string): string {
 <template>
   <div class="rw-panel-body">
     <div class="rw-toolbar">
-      <div class="rw-stat-row">
-        <span class="rw-stat-chip">本月决策 <strong>{{ stats.thisMonth }}</strong></span>
-        <span class="rw-stat-chip">待评估 <strong>{{ stats.pending }}</strong></span>
-        <span class="rw-stat-chip" :class="{ 'is-warn': stats.pendingEvaluations > 0 }">
-          待确认评估 <strong>{{ stats.pendingEvaluations }}</strong>
-        </span>
-        <span class="rw-stat-chip" :class="{ 'is-warn': stats.wrongGood > 0 }">
-          流程错误结果好 <strong>{{ stats.wrongGood }}</strong>
-        </span>
-        <span class="rw-stat-chip">流程正确结果差 <strong>{{ stats.rightBad }}</strong></span>
+      <div class="rw-card-heading">
+        <p class="kicker">DECISIONS</p>
+        <strong class="rw-panel-title">决策日志</strong>
+        <p class="rw-panel-sub">
+          记录当时的理由、预期和失效条件；事后评价区分流程与结果。
+        </p>
       </div>
-      <button type="button" class="rw-button" @click="openCreate">新增决策</button>
+      <div class="rw-toolbar-actions">
+        <button type="button" class="rw-button" @click="openCreate">新增决策</button>
+      </div>
+    </div>
+
+    <div class="rw-stat-row rw-stat-row-spaced">
+      <span class="rw-stat-chip">本月决策 <strong>{{ stats.thisMonth }}</strong></span>
+      <span class="rw-stat-chip">待评估 <strong>{{ stats.pending }}</strong></span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': stats.pendingEvaluations > 0 }">
+        待确认评估 <strong>{{ stats.pendingEvaluations }}</strong>
+      </span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': stats.wrongGood > 0 }">
+        流程错误结果好 <strong>{{ stats.wrongGood }}</strong>
+      </span>
+      <span class="rw-stat-chip">流程正确结果差 <strong>{{ stats.rightBad }}</strong></span>
     </div>
 
     <form v-if="formOpen" class="rw-form" @submit.prevent="save">

@@ -45,7 +45,7 @@ const activePoint = ref<ChartPoint<LedgerRecord> | null>(null)
 let observer: ResizeObserver | null = null
 
 const chartRecords = computed(() => rangeRecords(props.records, range.value))
-const height = computed(() => (width.value < 620 ? 260 : 324))
+const height = computed(() => (width.value < 760 ? 300 : 340))
 
 interface AxisLabel {
   x: number
@@ -300,7 +300,7 @@ onUnmounted(() => {
               :x="model.margins.left - 16"
               :y="tick.y + 3"
               fill="#8b958e"
-              font-size="11"
+              font-size="12"
               text-anchor="end"
               font-family="Cascadia Mono, Consolas, monospace"
             >
@@ -313,7 +313,7 @@ onUnmounted(() => {
             :x="model.width - model.margins.right + 16"
             :y="tick.y + 3"
             fill="#a79470"
-            font-size="10.5"
+            font-size="12"
             text-anchor="start"
             font-family="Cascadia Mono, Consolas, monospace"
           >
@@ -362,7 +362,7 @@ onUnmounted(() => {
             :x="label.x"
             :y="label.y"
             fill="#8b958e"
-            font-size="11.5"
+            font-size="12"
             :text-anchor="label.anchor"
             font-family="Cascadia Mono, Consolas, monospace"
           >

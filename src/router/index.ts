@@ -1,17 +1,81 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import DashboardView from '@/views/DashboardView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
-  scrollBehavior(_to, _from, savedPosition) {
+  scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return { ...savedPosition, behavior: 'instant' }
+    if (to.hash) return { el: to.hash, behavior: 'smooth' }
     return { top: 0, behavior: 'instant' }
   },
   routes: [
     {
       path: '/',
-      name: 'dashboard',
-      component: DashboardView,
+      redirect: { name: 'r2-overview' },
+    },
+    {
+      path: '/ledger',
+      component: () => import('@/views/r2/R2LayoutView.vue'),
+      meta: { module: 'wealth' },
+      children: [
+        {
+          path: '',
+          redirect: { name: 'r2-overview' },
+        },
+        {
+          path: 'overview',
+          name: 'r2-overview',
+          component: () => import('@/views/r2/OverviewView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 收益概览 · 钱多多',
+          },
+        },
+        {
+          path: 'daily',
+          name: 'r2-daily',
+          component: () => import('@/views/r2/DailyEntryView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 每日记账 · 钱多多',
+          },
+        },
+        {
+          path: 'trades',
+          name: 'r2-trades',
+          component: () => import('@/views/r2/TradesView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 交易与持仓 · 钱多多',
+          },
+        },
+        {
+          path: 'products',
+          name: 'r2-products',
+          component: () => import('@/views/r2/ProductsView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 产品与配置 · 钱多多',
+          },
+        },
+        {
+          path: 'review',
+          name: 'r2-review',
+          component: () => import('@/views/r2/ReviewView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 复盘 · 钱多多',
+          },
+        },
+        {
+          path: 'evaluation',
+          name: 'r2-evaluation',
+          component: () => import('@/views/r2/EvaluationView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 决策与评估 · 钱多多',
+          },
+        },
+      ],
     },
     {
       path: '/investment',
@@ -52,6 +116,12 @@ const router = createRouter({
       }),
     },
   ],
+})
+
+router.afterEach((to) => {
+  if (typeof to.meta.title === 'string') {
+    document.title = to.meta.title
+  }
 })
 
 export default router

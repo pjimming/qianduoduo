@@ -272,7 +272,7 @@ onUnmounted(() => {
               :x="model.margins.left - 10"
               :y="tick.y + 3"
               fill="#8b958e"
-              font-size="11"
+              font-size="12"
               text-anchor="end"
               font-family="Cascadia Mono, Consolas, monospace"
             >
@@ -318,7 +318,7 @@ onUnmounted(() => {
             :x="label.x"
             :y="label.y"
             fill="#8b958e"
-            font-size="11.5"
+            font-size="12"
             :text-anchor="label.anchor"
             font-family="Cascadia Mono, Consolas, monospace"
           >

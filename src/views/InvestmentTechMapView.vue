@@ -33,8 +33,6 @@ const stageRef = ref<HTMLElement | null>(null)
 const activeViewRef = ref<TechMapViewApi | null>(null)
 const isFullscreen = ref(false)
 const pseudoFullscreen = ref(false)
-const previousTitle = document.title
-
 const activeView = computed<TechMapView>(() => {
   const value = Array.isArray(route.query.view) ? route.query.view[0] : route.query.view
   return views.some((item) => item.id === value) ? (value as TechMapView) : 'canvas'
@@ -118,7 +116,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  document.title = previousTitle
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   window.removeEventListener('keydown', handleKeydown)
   if (document.fullscreenElement === stageRef.value) void document.exitFullscreen()

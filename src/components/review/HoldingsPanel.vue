@@ -58,15 +58,18 @@ function barWidth(value: number | null): string {
 <template>
   <div class="rw-panel-body">
     <div class="rw-toolbar">
-      <div>
+      <div class="rw-card-heading">
+        <p class="kicker">HOLDINGS</p>
         <strong class="rw-panel-title">持仓由交易流水自动推导</strong>
         <p class="rw-panel-sub">
           只统计已确认买入批次；待确认交易在「交易流水」中单独显示，不会提前进入集中度和期限阶梯。
         </p>
       </div>
-      <button type="button" class="rw-button is-secondary" @click="emit('open-trades')">
-        去记一笔交易
-      </button>
+      <div class="rw-toolbar-actions">
+        <button type="button" class="rw-button is-secondary" @click="emit('open-trades')">
+          去记一笔交易
+        </button>
+      </div>
     </div>
 
     <div class="rw-stat-row rw-stat-row-spaced">

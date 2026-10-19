@@ -166,23 +166,12 @@ function jobLabel(type: string): string {
 <template>
   <div class="rw-panel-body">
     <div class="rw-toolbar">
-      <div class="rw-stat-row">
-        <span class="rw-stat-chip" :class="{ 'is-warn': !automation.scheduler.enabled }">
-          调度 <strong>{{ automation.scheduler.enabled ? '运行中' : '已关闭' }}</strong>
-        </span>
-        <span class="rw-stat-chip">
-          待确认评估 <strong>{{ automation.pending_evaluations.length }}</strong>
-        </span>
-        <span class="rw-stat-chip" :class="{ 'is-warn': automation.notifications.some((item) => item.level === 'warn') }">
-          未读提醒 <strong>{{ automation.notifications.filter((item) => !item.read_at).length }}</strong>
-        </span>
-        <span class="rw-stat-chip">
-          Codex 队列 <strong>{{ automation.jobs.length }}</strong>
-        </span>
-        <span class="rw-stat-chip" :title="automation.scheduler.next_run || ''">
-          上次运行
-          <strong>{{ automation.scheduler.last_run?.finished_at ? formatDateShort(automation.scheduler.last_run.finished_at.slice(0, 10)) : '未运行' }}</strong>
-        </span>
+      <div class="rw-card-heading">
+        <p class="kicker">AUTOMATION</p>
+        <strong class="rw-panel-title">自动评估</strong>
+        <p class="rw-panel-sub">
+          买入日、持有期和到期/赎回三个节点生成评估；低置信度进入待确认队列。
+        </p>
       </div>
       <div class="rw-toolbar-actions">
         <button type="button" class="rw-button is-secondary" @click="settingsOpen = !settingsOpen">
@@ -192,6 +181,25 @@ function jobLabel(type: string): string {
           {{ busy ? '运行中…' : '立即运行自动化' }}
         </button>
       </div>
+    </div>
+
+    <div class="rw-stat-row rw-stat-row-spaced">
+      <span class="rw-stat-chip" :class="{ 'is-warn': !automation.scheduler.enabled }">
+        调度 <strong>{{ automation.scheduler.enabled ? '运行中' : '已关闭' }}</strong>
+      </span>
+      <span class="rw-stat-chip">
+        待确认评估 <strong>{{ automation.pending_evaluations.length }}</strong>
+      </span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': automation.notifications.some((item) => item.level === 'warn') }">
+        未读提醒 <strong>{{ automation.notifications.filter((item) => !item.read_at).length }}</strong>
+      </span>
+      <span class="rw-stat-chip">
+        Codex 队列 <strong>{{ automation.jobs.length }}</strong>
+      </span>
+      <span class="rw-stat-chip" :title="automation.scheduler.next_run || ''">
+        上次运行
+        <strong>{{ automation.scheduler.last_run?.finished_at ? formatDateShort(automation.scheduler.last_run.finished_at.slice(0, 10)) : '未运行' }}</strong>
+      </span>
     </div>
 
     <form v-if="settingsOpen" class="rw-form" @submit.prevent="saveSettings">

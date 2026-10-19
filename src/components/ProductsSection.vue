@@ -11,6 +11,7 @@ import {
 } from '@/composables/useFormatters'
 import type { DashboardPayload, Product, ProductAllocationSettings } from '@/types/dashboard'
 import ProductDialog from './ProductDialog.vue'
+import ProductDetailDialog from './ProductDetailDialog.vue'
 
 const props = defineProps<{
   dashboard: DashboardPayload
@@ -19,6 +20,8 @@ const props = defineProps<{
 const dashboardStore = useDashboardStore()
 const { show } = useToast()
 const dialogOpen = ref(false)
+const detailOpen = ref(false)
+const detailProduct = ref<Product | null>(null)
 const refreshing = ref(false)
 const settingsOpen = ref(false)
 const savingSettings = ref(false)
@@ -134,6 +137,11 @@ const observationCandidates = computed(() => {
   return products.value.observation_list.filter((item) => !selected.has(item.code))
 })
 
+function openProductDetail(product: Product): void {
+  detailProduct.value = product
+  detailOpen.value = true
+}
+
 function gapClass(product: Product): string {
   return product.target_gap_pct !== null && product.target_gap_pct >= 0 ? 'positive' : ''
 }
@@ -223,296 +231,385 @@ async function saveQuotas(): Promise<void> {
 </script>
 
 <template>
-  <section class="products-section" aria-labelledby="productsTitle">
-    <div class="section-head">
-      <div>
-        <p class="kicker">R2 候选池 → 动态配置</p>
-        <h2 id="productsTitle">按本金、持仓、现金流和额度动态决定买什么、买多少</h2>
-      </div>
-      <div class="section-actions">
-        <button
-          class="button button-ghost button-small"
-          type="button"
-          @click="settingsOpen = !settingsOpen"
-        >
-          {{ settingsOpen ? '收起假设' : '调整假设' }}
-        </button>
-        <button
-          class="button button-ghost button-small"
-          type="button"
-          :disabled="refreshing"
-          @click="refreshSnapshot"
-        >
-          {{ refreshing ? '读取中…' : '刷新快照' }}
-        </button>
-        <button
-          class="button button-ghost button-small"
-          type="button"
-          @click="dialogOpen = true"
-        >
-          查看全部产品
-        </button>
-      </div>
-    </div>
-
-    <div class="product-goal-strip">
-      <div class="product-goal-copy">
-        <span class="goal-dot"></span>
-        <div>
-          <strong>{{ goalTitle }}</strong>
-          <p>{{ goalText }}</p>
+  <section class="products-section" aria-label="R2 产品配置与候选池">
+    <section class="product-module-card" aria-labelledby="allocationCardTitle">
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">ALLOCATION</p>
+          <h3 id="allocationCardTitle" class="rw-panel-title">配置目标与期限桶</h3>
+          <p class="rw-panel-sub">
+            按本金、已确认持仓、待确认买入、现金流和额度计算目标金额；未分配金额不会为了凑数强行买入。
+          </p>
         </div>
-      </div>
-      <div class="pool-progress" aria-hidden="true">
-        <span :style="progressStyle"></span>
-      </div>
-      <span class="pool-gap" :class="{ positive: allocation.status === 'ready' }">
-        {{ statusLabel }}
-      </span>
-    </div>
-
-    <form v-if="settingsOpen" class="allocation-settings" @submit.prevent="saveSettings">
-      <label>
-        <span>可投资本金</span>
-        <input
-          v-model="settingsForm.principal_override"
-          type="number"
-          min="0"
-          step="100"
-          placeholder="留空使用本金账户"
-        />
-      </label>
-      <label>
-        <span>短期目标 %</span>
-        <input v-model.number="settingsForm.short" type="number" min="0" max="100" step="1" />
-      </label>
-      <label>
-        <span>中期目标 %</span>
-        <input v-model.number="settingsForm.medium" type="number" min="0" max="100" step="1" />
-      </label>
-      <label>
-        <span>长期目标 %</span>
-        <input v-model.number="settingsForm.long" type="number" min="0" max="100" step="1" />
-      </label>
-      <label>
-        <span>流动性下限 %</span>
-        <input
-          v-model.number="settingsForm.liquidity_floor_pct"
-          type="number"
-          min="0"
-          max="100"
-          step="1"
-        />
-      </label>
-      <label>
-        <span>单只上限 %</span>
-        <input
-          v-model.number="settingsForm.max_single_pct"
-          type="number"
-          min="25"
-          max="30"
-          step="1"
-        />
-      </label>
-      <label>
-        <span>单发行方上限 %</span>
-        <input
-          v-model.number="settingsForm.max_issuer_pct"
-          type="number"
-          min="40"
-          max="100"
-          step="1"
-        />
-      </label>
-      <label>
-        <span>0–3 月支出</span>
-        <input v-model.number="settingsForm.cashflow_0_3" type="number" min="0" step="100" />
-      </label>
-      <label>
-        <span>3–6 月支出</span>
-        <input v-model.number="settingsForm.cashflow_3_6" type="number" min="0" step="100" />
-      </label>
-      <label>
-        <span>6–12 月支出</span>
-        <input v-model.number="settingsForm.cashflow_6_12" type="number" min="0" step="100" />
-      </label>
-      <div class="allocation-settings-actions">
-        <button class="button button-primary button-small" type="submit" :disabled="savingSettings">
-          {{ savingSettings ? '保存中…' : '保存并重算' }}
-        </button>
-        <button
-          class="button button-ghost button-small"
-          type="button"
-          :disabled="savingSettings"
-          @click="useLedgerPrincipal"
-        >
-          用本金账户
-        </button>
-      </div>
-    </form>
-
-    <div class="allocation-buckets">
-      <article
-        v-for="bucket in allocation.buckets"
-        :key="bucket.key"
-        class="allocation-bucket"
-        :class="[`bucket-${bucket.key}`, `is-${bucket.status}`]"
-      >
-        <div class="allocation-bucket-head">
-          <strong>{{ bucket.label }}</strong>
-          <span>{{ bucket.final_pct.toFixed(1) }}% / 目标 {{ bucket.target_pct }}%</span>
+        <div class="rw-toolbar-actions">
+          <button
+            class="button button-ghost button-small"
+            type="button"
+            @click="settingsOpen = !settingsOpen"
+          >
+            {{ settingsOpen ? '收起假设' : '调整假设' }}
+          </button>
+          <button
+            class="button button-ghost button-small"
+            type="button"
+            :disabled="refreshing"
+            @click="refreshSnapshot"
+          >
+            {{ refreshing ? '读取中…' : '刷新快照' }}
+          </button>
+          <button
+            class="button button-ghost button-small"
+            type="button"
+            @click="dialogOpen = true"
+          >
+            查看全部产品
+          </button>
         </div>
-        <div class="allocation-bucket-amount">
-          <strong>¥{{ formatMoney(bucket.final_amount, 0) }}</strong>
-          <span>新增 ¥{{ formatMoney(bucket.new_amount, 0) }}</span>
-        </div>
-        <div class="allocation-bucket-meta">
-          <span>已有 ¥{{ formatMoney(bucket.existing_amount, 0) }}</span>
-          <span>待配 ¥{{ formatMoney(bucket.budget_amount, 0) }}</span>
-        </div>
-        <p v-if="bucket.reasons.length">{{ bucket.reasons.join('；') }}</p>
-      </article>
-    </div>
-
-    <div v-if="allocation.reasons.length" class="allocation-reasons">
-      <span v-for="reason in allocation.reasons" :key="reason">{{ reason }}</span>
-    </div>
-
-    <div v-if="products.watchlist.length" class="watchlist">
-      <article
-        v-for="product in products.watchlist"
-        :key="product.code"
-        class="product-card"
-        :class="`bucket-${product.bucket}`"
-      >
-        <div class="product-top">
-          <span class="term-badge">
-            {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
-          </span>
-          <span class="product-code">{{ product.code }}</span>
-        </div>
-        <h3 class="product-name">{{ product.name }}</h3>
-        <div class="allocation-target">
-          <strong>¥{{ formatMoney(product.target_amount, 0) }}</strong>
-          <span>目标占比 {{ product.target_pct.toFixed(1) }}%</span>
-        </div>
-        <div class="product-yield">
-          <strong>{{ formatPct(product.return_1y, 2) }}</strong>
-          <span>近 1 年历史年化</span>
-        </div>
-        <div class="product-stats">
-          <div class="product-stat">
-            <span>近 3 月</span>
-            <strong>{{ formatPct(product.return_3m, 2) }}</strong>
+      </header>
+      <div class="product-module-body">
+        <div class="product-goal-strip">
+          <div class="product-goal-copy">
+            <span class="goal-dot"></span>
+            <div>
+              <strong>{{ goalTitle }}</strong>
+              <p>{{ goalText }}</p>
+            </div>
           </div>
-          <div class="product-stat">
-            <span>近 6 月</span>
-            <strong>{{ formatPct(product.return_6m, 2) }}</strong>
+          <div class="pool-progress" aria-hidden="true">
+            <span :style="progressStyle"></span>
           </div>
-        </div>
-        <p class="allocation-reason">{{ product.allocation_reason }}</p>
-        <div class="product-foot">
-          <span class="quota-badge" :class="`is-${product.quota_status}`">
-            {{ quotaLabel(product) }}
-          </span>
-          <span class="product-gap" :class="gapClass(product)">
-            距 3%
-            {{
-              product.target_gap_pct === null
-                ? '—'
-                : formatPp(product.target_gap_pct, 2, true)
-            }}
+          <span class="pool-gap" :class="{ positive: allocation.status === 'ready' }">
+            {{ statusLabel }}
           </span>
         </div>
-      </article>
-    </div>
-    <div v-else class="allocation-empty">
-      <strong>{{ allocation.principal > 0 ? '没有新增可分配金额' : '尚未初始化本金' }}</strong>
-      <p>
-        {{
-          allocation.principal > 0
-            ? '当前本金已被已确认持仓和待确认买入占用。下面保留观察名单，等资金释放或本金转入后再生成金额。'
-            : '先在“本金管理”中初始化本金，系统会按期限桶、流动性和集中度生成配置。'
-        }}
-      </p>
-    </div>
 
-    <div v-if="products.watchlist.length" class="quota-editor">
-      <div class="quota-editor-head">
-        <div>
-          <strong>买入前额度核验</strong>
-          <p>公开 CSV 没有实时额度。填了额度就按额度截断；留空则保留计算金额并标记“额度未核验”。</p>
+        <div class="allocation-buckets">
+          <article
+            v-for="bucket in allocation.buckets"
+            :key="bucket.key"
+            class="allocation-bucket"
+            :class="[`bucket-${bucket.key}`, `is-${bucket.status}`]"
+          >
+            <div class="allocation-bucket-head">
+              <strong>{{ bucket.label }}</strong>
+              <span>{{ bucket.final_pct.toFixed(1) }}% / 目标 {{ bucket.target_pct }}%</span>
+            </div>
+            <div class="allocation-bucket-amount">
+              <strong>¥{{ formatMoney(bucket.final_amount, 0) }}</strong>
+              <span>新增 ¥{{ formatMoney(bucket.new_amount, 0) }}</span>
+            </div>
+            <div class="allocation-bucket-meta">
+              <span>已有 ¥{{ formatMoney(bucket.existing_amount, 0) }}</span>
+              <span>待配 ¥{{ formatMoney(bucket.budget_amount, 0) }}</span>
+            </div>
+            <p v-if="bucket.reasons.length">{{ bucket.reasons.join('；') }}</p>
+          </article>
         </div>
-        <button
-          class="button button-primary button-small"
-          type="button"
-          :disabled="savingQuota"
-          @click="saveQuotas"
-        >
-          {{ savingQuota ? '保存中…' : '保存额度并重算' }}
-        </button>
+
+        <div v-if="allocation.reasons.length" class="allocation-reasons">
+          <span v-for="reason in allocation.reasons" :key="reason">{{ reason }}</span>
+        </div>
       </div>
-      <div class="quota-editor-grid">
-        <label v-for="product in products.watchlist" :key="product.code">
-          <span>{{ product.code }} · 可用额度</span>
+    </section>
+
+    <section
+      v-if="settingsOpen"
+      class="product-module-card"
+      aria-labelledby="assumptionsCardTitle"
+    >
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">ASSUMPTIONS</p>
+          <h3 id="assumptionsCardTitle" class="rw-panel-title">分配假设</h3>
+          <p class="rw-panel-sub">
+            调整本金、期限桶、流动性、现金流和集中度上限；保存后立即重算目标金额。
+          </p>
+        </div>
+        <div class="rw-toolbar-actions">
+          <button
+            class="button button-ghost button-small"
+            type="button"
+            @click="settingsOpen = false"
+          >
+            收起
+          </button>
+        </div>
+      </header>
+      <form class="allocation-settings" @submit.prevent="saveSettings">
+        <label>
+          <span>可投资本金</span>
           <input
-            v-model="quotaDrafts[product.code].available"
+            v-model="settingsForm.principal_override"
             type="number"
             min="0"
             step="100"
-            placeholder="未核验"
-          />
-          <span>单笔上限</span>
-          <input
-            v-model="quotaDrafts[product.code].max_order"
-            type="number"
-            min="0"
-            step="100"
-            placeholder="不限"
-          />
-          <span>额度窗口</span>
-          <input
-            v-model="quotaDrafts[product.code].window"
-            type="text"
-            maxlength="80"
-            placeholder="如 10/20 09:00"
+            placeholder="留空使用本金账户"
           />
         </label>
-      </div>
-    </div>
+        <label>
+          <span>短期目标 %</span>
+          <input v-model.number="settingsForm.short" type="number" min="0" max="100" step="1" />
+        </label>
+        <label>
+          <span>中期目标 %</span>
+          <input v-model.number="settingsForm.medium" type="number" min="0" max="100" step="1" />
+        </label>
+        <label>
+          <span>长期目标 %</span>
+          <input v-model.number="settingsForm.long" type="number" min="0" max="100" step="1" />
+        </label>
+        <label>
+          <span>流动性下限 %</span>
+          <input
+            v-model.number="settingsForm.liquidity_floor_pct"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+          />
+        </label>
+        <label>
+          <span>单只上限 %</span>
+          <input
+            v-model.number="settingsForm.max_single_pct"
+            type="number"
+            min="25"
+            max="30"
+            step="1"
+          />
+        </label>
+        <label>
+          <span>单发行方上限 %</span>
+          <input
+            v-model.number="settingsForm.max_issuer_pct"
+            type="number"
+            min="40"
+            max="100"
+            step="1"
+          />
+        </label>
+        <label>
+          <span>0–3 月支出</span>
+          <input v-model.number="settingsForm.cashflow_0_3" type="number" min="0" step="100" />
+        </label>
+        <label>
+          <span>3–6 月支出</span>
+          <input v-model.number="settingsForm.cashflow_3_6" type="number" min="0" step="100" />
+        </label>
+        <label>
+          <span>6–12 月支出</span>
+          <input v-model.number="settingsForm.cashflow_6_12" type="number" min="0" step="100" />
+        </label>
+        <div class="allocation-settings-actions">
+          <button class="button button-primary button-small" type="submit" :disabled="savingSettings">
+            {{ savingSettings ? '保存中…' : '保存并重算' }}
+          </button>
+          <button
+            class="button button-ghost button-small"
+            type="button"
+            :disabled="savingSettings"
+            @click="useLedgerPrincipal"
+          >
+            用本金账户
+          </button>
+        </div>
+      </form>
+    </section>
 
-    <div v-if="observationCandidates.length" class="observation-list">
-      <div class="observation-head">
-        <strong>观察名单</strong>
-        <span>研究排序，不代表已分配金额</span>
+    <section class="product-module-card" aria-labelledby="targetProductsCardTitle">
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">TARGET PRODUCTS</p>
+          <h3 id="targetProductsCardTitle" class="rw-panel-title">目标产品</h3>
+          <p class="rw-panel-sub">
+            按期限桶、流动性和集中度生成的目标金额；仅作分配上限，买入前需在招行 App 核验。
+          </p>
+        </div>
+      </header>
+      <div class="product-module-body">
+        <div v-if="products.watchlist.length" class="watchlist">
+          <article
+            v-for="product in products.watchlist"
+            :key="product.code"
+            class="product-card"
+            :class="`bucket-${product.bucket}`"
+          >
+            <div class="product-top">
+              <span class="term-badge">
+                {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
+              </span>
+              <span class="product-code">{{ product.code }}</span>
+            </div>
+            <h3 class="product-name">{{ product.name }}</h3>
+            <div class="allocation-target">
+              <strong>¥{{ formatMoney(product.target_amount, 0) }}</strong>
+              <span>目标占比 {{ product.target_pct.toFixed(1) }}%</span>
+            </div>
+            <div class="product-yield">
+              <strong>{{ formatPct(product.return_1y, 2) }}</strong>
+              <span>近 1 年历史年化</span>
+            </div>
+            <div class="product-stats">
+              <div class="product-stat">
+                <span>近 3 月</span>
+                <strong>{{ formatPct(product.return_3m, 2) }}</strong>
+              </div>
+              <div class="product-stat">
+                <span>近 6 月</span>
+                <strong>{{ formatPct(product.return_6m, 2) }}</strong>
+              </div>
+            </div>
+            <p class="allocation-reason">{{ product.allocation_reason }}</p>
+            <div class="product-foot">
+              <span class="quota-badge" :class="`is-${product.quota_status}`">
+                {{ quotaLabel(product) }}
+              </span>
+              <span class="product-gap" :class="gapClass(product)">
+                距 3%
+                {{
+                  product.target_gap_pct === null
+                    ? '—'
+                    : formatPp(product.target_gap_pct, 2, true)
+                }}
+              </span>
+            </div>
+          </article>
+        </div>
+        <div v-else class="allocation-empty">
+          <strong>{{ allocation.principal > 0 ? '没有新增可分配金额' : '尚未初始化本金' }}</strong>
+          <p>
+            {{
+              allocation.principal > 0
+                ? '当前本金已被已确认持仓和待确认买入占用。下面保留观察名单，等资金释放或本金转入后再生成金额。'
+                : '先在“本金管理”中初始化本金，系统会按期限桶、流动性和集中度生成配置。'
+            }}
+          </p>
+        </div>
       </div>
+    </section>
+
+    <section
+      v-if="products.watchlist.length"
+      class="product-module-card"
+      aria-labelledby="quotaCardTitle"
+    >
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">QUOTA CHECK</p>
+          <h3 id="quotaCardTitle" class="rw-panel-title">买入前额度核验</h3>
+          <p class="rw-panel-sub">
+            公开 CSV 没有实时额度。填了额度就按额度截断；留空则保留计算金额并标记“额度未核验”。
+          </p>
+        </div>
+        <div class="rw-toolbar-actions">
+          <button
+            class="button button-primary button-small"
+            type="button"
+            :disabled="savingQuota"
+            @click="saveQuotas"
+          >
+            {{ savingQuota ? '保存中…' : '保存额度并重算' }}
+          </button>
+        </div>
+      </header>
+      <div class="product-module-body">
+        <div class="quota-editor-grid">
+          <label v-for="product in products.watchlist" :key="product.code">
+            <span>{{ product.code }} · 可用额度</span>
+            <input
+              v-model="quotaDrafts[product.code].available"
+              type="number"
+              min="0"
+              step="100"
+              placeholder="未核验"
+            />
+            <span>单笔上限</span>
+            <input
+              v-model="quotaDrafts[product.code].max_order"
+              type="number"
+              min="0"
+              step="100"
+              placeholder="不限"
+            />
+            <span>额度窗口</span>
+            <input
+              v-model="quotaDrafts[product.code].window"
+              type="text"
+              maxlength="80"
+              placeholder="如 10/20 09:00"
+            />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section
+      v-if="observationCandidates.length"
+      class="product-module-card"
+      aria-labelledby="observationCardTitle"
+    >
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">OBSERVATION</p>
+          <h3 id="observationCardTitle" class="rw-panel-title">观察名单</h3>
+          <p class="rw-panel-sub">
+            研究排序，不代表已分配金额；点击产品查看收益、期限、额度与配置详情。
+          </p>
+        </div>
+      </header>
       <div class="observation-grid">
-        <div v-for="product in observationCandidates" :key="product.code">
-          <span>{{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}</span>
-          <strong>{{ product.name }}</strong>
-          <small>
+        <button
+          v-for="product in observationCandidates"
+          :key="product.code"
+          type="button"
+          class="observation-card"
+          :aria-label="`查看 ${product.name} 详情`"
+          @click="openProductDetail(product)"
+        >
+          <span class="observation-term">
+            {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
+          </span>
+          <strong class="observation-name">{{ product.name }}</strong>
+          <span class="observation-code">{{ product.code }} · {{ product.issuer }}</span>
+          <small class="observation-meta">
             近 1 年 {{ formatPct(product.return_1y, 2) }} · 评分
             {{ product.selection_score.toFixed(2) }}
           </small>
-        </div>
+          <span class="observation-detail-hint">查看详情 →</span>
+        </button>
       </div>
-    </div>
+    </section>
 
-    <p class="product-disclaimer">
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M10 2 3.5 4.5v5.2c0 3.8 2.5 6.6 6.5 8.3 4-1.7 6.5-4.5 6.5-8.3V4.5L10 2Z" />
-        <path d="M7.5 10.2 9.2 12l3.5-4" />
-      </svg>
-      <span>
-        目标金额由本金、已确认持仓、待确认买入、期限桶目标、流动性下限、未来现金流和集中度共同计算。
-        公开额度缺失时只给分配上限，不假装可买；买入前必须在招行 App 核对额度、起购金额、赎回规则和产品说明书。
-        未分配金额不会为了凑数强行买入，不构成推荐或买入建议。
-      </span>
-    </p>
+    <section class="product-module-card product-risk-card" aria-labelledby="riskCardTitle">
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">RISK NOTES</p>
+          <h3 id="riskCardTitle" class="rw-panel-title">风险边界</h3>
+        </div>
+      </header>
+      <p class="product-disclaimer">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 2 3.5 4.5v5.2c0 3.8 2.5 6.6 6.5 8.3 4-1.7 6.5-4.5 6.5-8.3V4.5L10 2Z" />
+          <path d="M7.5 10.2 9.2 12l3.5-4" />
+        </svg>
+        <span>
+          目标金额由本金、已确认持仓、待确认买入、期限桶目标、流动性下限、未来现金流和集中度共同计算。
+          公开额度缺失时只给分配上限，不假装可买；买入前必须在招行 App 核对额度、起购金额、赎回规则和产品说明书。
+          未分配金额不会为了凑数强行买入，不构成推荐或买入建议。
+        </span>
+      </p>
+    </section>
 
     <ProductDialog
       v-model:open="dialogOpen"
       :products="products"
+      :snapshot-date="dashboard.meta.product_snapshot_date"
+      :history-date="dashboard.meta.product_history_date"
+    />
+
+    <ProductDetailDialog
+      v-model:open="detailOpen"
+      :product="detailProduct"
       :snapshot-date="dashboard.meta.product_snapshot_date"
       :history-date="dashboard.meta.product_history_date"
     />
@@ -526,17 +623,59 @@ async function saveQuotas(): Promise<void> {
 
 .watchlist {
   align-items: stretch;
+  margin-top: 0;
+}
+
+.product-module-card {
+  padding: 20px 22px 22px;
+  border: 1px solid rgba(205, 213, 202, 0.8);
+  border-radius: 20px;
+  background: rgba(255, 254, 250, 0.9);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
+}
+
+.product-module-card + .product-module-card {
+  margin-top: 18px;
+}
+
+.product-module-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.product-module-body {
+  min-width: 0;
+}
+
+.product-module-body .product-goal-strip {
+  margin-top: 0;
+}
+
+.product-module-body .allocation-reasons {
+  margin-bottom: 0;
+}
+
+.product-module-body .allocation-empty {
+  margin: 0;
+}
+
+.product-module-body .product-disclaimer {
+  margin-top: 0;
 }
 
 .allocation-settings {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
-  margin: 14px 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card-soft);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .allocation-settings label,
@@ -564,6 +703,12 @@ async function saveQuotas(): Promise<void> {
   display: flex;
   align-items: end;
   gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.allocation-settings-actions .button-primary {
+  flex: 0 0 auto;
+  min-width: 140px;
 }
 
 .allocation-buckets {
@@ -678,25 +823,6 @@ async function saveQuotas(): Promise<void> {
   line-height: 1.55;
 }
 
-.quota-badge {
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #f7f0e3;
-  color: #8a6a2f;
-  font-size: 10px;
-  font-weight: 650;
-}
-
-.quota-badge.is-verified {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.quota-badge.is-limited {
-  background: #f7e9e5;
-  color: #a14d40;
-}
-
 .allocation-empty {
   margin: 14px 0;
   padding: 22px;
@@ -717,38 +843,10 @@ async function saveQuotas(): Promise<void> {
   line-height: 1.7;
 }
 
-.quota-editor {
-  margin: 16px 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card-soft);
-}
-
-.quota-editor-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.quota-editor-head strong {
-  color: var(--ink-soft);
-  font-size: 11px;
-}
-
-.quota-editor-head p {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 10.5px;
-  line-height: 1.6;
-}
-
 .quota-editor-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 12px;
 }
 
 .quota-editor-grid label {
@@ -758,52 +856,61 @@ async function saveQuotas(): Promise<void> {
   background: var(--card);
 }
 
-.observation-list {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--line);
-}
-
-.observation-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  color: var(--ink-soft);
-  font-size: 12px;
-}
-
-.observation-head span {
-  color: var(--muted-light);
-  font-size: 10.5px;
-}
-
 .observation-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 9px;
 }
 
-.observation-grid > div {
+.observation-card {
   display: grid;
   gap: 4px;
-  padding: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 13px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 12px;
   background: var(--card);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.observation-grid span,
-.observation-grid small {
+.observation-card:hover {
+  border-color: rgba(23, 100, 86, 0.3);
+  box-shadow: 0 10px 24px rgba(33, 53, 43, 0.08);
+  transform: translateY(-1px);
+}
+
+.observation-card:focus-visible {
+  outline: 2px solid rgba(23, 100, 86, 0.45);
+  outline-offset: 2px;
+}
+
+.observation-term,
+.observation-code,
+.observation-meta {
   color: var(--muted-light);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
-.observation-grid strong {
+.observation-name {
   color: var(--ink-soft);
-  font-size: 11.5px;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.45;
+}
+
+.observation-detail-hint {
+  margin-top: 4px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 @media (max-width: 1100px) {
@@ -814,6 +921,23 @@ async function saveQuotas(): Promise<void> {
   .allocation-buckets,
   .quota-editor-grid,
   .observation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .product-module-card {
+    padding: 17px 16px 18px;
+    border-radius: 16px;
+  }
+
+  .allocation-settings {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 460px) {
+  .allocation-settings {
     grid-template-columns: 1fr;
   }
 }

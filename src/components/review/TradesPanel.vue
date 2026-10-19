@@ -250,27 +250,12 @@ function sourceLabel(source: string): string {
 <template>
   <div class="rw-panel-body">
     <div class="rw-toolbar">
-      <div class="rw-stat-row">
-        <span class="rw-stat-chip">
-          待确认 <strong>{{ overview.summary.pending_count }} 笔</strong>
-          ¥{{ formatMoney(overview.summary.pending_buy_amount, 0) }}
-        </span>
-        <span class="rw-stat-chip">
-          已确认持仓 <strong>¥{{ formatMoney(overview.summary.open_principal, 0) }}</strong>
-        </span>
-        <span class="rw-stat-chip">
-          已实现收益 <strong>¥{{ formatMoney(overview.summary.realized_pnl, 2) }}</strong>
-        </span>
-        <span
-          class="rw-stat-chip"
-          :class="{ 'is-warn': overview.reconciliation.counts.warn > 0 }"
-        >
-          对账
-          <strong>
-            {{ overview.reconciliation.counts.warn }} 警告 ·
-            {{ overview.reconciliation.counts.info }} 提示
-          </strong>
-        </span>
+      <div class="rw-card-heading">
+        <p class="kicker">TRADES</p>
+        <strong class="rw-panel-title">交易流水</strong>
+        <p class="rw-panel-sub">
+          登记买入、赎回和切换；待确认交易只占额度，确认后才进入持仓、期限桶和收益。
+        </p>
       </div>
       <div class="rw-toolbar-actions">
         <button type="button" class="rw-button is-secondary" @click="openCreate('redeem')">
@@ -278,6 +263,29 @@ function sourceLabel(source: string): string {
         </button>
         <button type="button" class="rw-button" @click="openCreate('buy')">记一笔交易</button>
       </div>
+    </div>
+
+    <div class="rw-stat-row rw-stat-row-spaced">
+      <span class="rw-stat-chip">
+        待确认 <strong>{{ overview.summary.pending_count }} 笔</strong>
+        ¥{{ formatMoney(overview.summary.pending_buy_amount, 0) }}
+      </span>
+      <span class="rw-stat-chip">
+        已确认持仓 <strong>¥{{ formatMoney(overview.summary.open_principal, 0) }}</strong>
+      </span>
+      <span class="rw-stat-chip">
+        已实现收益 <strong>¥{{ formatMoney(overview.summary.realized_pnl, 2) }}</strong>
+      </span>
+      <span
+        class="rw-stat-chip"
+        :class="{ 'is-warn': overview.reconciliation.counts.warn > 0 }"
+      >
+        对账
+        <strong>
+          {{ overview.reconciliation.counts.warn }} 警告 ·
+          {{ overview.reconciliation.counts.info }} 提示
+        </strong>
+      </span>
     </div>
 
     <div v-if="overview.reconciliation.items.length" class="rw-alerts">

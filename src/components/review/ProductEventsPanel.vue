@@ -134,16 +134,26 @@ async function remove(item: ProductEvent): Promise<void> {
 <template>
   <div class="rw-panel-body">
     <div class="rw-toolbar">
-      <div class="rw-stat-row">
-        <span class="rw-stat-chip">本月事件 <strong>{{ stats.thisMonth }}</strong></span>
-        <span class="rw-stat-chip" :class="{ 'is-warn': stats.open > 0 }">
-          待复核 <strong>{{ stats.open }}</strong>
-        </span>
-        <span class="rw-stat-chip" :class="{ 'is-warn': stats.highOpen > 0 }">
-          高影响待复核 <strong>{{ stats.highOpen }}</strong>
-        </span>
+      <div class="rw-card-heading">
+        <p class="kicker">PRODUCT EVENTS</p>
+        <strong class="rw-panel-title">产品事件 / 特殊事项</strong>
+        <p class="rw-panel-sub">
+          费率、经理、底层、赎回规则、额度等变化，记一条并在周检查时复核。
+        </p>
       </div>
-      <button type="button" class="rw-button" @click="openCreate">新增事件</button>
+      <div class="rw-toolbar-actions">
+        <button type="button" class="rw-button" @click="openCreate">新增事件</button>
+      </div>
+    </div>
+
+    <div class="rw-stat-row rw-stat-row-spaced">
+      <span class="rw-stat-chip">本月事件 <strong>{{ stats.thisMonth }}</strong></span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': stats.open > 0 }">
+        待复核 <strong>{{ stats.open }}</strong>
+      </span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': stats.highOpen > 0 }">
+        高影响待复核 <strong>{{ stats.highOpen }}</strong>
+      </span>
     </div>
 
     <form v-if="formOpen" class="rw-form" @submit.prevent="save">

@@ -183,7 +183,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  document.title = '钱多多 · 理财与投资'
   window.removeEventListener('scroll', handleScroll)
   window.removeEventListener('keydown', handleKeydown)
   if (scrollFrame) window.cancelAnimationFrame(scrollFrame)

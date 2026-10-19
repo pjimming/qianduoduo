@@ -12,5 +12,6 @@ import './styles/dashboard.css'
 import './styles/review-workspace.css'
 import './styles/research.css'
 import './styles/report.css'
+import './styles/r2-pages.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

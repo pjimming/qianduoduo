@@ -267,7 +267,7 @@ defineExpose({
         <strong id="previewRate" :class="preview.tone">{{ preview.text }}</strong>
       </div>
 
-      <div v-if="!compact" class="field">
+      <div class="field">
         <label for="action">操作</label>
         <select id="action" v-model="action" name="action">
           <option value="无操作">无操作</option>

@@ -119,8 +119,24 @@ watch(
         >
           <RouterLink
             class="sidebar-link"
-            to="/"
-            exact-active-class="is-active"
+            to="/ledger/overview"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.5 3.5h5v5h-5zM11.5 3.5h5v5h-5zM3.5 11.5h5v5h-5zM11.5 11.5h5v5h-5z"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>收益概览</strong>
+              <small>净值 · 收益 · 曲线</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
+            to="/ledger/daily"
+            active-class="is-active"
             @click="closeMenu"
           >
             <span class="sidebar-icon">
@@ -130,8 +146,77 @@ watch(
               </svg>
             </span>
             <span class="sidebar-link-copy">
-              <strong>R2 收益账本</strong>
-              <small>本金 · 收益 · 月度复盘</small>
+              <strong>每日记账</strong>
+              <small>收益 · 本金 · 流水</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
+            to="/ledger/trades"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 6.5h11m0 0-3-3m3 3-3 3"></path>
+                <path d="M16 13.5H5m0 0 3-3m-3 3 3 3"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>交易与持仓</strong>
+              <small>截图 · 流水 · 集中度</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
+            to="/ledger/products"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m10 3 6 3-6 3-6-3z"></path>
+                <path d="m4 10 6 3 6-3M4 14l6 3 6-3"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>产品与配置</strong>
+              <small>候选池 · 额度 · 事件</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
+            to="/ledger/review"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 4.5h12v11H4z"></path>
+                <path d="M4 7.5h12M7 3.5v2M13 3.5v2"></path>
+                <path d="m7.5 11 1.6 1.6 3.4-3.6"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>复盘</strong>
+              <small>评分 · 五问 · 季度</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
+            to="/ledger/evaluation"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="6.5"></circle>
+                <path d="m10 6.5 2 2-2 5-2-5z"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>决策与评估</strong>
+              <small>理由 · 结果 · 自动评估</small>
             </span>
           </RouterLink>
         </div>

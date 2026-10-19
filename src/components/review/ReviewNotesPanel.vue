@@ -295,19 +295,7 @@ function regenerateSuggestion(): void {
 
 <template>
   <div class="rw-panel-body">
-    <div class="rw-toolbar">
-      <div>
-        <strong class="rw-panel-title">
-          {{ mode === 'monthly' ? '月度五问' : '季度复盘清单' }}
-        </strong>
-        <p class="rw-panel-sub">
-          {{
-            mode === 'monthly'
-              ? '每月 10 分钟，回答五问，留下当月结论和下月只改的一件事。'
-              : '每季 30 分钟，只复核结构：桶比例、集中度、期限阶梯和替换清单。'
-          }}
-        </p>
-      </div>
+    <div class="rw-toolbar is-actions-only">
       <div class="rw-toolbar-actions">
         <span class="rw-status" :class="{ 'is-closed': existing }">
           {{ existing ? '已保存' : '未填写' }}
