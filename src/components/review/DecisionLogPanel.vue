@@ -2,11 +2,19 @@
 import { computed, reactive, ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
-import type { DecisionEntry, DecisionInput, DecisionRating } from '@/types/dashboard'
+import type {
+  AutomationWorkspace,
+  DecisionEntry,
+  DecisionInput,
+  DecisionRating,
+  TradeTransaction,
+} from '@/types/dashboard'
 
 const props = defineProps<{
   decisions: DecisionEntry[]
   today: string
+  trades: TradeTransaction[]
+  automation: AutomationWorkspace
 }>()
 
 const store = useDashboardStore()
@@ -31,6 +39,7 @@ const stats = computed(() => {
   return {
     thisMonth: props.decisions.filter((item) => item.date.startsWith(currentMonth)).length,
     pending: props.decisions.filter((item) => item.rating === '待评估').length,
+    pendingEvaluations: props.automation.pending_evaluations.length,
     wrongGood: props.decisions.filter((item) => item.rating === '流程错误，结果好').length,
     rightBad: props.decisions.filter((item) => item.rating === '流程正确，结果差').length,
   }
@@ -44,6 +53,10 @@ function emptyForm(): DecisionInput {
     reason: '',
     expectation: '',
     actual_result: '',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+    evaluation_at: ['buy_day', 'holding', 'maturity'],
     rating: '待评估',
   }
 }
@@ -67,6 +80,10 @@ function openEdit(item: DecisionEntry): void {
     reason: item.reason,
     expectation: item.expectation,
     actual_result: item.actual_result,
+    strategy_version: item.strategy_version,
+    target_annualized: item.target_annualized,
+    bucket_plan: { ...item.bucket_plan },
+    evaluation_at: [...item.evaluation_at],
     rating: item.rating,
   })
   formOpen.value = true
@@ -123,6 +140,42 @@ function actionClass(action: DecisionInput['action']): string {
   if (action === '切换') return 'is-switch'
   return 'is-none'
 }
+
+function linkedTrades(id: number): TradeTransaction[] {
+  return props.trades.filter((trade) => trade.decision_id === id)
+}
+
+function decisionRuns(id: number) {
+  return props.automation.runs.filter((run) => run.decision_id === id)
+}
+
+function latestRun(id: number) {
+  return decisionRuns(id)[0] || {
+    id: 0,
+    stage: 'buy_day',
+    status: 'pending',
+    confidence: 0,
+    rating: '待评估' as DecisionRating,
+    summary: '',
+  }
+}
+
+function hasRun(id: number): boolean {
+  return decisionRuns(id).length > 0
+}
+
+function stageLabel(stage: string): string {
+  return { buy_day: '买入日', holding: '持有期', maturity: '到期/赎回' }[stage] || stage
+}
+
+function statusLabel(status: string): string {
+  return {
+    pending: '待确认',
+    auto: '自动写入',
+    confirmed: '人工确认',
+    undone: '已撤销',
+  }[status] || status
+}
 </script>
 
 <template>
@@ -131,6 +184,9 @@ function actionClass(action: DecisionInput['action']): string {
       <div class="rw-stat-row">
         <span class="rw-stat-chip">本月决策 <strong>{{ stats.thisMonth }}</strong></span>
         <span class="rw-stat-chip">待评估 <strong>{{ stats.pending }}</strong></span>
+        <span class="rw-stat-chip" :class="{ 'is-warn': stats.pendingEvaluations > 0 }">
+          待确认评估 <strong>{{ stats.pendingEvaluations }}</strong>
+        </span>
         <span class="rw-stat-chip" :class="{ 'is-warn': stats.wrongGood > 0 }">
           流程错误结果好 <strong>{{ stats.wrongGood }}</strong>
         </span>
@@ -166,6 +222,30 @@ function actionClass(action: DecisionInput['action']): string {
           <select v-model="form.rating">
             <option v-for="rating in ratings" :key="rating" :value="rating">{{ rating }}</option>
           </select>
+        </label>
+        <label class="rw-field">
+          <span>策略版本</span>
+          <input v-model="form.strategy_version" type="text" maxlength="60" />
+        </label>
+        <label class="rw-field">
+          <span>目标年化（%）</span>
+          <input v-model.number="form.target_annualized" type="number" min="0.1" max="20" step="0.1" />
+        </label>
+        <label class="rw-field">
+          <span>短桶目标（%，0–30 天）</span>
+          <input v-model.number="form.bucket_plan.short" type="number" min="0" max="100" step="1" />
+        </label>
+        <label class="rw-field">
+          <span>中桶目标（%，31–100 天）</span>
+          <input v-model.number="form.bucket_plan.medium" type="number" min="0" max="100" step="1" />
+        </label>
+        <label class="rw-field">
+          <span>长桶目标（%，100 天以上）</span>
+          <input v-model.number="form.bucket_plan.long" type="number" min="0" max="100" step="1" />
+        </label>
+        <label class="rw-field">
+          <span>单只上限（%）</span>
+          <input v-model.number="form.bucket_plan.max_single" type="number" min="0" max="100" step="1" />
         </label>
         <label class="rw-field is-wide">
           <span>当时的理由</span>
@@ -220,6 +300,39 @@ function actionClass(action: DecisionInput['action']): string {
         <div class="rw-decision-meta">
           <span><em>预期</em>{{ item.expectation || '未填写' }}</span>
           <span><em>结果</em>{{ item.actual_result || '待观察' }}</span>
+          <span>
+            <em>策略</em>{{ item.strategy_version }} · 目标 {{ item.target_annualized.toFixed(2) }}%
+          </span>
+          <span v-if="Object.keys(item.bucket_plan).length">
+            <em>期限桶</em>
+            短 {{ item.bucket_plan.short ?? '—' }}% / 中 {{ item.bucket_plan.medium ?? '—' }}% /
+            长 {{ item.bucket_plan.long ?? '—' }}% · 单只上限
+            {{ item.bucket_plan.max_single ?? 30 }}%
+          </span>
+        </div>
+        <div v-if="linkedTrades(item.id).length" class="rw-decision-links">
+          <span class="rw-muted">关联交易</span>
+          <span
+            v-for="trade in linkedTrades(item.id)"
+            :key="trade.id"
+            class="rw-link-chip"
+          >
+            #{{ trade.id }} {{ trade.product_code }} ¥{{ trade.amount.toLocaleString('zh-CN') }}
+            · {{ trade.status === 'confirmed' ? '已确认' : trade.status === 'pending' ? '待确认' : '已撤销' }}
+          </span>
+        </div>
+        <div v-if="hasRun(item.id)" class="rw-eval-inline">
+          <div class="rw-eval-inline-head">
+            <span class="rw-type-badge">{{ stageLabel(latestRun(item.id).stage) }}评估</span>
+            <span class="rw-muted">
+              {{ statusLabel(latestRun(item.id).status) }} · 置信度
+              {{ latestRun(item.id).confidence }}%
+            </span>
+            <span class="rw-rating" :class="ratingClass(latestRun(item.id).rating)">
+              {{ latestRun(item.id).rating }}
+            </span>
+          </div>
+          <p>{{ latestRun(item.id).summary }}</p>
         </div>
         <div class="rw-row-actions">
           <button type="button" class="rw-link-button" @click="openEdit(item)">编辑</button>

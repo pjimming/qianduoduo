@@ -128,7 +128,11 @@ onUnmounted(() => {
     </section>
     <PnlChart :records="dashboard.records" />
     <ReviewSection :review="dashboard.review" :notes="dashboard.workspace.notes" />
-    <ReviewWorkspace :workspace="dashboard.workspace" :review="dashboard.review" />
+    <ReviewWorkspace
+      :workspace="dashboard.workspace"
+      :review="dashboard.review"
+      :automation="dashboard.automation"
+    />
     <ProductsSection :dashboard="dashboard" />
     <LedgerTable
       ref="ledgerRef"

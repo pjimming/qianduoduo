@@ -23,6 +23,8 @@ const {
 } = require('./lib/metrics');
 const { buildProductView } = require('./lib/products');
 const { shiftMonth } = require('./lib/review-store');
+const { parseTradeText } = require('./lib/trade-parser');
+const { ocrImage } = require('./lib/ocr');
 
 const ROOT = __dirname;
 const DIST_DIR = path.join(ROOT, 'dist');
@@ -41,6 +43,13 @@ const DECISION_RATINGS = new Set([
 const EVENT_TYPES = new Set(['费率', '经理', '底层', '赎回规则', '额度', '其他']);
 const EVENT_IMPACTS = new Set(['低', '中', '高']);
 const EVENT_STATUSES = new Set(['待复核', '已处理']);
+const TRADE_TYPES = new Set(['buy', 'redeem', 'switch']);
+const TRADE_STATUSES = new Set(['pending', 'confirmed', 'cancelled']);
+const IMAGE_MIME_EXTENSIONS = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+};
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -125,7 +134,7 @@ function sendError(response, statusCode, message, details = null) {
   });
 }
 
-function readJsonBody(request) {
+function readJsonBody(request, maxBytes = 64 * 1024) {
   return new Promise((resolve, reject) => {
     const contentType = String(request.headers['content-type'] || '').toLowerCase();
     if (!contentType.startsWith('application/json')) {
@@ -140,8 +149,10 @@ function readJsonBody(request) {
     request.setEncoding('utf8');
     request.on('data', (chunk) => {
       size += Buffer.byteLength(chunk);
-      if (size > 64 * 1024) {
-        reject(new Error('请求内容过大'));
+      if (size > maxBytes) {
+        const error = new Error('请求内容过大');
+        error.statusCode = 413;
+        reject(error);
         request.destroy();
         return;
       }
@@ -295,6 +306,63 @@ function validateDecisionPayload(payload, options = {}) {
   if (!DECISION_RATINGS.has(rating)) {
     return { error: '事后评价不在允许范围内' };
   }
+  const strategyVersion = String(
+    payload.strategy_version || 'r2-3pct-v1',
+  ).trim();
+  if (!strategyVersion || strategyVersion.length > 60) {
+    return { error: '策略版本需要填写，且不能超过 60 个字符' };
+  }
+  const targetAnnualized = Number(payload.target_annualized ?? 3);
+  if (
+    !Number.isFinite(targetAnnualized) ||
+    targetAnnualized <= 0 ||
+    targetAnnualized > 20
+  ) {
+    return { error: '目标年化需要是 0–20 之间的数字' };
+  }
+  let bucketPlanInput = payload.bucket_plan ?? {};
+  if (typeof bucketPlanInput === 'string') {
+    try {
+      bucketPlanInput = JSON.parse(bucketPlanInput);
+    } catch {
+      return { error: '期限桶计划不是有效的 JSON' };
+    }
+  }
+  if (
+    !bucketPlanInput ||
+    typeof bucketPlanInput !== 'object' ||
+    Array.isArray(bucketPlanInput)
+  ) {
+    return { error: '期限桶计划格式不正确' };
+  }
+  const bucketPlan = {};
+  for (const key of ['short', 'medium', 'long', 'max_single']) {
+    if (
+      bucketPlanInput[key] === null ||
+      bucketPlanInput[key] === undefined ||
+      bucketPlanInput[key] === ''
+    ) {
+      continue;
+    }
+    const value = Number(bucketPlanInput[key]);
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      return { error: '期限桶比例需要是 0–100 的数字' };
+    }
+    bucketPlan[key] = value;
+  }
+  const evaluationInput = Array.isArray(payload.evaluation_at)
+    ? payload.evaluation_at
+    : String(payload.evaluation_at || 'buy_day,holding,maturity').split(',');
+  const allowedStages = new Set(['buy_day', 'holding', 'maturity']);
+  const evaluationAt = evaluationInput
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+  if (
+    !evaluationAt.length ||
+    evaluationAt.some((item) => !allowedStages.has(item))
+  ) {
+    return { error: '评估时点必须是 buy_day、holding 或 maturity' };
+  }
   return {
     value: {
       date,
@@ -303,6 +371,10 @@ function validateDecisionPayload(payload, options = {}) {
       reason,
       expectation,
       actual_result: actualResult,
+      strategy_version: strategyVersion,
+      target_annualized: Math.round(targetAnnualized * 100) / 100,
+      bucket_plan: bucketPlan,
+      evaluation_at: [...new Set(evaluationAt)],
       rating,
     },
   };
@@ -399,6 +471,270 @@ function validateProductEventPayload(payload) {
       description,
       impact,
       status,
+    },
+  };
+}
+
+function validateTradePayload(payload, options = {}) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: '交易格式不正确' };
+  }
+  const today = options.today || todayShanghai();
+  const tradeDate = String(payload.trade_date || '').trim();
+  if (!parseYmd(tradeDate)) return { error: '交易日期格式应为 YYYY-MM-DD' };
+  if (tradeDate > today) return { error: '交易日期不能晚于今天' };
+  if (tradeDate < '2000-01-01') return { error: '交易日期过早' };
+
+  const tradeType = String(payload.trade_type || '').trim();
+  if (!TRADE_TYPES.has(tradeType)) {
+    return { error: '交易类型必须是买入、赎回或切换' };
+  }
+  const status = String(payload.status || 'pending').trim();
+  if (!TRADE_STATUSES.has(status)) {
+    return { error: '交易状态必须是待确认、已确认或已撤销' };
+  }
+
+  const productCode = String(payload.product_code || '').trim();
+  if (!productCode) return { error: '请填写产品代码' };
+  if (productCode.length > 50) return { error: '产品代码不能超过 50 个字符' };
+  const productName = String(payload.product_name || '').trim();
+  if (!productName) return { error: '请填写产品名称' };
+  if (productName.length > 120) return { error: '产品名称不能超过 120 个字符' };
+
+  const issuer = String(payload.issuer || '').trim();
+  if (issuer.length > 100) return { error: '发行方不能超过 100 个字符' };
+  const riskRaw = String(payload.risk_level || 'R2').trim().toUpperCase();
+  const riskLevel = riskRaw === 'R2' || riskRaw === 'PR2' ? riskRaw : null;
+  if (!riskLevel) return { error: '风险等级只能是 R2 或 PR2' };
+
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12) {
+    return { error: '交易金额需要是大于 0 的数字' };
+  }
+  let settlementAmount = null;
+  if (
+    payload.settlement_amount !== '' &&
+    payload.settlement_amount !== null &&
+    payload.settlement_amount !== undefined
+  ) {
+    settlementAmount = Number(payload.settlement_amount);
+    if (
+      !Number.isFinite(settlementAmount) ||
+      settlementAmount <= 0 ||
+      settlementAmount > 1e12
+    ) {
+      return { error: '到账金额需要是大于 0 的数字' };
+    }
+  }
+  let shares = null;
+  if (
+    payload.shares !== '' &&
+    payload.shares !== null &&
+    payload.shares !== undefined
+  ) {
+    shares = Number(payload.shares);
+    if (!Number.isFinite(shares) || shares <= 0 || shares > 1e15) {
+      return { error: '份额需要是大于 0 的数字' };
+    }
+  }
+  let termDays = null;
+  if (
+    payload.term_days !== '' &&
+    payload.term_days !== null &&
+    payload.term_days !== undefined
+  ) {
+    termDays = Number(payload.term_days);
+    if (!Number.isInteger(termDays) || termDays < 0 || termDays > 3650) {
+      return { error: '期限需要是 0–3650 的整数天，0 表示日开' };
+    }
+  }
+  const maturityRaw = String(payload.maturity_date || '').trim();
+  let maturityDate = null;
+  if (maturityRaw) {
+    if (!parseYmd(maturityRaw)) return { error: '到期日格式应为 YYYY-MM-DD' };
+    if (maturityRaw < tradeDate) return { error: '到期日不能早于交易日期' };
+    maturityDate = maturityRaw;
+  }
+  const confirmRaw = String(payload.confirm_date || '').trim();
+  let confirmDate = null;
+  if (confirmRaw) {
+    if (!parseYmd(confirmRaw)) return { error: '确认日期格式应为 YYYY-MM-DD' };
+    if (confirmDateIsFuture(confirmRaw, today)) {
+      return { error: '确认日期不能晚于今天' };
+    }
+    if (confirmRaw < tradeDate) return { error: '确认日期不能早于交易日期' };
+    confirmDate = confirmRaw;
+  }
+  if (status === 'confirmed' && !confirmDate) confirmDate = tradeDate;
+  if (status !== 'confirmed') confirmDate = null;
+
+  let targetCode = String(payload.target_product_code || '').trim();
+  let targetName = String(payload.target_product_name || '').trim();
+  let targetTermDays = null;
+  let targetMaturityDate = null;
+  if (tradeType === 'switch') {
+    if (!targetCode) return { error: '切换交易请填写目标产品代码' };
+    if (!targetName) return { error: '切换交易请填写目标产品名称' };
+    if (targetName.length > 120) return { error: '目标产品名称不能超过 120 个字符' };
+    if (
+      payload.target_term_days !== '' &&
+      payload.target_term_days !== null &&
+      payload.target_term_days !== undefined
+    ) {
+      targetTermDays = Number(payload.target_term_days);
+      if (
+        !Number.isInteger(targetTermDays) ||
+        targetTermDays < 0 ||
+        targetTermDays > 3650
+      ) {
+        return { error: '目标产品期限需要是 0–3650 的整数天' };
+      }
+    }
+    const targetMaturityRaw = String(payload.target_maturity_date || '').trim();
+    if (targetMaturityRaw) {
+      if (!parseYmd(targetMaturityRaw)) {
+        return { error: '目标产品到期日格式应为 YYYY-MM-DD' };
+      }
+      if (targetMaturityRaw < tradeDate) {
+        return { error: '目标产品到期日不能早于交易日期' };
+      }
+      targetMaturityDate = targetMaturityRaw;
+    }
+  }
+
+  let decisionId = null;
+  if (
+    payload.decision_id !== '' &&
+    payload.decision_id !== null &&
+    payload.decision_id !== undefined
+  ) {
+    decisionId = Number(payload.decision_id);
+    if (!Number.isInteger(decisionId) || decisionId <= 0) {
+      return { error: '关联决策编号不正确' };
+    }
+  }
+  const notes = String(payload.notes || '').trim();
+  if (notes.length > 500) return { error: '交易备注不能超过 500 个字符' };
+
+  return {
+    value: {
+      trade_date: tradeDate,
+      confirm_date: confirmDate,
+      trade_type: tradeType,
+      status,
+      product_code: productCode,
+      product_name: productName,
+      issuer,
+      risk_level: riskLevel,
+      target_product_code: targetCode,
+      target_product_name: targetName,
+      target_term_days: targetTermDays,
+      target_maturity_date: targetMaturityDate,
+      amount: Math.round(amount * 100) / 100,
+      settlement_amount:
+        settlementAmount === null
+          ? null
+          : Math.round(settlementAmount * 100) / 100,
+      shares: shares === null ? null : Math.round(shares * 10000) / 10000,
+      term_days: termDays,
+      maturity_date: maturityDate,
+      decision_id: decisionId,
+      notes,
+    },
+  };
+}
+
+function confirmDateIsFuture(date, today) {
+  return date > today;
+}
+
+function validateInboxOverridePayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: '收件箱校正内容格式不正确' };
+  }
+  const allowed = [
+    'trade_date',
+    'confirm_date',
+    'trade_type',
+    'status',
+    'product_code',
+    'product_name',
+    'issuer',
+    'risk_level',
+    'amount',
+    'settlement_amount',
+    'shares',
+    'term_days',
+    'maturity_date',
+    'target_product_code',
+    'target_product_name',
+    'target_term_days',
+    'target_maturity_date',
+    'confidence',
+    'notes',
+  ];
+  const value = {};
+  for (const key of allowed) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      value[key] = payload[key];
+    }
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(value, 'notes') &&
+    String(value.notes || '').length > 500
+  ) {
+    return { error: '收件箱备注不能超过 500 个字符' };
+  }
+  return { value };
+}
+
+function decodeImagePayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return { error: '图片格式不正确' };
+  }
+  const raw = String(payload.data || payload.image || '');
+  if (!raw) return { error: '请选择成交截图' };
+  const dataUrl = raw.match(
+    /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/,
+  );
+  const mime = String(payload.mime || dataUrl?.[1] || '').toLowerCase();
+  if (!IMAGE_MIME_EXTENSIONS[mime]) {
+    return { error: '只支持 PNG、JPEG 或 WebP 截图' };
+  }
+  const base64 = dataUrl ? dataUrl[2] : raw;
+  let buffer;
+  try {
+    buffer = Buffer.from(base64.replace(/\s/g, ''), 'base64');
+  } catch {
+    return { error: '图片编码不正确' };
+  }
+  if (!buffer.length) return { error: '图片内容为空' };
+  if (buffer.length > 10 * 1024 * 1024) {
+    return { error: '单张截图不能超过 10 MB' };
+  }
+  const isPng =
+    buffer.length > 8 &&
+    buffer[0] === 0x89 &&
+    buffer.subarray(1, 4).toString('ascii') === 'PNG';
+  const isJpeg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8;
+  const isWebp =
+    buffer.length > 12 &&
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+  if (
+    (mime === 'image/png' && !isPng) ||
+    (mime === 'image/jpeg' && !isJpeg) ||
+    (mime === 'image/webp' && !isWebp)
+  ) {
+    return { error: '图片内容和文件类型不一致' };
+  }
+  return {
+    value: {
+      buffer,
+      mime,
+      original_name: String(payload.filename || payload.original_name || '')
+        .trim()
+        .slice(0, 200),
     },
   };
 }
@@ -713,6 +1049,7 @@ function dashboardPayload(repository) {
     windows: buildWindows(records),
     review,
     workspace: repository.getReviewWorkspace({ today, records, review }),
+    automation: repository.automationStore.getWorkspace(today),
     capital: repository.getCapitalState(today),
     products: productView,
   };
@@ -922,6 +1259,605 @@ function createServer(options = {}) {
       if (pathname === '/api/review/workspace' && request.method === 'GET') {
         sendJson(response, 200, {
           workspace: dashboardPayload(repository).workspace,
+        });
+        return;
+      }
+
+      if (pathname === '/api/automation/workspace' && request.method === 'GET') {
+        sendJson(response, 200, {
+          automation: repository.automationStore.getWorkspace(todayShanghai()),
+        });
+        return;
+      }
+
+      if (pathname === '/api/automation/run' && request.method === 'POST') {
+        const result = repository.automationStore.runCycle({
+          today: todayShanghai(),
+          trigger: 'manual',
+        });
+        sendJson(response, result.ok ? 200 : 500, {
+          ...result,
+          automation: repository.automationStore.getWorkspace(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/automation/settings' && request.method === 'PUT') {
+        const body = await readJsonBody(request);
+        const numericRules = {
+          target_annualized: [0.1, 20],
+          hurdle_short: [0, 20],
+          hurdle_medium: [0, 20],
+          hurdle_long: [0, 20],
+          liquidity_floor_pct: [0, 100],
+          single_product_cap_pct: [0, 100],
+          bucket_tolerance_pp: [0, 100],
+          auto_confidence_threshold: [0, 100],
+          scheduler_minutes: [1, 1440],
+        };
+        const patch = {};
+        for (const [key, range] of Object.entries(numericRules)) {
+          if (body[key] === undefined) continue;
+          const value = Number(body[key]);
+          if (
+            !Number.isFinite(value) ||
+            value < range[0] ||
+            value > range[1]
+          ) {
+            sendError(
+              response,
+              400,
+              `${key} 需要在 ${range[0]}–${range[1]} 之间`,
+            );
+            return;
+          }
+          patch[key] = value;
+        }
+        for (const key of ['automation_enabled', 'notifications_enabled']) {
+          if (body[key] !== undefined) patch[key] = Boolean(body[key]);
+        }
+        for (const key of ['rule_version', 'strategy_version']) {
+          if (body[key] !== undefined) {
+            const value = String(body[key]).trim();
+            if (!value || value.length > 60) {
+              sendError(response, 400, `${key} 不能为空或超过 60 个字符`);
+              return;
+            }
+            patch[key] = value;
+          }
+        }
+        const settings = repository.automationStore.updateSettings(patch);
+        sendJson(response, 200, {
+          settings,
+          automation: repository.automationStore.getWorkspace(todayShanghai()),
+        });
+        return;
+      }
+
+      const evaluationApplyMatch = pathname.match(
+        /^\/api\/evaluations\/(\d+)\/apply$/,
+      );
+      if (evaluationApplyMatch && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        let rating = null;
+        if (body.rating !== undefined) {
+          rating = String(body.rating).trim();
+          if (!DECISION_RATINGS.has(rating)) {
+            sendError(response, 400, '评估结论不在允许范围内');
+            return;
+          }
+        }
+        let evaluation;
+        try {
+          evaluation = repository.automationStore.forceApplyRun(
+            Number(evaluationApplyMatch[1]),
+            {
+              rating,
+              summary: body.summary ? String(body.summary) : null,
+            },
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!evaluation) {
+          sendError(response, 404, '没有找到这条评估');
+          return;
+        }
+        sendJson(response, 200, {
+          evaluation,
+          automation: repository.automationStore.getWorkspace(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const evaluationUndoMatch = pathname.match(
+        /^\/api\/evaluations\/(\d+)\/undo$/,
+      );
+      if (evaluationUndoMatch && request.method === 'POST') {
+        let evaluation;
+        try {
+          evaluation = repository.automationStore.undoRun(
+            Number(evaluationUndoMatch[1]),
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!evaluation) {
+          sendError(response, 404, '没有找到这条评估');
+          return;
+        }
+        sendJson(response, 200, {
+          evaluation,
+          automation: repository.automationStore.getWorkspace(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/notifications/read-all' && request.method === 'POST') {
+        const notifications =
+          repository.automationStore.markAllNotificationsRead();
+        sendJson(response, 200, { notifications });
+        return;
+      }
+
+      const notificationMatch = pathname.match(
+        /^\/api\/notifications\/(\d+)\/(read|unread|resolve)$/,
+      );
+      if (notificationMatch && request.method === 'POST') {
+        const notification = repository.automationStore.markNotification(
+          Number(notificationMatch[1]),
+          notificationMatch[2],
+        );
+        if (!notification) {
+          sendError(response, 404, '没有找到这条提醒');
+          return;
+        }
+        sendJson(response, 200, { notification });
+        return;
+      }
+
+      const jobResolveMatch = pathname.match(
+        /^\/api\/automation\/jobs\/(\d+)\/resolve$/,
+      );
+      if (jobResolveMatch && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        let job;
+        try {
+          job = repository.automationStore.resolveJob(
+            Number(jobResolveMatch[1]),
+            {
+              status: body.status || 'done',
+              result: body.result || {},
+              note: body.note || '',
+            },
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!job) {
+          sendError(response, 404, '没有找到这个任务');
+          return;
+        }
+        sendJson(response, 200, {
+          job,
+          automation: repository.automationStore.getWorkspace(todayShanghai()),
+        });
+        return;
+      }
+
+      const draftMatch = pathname.match(
+        /^\/api\/review\/drafts\/(monthly|quarterly)\/(\d{4}-(?:\d{2}|Q[1-4]))(?:\/(generate|confirm))?$/,
+      );
+      if (draftMatch) {
+        const [, periodType, period, action] = draftMatch;
+        const validPeriod =
+          periodType === 'monthly'
+            ? /^\d{4}-(0[1-9]|1[0-2])$/.test(period)
+            : /^\d{4}-Q[1-4]$/.test(period);
+        if (!validPeriod) {
+          sendError(response, 400, '复盘周期格式不正确');
+          return;
+        }
+        if (!action && request.method === 'GET') {
+          const draft = repository.automationStore.getDraft(periodType, period);
+          sendJson(response, 200, { draft });
+          return;
+        }
+        if (action === 'generate' && request.method === 'POST') {
+          const draft = repository.automationStore.generateDraft(
+            periodType,
+            period,
+          );
+          sendJson(response, 200, {
+            draft,
+            automation: repository.automationStore.getWorkspace(todayShanghai()),
+          });
+          return;
+        }
+        if (action === 'confirm' && request.method === 'POST') {
+          const body = await readJsonBody(request);
+          let result;
+          try {
+            result = repository.automationStore.confirmDraft(
+              periodType,
+              period,
+              {
+                answers: body.answers,
+                conclusion: body.conclusion,
+              },
+            );
+          } catch (error) {
+            sendError(response, 400, error.message);
+            return;
+          }
+          sendJson(response, 200, {
+            ...result,
+            dashboard: dashboardPayload(repository),
+          });
+          return;
+        }
+      }
+
+      if (pathname === '/api/trades' && request.method === 'GET') {
+        sendJson(response, 200, {
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          inbox: repository.tradeStore.listInbox(),
+        });
+        return;
+      }
+
+      if (pathname === '/api/trades' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const validation = validateTradePayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        let trade;
+        try {
+          trade = repository.tradeStore.createTrade(validation.value, '页面手工录入');
+        } catch (error) {
+          sendError(
+            response,
+            error.code === 'DUPLICATE_TRADE' ? 409 : 400,
+            error.message,
+          );
+          return;
+        }
+        sendJson(response, 201, {
+          trade,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const tradeConfirmMatch = pathname.match(
+        /^\/api\/trades\/(\d+)\/confirm$/,
+      );
+      if (tradeConfirmMatch && request.method === 'POST') {
+        const id = Number(tradeConfirmMatch[1]);
+        const body = await readJsonBody(request);
+        const confirmDate = String(body.confirm_date || todayShanghai()).trim();
+        if (!parseYmd(confirmDate)) {
+          sendError(response, 400, '确认日期格式应为 YYYY-MM-DD');
+          return;
+        }
+        if (confirmDate > todayShanghai()) {
+          sendError(response, 400, '确认日期不能晚于今天');
+          return;
+        }
+        let trade;
+        try {
+          trade = repository.tradeStore.confirmTrade(
+            id,
+            confirmDate,
+            body.note || '页面确认',
+          );
+        } catch (error) {
+          sendError(
+            response,
+            error.code === 'DUPLICATE_TRADE' ? 409 : 400,
+            error.message,
+          );
+          return;
+        }
+        if (!trade) {
+          sendError(response, 404, '没有找到这笔交易');
+          return;
+        }
+        sendJson(response, 200, {
+          trade,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const tradeCancelMatch = pathname.match(
+        /^\/api\/trades\/(\d+)\/cancel$/,
+      );
+      if (tradeCancelMatch && request.method === 'POST') {
+        const id = Number(tradeCancelMatch[1]);
+        const body = await readJsonBody(request);
+        let trade;
+        try {
+          trade = repository.tradeStore.cancelTrade(
+            id,
+            String(body.note || '页面撤销'),
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!trade) {
+          sendError(response, 404, '没有找到这笔交易');
+          return;
+        }
+        sendJson(response, 200, {
+          trade,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const tradeAuditMatch = pathname.match(/^\/api\/trades\/(\d+)\/audit$/);
+      if (tradeAuditMatch && request.method === 'GET') {
+        const id = Number(tradeAuditMatch[1]);
+        if (!repository.tradeStore.getTrade(id)) {
+          sendError(response, 404, '没有找到这笔交易');
+          return;
+        }
+        sendJson(response, 200, {
+          audits: repository.tradeStore.getAudits(id),
+        });
+        return;
+      }
+
+      const tradeMatch = pathname.match(/^\/api\/trades\/(\d+)$/);
+      if (tradeMatch && request.method === 'PUT') {
+        const id = Number(tradeMatch[1]);
+        const before = repository.tradeStore.getTrade(id);
+        if (!before) {
+          sendError(response, 404, '没有找到这笔交易');
+          return;
+        }
+        const body = await readJsonBody(request);
+        const validation = validateTradePayload({
+          ...before,
+          ...body,
+          trade_date: body.trade_date ?? before.trade_date,
+        });
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        let trade;
+        try {
+          trade = repository.tradeStore.updateTrade(
+            id,
+            validation.value,
+            body.note || '页面修改',
+          );
+        } catch (error) {
+          sendError(
+            response,
+            error.code === 'DUPLICATE_TRADE' ? 409 : 400,
+            error.message,
+          );
+          return;
+        }
+        sendJson(response, 200, {
+          trade,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/trades/inbox/prune' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const olderThanDays = body.olderThanDays
+          ? Number(body.olderThanDays)
+          : 180;
+        if (
+          !Number.isInteger(olderThanDays) ||
+          olderThanDays < 30 ||
+          olderThanDays > 3650
+        ) {
+          sendError(response, 400, '保留天数需要是 30–3650 的整数');
+          return;
+        }
+        const result = repository.tradeStore.pruneScreenshots({
+          today: todayShanghai(),
+          olderThanDays,
+        });
+        sendJson(response, 200, {
+          ...result,
+          inbox: repository.tradeStore.listInbox(),
+        });
+        return;
+      }
+
+      if (pathname === '/api/trades/inbox' && request.method === 'GET') {
+        sendJson(response, 200, {
+          inbox: repository.tradeStore.listInbox(),
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+        });
+        return;
+      }
+
+      if (pathname === '/api/trades/inbox' && request.method === 'POST') {
+        const body = await readJsonBody(request, 20 * 1024 * 1024);
+        const decoded = decodeImagePayload(body);
+        if (decoded.error) {
+          sendError(response, 400, decoded.error);
+          return;
+        }
+        const saved = repository.tradeStore.saveInboxImage({
+          buffer: decoded.value.buffer,
+          mime: decoded.value.mime,
+          originalName: decoded.value.original_name,
+        });
+        if (saved.duplicate) {
+          sendJson(response, 200, {
+            inbox: saved.item,
+            duplicate: true,
+            overview: repository.tradeStore.getOverview(todayShanghai()),
+          });
+          return;
+        }
+        const storedPath = path.join(
+          repository.tradeInboxDir,
+          saved.item.stored_name,
+        );
+        const ocr = await ocrImage(storedPath);
+        const parsed = parseTradeText(ocr.text, {
+          products: repository.listProducts(),
+          today: todayShanghai(),
+        });
+        const item = repository.tradeStore.addInbox({
+          original_name: saved.item.original_name,
+          stored_name: saved.item.stored_name,
+          mime: saved.item.mime,
+          bytes: saved.item.bytes,
+          sha256: saved.sha256,
+          ocr_text: ocr.text,
+          parsed,
+          parse_confidence: parsed.confidence,
+          error: ocr.ok ? '' : ocr.error,
+        });
+        sendJson(response, 201, {
+          inbox: item,
+          duplicate: false,
+          ocr: {
+            ok: ocr.ok,
+            language: ocr.language,
+            error: ocr.error,
+          },
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+        });
+        return;
+      }
+
+      const inboxImageMatch = pathname.match(
+        /^\/api\/trades\/inbox\/(\d+)\/image$/,
+      );
+      if (inboxImageMatch && request.method === 'GET') {
+        const file = repository.tradeStore.getInboxFilePath(
+          Number(inboxImageMatch[1]),
+        );
+        if (!file) {
+          sendError(response, 404, '截图不存在或已清理');
+          return;
+        }
+        fs.stat(file.path, (error, stats) => {
+          if (error || !stats.isFile()) {
+            sendError(response, 404, '截图不存在或已清理');
+            return;
+          }
+          response.writeHead(200, {
+            'Content-Type': file.mime,
+            'Content-Length': stats.size,
+            'Cache-Control': 'no-store',
+            ...SECURITY_HEADERS,
+          });
+          if (request.method === 'HEAD') {
+            response.end();
+            return;
+          }
+          fs.createReadStream(file.path).pipe(response);
+        });
+        return;
+      }
+
+      const inboxApplyMatch = pathname.match(
+        /^\/api\/trades\/inbox\/(\d+)\/apply$/,
+      );
+      if (inboxApplyMatch && request.method === 'POST') {
+        const id = Number(inboxApplyMatch[1]);
+        const item = repository.tradeStore.getInboxItem(id);
+        if (!item) {
+          sendError(response, 404, '没有找到这张截图');
+          return;
+        }
+        const body = await readJsonBody(request);
+        const merged = { ...item.parsed, ...body };
+        const validation = validateTradePayload(merged);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        let result;
+        try {
+          result = repository.tradeStore.applyInbox(id, validation.value);
+        } catch (error) {
+          sendError(
+            response,
+            error.code === 'DUPLICATE_TRADE' ? 409 : 400,
+            error.message,
+          );
+          return;
+        }
+        sendJson(response, 200, {
+          ...result,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const inboxIgnoreMatch = pathname.match(
+        /^\/api\/trades\/inbox\/(\d+)\/ignore$/,
+      );
+      if (inboxIgnoreMatch && request.method === 'POST') {
+        const id = Number(inboxIgnoreMatch[1]);
+        const body = await readJsonBody(request);
+        const inbox = repository.tradeStore.ignoreInbox(
+          id,
+          String(body.note || ''),
+        );
+        if (!inbox) {
+          sendError(response, 404, '没有找到这张截图');
+          return;
+        }
+        sendJson(response, 200, {
+          inbox,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
+        });
+        return;
+      }
+
+      const inboxMatch = pathname.match(/^\/api\/trades\/inbox\/(\d+)$/);
+      if (inboxMatch && request.method === 'PUT') {
+        const id = Number(inboxMatch[1]);
+        const before = repository.tradeStore.getInboxItem(id);
+        if (!before) {
+          sendError(response, 404, '没有找到这张截图');
+          return;
+        }
+        const body = await readJsonBody(request);
+        const validation = validateInboxOverridePayload(body);
+        if (validation.error) {
+          sendError(response, 400, validation.error);
+          return;
+        }
+        const inbox = repository.tradeStore.updateInbox(id, {
+          parsed: { ...before.parsed, ...validation.value },
+          parse_confidence:
+            validation.value.confidence ?? before.parse_confidence,
+          notes: validation.value.notes ?? before.notes,
+        });
+        sendJson(response, 200, {
+          inbox,
+          overview: repository.tradeStore.getOverview(todayShanghai()),
         });
         return;
       }
@@ -1248,6 +2184,8 @@ function startServer(options = {}) {
   const repository = openDatabase({
     dbPath: options.dbPath || process.env.R2_DB_PATH || DEFAULT_DB,
     productCsvPath: options.productCsvPath || DEFAULT_PRODUCT_CSV,
+    tradeInboxDir:
+      options.tradeInboxDir || process.env.R2_TRADE_INBOX_DIR || undefined,
   });
   try {
     const backup = createDailyBackup(repository.db, repository.dbPath, {
@@ -1259,6 +2197,45 @@ function startServer(options = {}) {
     }
   } catch (error) {
     console.warn(`  每日备份失败：${error instanceof Error ? error.message : error}`);
+  }
+  try {
+    const pruned = repository.tradeStore.pruneScreenshots({
+      today: todayShanghai(),
+      olderThanDays: 180,
+    });
+    if (pruned.removed > 0) {
+      console.log(`  已清理 ${pruned.removed} 张超过 180 天的成交截图原图`);
+    }
+  } catch (error) {
+    console.warn(`  截图清理失败：${error instanceof Error ? error.message : error}`);
+  }
+  let automationTimer = null;
+  let lastAutomationCycle = 0;
+  const runAutomation = (trigger) => {
+    const result = repository.automationStore.runCycle({
+      today: todayShanghai(),
+      trigger,
+    });
+    lastAutomationCycle = Date.now();
+    if (result.ok) {
+      console.log(
+        `  自动化 ${trigger}：评估 ${result.summary.evaluations_created} 条，待处理 ${result.summary.pending_jobs} 项`,
+      );
+    } else if (!result.skipped) {
+      console.warn(`  自动化 ${trigger} 失败：${result.error}`);
+    }
+  };
+  if (options.automation !== false) {
+    const startupTimer = setTimeout(() => runAutomation('startup'), 250);
+    startupTimer.unref?.();
+    automationTimer = setInterval(() => {
+      const settings = repository.automationStore.getSettings();
+      if (!settings.automation_enabled) return;
+      const minutes = Math.max(1, Number(settings.scheduler_minutes) || 5);
+      if (Date.now() - lastAutomationCycle < minutes * 60 * 1000) return;
+      runAutomation('interval');
+    }, 60 * 1000);
+    automationTimer.unref?.();
   }
   const server = createServer({ repository });
   const host = options.host || process.env.HOST || '127.0.0.1';
@@ -1282,6 +2259,7 @@ function startServer(options = {}) {
   });
 
   const shutdown = () => {
+    if (automationTimer) clearInterval(automationTimer);
     server.close(() => {
       repository.close();
       process.exit(0);

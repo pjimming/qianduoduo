@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { ReviewData, ReviewWorkspace } from '@/types/dashboard'
+import type {
+  AutomationWorkspace,
+  ReviewData,
+  ReviewWorkspace,
+} from '@/types/dashboard'
 import ReviewTimeline from './ReviewTimeline.vue'
 import DecisionLogPanel from './DecisionLogPanel.vue'
+import TradesPanel from './TradesPanel.vue'
+import TradeInboxPanel from './TradeInboxPanel.vue'
+import AutomationPanel from './AutomationPanel.vue'
 import HoldingsPanel from './HoldingsPanel.vue'
 import ProductEventsPanel from './ProductEventsPanel.vue'
 import ReviewNotesPanel from './ReviewNotesPanel.vue'
@@ -10,19 +17,45 @@ import ReviewNotesPanel from './ReviewNotesPanel.vue'
 const props = defineProps<{
   workspace: ReviewWorkspace
   review: ReviewData
+  automation: AutomationWorkspace
 }>()
 
-type TabKey = 'decisions' | 'holdings' | 'events' | 'monthly' | 'quarterly'
+type TabKey =
+  | 'decisions'
+  | 'trades'
+  | 'inbox'
+  | 'holdings'
+  | 'events'
+  | 'automation'
+  | 'monthly'
+  | 'quarterly'
 
 const activeTab = ref<TabKey>('decisions')
 
 const tabs = computed(() => [
   { key: 'decisions' as const, label: '决策日志', count: props.workspace.decisions.length },
+  {
+    key: 'trades' as const,
+    label: '交易流水',
+    count: props.workspace.trades?.trades.length ?? 0,
+  },
+  {
+    key: 'inbox' as const,
+    label: '交易收件箱',
+    count:
+      props.workspace.trades?.inbox.filter((item) => item.status === 'pending').length ??
+      0,
+  },
   { key: 'holdings' as const, label: '持仓结构', count: props.workspace.holdings.length },
   {
     key: 'events' as const,
     label: '产品事件',
     count: props.workspace.events.filter((item) => item.status === '待复核').length,
+  },
+  {
+    key: 'automation' as const,
+    label: '自动评估',
+    count: props.automation.pending_evaluations.length,
   },
   { key: 'monthly' as const, label: '月度五问', count: props.workspace.notes.length },
   { key: 'quarterly' as const, label: '季度复盘', count: props.workspace.quarterly.length },
@@ -62,16 +95,38 @@ const tabs = computed(() => [
         v-show="activeTab === 'decisions'"
         :decisions="workspace.decisions"
         :today="workspace.timeline.today"
+        :trades="workspace.trades?.trades || []"
+        :automation="automation"
+      />
+      <TradesPanel
+        v-if="workspace.trades"
+        v-show="activeTab === 'trades'"
+        :overview="workspace.trades"
+        :decisions="workspace.decisions"
+        :today="workspace.timeline.today"
+      />
+      <TradeInboxPanel
+        v-if="workspace.trades"
+        v-show="activeTab === 'inbox'"
+        :inbox="workspace.trades.inbox"
+        :today="workspace.timeline.today"
       />
       <HoldingsPanel
         v-show="activeTab === 'holdings'"
         :holdings="workspace.holdings"
         :summary="workspace.holdings_summary"
         :today="workspace.timeline.today"
+        @open-trades="activeTab = 'trades'"
       />
       <ProductEventsPanel
         v-show="activeTab === 'events'"
         :events="workspace.events"
+        :today="workspace.timeline.today"
+      />
+      <AutomationPanel
+        v-show="activeTab === 'automation'"
+        :automation="automation"
+        :decisions="workspace.decisions"
         :today="workspace.timeline.today"
       />
       <ReviewNotesPanel
@@ -80,6 +135,7 @@ const tabs = computed(() => [
         :notes="workspace.notes"
         :today="workspace.timeline.today"
         :review="review"
+        :automation="automation"
       />
       <ReviewNotesPanel
         v-show="activeTab === 'quarterly'"
@@ -87,6 +143,7 @@ const tabs = computed(() => [
         :notes="workspace.quarterly"
         :today="workspace.timeline.today"
         :review="review"
+        :automation="automation"
       />
     </div>
   </section>

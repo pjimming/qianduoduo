@@ -200,6 +200,10 @@ export interface DecisionEntry {
   reason: string
   expectation: string
   actual_result: string
+  strategy_version: string
+  target_annualized: number
+  bucket_plan: Record<string, number>
+  evaluation_at: string[]
   rating: DecisionRating
   created_at: string
   updated_at: string
@@ -218,6 +222,140 @@ export interface Holding {
   notes: string
   created_at: string
   updated_at: string
+  lot_id?: string
+  original_amount?: number
+  allocated_principal?: number
+  realized_pnl?: number
+  source_trade_id?: number
+}
+
+export type TradeType = 'buy' | 'redeem' | 'switch'
+export type TradeStatus = 'pending' | 'confirmed' | 'cancelled'
+
+export interface TradeAllocation {
+  id: number
+  redeem_trade_id: number
+  buy_trade_id: number
+  principal: number
+  realized_pnl: number
+  days: number
+  created_at: string
+}
+
+export interface TradeTransaction {
+  id: number
+  trade_date: string
+  confirm_date: string | null
+  trade_type: TradeType
+  status: TradeStatus
+  product_code: string
+  product_name: string
+  issuer: string
+  risk_level: 'R2' | 'PR2'
+  target_product_code: string
+  target_product_name: string
+  target_term_days: number | null
+  target_maturity_date: string | null
+  amount: number
+  settlement_amount: number | null
+  shares: number | null
+  term_days: number | null
+  maturity_date: string | null
+  decision_id: number | null
+  screenshot_id: number | null
+  source: string
+  notes: string
+  created_at: string
+  updated_at: string
+  allocations: TradeAllocation[]
+  has_screenshot: boolean
+}
+
+export interface TradeSummary {
+  trade_count: number
+  pending_count: number
+  pending_buy_amount: number
+  pending_redeem_amount: number
+  confirmed_count: number
+  cancelled_count: number
+  open_principal: number
+  open_count: number
+  realized_pnl: number
+  matured_count: number
+  matured_amount: number
+  unprocessed_inbox: number
+}
+
+export interface ReconciliationItem {
+  level: 'info' | 'warn'
+  code: string
+  trade_id?: number
+  inbox_id?: number
+  text: string
+}
+
+export interface TradeReconciliation {
+  generated_for: string
+  counts: {
+    warn: number
+    info: number
+    missing_screenshot: number
+    amount_mismatch: number
+    stale_pending: number
+  }
+  items: ReconciliationItem[]
+}
+
+export interface TradeInboxParsed {
+  trade_date?: string
+  confirm_date?: string | null
+  trade_type?: TradeType
+  status?: TradeStatus
+  product_code?: string
+  product_name?: string
+  issuer?: string
+  risk_level?: 'R2' | 'PR2'
+  amount?: number | null
+  settlement_amount?: number | null
+  shares?: number | null
+  term_days?: number | null
+  maturity_date?: string | null
+  target_product_code?: string
+  target_product_name?: string
+  target_term_days?: number | null
+  target_maturity_date?: string | null
+  confidence?: number
+  warnings?: string[]
+  fields_found?: string[]
+}
+
+export interface TradeInboxItem {
+  id: number
+  original_name: string
+  stored_name: string
+  mime: string
+  bytes: number
+  sha256: string
+  status: 'pending' | 'applied' | 'ignored'
+  ocr_text: string
+  parsed: TradeInboxParsed
+  parse_confidence: number
+  duplicate_of: number | null
+  trade_id: number | null
+  error: string
+  notes: string
+  received_at: string
+  applied_at: string | null
+  image_url: string | null
+}
+
+export interface TradeOverview {
+  trades: TradeTransaction[]
+  inbox: TradeInboxItem[]
+  allocations: TradeAllocation[]
+  holdings: Holding[]
+  summary: TradeSummary
+  reconciliation: TradeReconciliation
 }
 
 export type ProductEventType = '费率' | '经理' | '底层' | '赎回规则' | '额度' | '其他'
@@ -296,11 +434,187 @@ export interface ReviewWorkspace {
   notes: ReviewNote[]
   quarterly: QuarterlyNote[]
   holdings_summary: HoldingsSummary
+  trades: TradeOverview | null
   timeline: {
     today: string
     focus: 'daily' | 'weekly' | 'monthly' | 'quarterly' | null
     nodes: TimelineNode[]
   }
+}
+
+export type EvaluationStage = 'buy_day' | 'holding' | 'maturity'
+export type EvaluationStatus = 'pending' | 'auto' | 'confirmed' | 'undone'
+
+export interface EvaluationEvidence {
+  checks?: Array<{ key: string; label: string; pass: boolean; detail: string }>
+  buckets?: Record<string, number>
+  by_product?: Array<{ code: string; name: string; amount: number }>
+  linked_trade_ids?: number[]
+  pending_trade_ids?: number[]
+  strategy_version?: string
+  target_annualized?: number
+  target_progress_pct?: number | null
+  monthly?: MonthlyReview | null
+  liquidity_ratio_pct?: number | null
+  previous_liquidity_ratio_pct?: number | null
+  liquidity_delta_pp?: number | null
+  high_impact_event_ids?: number[]
+  open_trade_ids?: number[]
+  hurdle?: number
+  allocations?: TradeAllocation[]
+  principal?: number
+  weighted_days?: number
+  weighted_term_days?: number
+  realized_pnl?: number | null
+  annualized_pct?: number | null
+  hurdle_pct?: number
+  settlement_amount?: number | null
+  sell_trade_ids?: number[]
+  all_settlement_known?: boolean
+  maturity_date?: string
+  term_days?: number | null
+  remaining_principal?: number
+  [key: string]: unknown
+}
+
+export interface EvaluationRun {
+  id: number
+  dedupe_key: string
+  scope: 'decision' | 'trade'
+  decision_id: number | null
+  trade_id: number | null
+  stage: EvaluationStage
+  period: string
+  evaluated_for: string
+  rule_version: string
+  source: string
+  confidence: number
+  confidence_level: 'high' | 'medium' | 'low'
+  process_ok: boolean | null
+  outcome: 'good' | 'bad' | 'unknown'
+  rating: DecisionRating
+  summary: string
+  evidence: EvaluationEvidence
+  status: EvaluationStatus
+  previous_rating: DecisionRating | null
+  previous_actual_result: string | null
+  applied_rating: DecisionRating | null
+  applied_actual_result: string | null
+  applied_at: string | null
+  undone_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EvaluationSettings {
+  target_annualized: number
+  hurdle_short: number
+  hurdle_medium: number
+  hurdle_long: number
+  liquidity_floor_pct: number
+  single_product_cap_pct: number
+  bucket_tolerance_pp: number
+  auto_confidence_threshold: number
+  scheduler_minutes: number
+  rule_version: string
+  strategy_version: string
+  notifications_enabled: boolean
+  automation_enabled: boolean
+}
+
+export interface AutomationNotification {
+  id: number
+  dedupe_key: string
+  kind: string
+  level: 'info' | 'warn'
+  title: string
+  message: string
+  data: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  read_at: string | null
+  resolved_at: string | null
+}
+
+export interface AutomationJob {
+  id: number
+  dedupe_key: string
+  job_type: string
+  status: 'pending' | 'running' | 'done' | 'skipped' | 'failed'
+  payload: Record<string, unknown>
+  result: Record<string, unknown>
+  note: string
+  attempts: number
+  created_at: string
+  updated_at: string
+  resolved_at: string | null
+}
+
+export interface ReviewDraft {
+  id: number
+  period_type: 'monthly' | 'quarterly'
+  period: string
+  status: 'draft' | 'confirmed'
+  content: {
+    title?: string
+    answers?: string[]
+    conclusion?: string
+    anomalies?: string[]
+    next_action?: string
+    metrics?: MonthlyReview | null
+    [key: string]: unknown
+  }
+  generated_at: string
+  confirmed_at: string | null
+  updated_at: string
+}
+
+export interface AutomationRun {
+  id: number
+  trigger: string
+  status: 'running' | 'done' | 'failed'
+  started_at: string
+  finished_at: string | null
+  summary: Record<string, number>
+  error: string
+}
+
+export interface AutomationWorkspace {
+  settings: EvaluationSettings
+  runs: EvaluationRun[]
+  pending_evaluations: EvaluationRun[]
+  notifications: AutomationNotification[]
+  all_notifications: AutomationNotification[]
+  drafts: ReviewDraft[]
+  jobs: AutomationJob[]
+  automation_runs: AutomationRun[]
+  scheduler: {
+    enabled: boolean
+    last_run: AutomationRun | null
+    next_run: string | null
+  }
+}
+
+export interface TradeInput {
+  trade_date: string
+  confirm_date: string | null
+  trade_type: TradeType
+  status: TradeStatus
+  product_code: string
+  product_name: string
+  issuer: string
+  risk_level: 'R2' | 'PR2'
+  target_product_code?: string
+  target_product_name?: string
+  target_term_days?: number | null
+  target_maturity_date?: string | null
+  amount: number
+  settlement_amount: number | null
+  shares: number | null
+  term_days: number | null
+  maturity_date: string | null
+  decision_id: number | null
+  notes: string
 }
 
 export interface Product {
@@ -365,6 +679,7 @@ export interface DashboardPayload {
   windows: Record<'7' | '30' | '90', Summary>
   review: ReviewData
   workspace: ReviewWorkspace
+  automation: AutomationWorkspace
   capital: CapitalState
   products: ProductView
 }
@@ -400,6 +715,10 @@ export interface DecisionInput {
   reason: string
   expectation: string
   actual_result: string
+  strategy_version: string
+  target_annualized: number
+  bucket_plan: Record<string, number>
+  evaluation_at: string[]
   rating: DecisionRating
 }
 
@@ -461,6 +780,43 @@ export interface DashboardMutationResponse {
 export interface ProductRefreshResponse {
   refreshed: number
   dashboard: DashboardPayload
+}
+
+export interface TradeOverviewResponse {
+  overview: TradeOverview
+  inbox: TradeInboxItem[]
+}
+
+export interface TradeMutationResponse {
+  trade: TradeTransaction
+  overview: TradeOverview
+  dashboard: DashboardPayload
+}
+
+export interface TradeInboxResponse {
+  inbox: TradeInboxItem
+  duplicate: boolean
+  overview: TradeOverview
+  ocr?: {
+    ok: boolean
+    language: string | null
+    error: string
+  }
+}
+
+export interface InboxMutationResponse {
+  inbox: TradeInboxItem
+  overview: TradeOverview
+  dashboard?: DashboardPayload
+  trade?: TradeTransaction
+  matched?: boolean
+  duplicate?: boolean
+}
+
+export interface InboxPruneResponse {
+  removed: number
+  threshold: string
+  inbox: TradeInboxItem[]
 }
 
 export interface DeleteResponse {

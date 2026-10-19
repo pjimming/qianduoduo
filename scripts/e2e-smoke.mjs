@@ -145,8 +145,8 @@ async function main() {
     assert((await page.locator('.stats-grid').count()) === 1, '首页统计区没有渲染')
     await page.waitForSelector('.review-workspace')
     assert(
-      (await page.locator('.rw-tab').count()) === 5,
-      '复盘工作台应有 5 个标签页',
+      (await page.locator('.rw-tab').count()) === 8,
+      '复盘工作台应有 8 个标签页',
     )
     assert(
       (await page.locator('.rw-node').count()) === 4,
@@ -157,6 +157,44 @@ async function main() {
     assert(
       (await page.locator('.rw-bucket').count()) >= 4,
       '期限桶没有渲染',
+    )
+    await page.getByRole('tab', { name: '交易流水' }).click()
+    await page.getByRole('button', { name: '记一笔交易' }).click()
+    await page.getByLabel('产品代码').fill('120026A')
+    await page.getByLabel('产品名称').fill('招银理财14天')
+    await page.getByLabel('买入金额').fill('5000')
+    await page.getByLabel('期限（天，0 = 日开）').fill('14')
+    await page.getByRole('button', { name: '保存交易' }).click()
+    await page.waitForSelector('.rw-trade-status.is-pending')
+    assert(
+      (await page.locator('.rw-trade-status.is-pending').count()) >= 1,
+      '交易流水没有显示待确认交易',
+    )
+    assert(
+      (
+        await page
+          .locator('.rw-stat-chip:visible')
+          .filter({ hasText: '待确认 1 笔' })
+          .first()
+          .textContent()
+      )?.includes('5,000'),
+      '待确认金额没有正确显示',
+    )
+    await page.getByRole('tab', { name: '交易收件箱' }).click()
+    await page.waitForSelector('.rw-dropzone')
+    assert(
+      (await page.locator('.rw-dropzone').count()) === 1,
+      '交易收件箱拖拽区没有渲染',
+    )
+    await page.getByRole('tab', { name: '自动评估' }).click()
+    await page.waitForSelector('.rw-automation-grid')
+    assert(
+      (await page.getByRole('button', { name: '立即运行自动化' }).count()) === 1,
+      '自动评估面板没有运行入口',
+    )
+    assert(
+      (await page.locator('.rw-draft-list, .rw-empty').count()) >= 1,
+      '自动评估面板没有渲染',
     )
     await page.getByRole('tab', { name: '月度五问' }).click()
     assert(
@@ -187,7 +225,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、首页账本、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、首页账本、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

@@ -6,6 +6,7 @@ import type {
   CapitalEventMutationResponse,
   CapitalInitInput,
   CapitalState,
+  AutomationWorkspace,
   DashboardMutationResponse,
   DashboardPayload,
   DecisionInput,
@@ -13,6 +14,8 @@ import type {
   DeleteResponse,
   HoldingInput,
   HoldingMutationResponse,
+  InboxMutationResponse,
+  InboxPruneResponse,
   LedgerRecord,
   ProductEventInput,
   ProductEventMutationResponse,
@@ -21,6 +24,12 @@ import type {
   RecordMutationResponse,
   ReviewNoteInput,
   ReviewNoteMutationResponse,
+  TradeInboxParsed,
+  TradeInboxResponse,
+  TradeInput,
+  TradeMutationResponse,
+  TradeOverview,
+  TradeOverviewResponse,
 } from '@/types/dashboard'
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -28,6 +37,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const loading = ref(false)
 
   const capital = computed<CapitalState | null>(() => dashboard.value?.capital ?? null)
+
+  function applyTradeOverview(overview: TradeOverview): void {
+    if (dashboard.value) {
+      dashboard.value.workspace.trades = overview
+    }
+  }
+
+  function applyAutomation(automation: AutomationWorkspace): void {
+    if (dashboard.value) {
+      dashboard.value.automation = automation
+    }
+  }
 
   async function load(): Promise<void> {
     loading.value = true
@@ -129,6 +150,263 @@ export const useDashboardStore = defineStore('dashboard', () => {
       method: 'POST',
     })
     dashboard.value = response.dashboard
+    return response
+  }
+
+  async function loadAutomation(): Promise<AutomationWorkspace> {
+    const response = await apiRequest<{ automation: AutomationWorkspace }>(
+      '/api/automation/workspace',
+    )
+    applyAutomation(response.automation)
+    return response.automation
+  }
+
+  async function runAutomation(): Promise<{
+    ok: boolean
+    summary?: Record<string, number>
+    error?: string
+    automation?: AutomationWorkspace
+    dashboard?: DashboardPayload
+  }> {
+    const response = await apiRequest<{
+      ok: boolean
+      summary?: Record<string, number>
+      error?: string
+      automation: AutomationWorkspace
+      dashboard: DashboardPayload
+    }>('/api/automation/run', { method: 'POST', body: '{}' })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function updateAutomationSettings(
+    patch: Record<string, unknown>,
+  ): Promise<AutomationWorkspace> {
+    const response = await apiRequest<{
+      settings: unknown
+      automation: AutomationWorkspace
+    }>('/api/automation/settings', {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    })
+    applyAutomation(response.automation)
+    return response.automation
+  }
+
+  async function applyEvaluation(
+    id: number,
+    input: { rating?: string; summary?: string } = {},
+  ): Promise<void> {
+    const response = await apiRequest<{
+      evaluation: unknown
+      automation: AutomationWorkspace
+      dashboard: DashboardPayload
+    }>(`/api/evaluations/${id}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+  }
+
+  async function undoEvaluation(id: number): Promise<void> {
+    const response = await apiRequest<{
+      evaluation: unknown
+      automation: AutomationWorkspace
+      dashboard: DashboardPayload
+    }>(`/api/evaluations/${id}/undo`, {
+      method: 'POST',
+      body: '{}',
+    })
+    dashboard.value = response.dashboard
+  }
+
+  async function markNotification(
+    id: number,
+    action: 'read' | 'unread' | 'resolve',
+  ): Promise<void> {
+    await apiRequest(`/api/notifications/${id}/${action}`, {
+      method: 'POST',
+      body: '{}',
+    })
+    await loadAutomation()
+  }
+
+  async function markAllNotificationsRead(): Promise<void> {
+    await apiRequest('/api/notifications/read-all', {
+      method: 'POST',
+      body: '{}',
+    })
+    await loadAutomation()
+  }
+
+  async function resolveAutomationJob(
+    id: number,
+    status: 'done' | 'skipped' | 'failed',
+    note = '',
+  ): Promise<AutomationWorkspace> {
+    const response = await apiRequest<{ automation: AutomationWorkspace }>(
+      `/api/automation/jobs/${id}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ status, note }),
+      },
+    )
+    applyAutomation(response.automation)
+    return response.automation
+  }
+
+  async function generateDraft(
+    periodType: 'monthly' | 'quarterly',
+    period: string,
+  ): Promise<AutomationWorkspace> {
+    const response = await apiRequest<{ automation: AutomationWorkspace }>(
+      `/api/review/drafts/${periodType}/${encodeURIComponent(period)}/generate`,
+      { method: 'POST', body: '{}' },
+    )
+    applyAutomation(response.automation)
+    return response.automation
+  }
+
+  async function confirmDraft(
+    periodType: 'monthly' | 'quarterly',
+    period: string,
+    input: { answers: string[]; conclusion: string },
+  ): Promise<void> {
+    const response = await apiRequest<{ dashboard: DashboardPayload }>(
+      `/api/review/drafts/${periodType}/${encodeURIComponent(period)}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+  }
+
+  async function loadTrades(): Promise<TradeOverviewResponse> {
+    const response = await apiRequest<TradeOverviewResponse>('/api/trades')
+    applyTradeOverview(response.overview)
+    return response
+  }
+
+  async function createTrade(input: TradeInput): Promise<TradeMutationResponse> {
+    const response = await apiRequest<TradeMutationResponse>('/api/trades', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function updateTrade(
+    id: number,
+    input: TradeInput,
+  ): Promise<TradeMutationResponse> {
+    const response = await apiRequest<TradeMutationResponse>(`/api/trades/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function confirmTrade(
+    id: number,
+    confirmDate: string,
+  ): Promise<TradeMutationResponse> {
+    const response = await apiRequest<TradeMutationResponse>(
+      `/api/trades/${id}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ confirm_date: confirmDate }),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function cancelTrade(
+    id: number,
+    note = '',
+  ): Promise<TradeMutationResponse> {
+    const response = await apiRequest<TradeMutationResponse>(
+      `/api/trades/${id}/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ note }),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function uploadTradeScreenshot(input: {
+    filename: string
+    mime: string
+    data: string
+  }): Promise<TradeInboxResponse> {
+    const response = await apiRequest<TradeInboxResponse>('/api/trades/inbox', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    applyTradeOverview(response.overview)
+    return response
+  }
+
+  async function updateTradeInbox(
+    id: number,
+    parsed: TradeInboxParsed,
+  ): Promise<InboxMutationResponse> {
+    const response = await apiRequest<InboxMutationResponse>(
+      `/api/trades/inbox/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(parsed),
+      },
+    )
+    applyTradeOverview(response.overview)
+    return response
+  }
+
+  async function applyTradeInbox(
+    id: number,
+    parsed: TradeInboxParsed,
+  ): Promise<InboxMutationResponse> {
+    const response = await apiRequest<InboxMutationResponse>(
+      `/api/trades/inbox/${id}/apply`,
+      {
+        method: 'POST',
+        body: JSON.stringify(parsed),
+      },
+    )
+    if (response.dashboard) {
+      dashboard.value = response.dashboard
+    } else {
+      applyTradeOverview(response.overview)
+    }
+    return response
+  }
+
+  async function ignoreTradeInbox(id: number): Promise<InboxMutationResponse> {
+    const response = await apiRequest<InboxMutationResponse>(
+      `/api/trades/inbox/${id}/ignore`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ note: '忽略截图' }),
+      },
+    )
+    applyTradeOverview(response.overview)
+    return response
+  }
+
+  async function pruneTradeScreenshots(days = 180): Promise<InboxPruneResponse> {
+    const response = await apiRequest<InboxPruneResponse>(
+      '/api/trades/inbox/prune',
+      {
+        method: 'POST',
+        body: JSON.stringify({ olderThanDays: days }),
+      },
+    )
+    await loadTrades()
     return response
   }
 
@@ -277,6 +555,26 @@ export const useDashboardStore = defineStore('dashboard', () => {
     createCapitalEvent,
     deleteCapitalEvent,
     refreshProducts,
+    loadAutomation,
+    runAutomation,
+    updateAutomationSettings,
+    applyEvaluation,
+    undoEvaluation,
+    markNotification,
+    markAllNotificationsRead,
+    resolveAutomationJob,
+    generateDraft,
+    confirmDraft,
+    loadTrades,
+    createTrade,
+    updateTrade,
+    confirmTrade,
+    cancelTrade,
+    uploadTradeScreenshot,
+    updateTradeInbox,
+    applyTradeInbox,
+    ignoreTradeInbox,
+    pruneTradeScreenshots,
     createDecision,
     updateDecision,
     deleteDecision,

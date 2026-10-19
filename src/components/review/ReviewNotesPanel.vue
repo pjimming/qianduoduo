@@ -3,7 +3,12 @@ import { computed, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatMoney, formatPct, formatSignedMoney } from '@/composables/useFormatters'
-import type { QuarterlyNote, ReviewData, ReviewNote } from '@/types/dashboard'
+import type {
+  AutomationWorkspace,
+  QuarterlyNote,
+  ReviewData,
+  ReviewNote,
+} from '@/types/dashboard'
 
 type NoteLike = ReviewNote | QuarterlyNote
 
@@ -12,6 +17,7 @@ const props = defineProps<{
   notes: NoteLike[]
   today: string
   review: ReviewData
+  automation: AutomationWorkspace
 }>()
 
 const store = useDashboardStore()
@@ -52,6 +58,29 @@ const saving = ref(false)
 
 const existing = computed(
   () => props.notes.find((note) => keyOf(note) === selected.value) || null,
+)
+
+const draft = computed(() => {
+  const periodType = props.mode === 'monthly' ? 'monthly' : 'quarterly'
+  return (
+    props.automation.drafts.find(
+      (item) => item.period_type === periodType && item.period === selected.value,
+    ) || null
+  )
+})
+
+watch(
+  [draft, existing],
+  ([nextDraft, note]) => {
+    if (
+      nextDraft?.status === 'draft' &&
+      !note &&
+      answers.value.every((item) => !item.trim())
+    ) {
+      applyDraftContent(false)
+    }
+  },
+  { immediate: true },
 )
 
 const monthRow = computed(() => {
@@ -124,23 +153,57 @@ async function save(): Promise<void> {
   saving.value = true
   try {
     if (props.mode === 'monthly') {
-      await store.saveReviewNote(selected.value, {
-        answers: answers.value,
-        conclusion: conclusion.value,
-      })
-      show(`${periodLabel(selected.value)}五问已保存`)
+      if (draft.value?.status === 'draft') {
+        await store.confirmDraft('monthly', selected.value, {
+          answers: answers.value,
+          conclusion: conclusion.value,
+        })
+        show(`${periodLabel(selected.value)}月度草稿已确认并保存`)
+      } else {
+        await store.saveReviewNote(selected.value, {
+          answers: answers.value,
+          conclusion: conclusion.value,
+        })
+        show(`${periodLabel(selected.value)}五问已保存`)
+      }
     } else {
-      await store.saveQuarterlyNote(selected.value, {
-        answers: answers.value,
-        conclusion: conclusion.value,
-      })
-      show(`${periodLabel(selected.value)}季度清单已保存`)
+      if (draft.value?.status === 'draft') {
+        await store.confirmDraft('quarterly', selected.value, {
+          answers: answers.value,
+          conclusion: conclusion.value,
+        })
+        show(`${periodLabel(selected.value)}季度草稿已确认并保存`)
+      } else {
+        await store.saveQuarterlyNote(selected.value, {
+          answers: answers.value,
+          conclusion: conclusion.value,
+        })
+        show(`${periodLabel(selected.value)}季度清单已保存`)
+      }
     }
     loadFromNote()
   } catch (error) {
     show(error instanceof Error ? error.message : '保存失败', { error: true })
   } finally {
     saving.value = false
+  }
+}
+
+function adoptDraft(): void {
+  applyDraftContent(true)
+}
+
+function applyDraftContent(notify: boolean): void {
+  if (!draft.value) return
+  const draftAnswers = Array.isArray(draft.value.content.answers)
+    ? draft.value.content.answers
+    : []
+  answers.value = Array.from({ length: questions.value.length }, (_, index) =>
+    String(draftAnswers[index] || ''),
+  )
+  conclusion.value = String(draft.value.content.conclusion || '')
+  if (notify) {
+    show('已填入草稿，请确认异常项和下一步动作后再保存')
   }
 }
 </script>
@@ -198,6 +261,26 @@ async function save(): Promise<void> {
         </button>
         <span v-if="notes.length === 0" class="rw-muted">暂无</span>
       </div>
+    </div>
+
+    <div v-if="draft" class="rw-draft-banner" :class="{ 'is-confirmed': draft.status === 'confirmed' }">
+      <div>
+        <strong>{{ draft.content.title || `${periodLabel(draft.period)}复盘草稿` }}</strong>
+        <p>
+          {{ draft.status === 'confirmed' ? '草稿已确认并写入复盘。' : '已根据交易、收益、评估和事件自动起草，请先确认异常项。' }}
+        </p>
+        <ul v-if="draft.status === 'draft' && (draft.content.anomalies?.length ?? 0) > 0">
+          <li v-for="item in (draft.content.anomalies || []).slice(0, 5)" :key="item">{{ item }}</li>
+        </ul>
+      </div>
+      <button
+        v-if="draft.status === 'draft'"
+        type="button"
+        class="rw-button is-secondary"
+        @click="adoptDraft"
+      >
+        采用草稿
+      </button>
     </div>
 
     <div v-if="mode === 'monthly' && monthRow" class="rw-note-metrics">

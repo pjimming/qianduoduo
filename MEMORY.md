@@ -31,6 +31,8 @@
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
 - 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
 - 复盘接口：`GET /api/review/workspace`；`POST/PUT/DELETE /api/review/decisions|holdings|events`；`PUT /api/review/notes/:month`；`PUT /api/review/quarterly/:quarter`；`GET /api/review/export?month=YYYY-MM`。
+- 交易接口：`GET/POST /api/trades`、`PUT /api/trades/:id`、`POST /api/trades/:id/confirm|cancel`、`GET /api/trades/:id/audit`；收件箱 `GET/POST /api/trades/inbox`、`PUT /api/trades/inbox/:id`、`POST /api/trades/inbox/:id/apply|ignore`、`GET /api/trades/inbox/:id/image`、`POST /api/trades/inbox/prune`。
+- 自动化接口：`GET /api/automation/workspace`、`POST /api/automation/run`、`PUT /api/automation/settings`、`POST /api/evaluations/:id/apply|undo`、`POST /api/notifications/:id/read|unread|resolve`、`POST /api/notifications/read-all`、`POST /api/automation/jobs/:id/resolve`、`GET/POST /api/review/drafts/:type/:period(/generate|/confirm)`。
 
 ### 投资页原则
 
@@ -50,8 +52,18 @@
 - 月收益率 = 当月累计收益 ÷ 当月平均本金。
 - 月度评级：低于 0.16% 不及格；0.16% 及格；0.20% 良好；0.25% 优秀；0.30% 卓越。
 - 复盘区：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计本周收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负日占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间，月末且满 28 天、20 条记录后才落最终评级。
-- 复盘工作台：首页 `ReviewWorkspace` 提供决策日志、持仓结构、产品事件、月度五问、季度复盘五个标签页；数据表为 `decision_log`、`holdings`、`product_events`、`review_notes`、`quarterly_notes`，由 `lib/review-store.js` 管理。
-- 持仓快照用于单只/单发行方集中度、日开+30 天内占比、未来 12 个月到期阶梯和已到期提醒；期限 0 天表示日开，不生成到期日。月度复盘可用 `GET /api/review/export?month=YYYY-MM` 导出 Markdown，月度结论会同步显示在复盘区历史月份。
+- 复盘工作台：首页 `ReviewWorkspace` 提供决策日志、交易流水、交易收件箱、持仓结构、产品事件、自动评估、月度五问、季度复盘八个标签页；决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
+- 持仓结构不再手工维护快照，而是由交易流水推导。
+- 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现收益。待确认交易只进入待确认金额，不进入已确认持仓、期限桶和流动性比例。
+- 交易收件箱支持本地拖入 PNG/JPEG/WebP；`lib/ocr.js` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`，已处理/已忽略的 180 天后自动清理。
+- 旧 `holdings` 表保留作迁移与兼容输入；六笔 2026-10-19 买入已一次性迁移为待确认交易（`trade_migration_v1`）。`/api/review/holdings` 兼容接口现在写入/撤销买入交易。
+- 持仓汇总用于单只/单发行方集中度、日开+30 天内占比、未来 12 个月到期阶梯和已到期提醒；期限 0 天表示日开，不生成到期日。月度复盘可用 `GET /api/review/export?month=YYYY-MM` 导出 Markdown，月度结论会同步显示在复盘区历史月份。
+- 决策日志新增 `strategy_version`、`target_annualized`、`bucket_plan`、`evaluation_at`；`bucket_plan` 默认 `{short, medium, long, max_single}`，评估时点默认 `buy_day,holding,maturity`。旧库由 `migrateDecisionColumns` 自动补列，现有“3%策略组合”会种子为 30/35/35、单只上限 30%。
+- 自动评估规则：买入日检查理由、预期、期限桶（默认容差 10pp）、单只上限和流动性下限；持有期只做组合级月度评估，因为缺少逐产品每日净值；到期/赎回按批次本金、加权持有天数、到账金额计算实际年化。结果按期限 hurdle 判断，默认短 2.5%、中 2.8%、长 3.0%，组合目标默认 3%。
+- 评估置信度默认 75% 才自动写入；低置信度、金额缺失或与手工评价冲突时进入 pending 队列，并存 `automation_jobs`。写入记录 `evaluation_runs.previous_*`/`applied_*` 快照，可撤销；单产品评估与组合决策评估分 scope 保存。
+- 本地自动化在 `startServer` 启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。
+- 月度/季度草稿自动汇总收益、目标差距、流程正确/错误数、评估 pending、产品事件、持仓和异常；草稿不会自动写成正式复盘，需在“月度五问/季度复盘”采用并确认。
+- Codex 定时任务“钱多多自动化队列巡检”每日 21:10 运行，处理 `screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；队列为空时不通知，不改交易流水、不代替用户下单。
 - 导出 CSV：`date,principal,daily_pnl,action,notes`。
 
 ### 复盘工作台口径
@@ -71,7 +83,7 @@
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 复盘工作台已有 39 项测试通过；`npm run test:e2e` 还会检查 5 个标签页、4 个时间轴节点和 5 个月度问题。
+- 当前 67 项测试通过；`npm run test:e2e` 会检查 8 个标签页、4 个时间轴节点、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git
@@ -79,7 +91,8 @@
 - 2026-10-18 已按用户要求清空正式库：收益记录 0 条、本金账户未初始化、无转入/转出流水。
 - 2026-10-19 产品快照已扩到 19 只（原 14 只 + 5 只推荐产品），由公开接口自动生成。
 - 2026-10-19 已完成复盘第一档（日/周/月指标与提醒）、第二档（决策日志、持仓、产品事件、月度五问/季度清单）和第三档（时间轴、结论按月留痕、Markdown 导出）。
-- 2026-10-19 正式库已初始化本金 30,000 元（起始日 2026-10-18），已录入 6 笔持仓合计 30,000 元和 1 条「3%策略组合」决策；收益记录仍为 0 条，六笔买入均为交易进行中、待确认份额。
+- 2026-10-19 正式库已初始化本金 30,000 元（起始日 2026-10-18），已将原 6 笔持仓迁移为 6 笔待确认买入交易（合计 30,000 元），另有 1 条「3%策略组合」决策；收益记录仍为 0 条，已确认持仓为 0，待确认金额 30,000 元。
+- 2026-10-19 自动评估首次启动：6 笔迁移交易自动关联到「3%策略组合」决策；因 6 笔仍待确认，生成 1 条买入日 pending 评估、1 条通知和 1 个 Codex 复核任务。决策策略已补为 `r2-3pct-v1`、目标 3%、期限桶 30/35/35、单只上限 30%。
 - 清理前的完整演示数据保留在 `data/backups/r2_ledger-2026-10-18.sqlite`（30 条记录、本金 50,000、累计收益 +158.00）。需要恢复时先 `npm run prod:stop`，再 `npm run db:restore -- 2026-10-18`，最后 `npm run prod:restart`。
 - 本金已初始化，后续通过转入/转出维护；每日收益在产生实际收益后录入，不用买入/赎回动作代替收益记录。
 - 产品快照：`data/cmb_r2_products-2026-10-19.csv`（19 只；自动任务每周一 08:30 生成；服务按文件名日期选最新，刷新接口会重新解析最新文件，可用 `R2_PRODUCT_CSV` 覆盖）；CSV 额外包含 `max_drawdown_pct`、`negative_days_pct`、`history_months`、`fee_bps`、`liquidity_days`、`next_open_date`。
@@ -90,3 +103,15 @@
 - 定时任务 `R2产品快照每周更新`（自动化 ID `r2`）每周一 08:30 运行 `scripts/fetch-cmb-r2-snapshot.cjs`，直接拉取公开接口并写 CSV/刷新应用；不登录账户、不抓实时额度，额度、赎回到账和可买状态仍需在招行 App 当日复核。
 - 数据备份：启动时自动写入 `data/backups/r2_ledger-YYYY-MM-DD.sqlite`，保留 45 天；`npm run db:list|db:backup|db:restore` 可手动查看、备份和恢复。
 - Git 分支：`main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。
+
+## 6. 2026-10-19 自动化复盘系统落地摘要
+
+- 交易流水为唯一事实源：`lib/trade-store.js` 管理买入/赎回/切换、批次分配、已实现收益、收件箱、截图去重和审计；待确认交易不进已确认持仓。
+- 收件箱：本地拖入截图，`scripts/ocr-image.ps1` 调 Windows OCR，`lib/trade-parser.js` 解析字段；人工校正后生成或匹配交易。截图显示“已确认”时会确认同字段的待确认交易，避免重复入账。
+- 自动评估：`lib/automation-store.js` 管理 `evaluation_runs`、`notifications`、`review_drafts`、`automation_jobs`、`automation_runs`。买入日查流程，持有期按月查组合收益/目标进度/流动性变化/事件，到期或赎回算实际年化。
+- 评估默认：组合目标 3%，单只 hurdle 为短 2.5%、中 2.8%、长 3.0%；置信度门槛 75%。低置信度、到账金额缺失或与手工评价冲突时进入待确认，不覆盖手工评价；自动写入可撤销。
+- 本地调度：服务启动补跑一次，之后默认每 5 分钟巡检。月度/季度草稿自动生成并预填五问，用户确认后才写入正式复盘；通知按事件去重，恢复后自动关闭。
+- Codex 判断队列：持久化在 SQLite，桌面端未运行时保留。已注册每日 21:10 的 Codex 定时任务“钱多多自动化队列巡检”（`C:\Users\Administrator\.codex\automations\automation\automation.toml`，ACTIVE）。
+- 复盘工作台现有 8 个标签页：决策日志、交易流水、交易收件箱、持仓结构、产品事件、自动评估、月度五问、季度复盘。
+- 2026-10-19 线上状态：本金 30,000 元；6 笔待确认买入合计 30,000 元，已确认持仓 0；决策已补策略版本 `r2-3pct-v1`、目标 3%、期限桶 30/35/35、单只上限 30%。因交易未确认，存在 1 条买入日待确认评估、1 条提醒和 1 个 Codex 复核任务，属于预期状态。
+- 验证：`npm test` 67 项通过；`npm run test:e2e` 通过（8 个标签页、交易流水、收件箱、自动评估）；生产健康检查正常。
