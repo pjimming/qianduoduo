@@ -4,6 +4,8 @@
 
 本工作区 `D:\codex\钱多多财富工作台` 是钱多多的统一工作区：R2 理财、投资资料、股票调研和报告发布都在这里完成。`D:\codex\股票调研serenity` 已并入本工作区，后续不要在那里新增、修改或恢复工作。
 
+> 分享到其他机器时，把上面的工作区路径替换为实际项目根目录；本文所有命令都默认在该根目录执行。
+
 - R2 账本与投资研究严格隔离：股票调研报告不得写入 `data/r2_ledger.sqlite`，不得进入产品池排序或选品结论。
 - 股票调研的源文件固定放在 `report/`；应用内副本由 `scripts/sync-stock-reports.ps1` 生成到 `public/research/stocks/`，不要直接编辑副本。
 - 应用内入口为 `/investment/research`（报告库）和 `/investment/tech-map`（A股科技图谱）；独立报告库归档页为 `research/index.html`。
@@ -19,8 +21,10 @@
 
 当用户输入任何股票相关内容（个股、主题、产业链、候选公司对比、投资逻辑质疑、财报/业绩会等）时，必须同时调用以下两个 Skill：
 
-- `$serenity-skill`：`C:\Users\Administrator\.codex\skills\serenity-skill\SKILL.md`
-- `$equity-research`：`C:\Users\Administrator\.codex\skills\equity-research\SKILL.md`
+- `$serenity-skill`：`%USERPROFILE%\.codex\skills\serenity-skill\SKILL.md`
+- `$equity-research`：`%USERPROFILE%\.codex\skills\equity-research\SKILL.md`
+
+路径中的 `%USERPROFILE%` 按当前 Windows 用户展开；如果宿主不展开环境变量，改用当前用户的绝对路径，或直接使用 skill 名称触发。
 
 执行前先完整读取两个 `SKILL.md`，再按各自要求读取必要的 `references/`、`assets/`、`industries/` 等文件。不得只读其中一个就开始写报告。
 
