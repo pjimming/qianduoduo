@@ -18,6 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  closed: []
 }>()
 
 const dialogRef = ref<HTMLDialogElement | null>(null)
@@ -36,8 +37,13 @@ watch(
   { immediate: true },
 )
 
-function close(): void {
+function requestClose(): void {
   emit('update:open', false)
+}
+
+function handleClose(): void {
+  if (props.open) emit('update:open', false)
+  emit('closed')
 }
 
 function onDialogClick(event: MouseEvent): void {
@@ -49,7 +55,7 @@ function onDialogClick(event: MouseEvent): void {
     event.clientX > rect.right ||
     event.clientY < rect.top ||
     event.clientY > rect.bottom
-  if (outside) close()
+  if (outside) requestClose()
 }
 
 function money(value: number | null | undefined, digits = 0): string {
@@ -83,7 +89,7 @@ function quotaLabel(product: Product): string {
     ref="dialogRef"
     class="product-dialog product-detail-dialog"
     @click="onDialogClick"
-    @close="close"
+    @close="handleClose"
   >
     <template v-if="product">
       <div class="dialog-head">
@@ -95,7 +101,7 @@ function quotaLabel(product: Product): string {
             {{ text(product.product_type) }}
           </p>
         </div>
-        <button class="icon-button" type="button" aria-label="关闭" @click="close">
+        <button class="icon-button" type="button" aria-label="关闭" @click="requestClose">
           <svg viewBox="0 0 20 20" aria-hidden="true">
             <path d="M5 5l10 10M15 5 5 15" />
           </svg>

@@ -266,6 +266,112 @@ async function main() {
       (await page.locator('.product-module-card').count()) >= 4,
       '产品页应有配置、目标产品、观察名单和风险边界模块卡',
     )
+
+    await page.getByRole('button', { name: '查看全部产品' }).click()
+    const poolDialog = page.locator(
+      '.product-dialog:not(.product-detail-dialog)[open]',
+    )
+    await poolDialog.waitFor()
+    assert(
+      (await page.locator('dialog[open]').count()) === 1,
+      '打开候选池时不应同时存在其他弹窗',
+    )
+    await poolDialog.getByRole('button', { name: '短期 7–30 天' }).click()
+    await poolDialog.locator('th.sortable').first().click()
+    const poolFilterBefore = (
+      (await poolDialog.locator('.dialog-filter-bar').textContent()) ?? ''
+    )
+      .replace(/\s+/g, ' ')
+      .trim()
+    const poolSortBefore =
+      (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
+    assert(
+      poolSortBefore.includes('按期限') && poolSortBefore.includes('短到长'),
+      `候选池排序状态不符合预期：${poolSortBefore}`,
+    )
+    const poolScrollBefore = await poolDialog.evaluate((element) => {
+      const available = element.scrollHeight - element.clientHeight
+      element.scrollTop = Math.min(320, available)
+      return element.scrollTop
+    })
+    assert(poolScrollBefore > 0, '候选池没有可滚动内容，无法验证滚动恢复')
+    const rowTarget = await poolDialog.evaluate((element) => {
+      const dialogRect = element.getBoundingClientRect()
+      const buttons = Array.from(element.querySelectorAll('.product-name-button'))
+      for (const button of buttons) {
+        const box = button.getBoundingClientRect()
+        if (box.top > dialogRect.top + 150 && box.bottom < dialogRect.bottom - 140) {
+          return {
+            code: button.dataset.productCode || '',
+            name: button.querySelector('strong')?.textContent?.trim() || '',
+            x: box.left + 12,
+            y: box.top + box.height / 2,
+          }
+        }
+      }
+      return null
+    })
+    assert(rowTarget?.name, '候选池没有找到可见的产品详情入口')
+    await page.mouse.click(rowTarget.x, rowTarget.y)
+    const detailDialog = page.locator('.product-detail-dialog[open]')
+    await detailDialog.waitFor()
+    assert(
+      (await page.locator('dialog[open]').count()) === 1,
+      '候选池行详情不应与候选池弹窗叠层',
+    )
+    assert(
+      ((await detailDialog.locator('h2').first().textContent()) ?? '').trim() ===
+        rowTarget.name,
+      '候选池行详情显示了错误的产品名称',
+    )
+    const detailText = (await detailDialog.textContent()) ?? ''
+    assert(detailText.includes(rowTarget.code), '产品详情没有显示产品代码')
+    for (const section of ['收益快照', '产品信息', '研究评分', '当前配置', '可用额度']) {
+      assert(detailText.includes(section), `产品详情缺少“${section}”内容`)
+    }
+    assert(
+      (await detailDialog.locator('.detail-item').count()) >= 20,
+      '产品详情字段数量不足',
+    )
+
+    await detailDialog.locator('.dialog-head .icon-button').click()
+    await page.waitForSelector('.product-detail-dialog[open]', { state: 'detached' })
+    await poolDialog.waitFor()
+    await page.waitForFunction(
+      (expected) => {
+        const dialog = document.querySelector(
+          '.product-dialog:not(.product-detail-dialog)[open]',
+        )
+        return dialog && Math.abs(dialog.scrollTop - expected) <= 1
+      },
+      poolScrollBefore,
+      { timeout: 3000 },
+    )
+    const poolFilterAfter = (
+      (await poolDialog.locator('.dialog-filter-bar').textContent()) ?? ''
+    )
+      .replace(/\s+/g, ' ')
+      .trim()
+    const poolSortAfter =
+      (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
+    assert(
+      (await poolDialog.locator('.term-filter button.is-active').textContent())?.trim() ===
+        '短期 7–30 天',
+      '关闭详情后候选池期限筛选没有保留',
+    )
+    assert(poolFilterAfter === poolFilterBefore, '关闭详情后候选池筛选结果发生变化')
+    assert(poolSortAfter === poolSortBefore, '关闭详情后候选池排序发生变化')
+    assert(
+      (await page.evaluate(() =>
+        document.activeElement?.getAttribute('data-product-code'),
+      )) === rowTarget.code,
+      '关闭详情后焦点没有回到原产品入口',
+    )
+    await poolDialog.locator('.dialog-head .icon-button').click()
+    await page.waitForSelector('.product-dialog:not(.product-detail-dialog)[open]', {
+      state: 'detached',
+    })
+
     const observationCards = page.locator('.observation-card')
     assert((await observationCards.count()) > 0, '观察名单没有可点击产品')
     await observationCards.first().click()
@@ -311,7 +417,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏六分区、每日记账、复盘模块卡与跨页补记、产品配置与产品详情、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏六分区、每日记账、复盘模块卡与跨页补记、产品配置、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

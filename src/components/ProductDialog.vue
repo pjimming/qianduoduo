@@ -11,6 +11,8 @@ import { formatPct, formatTerm } from '@/composables/useFormatters'
 
 const props = defineProps<{
   open: boolean
+  detailOpen: boolean
+  detailCloseVersion: number
   products: ProductView
   snapshotDate: string | null
   historyDate: string | null
@@ -18,9 +20,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  detail: [product: Product]
 }>()
 
 const dialogRef = ref<HTMLDialogElement | null>(null)
+const tableWrapRef = ref<HTMLDivElement | null>(null)
+const suspendedForDetail = ref(false)
+let closingForDetail = false
+let savedScrollTop = 0
+let savedScrollLeft = 0
+let savedProductCode = ''
 const sortKey = ref<ProductSortKey>('return_1y')
 const sortDirection = ref<SortDirection>('desc')
 const termFilter = ref<TermFilter>('all')
@@ -105,17 +114,87 @@ watch(
   () => props.open,
   async (open) => {
     await nextTick()
-    if (open && dialogRef.value && !dialogRef.value.open) {
-      dialogRef.value.showModal()
-    } else if (!open && dialogRef.value?.open) {
-      dialogRef.value.close()
+    const dialog = dialogRef.value
+    if (!dialog) return
+    if (open && !props.detailOpen && !dialog.open) {
+      dialog.showModal()
+    } else if (!open && dialog.open) {
+      closingForDetail = false
+      dialog.close()
     }
   },
   { immediate: true },
 )
 
-function close(): void {
+watch(
+  () => props.detailOpen,
+  (open) => {
+    if (open) {
+      if (!suspendedForDetail.value && props.open && dialogRef.value?.open) {
+        capturePoolPosition('')
+        suspendedForDetail.value = true
+        closingForDetail = true
+        dialogRef.value.close()
+      }
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.detailCloseVersion,
+  () => {
+    if (suspendedForDetail.value && !props.detailOpen) void resumePool()
+  },
+)
+
+function capturePoolPosition(productCode: string): void {
+  savedScrollTop = dialogRef.value?.scrollTop ?? 0
+  savedScrollLeft = tableWrapRef.value?.scrollLeft ?? 0
+  savedProductCode = productCode
+}
+
+function findProductButton(code: string): HTMLButtonElement | null {
+  if (!code || !dialogRef.value) return null
+  return (
+    Array.from(
+      dialogRef.value.querySelectorAll<HTMLButtonElement>('[data-product-code]'),
+    ).find((button) => button.dataset.productCode === code) ?? null
+  )
+}
+
+async function resumePool(): Promise<void> {
+  suspendedForDetail.value = false
+  if (!props.open) return
+  await nextTick()
+  const dialog = dialogRef.value
+  if (!dialog) return
+  if (!dialog.open) dialog.showModal()
+  await nextTick()
+  dialog.scrollTop = savedScrollTop
+  if (tableWrapRef.value) tableWrapRef.value.scrollLeft = savedScrollLeft
+  findProductButton(savedProductCode)?.focus({ preventScroll: true })
+}
+
+function openDetail(product: Product): void {
+  if (props.detailOpen) return
+  capturePoolPosition(product.code)
+  suspendedForDetail.value = true
+  closingForDetail = true
+  dialogRef.value?.close()
+  emit('detail', product)
+}
+
+function requestClose(): void {
   emit('update:open', false)
+}
+
+function handleClose(): void {
+  if (closingForDetail) {
+    closingForDetail = false
+    return
+  }
+  if (props.open) requestClose()
 }
 
 function toggleSort(key: ProductSortKey): void {
@@ -146,19 +225,19 @@ function onDialogClick(event: MouseEvent): void {
     event.clientX > rect.right ||
     event.clientY < rect.top ||
     event.clientY > rect.bottom
-  if (outside) close()
+  if (outside) requestClose()
 }
 </script>
 
 <template>
-  <dialog ref="dialogRef" class="product-dialog" @click="onDialogClick" @close="close">
+  <dialog ref="dialogRef" class="product-dialog" @click="onDialogClick" @close="handleClose">
     <div class="dialog-head">
       <div>
         <p class="kicker">历史快照</p>
         <h2>普通可买 R2 候选池</h2>
         <p>{{ subtitle }}</p>
       </div>
-      <button class="icon-button" type="button" aria-label="关闭" @click="close">
+      <button class="icon-button" type="button" aria-label="关闭" @click="requestClose">
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="M5 5l10 10M15 5 5 15" />
         </svg>
@@ -180,10 +259,10 @@ function onDialogClick(event: MouseEvent): void {
       <span class="filter-count">{{ filterCount }}</span>
     </div>
     <div class="dialog-sort-bar">
-      <span>点击收益率列可切换升序 / 降序，空缺值始终排在最后</span>
+      <span>点击产品名称查看详情；点击收益率列切换排序，空缺值排在最后</span>
       <strong>{{ sortStateText }}</strong>
     </div>
-    <div class="table-wrap dialog-table-wrap">
+    <div ref="tableWrapRef" class="table-wrap dialog-table-wrap">
       <table class="product-table">
         <thead>
           <tr>
@@ -221,8 +300,17 @@ function onDialogClick(event: MouseEvent): void {
               <span class="term-badge">{{ formatTerm(product.term_days, product.bucket) }}</span>
             </td>
             <td class="product-name-cell">
-              <strong>{{ product.name }}</strong>
-              <span>{{ product.code }} · {{ product.risk_level || '风险待核' }}</span>
+              <button
+                type="button"
+                class="product-name-button"
+                :data-product-code="product.code"
+                :aria-label="`查看 ${product.name}（${product.code}）详情`"
+                @click.stop="openDetail(product)"
+              >
+                <strong>{{ product.name }}</strong>
+                <span>{{ product.code }} · {{ product.risk_level || '风险待核' }}</span>
+                <span class="product-detail-link">查看详情 →</span>
+              </button>
             </td>
             <td class="align-right money-cell">{{ formatPct(product.return_1m, 2) }}</td>
             <td class="align-right money-cell">{{ formatPct(product.return_3m, 2) }}</td>
@@ -256,5 +344,51 @@ function onDialogClick(event: MouseEvent): void {
 
 .term-filter button {
   cursor: pointer;
+}
+
+.product-name-button {
+  display: grid;
+  gap: 2px;
+  width: calc(100% + 12px);
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.product-name-button:hover {
+  background: var(--green-wash);
+}
+
+.product-name-button:hover strong,
+.product-name-button:focus-visible strong {
+  color: var(--green);
+}
+
+.product-name-button:focus-visible {
+  outline: 2px solid rgba(23, 100, 86, 0.35);
+  outline-offset: 1px;
+}
+
+.product-name-button .product-detail-link {
+  color: var(--green);
+  font-family: var(--sans);
+  font-weight: 650;
+}
+
+@media (max-width: 620px) {
+  .dialog-sort-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 </style>

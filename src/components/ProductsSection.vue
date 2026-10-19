@@ -21,6 +21,7 @@ const dashboardStore = useDashboardStore()
 const { show } = useToast()
 const dialogOpen = ref(false)
 const detailOpen = ref(false)
+const detailCloseVersion = ref(0)
 const detailProduct = ref<Product | null>(null)
 const refreshing = ref(false)
 const settingsOpen = ref(false)
@@ -602,9 +603,12 @@ async function saveQuotas(): Promise<void> {
 
     <ProductDialog
       v-model:open="dialogOpen"
+      :detail-open="detailOpen"
+      :detail-close-version="detailCloseVersion"
       :products="products"
       :snapshot-date="dashboard.meta.product_snapshot_date"
       :history-date="dashboard.meta.product_history_date"
+      @detail="openProductDetail"
     />
 
     <ProductDetailDialog
@@ -612,6 +616,7 @@ async function saveQuotas(): Promise<void> {
       :product="detailProduct"
       :snapshot-date="dashboard.meta.product_snapshot_date"
       :history-date="dashboard.meta.product_history_date"
+      @closed="detailCloseVersion += 1"
     />
   </section>
 </template>
