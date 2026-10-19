@@ -36,6 +36,7 @@ const history = computed(() => props.review.monthly)
 const daily = computed(() => props.review.daily)
 const weekly = computed(() => props.review.weekly)
 const alerts = computed(() => props.review.alerts ?? [])
+const accountStartDate = computed(() => props.review.account_start_date ?? null)
 const monthly = computed<MonthlyReview | null>(() => {
   if (selectedMonth.value) {
     return history.value.find((item) => item.month === selectedMonth.value) ?? null
@@ -127,8 +128,11 @@ function nextGradeMessage(returnPct: number | null): string {
 
 function monthlyMessage(item: MonthlyReview | null): string {
   if (!item) return '记录收益后自动生成月度评分。'
+  const maxEligibleDays = item.elapsed_days + item.days_remaining
   if (!item.has_records) {
-    return `本月已过 ${item.elapsed_days} 天，还没有收益记录；先补今天，评分会在记录后自动生成。`
+    return item.before_start_days > 0
+      ? `账本自 ${item.account_start_date ?? '起始日'} 起算，本月可记 ${item.elapsed_days} 天；起始日前不计缺记，先补今天的记录。`
+      : `本月已过 ${item.elapsed_days} 天，还没有收益记录；先补今天，评分会在记录后自动生成。`
   }
   if (item.provisional) {
     const range = item.grade_range
@@ -141,7 +145,10 @@ function monthlyMessage(item: MonthlyReview | null): string {
     )}（${range}）。`
   }
   if (!item.sample_sufficient) {
-    return `样本不足：仅 ${item.record_days} 条记录、覆盖 ${item.calendar_days} 天，不参与评级。`
+    if (item.before_start_days > 0 && maxEligibleDays < 28) {
+      return `起始月最多可记 ${maxEligibleDays} 天、现有 ${item.record_days} 条记录；不足 28 天，不参与最终评级。`
+    }
+    return `样本不足：仅 ${item.record_days} 条记录、覆盖 ${item.elapsed_days} 天，不参与评级。`
   }
   return nextGradeMessage(item.return_pct)
 }
@@ -156,17 +163,23 @@ const calendarCells = computed(() => {
     key: string
     day: number
     date: string
-    status: 'recorded' | 'missing' | 'future' | 'outside'
+    status: 'recorded' | 'missing' | 'future' | 'outside' | 'before-start'
   }> = []
   for (let index = 0; index < leading; index += 1) {
     cells.push({ key: `blank-${index}`, day: 0, date: '', status: 'outside' })
   }
   for (let day = 1; day <= totalDays; day += 1) {
     const date = `${monthly.value.month}-${String(day).padStart(2, '0')}`
+    const periodStart =
+      monthly.value.active_start_date ??
+      monthly.value.account_start_date ??
+      `${monthly.value.month}-01`
     const status =
       recordedSet.value.has(date)
         ? 'recorded'
-        : day > monthly.value.elapsed_days
+        : date < periodStart
+          ? 'before-start'
+          : date > props.today
           ? 'future'
           : 'missing'
     cells.push({ key: date, day, date, status })
@@ -179,11 +192,22 @@ const recordProgress = computed(() =>
     : 0,
 )
 const recentDays = computed(() => {
-  if (!monthly.value || monthly.value.elapsed_days <= 0) return []
+  if (!monthly.value || monthly.value.elapsed_days <= 0 || monthly.value.is_before_start) {
+    return []
+  }
   const days = []
-  const start = Math.max(1, monthly.value.elapsed_days - 6)
+  const [year, month] = monthly.value.month.split('-').map(Number)
+  const totalDays = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const elapsedDays = monthly.value.is_current
+    ? Math.min(Number(props.today.slice(8, 10)), totalDays)
+    : totalDays
+  const startDay =
+    monthly.value.account_start_date?.startsWith(monthly.value.month)
+      ? Number(monthly.value.account_start_date.slice(8, 10))
+      : 1
+  const start = Math.max(startDay, elapsedDays - 6)
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-  for (let day = start; day <= monthly.value.elapsed_days; day += 1) {
+  for (let day = start; day <= elapsedDays; day += 1) {
     const date = `${monthly.value.month}-${String(day).padStart(2, '0')}`
     days.push({
       date,
@@ -194,22 +218,36 @@ const recentDays = computed(() => {
   }
   return days
 })
+const recentWindowLabel = computed(() =>
+  recentDays.value.length ? `最近 ${recentDays.value.length} 天` : '最近记录',
+)
 const recentRecordedCount = computed(
   () => recentDays.value.filter((item) => item.status === 'recorded').length,
 )
 const recordHint = computed(() => {
   if (!monthly.value) return ''
   if (!monthly.value.has_records) {
-    return `点下面任一天补记录；本月已过 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天。`
+    return monthly.value.before_start_days > 0
+      ? `账本自 ${monthly.value.account_start_date ?? '起始日'} 起算；本月可记 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天，起始日前不纳入。`
+      : `点下面任一天补记录；本月已过 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天。`
   }
   if (monthly.value.provisional) {
-    return `已记录 ${monthly.value.record_days}/${monthly.value.elapsed_days} 天，还差 ${monthly.value.missing_days} 天；月末满 28 天且 20 条记录才会落最终评级。`
+    const maxEligibleDays =
+      monthly.value.elapsed_days + monthly.value.days_remaining
+    return monthly.value.before_start_days > 0 && maxEligibleDays < 28
+      ? `自起始日起已记录 ${monthly.value.record_days}/${monthly.value.elapsed_days} 天，还差 ${monthly.value.missing_days} 天；起始月最多可记 ${maxEligibleDays} 天，不参与最终评级。`
+      : `自起始日起已记录 ${monthly.value.record_days}/${monthly.value.elapsed_days} 天，还差 ${monthly.value.missing_days} 天；可记满 28 天且达到 20 条记录才会落最终评级。`
   }
   return `该月共记录 ${monthly.value.record_days} 天，覆盖 ${monthly.value.record_coverage_pct ?? 0}%；最终评级：${monthly.value.grade_display}。`
 })
 const gradeRequirementText = computed(() => {
   if (!monthly.value) return ''
   if (monthly.value.final) return '已达到最终评分条件'
+  const maxEligibleDays =
+    monthly.value.elapsed_days + monthly.value.days_remaining
+  if (monthly.value.before_start_days > 0 && maxEligibleDays < 28) {
+    return `起始月最多可记 ${maxEligibleDays} 天，不足 28 天，不落最终评级`
+  }
   const parts: string[] = []
   if (monthly.value.days_needed_for_grade > 0) {
     parts.push(`还需 ${monthly.value.days_needed_for_grade} 天日历覆盖`)
@@ -224,9 +262,9 @@ const gradeConditions = computed(() => {
   if (!monthly.value) return []
   return [
     {
-      label: '日历覆盖 ≥ 28 天',
-      done: monthly.value.calendar_days >= 28,
-      value: `${monthly.value.calendar_days}/28 天`,
+      label: '账本覆盖 ≥ 28 天',
+      done: monthly.value.elapsed_days >= 28,
+      value: `${monthly.value.elapsed_days}/28 天`,
     },
     {
       label: '有效记录 ≥ 20 条',
@@ -249,7 +287,9 @@ const gradeConditions = computed(() => {
 const actionItems = computed(() => {
   if (!monthly.value) return []
   if (!monthly.value.has_records) {
-    return ['先补今天', '连续记满 7 天', '月末前至少 20 条']
+    return monthly.value.before_start_days > 0
+      ? ['先补今天', '从起始日起逐日记账', '起始日前不追补']
+      : ['先补今天', '连续记满 7 天', '月末前至少 20 条']
   }
   if (monthly.value.provisional && monthly.value.missing_days > 0) {
     return [
@@ -288,6 +328,10 @@ function selectMonth(month: string): void {
       </div>
       <span class="review-auto-badge">自动计算</span>
     </div>
+
+    <p v-if="accountStartDate" class="review-period-note">
+      账本自 {{ accountStartDate }} 起算；起始日前的日期没有收益属于正常状态，不计缺记，也不能补记。
+    </p>
 
     <div v-if="alerts.length" class="review-alerts" aria-label="复盘提醒">
       <span
@@ -418,8 +462,13 @@ function selectMonth(month: string): void {
 
         <article class="panel review-card recent-review-card">
           <div class="review-card-head">
-            <span>最近 7 天</span>
-            <span>{{ monthly?.month_label || '本月' }} · {{ recentRecordedCount }}/7 天</span>
+            <span>{{ recentWindowLabel }}</span>
+            <span>
+              {{ monthly?.month_label || '本月' }} · {{ recentRecordedCount }}/{{
+                recentDays.length
+              }}
+              天
+            </span>
           </div>
           <div v-if="recentDays.length" class="recent-day-list">
             <button
@@ -693,7 +742,11 @@ function selectMonth(month: string): void {
                   type="button"
                   class="record-day"
                   :class="`is-${cell.status}`"
-                  :disabled="cell.status === 'outside' || cell.status === 'future'"
+                  :disabled="
+                    cell.status === 'outside' ||
+                    cell.status === 'future' ||
+                    cell.status === 'before-start'
+                  "
                   :aria-label="
                     cell.status === 'outside'
                       ? ''
@@ -702,6 +755,8 @@ function selectMonth(month: string): void {
                             ? '已记录'
                             : cell.status === 'missing'
                               ? '缺记'
+                              : cell.status === 'before-start'
+                                ? '本金起始日前，未纳入账本'
                               : '未到'
                         }`
                   "
@@ -714,6 +769,7 @@ function selectMonth(month: string): void {
                 <span class="record-legend">
                   <em class="is-recorded"></em>已记录
                   <em class="is-missing"></em>缺记
+                  <em class="is-before-start"></em>起始日前
                   <em class="is-future"></em>未到
                 </span>
                 <span>{{ gradeRequirementText }}</span>
@@ -792,6 +848,25 @@ function selectMonth(month: string): void {
 </template>
 
 <style scoped>
+.review-section .kicker,
+.review-section .streak-badge,
+.review-section .target-progress-head span,
+.review-section .target-progress-head strong,
+.review-section .grade-steps small {
+  font-size: 12px !important;
+}
+
+.review-period-note {
+  margin: 12px 0 0;
+  padding: 8px 11px;
+  border: 1px dashed rgba(23, 100, 86, 0.2);
+  border-radius: 9px;
+  background: rgba(239, 247, 242, 0.55);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .review-history-row {
   cursor: pointer;
 }
@@ -1022,10 +1097,18 @@ function selectMonth(month: string): void {
 }
 
 .record-day.is-future,
-.record-day.is-outside {
+.record-day.is-outside,
+.record-day.is-before-start {
   color: var(--muted-light);
   cursor: default;
   opacity: 0.4;
+}
+
+.record-day.is-before-start {
+  border-color: rgba(139, 149, 142, 0.14);
+  border-style: dashed;
+  background: rgba(139, 149, 142, 0.04);
+  opacity: 0.72;
 }
 
 .monthly-record-foot {
@@ -1064,6 +1147,11 @@ function selectMonth(month: string): void {
 
 .record-legend em.is-future {
   background: var(--line);
+}
+
+.record-legend em.is-before-start {
+  border: 1px dashed rgba(139, 149, 142, 0.4);
+  background: transparent;
 }
 
 .history-action-card {

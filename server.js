@@ -1045,7 +1045,9 @@ function dashboardPayload(repository) {
       .sort()
       .at(-1) || snapshotDate;
   const backups = repository.backupDir ? listBackups(repository.backupDir) : [];
-  const review = buildReview(records, today);
+  const review = buildReview(records, today, {
+    initialDate: capital.initial_date,
+  });
 
   return {
     meta: {

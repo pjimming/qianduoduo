@@ -176,3 +176,22 @@ test('review timeline marks missing monthly notes as overdue after day five', (t
   assert.equal(nodes.quarterly, 'overdue');
   assert.equal(workspace.timeline.focus, 'monthly');
 });
+
+test('review timeline excludes periods before the capital start date', (t) => {
+  const repository = openTestRepository(t);
+  const workspace = repository.getReviewWorkspace({
+    today: '2026-10-19',
+    records: [{ date: '2026-10-19', daily_pnl: 10 }],
+    review: {
+      account_start_date: '2026-10-19',
+      weekly: { record_days: 1, elapsed_days: 1, consecutive_negative_days: 0 },
+    },
+  });
+  const nodes = Object.fromEntries(
+    workspace.timeline.nodes.map((node) => [node.key, node.status]),
+  );
+  assert.equal(nodes.daily, 'done');
+  assert.equal(nodes.monthly, 'not_applicable');
+  assert.equal(nodes.quarterly, 'not_applicable');
+  assert.equal(workspace.timeline.focus, null);
+});

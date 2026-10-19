@@ -94,6 +94,33 @@ test('empty ledger still exposes the current month, missing dates and next actio
   assert.ok(review.alerts.some((item) => item.code === 'no-month-records'));
 });
 
+test('records before the capital start date are outside the review period', () => {
+  const review = buildReview(
+    enrichRecords([
+      {
+        date: '2026-10-19',
+        principal: 30000,
+        daily_pnl: 0,
+        action: '无操作',
+        notes: '',
+      },
+    ]),
+    '2026-10-19',
+    { initialDate: '2026-10-19' },
+  );
+  assert.equal(review.account_start_date, '2026-10-19');
+  assert.equal(review.current_month.elapsed_days, 1);
+  assert.equal(review.current_month.before_start_days, 18);
+  assert.equal(review.current_month.active_start_date, '2026-10-19');
+  assert.equal(review.current_month.missing_days, 0);
+  assert.deepEqual(review.current_month.missing_dates, []);
+  assert.equal(review.current_month.record_coverage_pct, 100);
+  assert.equal(review.weekly.elapsed_days, 1);
+  assert.equal(review.weekly.missing_days, 0);
+  assert.ok(!review.alerts.some((item) => item.code === 'missing-days'));
+  assert.ok(!review.alerts.some((item) => item.code === 'target-behind'));
+});
+
 test('monthly history fills missing months instead of hiding the gap', () => {
   const rows = [
     {

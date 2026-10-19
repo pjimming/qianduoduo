@@ -10,6 +10,7 @@ const statusLabel: Record<TimelineStatus, string> = {
   due: '该做了',
   overdue: '待补',
   upcoming: '未到时间',
+  not_applicable: '未纳入',
 }
 </script>
 

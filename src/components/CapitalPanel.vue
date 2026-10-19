@@ -140,7 +140,9 @@ async function confirmDeleteEvent(): Promise<void> {
         <p id="capitalBreakdown" class="capital-breakdown">
           {{
             initialized
-              ? `起始 + 转入 − 转出 · 截至 ${capital.as_of || dashboard.meta.today}`
+              ? `起始 + 转入 − 转出 · 自 ${capital.initial_date} 起算 · 截至 ${
+                  capital.as_of || dashboard.meta.today
+                }`
               : '等待初始化本金账户'
           }}
         </p>

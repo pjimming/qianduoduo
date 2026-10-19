@@ -20,6 +20,7 @@
 - 首页页面在 `src/views/DashboardView.vue`，组件在 `src/components/`，状态在 `src/stores/dashboard.ts`，接口封装在 `src/api/client.ts`。
 - 收益账本与自动复盘的阅读字号下限为 **12px**：功能性文字、辅助说明、状态标签、分页、日历图例、备注和按钮都不得低于 12px；关键数据 12.5–13px，卡片标题 13–14px。自动复盘左栏由“每日复盘 + 每周检查 + 最近 7 天”组成，最近 7 天卡片自适应填满左栏剩余高度，点击日期可直接补记或修改。
 - 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
+- 本金起始日口径：`capital_settings.initial_date` 之前的日期不属于收益账本，不计收益、不计缺记、不计记录完整度和目标进度，也不能补记。复盘日历显示“起始日前”并禁用点击；日/周/月统计和评级只从起始日起算；起始月可记录天数不足 28 天时不落最终评级；上月/上季若完全早于起始日，时间轴显示“未纳入复盘”，即使存在旧笔记也不标为待补或已完成。记账表单和接口均拒绝起始日前的收益记录。
 - `cash_balance` / “R2 流动性仓”已移除，数据库、API、页面和 CSV 均不包含。
 - 产品池默认由 `npm run r2:refresh-all`（`scripts/fetch-cmb-r2-all.cjs`）刷新：拉取招行公开全量 R2 池，生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`（普通可买候选池）和 `cmb_r2_selected-*.csv`（当前精选池）；页面“刷新快照”会重新解析日期最新的 universe CSV。旧脚本 `fetch-cmb-r2-snapshot.cjs` 仅保留作兼容。
 - 快照选择：`R2_PRODUCT_CSV` 优先；否则扫描 `data/cmb_r2_universe*.csv`，找不到时回退 `data/cmb_r2_products*.csv`，均按文件名中的 `YYYY-MM-DD` 倒序、同日期按 `mtime` 倒序；刷新接口每次重新解析并整表替换 `products`。`product_snapshot_date` 是产品 `data_date` 的最大值，不是文件名日期。
@@ -84,7 +85,7 @@
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 当前 82 项测试通过；`npm run test:e2e` 会检查 8 个标签页、4 个时间轴节点、月度记录日历、产品分配桶、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
+- 当前 84 项测试通过；`npm run test:e2e` 会检查 8 个标签页、4 个时间轴节点、月度记录日历、产品分配桶、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git

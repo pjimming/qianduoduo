@@ -85,6 +85,10 @@ export interface MonthlyReview {
   has_records: boolean
   record_days: number
   calendar_days: number
+  account_start_date: string | null
+  active_start_date: string | null
+  before_start_days: number
+  is_before_start: boolean
   elapsed_days: number
   days_remaining: number
   missing_days: number
@@ -185,6 +189,7 @@ export interface ReviewData {
   thresholds: number[]
   target_annualized_pct: number
   target_month_pct: number
+  account_start_date: string | null
   daily: DailyReview | null
   weekly: WeeklyReview | null
   alerts: ReviewAlert[]
@@ -424,7 +429,7 @@ export interface HoldingsSummary {
   alerts: ReviewAlert[]
 }
 
-export type TimelineStatus = 'done' | 'due' | 'overdue' | 'upcoming'
+export type TimelineStatus = 'done' | 'due' | 'overdue' | 'upcoming' | 'not_applicable'
 
 export interface TimelineNode {
   key: 'daily' | 'weekly' | 'monthly' | 'quarterly'

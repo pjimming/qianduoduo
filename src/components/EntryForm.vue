@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatPct } from '@/composables/useFormatters'
@@ -29,6 +29,12 @@ let focusTimer: number | undefined
 
 const isEditing = computed(() => formMode.value === 'edit')
 const principal = computed(() => dashboardStore.principalForDate(recordDate.value))
+const accountStartDate = computed(() => props.dashboard.capital.initial_date ?? null)
+const isBeforeAccountStart = computed(
+  () =>
+    Boolean(accountStartDate.value && recordDate.value) &&
+    recordDate.value < (accountStartDate.value as string),
+)
 const showTodayNotice = computed(
   () =>
     props.dashboard.meta.has_today_record &&
@@ -57,6 +63,15 @@ const preview = computed(() => {
     tone: rate > 0 ? 'positive' : rate < 0 ? 'negative' : '',
   }
 })
+
+watch(
+  () => [accountStartDate.value, props.dashboard.meta.today] as const,
+  () => {
+    if (!isEditing.value && isBeforeAccountStart.value) {
+      recordDate.value = props.dashboard.meta.today
+    }
+  },
+)
 
 function applyRecord(record: LedgerRecord): void {
   editingDate.value = record.date
@@ -95,6 +110,12 @@ function loadToday(): void {
 
 function startRecord(date: string): void {
   if (!date) return
+  if (accountStartDate.value && date < accountStartDate.value) {
+    show(`该日期早于本金起始日 ${accountStartDate.value}，不纳入收益账本`, {
+      error: true,
+    })
+    return
+  }
   editingDate.value = null
   formMode.value = 'create'
   recordDate.value = date
@@ -115,8 +136,18 @@ async function handleSubmit(): Promise<void> {
     show('不能记录未来日期', { error: true })
     return
   }
+  if (!props.dashboard.capital.initialized) {
+    show('请先初始化本金账户，再记录收益', { error: true })
+    return
+  }
+  if (accountStartDate.value && recordDate.value < accountStartDate.value) {
+    show(`本金账户自 ${accountStartDate.value} 起算，不能记录更早日期`, {
+      error: true,
+    })
+    return
+  }
   if (principal.value === null) {
-    show('请先初始化本金账户，并确认记录日期不早于起始日期', { error: true })
+    show('该日期没有可用本金，请检查本金账户设置', { error: true })
     return
   }
   if (principal.value <= 0) {
@@ -192,10 +223,14 @@ defineExpose({
           v-model="recordDate"
           name="date"
           type="date"
+          :min="accountStartDate || ''"
           :max="dashboard.meta.today"
           :readonly="isEditing"
           required
         />
+        <p v-if="isBeforeAccountStart" class="date-window-note">
+          该日期早于本金起始日 {{ accountStartDate }}，起始日前没有收益属于正常状态，无需补记。
+        </p>
       </div>
 
       <div class="field">
@@ -273,6 +308,13 @@ defineExpose({
 <style scoped>
 #recordDate[readonly] {
   opacity: 1;
+}
+
+.date-window-note {
+  margin: 7px 0 0;
+  color: #8f4638;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .today-notice {

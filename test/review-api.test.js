@@ -43,6 +43,14 @@ test('review API stores decisions, holdings, events, notes and exports Markdown'
     initial_principal: 500000,
     initial_date: '2026-09-01',
   });
+  const beforeStart = await postJson(`${base}/api/records`, {
+    date: '2026-08-31',
+    daily_pnl: 10,
+    action: '无操作',
+    notes: '',
+  });
+  assert.equal(beforeStart.status, 400);
+  assert.match((await beforeStart.json()).error, /起始日期/);
   await postJson(`${base}/api/records`, {
     date: '2026-10-15',
     daily_pnl: 120,
