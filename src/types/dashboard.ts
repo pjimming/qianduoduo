@@ -1,6 +1,6 @@
 export type LedgerAction = '无操作' | '买入' | '赎回' | '切换'
 export type CapitalEventType = 'deposit' | 'withdraw'
-export type ProductBucket = 'short' | 'medium' | 'long' | 'unknown'
+export type ProductBucket = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
 export type TermFilter = 'all' | ProductBucket
 export type SortDirection = 'asc' | 'desc'
 export type LedgerSortKey = 'date' | 'principal' | 'daily_pnl' | 'daily_return' | 'net_value'
@@ -620,8 +620,13 @@ export interface TradeInput {
 export interface Product {
   name: string
   code: string
+  short_name: string
   issuer: string
   risk_level: string
+  currency_code: string
+  pub_prv: string
+  soc_tag: string
+  product_type: string
   term_days: number | null
   score: number | null
   min_amount: number | null
@@ -637,18 +642,29 @@ export interface Product {
   data_date: string
   notes: string
   capacity: number | null
+  history_months: number | null
+  fee_bps: number | null
+  next_open_date: string
   bucket: ProductBucket
   observation_score: number
+  selection_score: number
   observation_ready: boolean
+  selected: boolean
+  selection_rank: number | null
   target_gap_pct: number | null
 }
 
 export interface ProductStats {
   total: number
   observation_ready: number
+  selected_count: number
   median_1y: number | null
   median_3m: number | null
   median_6m: number | null
+  universe_median_1y: number | null
+  universe_median_3m: number | null
+  universe_median_6m: number | null
+  bucket_counts: Record<'cash' | 'short' | 'medium' | 'long', number>
   target_annualized: number
   target_gap_pct: number | null
   target_coverage_pct: number | null
@@ -657,6 +673,14 @@ export interface ProductStats {
 export interface ProductView {
   all: Product[]
   watchlist: Product[]
+  selection: {
+    version: string
+    per_bucket: number
+    max_per_issuer: number
+    min_history_months: number
+    selected_count: number
+    rules: string[]
+  }
   stats: ProductStats
 }
 

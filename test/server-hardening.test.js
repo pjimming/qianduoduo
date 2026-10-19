@@ -28,6 +28,18 @@ test('product CSV discovery prefers the newest dated snapshot', () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('product CSV discovery prefers the ordinary universe over the selected file', () => {
+  const root = tempDir();
+  const dataDir = path.join(root, 'data');
+  fs.mkdirSync(dataDir);
+  fs.writeFileSync(path.join(dataDir, 'cmb_r2_products_2026-10-20.csv'), 'name,code\n');
+  fs.writeFileSync(path.join(dataDir, 'cmb_r2_universe_2026-10-19.csv'), 'name,code\n');
+
+  const resolved = resolveProductCsv(root);
+  assert.equal(path.basename(resolved), 'cmb_r2_universe_2026-10-19.csv');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test('daily backup creates one snapshot per day and lists it', () => {
   const directory = tempDir();
   const repository = openDatabase({

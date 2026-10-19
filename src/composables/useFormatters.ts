@@ -97,9 +97,10 @@ export function formatTerm(termDays: number | null, bucket: ProductBucketLike): 
   return `${termDays}天`
 }
 
-type ProductBucketLike = 'short' | 'medium' | 'long' | 'unknown'
+type ProductBucketLike = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
 
 export function bucketLabel(bucket: ProductBucketLike): string {
+  if (bucket === 'cash') return '现金管理'
   if (bucket === 'short') return '短期限'
   if (bucket === 'medium') return '中期限'
   if (bucket === 'long') return '长期限'

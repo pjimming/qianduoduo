@@ -1965,6 +1965,12 @@
   color: #886026;
 }
 
+.status-pill.is-selected {
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 700;
+}
+
 .dialog-note {
   margin: 18px 26px 24px;
   padding: 12px 14px;

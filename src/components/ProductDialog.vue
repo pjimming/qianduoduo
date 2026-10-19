@@ -35,9 +35,10 @@ const productSortLabels: Record<ProductSortKey, string> = {
 
 const filters: Array<{ value: TermFilter; label: string }> = [
   { value: 'all', label: '全部' },
-  { value: 'short', label: '短期 0–30 天' },
-  { value: 'medium', label: '中期 31–179 天' },
-  { value: 'long', label: '长期 180 天+' },
+  { value: 'cash', label: '日开/现金' },
+  { value: 'short', label: '短期 7–30 天' },
+  { value: 'medium', label: '中期 31–100 天' },
+  { value: 'long', label: '长期 100 天+' },
 ]
 
 const sortColumns: Array<{ key: ProductSortKey; label: string }> = [
@@ -55,7 +56,7 @@ const filteredProducts = computed(() =>
 
 const subtitle = computed(
   () =>
-    `快照 ${props.snapshotDate || '待核'} · 历史业绩 ${
+    `普通可买候选池 · 快照 ${props.snapshotDate || '待核'} · 历史业绩 ${
       props.historyDate || '待核'
     } · 共 ${props.products.all.length} 只`,
 )
@@ -154,7 +155,7 @@ function onDialogClick(event: MouseEvent): void {
     <div class="dialog-head">
       <div>
         <p class="kicker">历史快照</p>
-        <h2>全部 R2 产品</h2>
+        <h2>普通可买 R2 候选池</h2>
         <p>{{ subtitle }}</p>
       </div>
       <button class="icon-button" type="button" aria-label="关闭" @click="close">
@@ -228,8 +229,11 @@ function onDialogClick(event: MouseEvent): void {
             <td class="align-right money-cell">{{ formatPct(product.return_6m, 2) }}</td>
             <td class="align-right money-cell">{{ formatPct(product.return_1y, 2) }}</td>
             <td>
-              <span class="status-pill" :class="{ 'is-new': !product.observation_ready }">
-                {{ product.observation_ready ? product.status || '观察' : '新品 / 待补数据' }}
+              <span
+                class="status-pill"
+                :class="{ 'is-new': !product.observation_ready, 'is-selected': product.selected }"
+              >
+                {{ product.selected ? '精选' : product.status || '候选' }}
               </span>
             </td>
           </tr>
@@ -240,7 +244,7 @@ function onDialogClick(event: MouseEvent): void {
       </table>
     </div>
     <p class="dialog-note">
-      新发产品没有 3 个月历史，单独标为“新品观察”，不参与观察排序。任何产品在买入前都要重新核对风险等级、额度、费率和赎回规则。
+      这里展示的是普通可买候选池；精选标记来自首页当前的期限桶规则。候选池已经剔除美元、私行/私募、成立不足 12 个月和缺历史数据的产品。任何产品在买入前都要重新核对风险等级、实时额度、费率、赎回规则和产品说明书。
     </p>
   </dialog>
 </template>

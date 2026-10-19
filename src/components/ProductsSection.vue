@@ -24,20 +24,21 @@ const products = computed(() => props.dashboard.products)
 const stats = computed(() => props.dashboard.products.stats)
 
 const goalTitle = computed(() => {
-  if (!products.value.watchlist.length) return '观察池目标可行性'
+  if (!products.value.watchlist.length) return '精选池目标可行性'
   if (stats.value.median_1y === null) return '产品池数据不足'
-  return `观察池近 1 年中位 ${formatPct(stats.value.median_1y, 2)}`
+  return `精选池近 1 年中位 ${formatPct(stats.value.median_1y, 2)}`
 })
 
 const goalText = computed(() => {
-  if (!products.value.watchlist.length) return '没有可读取的历史产品快照。'
+  if (!products.value.watchlist.length) return '没有可读取的普通可买产品池。'
   if (stats.value.median_1y === null) return '没有足够的近 1 年历史数据。'
-  return `开放产品 ${stats.value.observation_ready}/${
-    stats.value.total
-  } 只入池 · 近 3 月中位 ${formatPct(stats.value.median_3m, 2)} · 目标覆盖 ${formatPct(
-    stats.value.target_coverage_pct,
-    1,
-  )}`
+  const counts = stats.value.bucket_counts
+  return `普通可买 ${stats.value.total} 只（日开 ${counts.cash} / 短 ${counts.short} / 中 ${
+    counts.medium
+  } / 长 ${counts.long}）· 精选 ${stats.value.selected_count} 只 · 全池 1Y 中位 ${formatPct(
+    stats.value.universe_median_1y,
+    2,
+  )} · 目标覆盖 ${formatPct(stats.value.target_coverage_pct, 1)}`
 })
 
 const goalGap = computed(() => {
@@ -82,8 +83,8 @@ async function refreshSnapshot(): Promise<void> {
   <section class="products-section" aria-labelledby="productsTitle">
     <div class="section-head">
       <div>
-        <p class="kicker">R2 观察池</p>
-        <h2 id="productsTitle">短、中、长三个期限，各留一个复核对象</h2>
+        <p class="kicker">R2 候选池 → 精选池</p>
+        <h2 id="productsTitle">全量普通候选池，每个期限按规则精选 3 只</h2>
       </div>
       <div class="section-actions">
         <button
@@ -172,7 +173,7 @@ async function refreshSnapshot(): Promise<void> {
         <div class="product-name">产品快照暂不可用</div>
         <p class="product-benchmark">
           请确认 data/ 下的产品快照 CSV 仍在原位（当前读取
-          {{ dashboard.meta.product_csv || 'cmb_r2_products*.csv' }}），或在
+          {{ dashboard.meta.product_csv || 'cmb_r2_universe*.csv' }}），或在
           R2_PRODUCT_CSV 中指定路径后重启服务。
         </p>
       </div>
@@ -184,7 +185,9 @@ async function refreshSnapshot(): Promise<void> {
         <path d="M7.5 10.2 9.2 12l3.5-4" />
       </svg>
       <span>
-        这里只按近 3/6/12 月年化做“观察排序”，未核验费率、最大回撤、额度和赎回规则，不构成推荐或买入建议。产品池是静态历史快照，不会自动定时更新；替换 CSV 后可点“刷新快照”重新读取。购买前以招行 App、产品说明书和当日额度为准。
+        候选池只保留人民币、公募、R2/PR2、开放中、成立满 12 个月且有完整 1M/3M/6M/1Y
+        的普通可买产品，并剔除私行/私银/私享/尊享/企享/专属/私募产品。精选规则以近
+        3M/6M 为主，对 1Y 明显高于 6M 的前视偏差扣分，并对单一发行方做分散；未核验实时额度、赎回规则和产品说明书，不构成推荐或买入建议。
       </span>
     </p>
 

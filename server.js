@@ -86,8 +86,8 @@ const HTML_CSP = [
 ].join('; ');
 
 /**
- * 产品快照按文件名中的日期自动取最新一份；也可以用 R2_PRODUCT_CSV 指定。
- * 这样换一期 CSV 不需要改代码。
+ * 产品候选池按文件名中的日期自动取最新一份；也可以用 R2_PRODUCT_CSV 指定。
+ * 优先读取普通可买 universe，旧版精选 products 文件作为回退。
  */
 function resolveProductCsv(rootDir = ROOT) {
   if (process.env.R2_PRODUCT_CSV) {
@@ -95,23 +95,28 @@ function resolveProductCsv(rootDir = ROOT) {
   }
   const dataDir = path.join(rootDir, 'data');
   if (!fs.existsSync(dataDir)) {
-    return path.join(dataDir, 'cmb_r2_products.csv');
+    return path.join(dataDir, 'cmb_r2_universe.csv');
   }
-  const candidates = fs
-    .readdirSync(dataDir)
-    .filter((name) => /^cmb_r2_products.*\.csv$/i.test(name))
-    .map((name) => {
-      const filePath = path.join(dataDir, name);
-      const match = /(\d{4}-\d{2}-\d{2})/.exec(name);
-      return {
-        filePath,
-        date: match ? match[1] : '',
-        mtime: fs.statSync(filePath).mtimeMs,
-      };
-    })
-    .sort((a, b) => b.date.localeCompare(a.date) || b.mtime - a.mtime);
+  const newest = (pattern) =>
+    fs
+      .readdirSync(dataDir)
+      .filter((name) => pattern.test(name))
+      .map((name) => {
+        const filePath = path.join(dataDir, name);
+        const match = /(\d{4}-\d{2}-\d{2})/.exec(name);
+        return {
+          filePath,
+          date: match ? match[1] : '',
+          mtime: fs.statSync(filePath).mtimeMs,
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date) || b.mtime - a.mtime)[0]?.filePath;
 
-  return candidates[0]?.filePath || path.join(dataDir, 'cmb_r2_products.csv');
+  return (
+    newest(/^cmb_r2_universe.*\.csv$/i) ||
+    newest(/^cmb_r2_products.*\.csv$/i) ||
+    path.join(dataDir, 'cmb_r2_universe.csv')
+  );
 }
 
 const DEFAULT_PRODUCT_CSV = resolveProductCsv(ROOT);

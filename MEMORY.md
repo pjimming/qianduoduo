@@ -20,9 +20,11 @@
 - 首页页面在 `src/views/DashboardView.vue`，组件在 `src/components/`，状态在 `src/stores/dashboard.ts`，接口封装在 `src/api/client.ts`。
 - 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
 - `cash_balance` / “R2 流动性仓”已移除，数据库、API、页面和 CSV 均不包含。
-- 产品池默认由 `scripts/fetch-cmb-r2-snapshot.cjs` 自动更新（招行理财产品统一查询平台公开接口：R2、开放中、代销；移动端 R2 货架核对展示年化）；页面“刷新快照”会重新解析 `data/` 下日期最新的 CSV，不登录账户、不抓取实时额度。
-- 快照选择：`R2_PRODUCT_CSV` 优先；否则扫描 `data/cmb_r2_products*.csv`，按文件名中的 `YYYY-MM-DD` 倒序，同日期按 `mtime` 倒序；刷新接口每次重新解析并整表替换 `products`。`product_snapshot_date` 是产品 `data_date` 的最大值，不是文件名日期。
-- 观察池评分：`0.45×3M + 0.30×6M + 0.25×1Y`；若 `1M < 3M - 0.5` 再扣 0.08；每个期限桶取最高分一只，CSV 的 `score` 列不参与应用排序。
+- 产品池默认由 `npm run r2:refresh-all`（`scripts/fetch-cmb-r2-all.cjs`）刷新：拉取招行公开全量 R2 池，生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`（普通可买候选池）和 `cmb_r2_selected-*.csv`（当前精选池）；页面“刷新快照”会重新解析日期最新的 universe CSV。旧脚本 `fetch-cmb-r2-snapshot.cjs` 仅保留作兼容。
+- 快照选择：`R2_PRODUCT_CSV` 优先；否则扫描 `data/cmb_r2_universe*.csv`，找不到时回退 `data/cmb_r2_products*.csv`，均按文件名中的 `YYYY-MM-DD` 倒序、同日期按 `mtime` 倒序；刷新接口每次重新解析并整表替换 `products`。`product_snapshot_date` 是产品 `data_date` 的最大值，不是文件名日期。
+- 普通可买候选池：人民币 `currency_code=10`、公募 `pub_prv=A`、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、成立满 12 个月、期限可解析且 1M/3M/6M/1Y 完整。2026-10-19 为 432 只（日开 17、短 159、中 93、长 163）。
+- 精选规则：短/中/长每桶 3 只，单一发行方最多 2 只；基础评分 `0.45×3M + 0.30×6M + 0.25×1Y`，若 `1M < 3M - 0.5` 扣 0.08，若 `1Y - 6M > 1` 再按差距扣最多 0.25，成立满 18/24 个月加 0.015/0.03；1Y 只作为评分的一部分，不再单指标排序。
+- 当前“每桶 3 只”只是过渡规则，不是最终方案。下一轮必须按产品额度、当前持仓、待确认买入、本金和未来现金流动态决定每桶产品数量、目标金额和单只仓位；详见 `TODO.md` 的「产品精选池动态化」。在此之前代码仍按 `r2-full-pool-v1` 每桶 3 只运行。
 - 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据快照日期为 2026-09-16。
 - 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`。
 - 新增或修改报告后执行 `npm run research:publish`，会更新导航、同步副本与清单、构建并重启生产服务；旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
@@ -30,10 +32,6 @@
 - 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；当前约 90 ms/篇、检索索引约 25 KB/篇，50 篇以上需重新评估索引拆分。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
 - 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
-- 复盘接口：`GET /api/review/workspace`；`POST/PUT/DELETE /api/review/decisions|holdings|events`；`PUT /api/review/notes/:month`；`PUT /api/review/quarterly/:quarter`；`GET /api/review/export?month=YYYY-MM`。
-- 交易接口：`GET/POST /api/trades`、`PUT /api/trades/:id`、`POST /api/trades/:id/confirm|cancel`、`GET /api/trades/:id/audit`；收件箱 `GET/POST /api/trades/inbox`、`PUT /api/trades/inbox/:id`、`POST /api/trades/inbox/:id/apply|ignore`、`GET /api/trades/inbox/:id/image`、`POST /api/trades/inbox/prune`。
-- 自动化接口：`GET /api/automation/workspace`、`POST /api/automation/run`、`PUT /api/automation/settings`、`POST /api/evaluations/:id/apply|undo`、`POST /api/notifications/:id/read|unread|resolve`、`POST /api/notifications/read-all`、`POST /api/automation/jobs/:id/resolve`、`GET/POST /api/review/drafts/:type/:period(/generate|/confirm)`。
-
 ### 投资页原则
 
 - 脑图、树状、表格三种视图都使用原生 Vue；保留搜索、缩放、折叠、打印、全屏和 `?view=canvas|tree|table` 切换。
@@ -83,35 +81,24 @@
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 当前 67 项测试通过；`npm run test:e2e` 会检查 8 个标签页、4 个时间轴节点、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
+- 当前 68 项测试通过；`npm run test:e2e` 会检查 8 个标签页、4 个时间轴节点、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git
 
-- 2026-10-18 已按用户要求清空正式库：收益记录 0 条、本金账户未初始化、无转入/转出流水。
-- 2026-10-19 产品快照已扩到 19 只（原 14 只 + 5 只推荐产品），由公开接口自动生成。
-- 2026-10-19 已完成复盘第一档（日/周/月指标与提醒）、第二档（决策日志、持仓、产品事件、月度五问/季度清单）和第三档（时间轴、结论按月留痕、Markdown 导出）。
-- 2026-10-19 正式库已初始化本金 30,000 元（起始日 2026-10-18），已将原 6 笔持仓迁移为 6 笔待确认买入交易（合计 30,000 元），另有 1 条「3%策略组合」决策；收益记录仍为 0 条，已确认持仓为 0，待确认金额 30,000 元。
-- 2026-10-19 自动评估首次启动：6 笔迁移交易自动关联到「3%策略组合」决策；因 6 笔仍待确认，生成 1 条买入日 pending 评估、1 条通知和 1 个 Codex 复核任务。决策策略已补为 `r2-3pct-v1`、目标 3%、期限桶 30/35/35、单只上限 30%。
-- 清理前的完整演示数据保留在 `data/backups/r2_ledger-2026-10-18.sqlite`（30 条记录、本金 50,000、累计收益 +158.00）。需要恢复时先 `npm run prod:stop`，再 `npm run db:restore -- 2026-10-18`，最后 `npm run prod:restart`。
-- 本金已初始化，后续通过转入/转出维护；每日收益在产生实际收益后录入，不用买入/赎回动作代替收益记录。
-- 产品快照：`data/cmb_r2_products-2026-10-19.csv`（19 只；自动任务每周一 08:30 生成；服务按文件名日期选最新，刷新接口会重新解析最新文件，可用 `R2_PRODUCT_CSV` 覆盖）；CSV 额外包含 `max_drawdown_pct`、`negative_days_pct`、`history_months`、`fee_bps`、`liquidity_days`、`next_open_date`。
-- 当前观察池：19 只中 18 只 ready；1Y 中位 1.815%、3M 中位 1.47%、6M 中位 1.555%；应用 watchlist 为 120026A（短）、120056A（中）、13328D（长）。
-- 2026-10-19 新增推荐产品：120026A（14 天，1Y 2.76%）、120056A（90 天，1Y 2.85%）、17356D（90 天，1Y 2.75%）、13328D（180 天，1Y 3.70%）、17318K（180 天，1Y 3.59%）。13328D/17318K 的 3M 约 2.88%/2.41%，6M 约 2.40%/2.33%，最大回撤约 0.15%/0.08%；13328D 的 1Y 高于其 1.60%–2.60% 基准区间，不能线性外推。
-- 3 万 target3 配置（30/35/35）：107320A 3,000 + 120026A 6,000 + 120056A 7,500 + 17356D 3,000 + 13328D 7,500 + 17318K 3,000；加权 1M/3M/6M/1Y = 2.28%/1.95%/2.14%/3.00%，固定费率 36.5bp。1Y 历史输入贴近 3%，但 3M/6M run-rate 未达 3%，不是未来收益承诺。
+- 当前账户：本金 30,000 元（起始日 2026-10-18）；收益记录 0 条；6 笔待确认买入合计 30,000 元；已确认持仓 0；有 1 条「3%策略组合」决策（`r2-3pct-v1`，目标 3%，期限桶 30/35/35，单只上限 30%）。后续本金通过转入/转出维护，收益通过每日记录维护。
+- 产品快照：`data/cmb_r2_all-2026-10-19.csv`（980 只原始）、`data/cmb_r2_universe-2026-10-19.csv`（432 只普通可买候选）、`data/cmb_r2_selected-2026-10-19.csv`（9 只精选）；旧的 `data/cmb_r2_products-2026-10-19.csv` 仅作兼容回退。
+- 当前候选池：432 只全池 1Y 中位约 1.73%；精选 9 只的 1Y 中位约 2.72%，不是全池中位，也不是 3% 目标达成。当前精选为 `JX040210,JX040213,SY040201,ZX040233,XY040215,111301,GD040320,GD040242,PAPB0105`，按短/中/长各 3 只生成，具体以 `buildProductView` 的 `r2-full-pool-v1` 规则为准。
+- 2026-10-19 全量池受限回测结论：普通非私行 432 只的 3% 进取型，1Y 同期快照约 2.87%、3M 时序回测约 2.53%、6M 时序回测约 1.89%；含私行/新品的全量公募 588 只为 3.56%/2.48%/2.09%；非私行且成立满 24 个月的 189 只为 2.61%/1.86%/1.86%。当前全量普通 R2 没有稳健 3% 支撑，3% 主要来自私行/新品/少数高收益产品，不能把 1Y 快照当未来收益。
+- 回测还显示：短/中端动量明显强于长端（前期与随后 3M 的秩相关约为短 0.50、中 0.57、长 0.35；6M 约为 0.55/0.62/0.12），全短债 3M 时序约 2.98% 但 6M 仅约 1.80%，长债没有持续期限溢价。该结论只适用于当前快照，不是未来预测。
 - 公开数据源：`POST https://finprod.paas.cmbchina.com/api/prod/queryProdList`，条件 `type=PN/isOwn=C/isPublic=Z/status=1/riskLevel=R2/crossFinance=Z`；`pastPerf.tqilstw4z3` 的 A/B/C/D/F = 1M/3M/6M/1Y/成立以来；`zchrCst+chrmn2+chrsal` 为固定费率，`begdat` 为下一开放日，`buynfq` 为起购金额。签名从公开页面捕获，不硬编码。
-- 定时任务 `R2产品快照每周更新`（自动化 ID `r2`）每周一 08:30 运行 `scripts/fetch-cmb-r2-snapshot.cjs`，直接拉取公开接口并写 CSV/刷新应用；不登录账户、不抓实时额度，额度、赎回到账和可买状态仍需在招行 App 当日复核。
 - 数据备份：启动时自动写入 `data/backups/r2_ledger-YYYY-MM-DD.sqlite`，保留 45 天；`npm run db:list|db:backup|db:restore` 可手动查看、备份和恢复。
 - Git 分支：`main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。
 
-## 6. 2026-10-19 自动化复盘系统落地摘要
+## 6. 自动化任务
 
-- 交易流水为唯一事实源：`lib/trade-store.js` 管理买入/赎回/切换、批次分配、已实现收益、收件箱、截图去重和审计；待确认交易不进已确认持仓。
-- 收件箱：本地拖入截图，`scripts/ocr-image.ps1` 调 Windows OCR，`lib/trade-parser.js` 解析字段；人工校正后生成或匹配交易。截图显示“已确认”时会确认同字段的待确认交易，避免重复入账。
-- 自动评估：`lib/automation-store.js` 管理 `evaluation_runs`、`notifications`、`review_drafts`、`automation_jobs`、`automation_runs`。买入日查流程，持有期按月查组合收益/目标进度/流动性变化/事件，到期或赎回算实际年化。
-- 评估默认：组合目标 3%，单只 hurdle 为短 2.5%、中 2.8%、长 3.0%；置信度门槛 75%。低置信度、到账金额缺失或与手工评价冲突时进入待确认，不覆盖手工评价；自动写入可撤销。
-- 本地调度：服务启动补跑一次，之后默认每 5 分钟巡检。月度/季度草稿自动生成并预填五问，用户确认后才写入正式复盘；通知按事件去重，恢复后自动关闭。
-- Codex 判断队列：持久化在 SQLite，桌面端未运行时保留。已注册每日 21:10 的 Codex 定时任务“钱多多自动化队列巡检”（`C:\Users\Administrator\.codex\automations\automation\automation.toml`，ACTIVE）。
-- 复盘工作台现有 8 个标签页：决策日志、交易流水、交易收件箱、持仓结构、产品事件、自动评估、月度五问、季度复盘。
-- 2026-10-19 线上状态：本金 30,000 元；6 笔待确认买入合计 30,000 元，已确认持仓 0；决策已补策略版本 `r2-3pct-v1`、目标 3%、期限桶 30/35/35、单只上限 30%。因交易未确认，存在 1 条买入日待确认评估、1 条提醒和 1 个 Codex 复核任务，属于预期状态。
-- 验证：`npm test` 67 项通过；`npm run test:e2e` 通过（8 个标签页、交易流水、收件箱、自动评估）；生产健康检查正常。
+- `r2`：每周一 08:30 运行 `scripts/fetch-cmb-r2-all.cjs`，刷新全量/候选/精选 CSV 并调用刷新接口；额度仍需在招行 App 当日核验。
+- `r2-2`：每日 21:30 巡检今日收益、待确认交易、到期/对账、自动评估和复盘节点；无异常保持安静。
+- `r2-3`：每周五 18:30 检查记录完整度、集中度、流动性、到期阶梯和下周动作；只在有风险/待办时发周卡。
+- `automation`：每日 21:10 处理 Codex 判断队列（截图歧义、评估复核、月/季草稿）。
+- 分工：事实层可由自动化维护；判断层由 Codex 起草证据、用户确认后落库；禁止下单/赎回/转账、删除记录、覆盖手工评价或对外发送。

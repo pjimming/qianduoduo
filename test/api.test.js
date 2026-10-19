@@ -33,7 +33,7 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
 
   const dashboard = await fetch(`${base}/api/dashboard`).then((response) => response.json());
   assert.equal(dashboard.records.length, 0);
-  assert.equal(dashboard.products.watchlist.length, 3);
+  assert.equal(dashboard.products.watchlist.length, 9);
   const productCount = dashboard.products.all.length;
   assert.ok(productCount > 0);
   assert.equal(dashboard.meta.target_annualized, 3);
@@ -43,7 +43,7 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   const refreshed = await refreshResponse.json();
   assert.equal(refreshed.refreshed, productCount);
   assert.equal(refreshed.dashboard.products.all.length, productCount);
-  assert.equal(refreshed.dashboard.products.watchlist.length, 3);
+  assert.equal(refreshed.dashboard.products.watchlist.length, 9);
 
   const capitalInitResponse = await fetch(`${base}/api/capital/init`, {
     method: 'POST',
