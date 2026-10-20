@@ -37,6 +37,7 @@ const filteredReports = computed(() => {
       report.summary,
       report.category,
       report.date,
+      report.publishedAt,
       report.file,
       report.keywords,
     ]
@@ -99,7 +100,7 @@ onMounted(() => {
           <span>REPORTS / 篇</span>
         </div>
         <div class="library-stat">
-          <b>{{ stockReportStats.latest }}</b>
+          <b :title="stockReportStats.latest">{{ stockReportStats.latest.slice(5) }}</b>
           <span>LATEST / 最新</span>
         </div>
         <div class="library-stat">
@@ -166,7 +167,7 @@ onMounted(() => {
         <h3>{{ report.title }}</h3>
         <p>{{ report.summary }}</p>
         <div class="report-card-foot">
-          <span>调研报告 · {{ report.date }}</span>
+          <span>调研 {{ report.date }} · 发布 {{ report.publishedAt }}</span>
           <strong>阅读报告 →</strong>
         </div>
       </RouterLink>

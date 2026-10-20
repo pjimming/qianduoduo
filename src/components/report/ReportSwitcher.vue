@@ -25,7 +25,7 @@ const filtered = computed(() => {
   const needle = query.value.trim().toLowerCase()
   if (!needle) return props.reports
   return props.reports.filter((report) =>
-    [report.title, report.date, report.category, report.keywords]
+    [report.title, report.date, report.publishedAt, report.category, report.keywords]
       .join(' ')
       .toLowerCase()
       .includes(needle),
@@ -171,7 +171,7 @@ onBeforeUnmount(() => {
           @click="choose(report)"
         >
           <span class="report-switcher-meta">
-            {{ report.date }} · {{ report.category }}
+            {{ report.publishedAt }} · {{ report.category }}
             <b v-if="report.slug === currentSlug">当前</b>
           </span>
           <span class="report-switcher-title">{{ report.title }}</span>

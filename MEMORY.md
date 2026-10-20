@@ -1,6 +1,6 @@
 # 钱多多工作区记忆
 
-更新时间：2026-10-20
+更新时间：2026-10-21
 
 用途：记录长期有效的约束、当前架构和运行方式；具体选品方法以 `r2-wealth-management` skill 为准。
 
@@ -43,10 +43,13 @@
 - 赎回口径逐产品保存：赎回确认 T+N、到账 T+N、赎回费/申购费、空档覆盖天数、下一赎回开放日、备注与核验日期。未填视为待核，空档默认按 2 天估算并明示；公开快照的 `next_open_date` 是申购开放日，不得冒充赎回开放日。
 - 替换决策写入决策日志时必须带：证据日期、事后验证日期、当前/候选代码、快照日期、比较期限、空档、费用、盈亏平衡、预计差额和理由；产品页“记录替换决策”会生成 `review_meta`，决策日志展示并可按验证日复核。
 - 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据快照日期为 2026-09-16。
-- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`。
+- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`；当前共18篇。
 - 新增或修改报告后执行 `npm run research:publish`，会更新导航、同步副本与清单、构建并重启生产服务；旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
+- 报告库按 `publishedAt`（发布/更新到报告库的时间）倒序，调研日期作为次级排序；更新时间优先取报告中的 `<!-- rpnav-published: YYYY-MM-DD HH:mm -->`，缺失时沿用已生成导航清单中的发布时间，再回退文件修改时间。
 - 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库和可搜索切换器，左侧目录可折叠并高亮当前章节；无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。
 - 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；当前约 90 ms/篇、检索索引约 25 KB/篇，50 篇以上需重新评估索引拆分。
+- 通用调研工具位于 `scripts/research/`：包含个股/ETF DCF 模板、九章 HTML 骨架、调研清单、来源 CSV、纳斯达克100 ETF 候选池，以及新建临时目录、统一检查和安全清理脚本。说明见 `scripts/research/README.md`。
+- 单次调研工作目录统一放在 `tmp/research/<slug>/`，由 `new-research-workdir.ps1` 创建；成稿前用 `invoke-research-checks.ps1` 一次运行 DCF、检查器和 HTML 静态校验；发布前用 `cleanup-research-workdir.ps1` 清理。模板长期保存，实际行情、IOPV、持仓、PDF、财务 CSV、带真实数字的假设 JSON 和脚本输出仍按次删除。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
 - 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
 - `r2-wealth-management` skill 继续以本机全局安装目录 `C:\Users\Administrator\.codex\skills\r2-wealth-management` 为运行源，独立发布镜像在 `D:\codex\r2-wealth-management`，远程为 `https://github.com/pjimming/r2-wealth-management.git`；2026-10-20 已发布 v1.4.0（提交 `a214981`）。上传时排除 `scripts/__pycache__/` 和 `.pyc`，并在独立仓库提交、推送；应用仓库不内嵌 skill。

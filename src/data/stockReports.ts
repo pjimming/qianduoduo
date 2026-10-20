@@ -5,6 +5,7 @@ export interface StockReport {
   slug: string
   title: string
   date: string
+  publishedAt: string
   category: string
   summary: string
   keywords: string
@@ -20,7 +21,13 @@ export interface StockReportLibrary {
 }
 
 export const stockReportLibrary = rawLibrary as StockReportLibrary
-export const stockReports = stockReportLibrary.reports
+export const stockReports = stockReportLibrary.reports.slice().sort((a, b) => {
+  const publishedDiff = String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''))
+  if (publishedDiff !== 0) return publishedDiff
+  const dateDiff = String(b.date || '').localeCompare(String(a.date || ''))
+  if (dateDiff !== 0) return dateDiff
+  return a.title.localeCompare(b.title, 'zh-Hans-CN')
+})
 
 export function reportByFile(file: string | undefined | null): StockReport | undefined {
   if (!file) return undefined
@@ -38,7 +45,7 @@ export function reportUrl(file: string): string {
 
 export const stockReportStats = {
   count: stockReports.length,
-  latest: stockReports[0]?.date ?? '',
+  latest: stockReports[0]?.publishedAt ?? stockReports[0]?.date ?? '',
   earliest: stockReports[stockReports.length - 1]?.date ?? '',
   categories: new Set(stockReports.map((report) => report.category)).size,
 }

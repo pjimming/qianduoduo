@@ -3,8 +3,8 @@
  update-nav.ps1 — 重新生成 scripts/report-nav.js 中的报告清单
 ----------------------------------------------------------------------------
  作用：扫描工作区 report/ 下的 *.html 报告，读取每篇的 <title>、从文件名解析日期、
-       按关键词推断标签，然后重写 scripts/report-nav.js 里 //>NAV:BEGIN … //>NAV:END
-       之间的清单区块。
+       读取发布时间并按关键词推断标签，然后重写 scripts/report-nav.js 里
+       //>NAV:BEGIN … //>NAV:END 之间的清单区块。
 
  为什么这样做：报告导航必须"新增报告时不用逐篇修改既有报告"。
        因此清单集中在 report-nav.js 一处，各报告只引用同一行 <script>。
@@ -87,6 +87,15 @@ function ConvertTo-JsString {
     return $t.Trim()
 }
 
+function ConvertFrom-JsString {
+    param([string]$Text)
+    try {
+        return ('"' + $Text + '"' | ConvertFrom-Json)
+    } catch {
+        return ($Text -replace '\\"', '"' -replace '\\\\', '\')
+    }
+}
+
 function Get-Override {
     param([string]$Raw, [string]$Key)
     # 报告内可写 <!-- rpnav-tag: 军工国防 --> 或 <!-- rpnav-title: 自定义标题 -->
@@ -94,6 +103,43 @@ function Get-Override {
     $m = [regex]::Match($Raw, "(?is)<!--\s*rpnav-$Key\s*:\s*(.*?)\s*-->")
     if ($m.Success) { return $m.Groups[1].Value.Trim() }
     return ""
+}
+
+function ConvertTo-ReportPublishedAt {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
+    $formats = @(
+        "yyyy-MM-dd HH:mm",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-ddTHH:mm",
+        "yyyy-MM-ddTHH:mm:ss"
+    )
+    foreach ($format in $formats) {
+        $parsed = [datetime]::MinValue
+        if ([datetime]::TryParseExact(
+                $Value.Trim(),
+                $format,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::None,
+                [ref]$parsed)) {
+            return $parsed.ToString("yyyy-MM-dd HH:mm")
+        }
+    }
+    return ""
+}
+
+function Get-ReportPublishedAt {
+    param([string]$Raw, [datetime]$Fallback, [string]$Existing = "")
+
+    # 显式发布时间（推荐）：<!-- rpnav-published: 2026-10-21 00:02 -->
+    $explicit = ConvertTo-ReportPublishedAt (Get-Override -Raw $Raw -Key "published")
+    if (-not [string]::IsNullOrWhiteSpace($explicit)) { return $explicit }
+
+    # 缺少新注释时沿用已生成清单中的发布时间，避免新机器检出后文件 mtime 全部变化。
+    $previous = ConvertTo-ReportPublishedAt $Existing
+    if (-not [string]::IsNullOrWhiteSpace($previous)) { return $previous }
+
+    return $Fallback.ToString("yyyy-MM-dd HH:mm")
 }
 
 function Clear-TitleNoise {
@@ -218,6 +264,17 @@ function Get-ReportKeywords {
     return $s.Trim()
 }
 
+$navRaw = Get-Content -LiteralPath $navPath -Raw -Encoding UTF8
+$existingPublished = @{}
+$existingEntryPattern = '(?m)^\s*\{\s*f:\s*"(?<f>(?:[^"\\]|\\.)*)"(?<rest>[^\r\n]*)\}\s*$'
+foreach ($match in [regex]::Matches($navRaw, $existingEntryPattern)) {
+    $publishedMatch = [regex]::Match($match.Groups['rest'].Value, ',\s*p:\s*"(?<p>[^"]*)"')
+    if ($publishedMatch.Success) {
+        $file = ConvertFrom-JsString $match.Groups['f'].Value
+        $existingPublished[$file] = $publishedMatch.Groups['p'].Value
+    }
+}
+
 $rows = New-Object System.Collections.ArrayList
 $scanned = 0
 
@@ -244,6 +301,7 @@ foreach ($f in (Get-ChildItem -LiteralPath $reportPath -Filter *.html -File | So
     }
 
     $date = Get-ReportDate -FileName $f.Name -Fallback $f.LastWriteTime
+    $publishedAt = Get-ReportPublishedAt -Raw $raw -Fallback $f.LastWriteTime -Existing $existingPublished[$f.Name]
 
     # --- 标签（可被 <!-- rpnav-tag: … --> 覆盖）---
     $tag = Get-Override -Raw $raw -Key "tag"
@@ -261,20 +319,23 @@ foreach ($f in (Get-ChildItem -LiteralPath $reportPath -Filter *.html -File | So
         File     = $f.Name
         Title    = $title
         Date     = $date
+        PublishedAt = $publishedAt
         Tag      = $tag
         Summary  = $summary
         Keywords = $keywords
     })
 }
 
-# 排序：日期倒序，其次标题
-$ordered = $rows | Sort-Object @{Expression = "Date"; Descending = $true },
+# 排序：发布时间倒序；同一时刻再按调研日期和标题稳定排序
+$ordered = $rows | Sort-Object @{Expression = "PublishedAt"; Descending = $true },
+                                 @{Expression = "Date"; Descending = $true },
                                  @{Expression = "Title"; Descending = $false }
 
 $lines = @()
 foreach ($r in $ordered) {
     $line = '    { f: "' + (ConvertTo-JsString $r.File) + '", t: "' +
             (ConvertTo-JsString $r.Title) + '", d: "' + $r.Date +
+            '", p: "' + $r.PublishedAt +
             '", g: "' + (ConvertTo-JsString $r.Tag) + '", s: "' +
             (ConvertTo-JsString $r.Summary) + '"'
     if (-not [string]::IsNullOrWhiteSpace($r.Keywords)) {
@@ -284,7 +345,6 @@ foreach ($r in $ordered) {
 }
 if ($lines.Count -eq 0) { $lines = @('    /* 暂无报告 */') }
 
-$navRaw = Get-Content -LiteralPath $navPath -Raw -Encoding UTF8
 $newNav = Set-MarkedBlock -Text $navRaw -Begin $BEGIN -End $END -Body $lines
 
 $metaBody = @('    generated: "' + (Get-Date -Format "yyyy-MM-dd HH:mm") + '"')
@@ -299,7 +359,7 @@ Write-Host ("[update-nav] 报告目录：{0}" -f $reportPath)
 Write-Host ("[update-nav] 扫描 HTML：{0} 篇，写入清单：{1} 条 -> {2}" -f
             $scanned, $ordered.Count, $NavFile)
 foreach ($r in $ordered) {
-    Write-Host ("             {0}  [{1}]  {2}" -f $r.Date, $r.Tag, $r.Title)
+    Write-Host ("             {0}  发布 {1}  [{2}]  {3}" -f $r.Date, $r.PublishedAt, $r.Tag, $r.Title)
     if ([string]::IsNullOrWhiteSpace($r.Summary)) {
         Write-Host ("               ! 未取到摘要（建议在报告中加 <!-- rpnav-summary: … -->）")
     }

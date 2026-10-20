@@ -60,7 +60,7 @@ function Get-CleanText {
   return $text
 }
 
-$entryPattern = '\{\s*f:\s*"(?<f>(?:[^"\\]|\\.)*)"\s*,\s*t:\s*"(?<t>(?:[^"\\]|\\.)*)"\s*,\s*d:\s*"(?<d>[^"]*)"\s*,\s*g:\s*"(?<g>(?:[^"\\]|\\.)*)"\s*,\s*s:\s*"(?<s>(?:[^"\\]|\\.)*)"\s*,\s*k:\s*"(?<k>(?:[^"\\]|\\.)*)"\s*\}'
+$entryPattern = '\{\s*f:\s*"(?<f>(?:[^"\\]|\\.)*)"\s*,\s*t:\s*"(?<t>(?:[^"\\]|\\.)*)"\s*,\s*d:\s*"(?<d>[^"]*)"(?:\s*,\s*p:\s*"(?<p>[^"]*)")?\s*,\s*g:\s*"(?<g>(?:[^"\\]|\\.)*)"\s*,\s*s:\s*"(?<s>(?:[^"\\]|\\.)*)"\s*,\s*k:\s*"(?<k>(?:[^"\\]|\\.)*)"\s*\}'
 $navIndex = @{}
 $navMatches = [regex]::Matches(
   $navText,
@@ -72,6 +72,7 @@ foreach ($match in $navMatches) {
   $navIndex[$file] = [pscustomobject]@{
     title    = ConvertFrom-JsString $match.Groups['t'].Value
     date     = $match.Groups['d'].Value
+    publishedAt = $match.Groups['p'].Value
     category = ConvertFrom-JsString $match.Groups['g'].Value
     summary  = ConvertFrom-JsString $match.Groups['s'].Value
     keywords = ConvertFrom-JsString $match.Groups['k'].Value
@@ -113,6 +114,14 @@ foreach ($report in $sourceReports) {
 
   $dateMatch = [regex]::Match($report.Name, '(?<d>\d{4}-\d{2}-\d{2})\.html$')
   $date = if ($dateMatch.Success) { $dateMatch.Groups['d'].Value } elseif ($nav) { $nav.date } else { $report.LastWriteTime.ToString('yyyy-MM-dd') }
+  $publishedMatch = [regex]::Match($html, '<!--\s*rpnav-published:\s*(?<v>\d{4}-\d{2}-\d{2}(?:[ T])\d{2}:\d{2}(?::\d{2})?)\s*-->', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+  $publishedAt = if ($publishedMatch.Success) {
+    $publishedMatch.Groups['v'].Value.Replace('T', ' ').Substring(0, 16)
+  } elseif ($nav -and -not [string]::IsNullOrWhiteSpace($nav.publishedAt)) {
+    $nav.publishedAt
+  } else {
+    $report.LastWriteTime.ToString('yyyy-MM-dd HH:mm')
+  }
 
   $tagMatch = [regex]::Match($html, '<!--\s*rpnav-tag:\s*(?<v>.*?)\s*-->', [System.Text.RegularExpressions.RegexOptions]::Singleline)
   $category = Get-CleanText $tagMatch.Groups['v'].Value 40
@@ -159,6 +168,7 @@ foreach ($report in $sourceReports) {
     slug           = [System.IO.Path]::GetFileNameWithoutExtension($report.Name)
     title          = $title
     date           = $date
+    publishedAt    = $publishedAt
     category       = $category
     summary        = $summary
     keywords       = $keywords
@@ -170,6 +180,7 @@ foreach ($report in $sourceReports) {
 $sorted = @(
   $records |
     Sort-Object -Property `
+      @{ Expression = { $_.publishedAt }; Descending = $true },
       @{ Expression = { $_.date }; Descending = $true },
       @{ Expression = { $_.title }; Descending = $false }
 )

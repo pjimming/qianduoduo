@@ -49,6 +49,7 @@
   .tagchip{background:#e7eef6; color:var(--steel2); border-radius:3px;
     padding:2px 8px; font-size:12px; font-weight:700}
   .date{font-size:12.5px; color:var(--ink3); font-variant-numeric:tabular-nums}
+  .published{font-size:12px; color:var(--ink3); font-variant-numeric:tabular-nums}
   .new{background:var(--accent); color:#fff; border-radius:3px; padding:2px 7px;
     font-size:12px; font-weight:700}
   .card h3{margin:0 0 8px; font-size:16.5px; line-height:1.5; color:var(--steel); font-weight:700}
@@ -76,7 +77,7 @@
     <p class="sub">本工作区的全部调研成果。方法论：Serenity 供应链瓶颈分析路径——从系统需求出发，定位难以扩张的输入环节，再追踪其能否转化为可计量的股东利润。</p>
     <div class="stats">
       <div class="stat"><div class="k">报告总数</div><div class="v" id="s-count">—</div></div>
-      <div class="stat"><div class="k">最新调研</div><div class="v" id="s-latest">—</div></div>
+      <div class="stat"><div class="k">最新发布</div><div class="v" id="s-latest">—</div></div>
       <div class="stat"><div class="k">时间跨度</div><div class="v" id="s-range">—</div></div>
       <div class="stat"><div class="k">覆盖方向</div><div class="v" id="s-tags">—</div></div>
     </div>
@@ -104,7 +105,7 @@
   <div class="inner">
     <p><b>清单来源</b>：本页与各报告右下角的导航按钮共用同一份清单，位于 <code>../scripts/report-nav.js</code>，由 <code>../scripts/update-nav.ps1</code> 生成。新增报告后在工作区根目录执行 <code>npm run research:publish</code>，会同时更新本页、应用内报告库并重新构建服务——<b>无需修改任何既有报告</b>。</p>
     <p><b>应用内入口</b>：<code>/investment/research</code>。本页保留为可直接双击打开的独立报告库归档。</p>
-    <p>清单生成时间：<span id="s-gen">—</span>　｜　共 <span id="s-count2">—</span> 篇报告，按调研日期倒序排列。</p>
+    <p>清单生成时间：<span id="s-gen">—</span>　｜　共 <span id="s-count2">—</span> 篇报告，按发布时间倒序排列。</p>
     <p>各篇报告均标注了调研日期、财务数据报告期与估值口径；文中区分"已确认披露"与"推断／未验证线索"。全部内容为公开信息的研究整理与推断，<b>不构成投资建议</b>，不提供目标价或收益预测。</p>
   </div>
 </footer>
@@ -133,6 +134,8 @@
     }
 
     var reports = data.reports.slice().sort(function (a, b) {
+      var pa = String(a.p || ""), pb = String(b.p || "");
+      if (pa !== pb) return pb.localeCompare(pa);
       var da = String(a.d || ""), db = String(b.d || "");
       if (da !== db) return db.localeCompare(da);
       return String(a.t || "").localeCompare(String(b.t || ""), "zh-Hans-CN");
@@ -151,7 +154,7 @@
 
     document.getElementById("s-count").textContent = reports.length + " 篇";
     document.getElementById("s-count2").textContent = reports.length;
-    document.getElementById("s-latest").textContent = dates.length ? dates[dates.length - 1] : "—";
+    document.getElementById("s-latest").textContent = reports[0]?.p || (dates.length ? dates[dates.length - 1] : "—");
     document.getElementById("s-range").textContent =
       dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : dates[0] + " ~ " + dates[dates.length - 1]) : "—";
     document.getElementById("s-tags").textContent = tagNames.length + " 个方向";
@@ -180,7 +183,7 @@
     tagNames.forEach(function (t) { chips.appendChild(makeChip(t, t, tagCount[t])); });
 
     // ---------- 列表渲染 ----------
-    var newest = dates.length ? dates[dates.length - 1] : "";
+    var newestPublished = reports.length ? String(reports[0].p || "") : "";
     var q = document.getElementById("q");
 
     function render() {
@@ -189,7 +192,7 @@
         if (activeTag && (r.g || "其他") !== activeTag) return false;
         if (!kw) return true;
         return (String(r.t || "") + " " + String(r.s || "") + " " + String(r.k || "") + " " +
-                String(r.d || "") + " " + String(r.g || "") + " " + String(r.f || ""))
+                 String(r.d || "") + " " + String(r.p || "") + " " + String(r.g || "") + " " + String(r.f || ""))
                 .toLowerCase().indexOf(kw) >= 0;
       });
 
@@ -204,7 +207,8 @@
         var top = '<div class="top">' +
           (r.g ? '<span class="tagchip">' + esc(r.g) + "</span>" : "") +
           '<span class="date">' + esc(r.d || "日期未标注") + "</span>" +
-          (r.d === newest ? '<span class="new">最新</span>' : "") +
+          '<span class="published">发布 ' + esc(r.p || "未标注") + "</span>" +
+          (String(r.p || "") === newestPublished ? '<span class="new">最新</span>' : "") +
           "</div>";
 
         a.innerHTML = top +

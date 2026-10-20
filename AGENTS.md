@@ -96,6 +96,13 @@
 
 每次调研完成后必须确认工作区中不残留本次调研的中间文件。
 
+#### 可复用研究工具
+
+- 通用DCF模板、报告骨架、来源清单、候选池和检查脚本位于 `scripts/research/`；使用方式见 `scripts/research/README.md`。
+- 新调研可运行 `pwsh -File scripts/research/new-research-workdir.ps1 -Slug "<slug>" -Kind company|etf|theme`，在 `tmp/research/<slug>/` 生成本次参数、清单和来源登记。
+- 成稿前运行 `pwsh -File scripts/research/invoke-research-checks.ps1 -Report "<html>" -Assumptions "<json>" -Industry <slug[,slug]>`，一次完成DCF、检查器和HTML静态校验。
+- 发布前运行 `pwsh -File scripts/research/cleanup-research-workdir.ps1 -Slug "<slug>"`。模板和脚本长期保存；实际行情、IOPV、持仓、PDF、财务CSV、带真实数字的假设JSON及终端输出仍必须按次删除。
+
 ### 5. 生成报告后发布到两个入口
 
 每份报告都必须挂载 `scripts/` 目录下的通用导航组件，使任意一篇报告都能跳转到其他报告。**新增或修改报告后，在工作区根目录执行一次完整发布**：
@@ -152,8 +159,8 @@ Equity Research 闸门：
 - **图片由构建统一处理**：正文里的 base64 图片会被抽取到 `public/research/media/<slug>/` 并转为 WebP（质量 88，`sharp` 不可用时回退原图），同时补 `loading="lazy"`、`decoding="async"` 和宽高。不要再手工内联大图。
 - **章节锚点、目录、正文检索、阅读进度由应用统一提供**；构建会自动给缺失 `id` 的 `h2/h3` 补锚点，已有 `id` 保留。报告里不需要重复实现这些功能。
 - **科技图谱联动依赖代码进入 `keywords`**：目前关键词来自标题、小节标题和表格首列。只出现在正文段落里的代码，需要加 `<!-- rpnav-keywords: 002414 -->` 才会出现在图谱链接中。
-- **检索索引约 25 KB/篇**，随报告数线性增长（当前 13 篇约 331 KB，按需加载）。达到 50 篇以上时，应拆分索引或改为服务端检索。
-- **构建时间约 90 ms/篇**（含图片转换的均值，纯文字更少）。当前 13 篇的 `research:publish` 约 10 秒，其中报告转换约 1.2 秒。
+- **检索索引约 25–30 KB/篇**，随报告数线性增长（当前 18 篇约 534 KB，按需加载）。达到 50 篇以上时，应拆分索引或改为服务端检索。
+- **构建时间约 50–100 ms/篇**（含图片转换的均值，纯文字更少）。当前 18 篇的报告转换通常在 1 秒左右；完整 `research:publish` 约 10–20 秒，取决于构建和服务重启。
 - 新增报告仍然只需在 `report/` 放一个 HTML 并运行 `npm run research:publish`；不要手写 `src/data/reportDocs/`、`src/data/reportSearch.json`、`public/research/media/` 或 `public/research/stocks/`。
 
 ## 8. 界面可读性与最小字号（强制）

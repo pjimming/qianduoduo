@@ -1,0 +1,110 @@
+{
+  "_template": {
+    "purpose": "Company DCF, reverse DCF, EPV, EVA, Monte Carlo and calibration template",
+    "instructions": "Copy into the temporary research directory and replace every numeric value. Price, shares, WACC, growth and probabilities must use the same date and security scope as the report.",
+    "required_before_run": [
+      "price",
+      "shares",
+      "net_debt",
+      "wacc",
+      "terminal_g",
+      "scenarios"
+    ]
+  },
+  "price": 100.0,
+  "shares": 1.0,
+  "net_debt": 0.0,
+  "wacc": 0.095,
+  "terminal_g": 0.03,
+  "scenarios": [
+    {
+      "name": "bear",
+      "prob": 0.25,
+      "evidence_strength": "medium",
+      "revenue": [100, 102, 103, 104, 105],
+      "fcf_margin": [0.08, 0.08, 0.09, 0.09, 0.10],
+      "fade_years": 5,
+      "fade_g_start": 0.02,
+      "annual_dilution": 0.01
+    },
+    {
+      "name": "base",
+      "prob": 0.5,
+      "evidence_strength": "medium",
+      "revenue": [100, 110, 120, 130, 140],
+      "fcf_margin": [0.1, 0.11, 0.12, 0.13, 0.14],
+      "fade_years": 5,
+      "fade_g_start": 0.08,
+      "annual_dilution": 0.005
+    },
+    {
+      "name": "bull",
+      "prob": 0.25,
+      "evidence_strength": "medium",
+      "revenue": [100, 115, 132, 150, 170],
+      "fcf_margin": [0.12, 0.13, 0.15, 0.17, 0.19],
+      "fade_years": 5,
+      "fade_g_start": 0.12,
+      "annual_dilution": 0.0
+    }
+  ],
+  "sensitivity": {
+    "scenario": "base",
+    "wacc": [0.085, 0.095, 0.105],
+    "g": [0.02, 0.03, 0.04]
+  },
+  "reverse": {
+    "interim_fcf": [10, 12, 14, 16, 18],
+    "steady_margins": [0.12, 0.16, 0.2],
+    "base_revenue": 100
+  },
+  "pvgo": {
+    "earnings_ps": 5.0,
+    "r": 0.095,
+    "price": 100.0
+  },
+  "epv": {
+    "earnings_basis": "NOPAT",
+    "normalized_earnings": 6.0,
+    "coc": 0.095,
+    "net_debt": 0.0,
+    "shares": 1.0,
+    "asset_value": 30.0,
+    "price": 100.0,
+    "growth": {
+      "g": 0.04,
+      "roiic": 0.15,
+      "mode": "franchise"
+    },
+    "asset_series": [
+      ["FY-2", 4.5, 25.0],
+      ["FY-1", 5.2, 27.0],
+      ["Latest", 6.0, 30.0]
+    ]
+  },
+  "eva": {
+    "invested_capital": 40.0,
+    "nopat": 6.0,
+    "fade_years": 10,
+    "nopat_growth": 0.06,
+    "reinvestment_rate": 0.4,
+    "roiic": 0.15
+  },
+  "montecarlo": {
+    "n": 5000,
+    "seed": 42,
+    "base_revenue": 100.0,
+    "years": 5,
+    "growth_mean": 0.08,
+    "growth_std": 0.05,
+    "margin_low": 0.08,
+    "margin_mode": 0.12,
+    "margin_high": 0.18,
+    "wacc_low": 0.085,
+    "wacc_high": 0.105,
+    "fade_years": 5,
+    "terminal_g": 0.03
+  },
+  "range_low": 75.0,
+  "range_high": 115.0
+}

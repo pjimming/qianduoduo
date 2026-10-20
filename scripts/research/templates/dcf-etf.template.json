@@ -1,0 +1,92 @@
+{
+  "_template": {
+    "purpose": "Standardized cash-flow stress-test template for ETFs, indexes and thematic portfolios",
+    "method": "Normalize to 1.00 unit of NAV or index value. IOPV and NAV remain the short-term ETF value anchors; DCF only tests whether underlying earnings support that value.",
+    "instructions": "Replace the owner-earnings/FCF yield, growth path, WACC, terminal growth and probabilities. Keep cost, FX and tracking drag separate from index earnings."
+  },
+  "price": 1.0,
+  "shares": 1.0,
+  "net_debt": 0.0,
+  "wacc": 0.095,
+  "terminal_g": 0.03,
+  "scenarios": [
+    {
+      "name": "bear",
+      "prob": 0.25,
+      "evidence_strength": "medium",
+      "fcf": [0.0235, 0.0228, 0.0228, 0.0233, 0.024, 0.0247, 0.0254, 0.0262, 0.027, 0.0278],
+      "fade_years": 5,
+      "fade_g_start": 0.01
+    },
+    {
+      "name": "base",
+      "prob": 0.5,
+      "evidence_strength": "medium",
+      "fcf": [0.0277, 0.0307, 0.0338, 0.0368, 0.0398, 0.0426, 0.0452, 0.0475, 0.0499, 0.0519],
+      "fade_years": 5,
+      "fade_g_start": 0.04
+    },
+    {
+      "name": "bull",
+      "prob": 0.25,
+      "evidence_strength": "medium",
+      "fcf": [0.0289, 0.0332, 0.0379, 0.0428, 0.0479, 0.0532, 0.0585, 0.0638, 0.0689, 0.0737],
+      "fade_years": 5,
+      "fade_g_start": 0.07
+    }
+  ],
+  "sensitivity": {
+    "scenario": "base",
+    "wacc": [0.085, 0.095, 0.105],
+    "g": [0.02, 0.03, 0.04]
+  },
+  "reverse": {
+    "interim_fcf": [0.0277, 0.0307, 0.0338, 0.0368, 0.0398, 0.0426, 0.0452, 0.0475, 0.0499, 0.0519],
+    "steady_margins": [0.02, 0.03, 0.04],
+    "base_revenue": 1.0
+  },
+  "pvgo": {
+    "earnings_ps": 0.029,
+    "r": 0.095,
+    "price": 1.0
+  },
+  "epv": {
+    "earnings_basis": "NOPAT",
+    "normalized_earnings": 0.029,
+    "coc": 0.095,
+    "net_debt": 0.0,
+    "shares": 1.0,
+    "asset_value": 0.10,
+    "price": 1.0,
+    "growth": {
+      "g": 0.04,
+      "roiic": 0.20,
+      "mode": "franchise"
+    }
+  },
+  "eva": {
+    "invested_capital": 0.10,
+    "nopat": 0.029,
+    "fade_years": 15,
+    "nopat_growth": 0.08,
+    "reinvestment_rate": 0.4,
+    "roiic": 0.20
+  },
+  "montecarlo": {
+    "n": 5000,
+    "seed": 42,
+    "base_revenue": 1.0,
+    "years": 10,
+    "growth_mean": 0.07,
+    "growth_std": 0.06,
+    "margin_low": 0.015,
+    "margin_mode": 0.025,
+    "margin_high": 0.035,
+    "wacc_low": 0.085,
+    "wacc_high": 0.105,
+    "fade_years": 5,
+    "terminal_g": 0.03
+  },
+  "range_low": 0.5,
+  "range_high": 0.85
+}
