@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股场内软件ETF（主题组合）｜ETF横向比较与底层资产调研｜2026-10-20</title>
+<!-- rpnav-tag: 软件ETF -->
+<!-- rpnav-summary: A股软件ETF已从高位回撤逾四成，估值分位回落但绝对盈利估值仍高；产品工具优先研究515230，证券动作暂以观望为主，低费率小规模产品不因费率低而入选。 -->
+<!-- rpnav-keywords: 软件ETF 515230 159852 562930 561010 159068 159590 159899 560360 560790 159035 159036 159180 930601 H30202 932094 -->
+<style>
+:root{
+  --ink:#17222c;--muted:#61707b;--line:#dce4e8;--paper:#f2f5f4;--card:#fff;
+  --navy:#102c3f;--navy2:#1f5169;--teal:#0b8072;--teal-soft:#e5f4f0;
+  --gold:#aa6b12;--gold-soft:#fff3dc;--red:#9c3f35;--red-soft:#fbe9e6;
+  --blue:#315e9b;--blue-soft:#e9f0fa;--shadow:0 12px 32px rgba(29,52,68,.08)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.72 "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif}
+a{color:#176f82;text-decoration:none;border-bottom:1px solid rgba(23,111,130,.25)}
+a:hover{border-bottom-color:currentColor}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 22px 72px}
+.hero{background:linear-gradient(135deg,#0c293a 0%,#19465b 58%,#176c68 100%);color:#fff;border-radius:22px;padding:42px 44px 34px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-110px;top:-170px;border:1px solid rgba(255,255,255,.12);box-shadow:0 0 0 64px rgba(255,255,255,.025),0 0 0 128px rgba(255,255,255,.018)}
+.eyebrow{font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:#a9d8d3;font-weight:700}
+h1{font-size:34px;line-height:1.3;margin:10px 0 12px;max-width:920px}
+.sub{font-size:17px;line-height:1.75;color:#e7f0f3;max-width:970px;margin:0 0 22px}
+.meta{display:flex;flex-wrap:wrap;gap:9px;position:relative;z-index:2}
+.chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:#eaf4f5;font-size:12px;border:1px solid rgba(255,255,255,.13)}
+.section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 30px;margin-top:22px;box-shadow:0 5px 20px rgba(29,52,68,.04)}
+.section>.chapter-no{color:var(--teal);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+h2{font-size:25px;line-height:1.35;margin:5px 0 12px;color:var(--navy)}
+h3{font-size:18px;line-height:1.45;margin:26px 0 10px;color:var(--navy2)}
+h4{font-size:15px;margin:20px 0 8px;color:var(--navy2)}
+p{margin:9px 0}
+.takeaway{background:linear-gradient(90deg,var(--teal-soft),#f8fbfa);border-left:4px solid var(--teal);padding:12px 15px;border-radius:9px;margin:2px 0 18px;color:#204d48;font-weight:650}
+.verdict{background:linear-gradient(135deg,#fff8e9,#fffdf8);border:1px solid #e8c27c;border-radius:14px;padding:18px 20px;margin:14px 0 18px}
+.verdict strong{color:#824b00}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fbfcfc}
+.kpi .v{font-size:23px;font-weight:800;color:var(--navy);line-height:1.25}
+.kpi .k{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .s{font-size:12px;color:#6d7b85;margin-top:7px}
+.callout{border:1px solid #cfdde2;background:#f7fbfb;border-radius:12px;padding:14px 16px;margin:14px 0}
+.risk{border-color:#edc9c3;background:var(--red-soft)}
+.warn{border-color:#e7cf9a;background:var(--gold-soft)}
+.goodbox{border-color:#a8d7cd;background:var(--teal-soft)}
+.table-wrap{overflow-x:auto;margin:12px 0 18px;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:760px;background:#fff;font-size:12.5px}
+th,td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#edf3f5;color:#203e4e;font-weight:750}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.center{text-align:center}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.high{background:#dff3ed;color:#0a6a5b}.mid{background:#fff0cf;color:#8b5a00}.low{background:#eef1f3;color:#65727c}
+.bad{background:#f9e1dd;color:#8b322a}.good{background:#e6f4f0;color:#0b6b5c}.neutral{background:#e9f0fa;color:#315f9c}
+.src,.note{font-size:12px;color:var(--muted);line-height:1.6}
+.chain{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}
+.chain .node{border:1px solid #cbd9df;background:#f8fbfc;border-radius:12px;padding:14px;position:relative;min-height:154px}
+.chain .node:not(:last-child):after{content:"→";position:absolute;right:-13px;top:48%;font-size:20px;color:#72919f;z-index:2}
+.chain b{display:block;color:var(--navy);margin-bottom:5px}
+.chain span{font-size:12px;color:var(--muted)}
+.chain .bottleneck{border-color:#d9ae60;background:#fff5df}
+.stock-card{border:1px solid var(--line);border-radius:14px;padding:17px 18px;margin:13px 0;background:#fcfdfd}
+.stock-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}
+.stock-head b{font-size:17px;color:var(--navy)}
+.stock-head .px{font-variant-numeric:tabular-nums;color:var(--navy2);font-weight:750}
+.compact li{margin:6px 0}
+.football{background:#102c3f;color:#e9f3f4;padding:18px;border-radius:12px;margin:12px 0 20px}
+.football h4{color:#fff;margin:2px 0 13px}
+.range-row{display:grid;grid-template-columns:142px 1fr 96px;gap:11px;align-items:center;margin:12px 0;font-size:12px}
+.range-track{height:10px;background:rgba(255,255,255,.12);border-radius:999px;position:relative;overflow:visible}
+.range-bar{position:absolute;top:0;height:10px;border-radius:999px;background:#6dc0b2}
+.range-bar.alt{background:#e4b55b}.range-bar.sum{background:#f2ded0}
+.r-pe{left:55.75%;width:13.17%}.r-dcf{left:11.67%;width:36.08%}
+.r-epv{left:17.58%;width:2.25%}.r-eva{left:9.33%;width:.8%}
+.r-sum{left:28.33%;width:18.33%}.p-current{left:54.42%}
+.price-dot{position:absolute;top:-5px;width:3px;height:20px;background:#ef6a57;box-shadow:0 0 0 3px rgba(239,106,87,.18)}
+.price-text{color:#ffb8ad;font-weight:800;text-align:right}
+.scale{display:grid;grid-template-columns:142px 1fr 96px;gap:11px;color:#a9c5d0;font-size:12px;margin-top:3px}
+.scale span:nth-child(2){display:flex;justify-content:space-between}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mini-card{border:1px solid var(--line);background:#fbfcfc;border-radius:12px;padding:15px}
+.mini-card .big{font-size:25px;font-weight:800;color:var(--navy)}
+.mini-card .cap{font-size:12px;color:var(--muted)}
+.foot{margin-top:22px;padding:22px 24px;border-radius:16px;background:#e9efee;color:#4e5f68;font-size:12px}
+.source-list li{margin:6px 0}
+.split{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}
+@media(max-width:900px){
+  .grid,.grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .chain{grid-template-columns:1fr 1fr}
+  .chain .node:not(:last-child):after{display:none}
+  .two-col,.split{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .wrap{padding:12px 10px 50px}
+  .hero{padding:28px 21px;border-radius:16px}
+  h1{font-size:26px}.sub{font-size:15px}
+  .section{padding:21px 16px;border-radius:14px}
+  .grid,.grid.three{grid-template-columns:1fr 1fr}
+  .chain{grid-template-columns:1fr}
+  .stock-head{display:block}
+}
+@media print{
+  body{background:#fff}.wrap{max-width:none;padding:0}.section,.hero{box-shadow:none}.section{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<!-- KPI口径 | NRR / 净收入留存 | RPO / cRPO | 剩余履约义务 | Rule of 40 | Magic number / CAC payback / 获客回收期 | SBC / 收入 -->
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">ETF Research · A-share Software</div>
+  <h1>A股场内软件ETF：产品先选流动性与指数口径，板块动作仍要等利润兑现</h1>
+  <p class="sub">软件ETF较52周高位已回撤约四成，估值分位明显下降，但底层盈利收益率仍低、行业前7个月收入增长9.2%而利润仅增1.3%；若只能选一只宽基工具，515230更均衡，159852更适合高流动性交易，现阶段证券动作以观望为主。</p>
+  <div class="meta">
+    <span class="chip">调研日期 2026-10-20</span>
+    <span class="chip">数据截止 2026-10-20 收盘/净值</span>
+    <span class="chip">底层财务主口径 2025年报；科大讯飞含2026Q3</span>
+    <span class="chip">币种 CNY</span>
+    <span class="chip">方法：Serenity 供应链瓶颈分析 + Equity Research 九章框架</span>
+  </div>
+</header>
+
+<section class="section" id="chapter-1">
+  <div class="chapter-no">Chapter 01 · Executive Summary</div>
+  <h2>一、一页速览</h2>
+  <p class="takeaway">本章要点：软件ETF已经便宜了很多，但还不是“盈利便宜”；工具层面选 515230 或 159852，证券层面暂不把超跌等同于安全边际。</p>
+
+  <div class="verdict">
+    <p><strong>内在价值判断：高估</strong>｜<strong>未来 1–3 个月市场交易方向：低位震荡偏上</strong>｜<strong>投资动作：观望，不追高</strong></p>
+    <p><strong>财报可信度：B（底层组合口径）｜置信度：中低｜工具研究优先级：高（515230、159852）</strong></p>
+    <p><strong>一句话论点：</strong>市场当前为软件板块支付约51–57倍滚动市盈率，远高于行业最新利润增速；超跌与低分位可以带来交易反弹，但尚不足以证明中期安全边际。</p>
+    <p><strong>515230综合估值区间：</strong>0.34–0.56元，现价0.653元；当前价格位于区间上方。<strong>上行证伪：</strong>Q3/Q4合同负债、续费与AI付费收入连续两个季度加速，带动2026年利润增速回到15%以上并延续至2027年。<strong>下行证伪：</strong>收入仍增长但利润、经营现金流和合同负债同时走弱，估值从“高增长软件”向“低利润项目制”回归。</p>
+  </div>
+
+  <div class="grid">
+    <div class="kpi"><div class="v">0.653元</div><div class="k">515230收盘价</div><div class="s">日涨1.87%；较52周高点1.135元低42.5%</div></div>
+    <div class="kpi"><div class="v">51.23×</div><div class="k">中证全指软件 PE</div><div class="s">近5年约第19.8分位，但绝对倍数仍高</div></div>
+    <div class="kpi"><div class="v">+9.2% / +1.3%</div><div class="k">2026年1–7月行业收入/利润</div><div class="s">收入与利润增速相差约7.9个百分点</div></div>
+    <div class="kpi"><div class="v">1.60亿元</div><div class="k">515230当日成交额</div><div class="s">159852为2.82亿元，流动性更充足</div></div>
+  </div>
+
+  <h3>Tearsheet</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>项目</th><th class="num">515230 国泰软件ETF</th><th class="num">159852 嘉实软件ETF</th><th>解释</th></tr></thead>
+      <tbody>
+        <tr><td>跟踪指数</td><td>中证全指软件 H30202</td><td>中证软件服务 930601</td><td>前者50只、更均衡；后者30只、头部更集中</td></tr>
+        <tr><td>收盘价 / 单位净值</td><td class="num">0.653 / 0.6526</td><td class="num">0.633 / 0.6327</td><td>场内溢价约+0.06% / +0.05%，未出现明显偏离</td></tr>
+        <tr><td>估算规模</td><td class="num">53.78亿元</td><td class="num">88.94亿元</td><td>10月20日交易所总份额×当日净值</td></tr>
+        <tr><td>当日成交额</td><td class="num">1.60亿元</td><td class="num">2.82亿元</td><td>交易所官方收盘行情</td></tr>
+        <tr><td>综合费率</td><td class="num">0.60%/年</td><td class="num">0.60%/年</td><td>管理费0.50%+托管费0.10%</td></tr>
+        <tr><td>年化跟踪误差</td><td class="num">0.44%</td><td class="num">0.38%</td><td>两者复制质量均较好</td></tr>
+        <tr><td>近1年净值收益</td><td class="num">-28.0%</td><td class="num">-28.5%</td><td>截至2026-10-20，ETF净值口径</td></tr>
+        <tr><td>指数前十大权重</td><td class="num">约52.8%</td><td class="num">60.98%</td><td>H30202取基金6月末披露；930601取中证10月20日权重</td></tr>
+        <tr><td>核心催化剂</td><td>Q3业绩、2027企业预算、AI付费披露</td><td>Q3业绩、头部三公司盈利上修</td><td>未来1–2个季度</td></tr>
+        <tr><td>最大风险</td><td>低利润成分拖累整体盈利</td><td>头部集中反向波动</td><td>指数层面，不是单一公司风险</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">来源：上交所、深交所官方ETF行情与份额数据，2026-10-20；东方财富基金档案与持仓页，2026-10-20抓取；中证指数官网。规模为按最新份额与净值计算的估算值，不等同基金公司公告资产净值。</p>
+
+  <h3>预期差 Gap 表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">关键驱动</th><th scope="col">市场隐含</th><th scope="col">我的预期</th><th scope="col">Base rate 分位/参照</th><th scope="col">分歧依据</th><th scope="col">验证信号与时点</th></tr></thead>
+      <tbody>
+        <tr><td>收入增长</td><td>AI软件从功能接入转为高毛利订阅，收入维持双位数</td><td>2026–2028年头部收入约8%–12%增长，2027年后向中个位数回归</td><td>历史10–20%增长公司5年内常回落至5%–8%</td><td>工信部2026年1–7月行业收入+9.2%，但利润仅+1.3%</td><td>2026Q3/Q4收入、合同负债；2026-10-31起</td></tr>
+        <tr><td>稳态利润/FCF率</td><td>项目制收入逐步软件化，经营杠杆显著释放</td><td>行业利润率先温和修复；低毛利系统集成商仍拖累组合</td><td>毛利率属性稳定，利润率大幅跃迁需结构证据</td><td>2025头部10只按权重净利率16.9%，但6只净利率低于5%</td><td>2026年报净利率、CFO/净利润；2027-04-30</td></tr>
+        <tr><td>ROIIC</td><td>研发与AI投入能形成高回报增长</td><td>12%，仅略高于9.5%的资本成本</td><td>高ROIC持续10年仍居前四分位约40%–50%</td><td>头部10只2025年加权ROIC约9.9%，护城河并不宽</td><td>研发资本化率、研发费用率与增量利润；每半年</td></tr>
+        <tr><td>终值倍数</td><td>当前51–57× PE可长期维持，或盈利快速填平估值</td><td>退出P/FCF约15.8×、永续g 3%更合理</td><td>成熟软件/信息服务业不应默认长期高倍数</td><td>DCF情景即使牛市中值仍低于现价</td><td>季度盈利修正与PE分位；每季度</td></tr>
+        <tr><td><strong>净预期差方向</strong></td><td colspan="5"><strong>偏空：市场已为尚未验证的AI盈利化支付较高期权价值。</strong>未来1–3个月市场最可能先交易“超跌修复、资金回补、头部公司Q3业绩”，而不是行业长期利润率已证实。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="mini-card">
+      <h4>核心多头逻辑</h4>
+      <ul class="compact">
+        <li>中证全指软件PE从2025年末81.66×降至51.23×，价格已消化一轮高估值。</li>
+        <li>行业收入仍有9.2%增长，信息技术服务与云计算大数据服务保持双位数。</li>
+        <li>头部办公软件、金融信息服务公司具备高毛利和较好现金流，指数并非全是低质量项目商。</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>核心空头逻辑</h4>
+      <ul class="compact">
+        <li>行业利润增速只有1.3%，收入到股东利润的转化仍是最大瓶颈。</li>
+        <li>51–57× PE仍高，PVGO模型显示现价约79%来自未来增长。</li>
+        <li>低费率产品规模过小，头部指数又集中于少数高波动公司。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout goodbox">
+    <p><strong>Serenity瓶颈结论：</strong>当前软件板块的瓶颈不在“能否做出功能”，而在企业预算、项目验收、回款和订阅化收入能否同时兑现。应用层中拥有工作流、数据和切换成本的办公软件、金融信息与核心业务系统优先级最高；系统集成、外包和低毛利项目商是“收入大、利润捕获弱”的下游层。</p>
+  </div>
+</section>
+
+<section class="section" id="chapter-2">
+  <div class="chapter-no">Chapter 02 · Business &amp; Exposure</div>
+  <h2>二、业务详情：软件ETF到底买了什么</h2>
+  <p class="takeaway">本章要点：名称同为“软件ETF”，实际分成中证全指软件、中证软件服务、全指软件开发三套指数；选基金前必须先选指数口径。</p>
+
+  <h3>2.1 研究对象边界</h3>
+  <p>截至2026-10-20，在交易所可交易、名称直接含“软件ETF”的产品共12只。另有4只创业板软件ETF和3只工业软件ETF，属于更窄的市场或行业切片；159585在公开搜索中存在，但当日无可读取净值序列，不纳入可交易比较。159180虽然场内简称显示“软件ETF银华”，基金全称为“银华国证工业软件主题ETF”，本报告将其作为产业链细分类，不当作宽基软件ETF。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>指数</th><th class="num">成分数</th><th>定位</th><th>权重结构</th><th>对应主要ETF</th><th>研究含义</th></tr></thead>
+      <tbody>
+        <tr><td>中证全指软件 H30202</td><td class="num">50</td><td>中证全指中的软件公司</td><td>前十大约52.8%</td><td>515230、159590、159899、159068</td><td>宽度与集中度较均衡，适合作为默认软件Beta</td></tr>
+        <tr><td>中证软件服务 930601</td><td class="num">30</td><td>软件开发和软件服务</td><td>前十大60.98%，前三29.41%</td><td>159852、562930、159035、560360、560790</td><td>头部权重更高，交易弹性更大，也更容易被少数公司拖累</td></tr>
+        <tr><td>中证全指软件开发 932094</td><td class="num">107</td><td>按中证行业分类的软件开发</td><td>前十大约41.3%</td><td>561010、159036</td><td>成分最多、尾部更分散，但现有ETF规模与流动性偏弱</td></tr>
+        <tr><td>国证工业软件 980034</td><td class="num">细分主题</td><td>工业软件与工业控制相关</td><td>更集中于制造业软件</td><td>159180、159108、159145</td><td>不是宽基软件；适用于明确的工业软件观点</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">来源：中证指数公司指数基本信息与权重接口，2026-10-20；深交所ETF列表，2026-10-20；东方财富基金持仓页，2026-06-30报告期。932094前十大权重采用561010季报披露。</p>
+
+  <h3>2.2 12只宽基软件ETF横向比较</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>代码/简称</th><th>跟踪指数</th><th class="num">收盘价</th><th class="num">估算规模(亿元)</th><th class="num">当日成交(亿元)</th><th class="num">综合费率</th><th class="num">跟踪误差</th><th class="num">近1年</th><th>结论</th></tr></thead>
+      <tbody>
+        <tr><td><strong>515230 软件ETF国泰</strong></td><td>H30202</td><td class="num">0.653</td><td class="num">53.78</td><td class="num">1.60</td><td class="num">0.60%</td><td class="num">0.44%</td><td class="num">-28.0%</td><td><span class="tag high">默认候选</span></td></tr>
+        <tr><td><strong>159852 软件ETF嘉实</strong></td><td>930601</td><td class="num">0.633</td><td class="num">88.94</td><td class="num">2.82</td><td class="num">0.60%</td><td class="num">0.38%</td><td class="num">-28.5%</td><td><span class="tag high">流动性候选</span></td></tr>
+        <tr><td>562930 软件ETF易方达</td><td>930601</td><td class="num">0.662</td><td class="num">11.69</td><td class="num">0.61</td><td class="num">0.60%</td><td class="num">0.76%</td><td class="num">-26.9%</td><td><span class="tag mid">同指数备选</span></td></tr>
+        <tr><td>159899 软件ETF招商</td><td>H30202</td><td class="num">0.670</td><td class="num">7.72</td><td class="num">0.16</td><td class="num">0.60%</td><td class="num">0.84%</td><td class="num">-26.2%</td><td><span class="tag mid">备选</span></td></tr>
+        <tr><td>159590 软件ETF汇添富</td><td>H30202</td><td class="num">0.837</td><td class="num">6.44</td><td class="num">0.33</td><td class="num">0.60%</td><td class="num">0.49%</td><td class="num">-27.7%</td><td><span class="tag mid">跟踪较好</span></td></tr>
+        <tr><td>159035 软件ETF天弘</td><td>930601</td><td class="num">0.770</td><td class="num">6.11</td><td class="num">0.07</td><td class="num">0.50%</td><td class="num">未获取到</td><td class="num">未满1年</td><td><span class="tag mid">低费率但成交偏弱</span></td></tr>
+        <tr><td>560360 软件ETF万家</td><td>930601</td><td class="num">1.148</td><td class="num">2.59</td><td class="num">0.03</td><td class="num">0.60%</td><td class="num">0.98%</td><td class="num">-25.6%</td><td><span class="tag low">规模偏小</span></td></tr>
+        <tr><td>159036 软件开发ETF华宝</td><td>932094</td><td class="num">0.889</td><td class="num">2.46</td><td class="num">0.23</td><td class="num">0.60%</td><td class="num">未获取到</td><td class="num">未满1年</td><td><span class="tag low">成立较短</span></td></tr>
+        <tr><td>561010 软件ETF华安</td><td>932094</td><td class="num">0.829</td><td class="num">2.41</td><td class="num">0.11</td><td class="num">0.60%</td><td class="num">0.57%</td><td class="num">-28.1%</td><td><span class="tag mid">最分散的场内工具</span></td></tr>
+        <tr><td>560790 软件ETF鹏华</td><td>930601</td><td class="num">0.772</td><td class="num">1.66</td><td class="num">0.01</td><td class="num">0.60%</td><td class="num">未获取到</td><td class="num">未满1年</td><td><span class="tag low">流动性不足</span></td></tr>
+        <tr><td>159068 软件ETF华夏</td><td>H30202</td><td class="num">0.943</td><td class="num">0.57</td><td class="num">0.03</td><td class="num">0.20%</td><td class="num">未获取到</td><td class="num">未满1年</td><td><span class="tag bad">低费率但规模过小</span></td></tr>
+        <tr><td>159180 软件ETF银华</td><td>国证工业软件</td><td class="num">0.931</td><td class="num">0.32</td><td class="num">0.03</td><td class="num">0.60%</td><td class="num">未获取到</td><td class="num">未满1年</td><td><span class="tag bad">细分主题，不宜替代宽基</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">来源：上交所官方ETF行情和ETF规模接口、深交所ETF列表与基金行情接口，2026-10-20；东方财富基金档案，2026-10-20。规模＝交易所最新总份额×当日单位净值。成交额为2026-10-20单日数据，不代表长期日均成交。</p>
+
+  <h3>2.3 产业链层级、收入来源与商业化阶段</h3>
+  <div class="chain">
+    <div class="node"><b>企业/政府预算</b><span>IT预算、信创、AI试点；需求存在，但审批和回款周期决定现金质量。</span></div>
+    <div class="node bottleneck"><b>应用与系统</b><span>办公、金融IT、安全、工业软件、行业应用；真正利润池所在，也最依赖续费与扩展。</span></div>
+    <div class="node"><b>平台与数据</b><span>数据库、操作系统、中间件、数据治理；公开指数中大多不是纯平台公司。</span></div>
+    <div class="node"><b>算力与云</b><span>服务器、芯片、云资源；软件ETF只间接覆盖，不是主要暴露。</span></div>
+    <div class="node"><b>项目交付与外包</b><span>系统集成、实施、人力服务；收入体量可以很大，但毛利率、应收和现金流最弱。</span></div>
+  </div>
+  <p>对这些软件公司，更重要的是区分“研发—POC—招投标—部署验收—续费/订阅收入”，而不是把AI功能发布直接当成收入。ETF自身没有研发、送样、认证和量产阶段；其底层公司的商业阶段无法仅凭指数名称推断。产业标签只能说明候选池，不能证明任何AI产品已经形成规模化、可续费收入。</p>
+
+  <h3>2.4 头部持仓：利润捕获明显不均衡</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th class="num">指数权重</th><th class="num">2025收入(亿元)</th><th class="num">收入同比</th><th class="num">净利率</th><th class="num">ROIC</th><th class="num">应收周转天数</th><th>利润捕获判断</th></tr></thead>
+      <tbody>
+        <tr><td>科大讯飞 002230</td><td class="num">11.33%</td><td class="num">271.1</td><td class="num">+16.1%</td><td class="num">3.1%</td><td class="num">3.8%</td><td class="num">205.6</td><td>收入规模大，但利润与回款质量偏弱；2026Q3扣非承压</td></tr>
+        <tr><td>同花顺 300033</td><td class="num">9.44%</td><td class="num">60.3</td><td class="num">+44.0%</td><td class="num">53.2%</td><td class="num">35.2%</td><td class="num">1.8</td><td>高毛利、高现金流，是组合利润核心</td></tr>
+        <tr><td>金山办公 688111</td><td class="num">8.63%</td><td class="num">59.3</td><td class="num">+15.8%</td><td class="num">30.7%</td><td class="num">14.9%</td><td class="num">34.6</td><td>订阅化与工作流粘性较强，利润质量较好</td></tr>
+        <tr><td>深信服 300454</td><td class="num">5.53%</td><td class="num">80.4</td><td class="num">+7.0%</td><td class="num">4.9%</td><td class="num">1.6%</td><td class="num">29.3</td><td>收入修复、利润率仍低</td></tr>
+        <tr><td>恒生电子 600570</td><td class="num">4.81%</td><td class="num">57.8</td><td class="num">-12.1%</td><td class="num">22.2%</td><td class="num">12.2%</td><td class="num">54.7</td><td>盈利能力强，但收入受金融IT周期影响</td></tr>
+        <tr><td>三六零 601360</td><td class="num">4.70%</td><td class="num">86.9</td><td class="num">+9.4%</td><td class="num">2.9%</td><td class="num">-1.2%</td><td class="num">53.7</td><td>扭亏但仍属于低利润捕获</td></tr>
+        <tr><td>指南针 300803</td><td class="num">4.38%</td><td class="num">21.5</td><td class="num">+40.4%</td><td class="num">14.7%</td><td class="num">2.1%</td><td class="num">39.5</td><td>增长快，金融信息服务属性强，现金转化需单独核验</td></tr>
+        <tr><td>拓维信息 002261</td><td class="num">4.38%</td><td class="num">31.7</td><td class="num">-22.8%</td><td class="num">1.3%</td><td class="num">1.4%</td><td class="num">112.4</td><td>低毛利、收入下滑，是主题标签与利润不匹配的典型</td></tr>
+        <tr><td>润和软件 300339</td><td class="num">4.33%</td><td class="num">39.8</td><td class="num">+17.1%</td><td class="num">2.6%</td><td class="num">3.0%</td><td class="num">186.6</td><td>收入增长但利润率与回款质量偏弱</td></tr>
+        <tr><td>软通动力 301236</td><td class="num">3.47%</td><td class="num">350.9</td><td class="num">+12.0%</td><td class="num">0.5%</td><td class="num">2.1%</td><td class="num">64.3</td><td>收入规模最大、利润率最低；2025经营现金流为负</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">来源：中证指数公司930601最新权重，2026-10-20；东方财富F10财务摘要（底层为各公司2025年年报），2026-10-20查询。权重字段为指数权重，财务指标为单公司口径，不作简单加总。</p>
+</section>
+
+<section class="section" id="chapter-3">
+  <div class="chapter-no">Chapter 03 · Competition &amp; Moat</div>
+  <h2>三、竞争与护城河：指数没有护城河，成分公司有分化</h2>
+  <p class="takeaway">本章要点：软件ETF之间几乎没有产品护城河，差异在费率、规模和跟踪质量；底层组合只有“窄护城河”，主要靠办公软件、金融信息和核心业务系统，而不是全行业普遍具备定价权。</p>
+
+  <h3>3.1 真正的稀缺环节与替代路线</h3>
+  <p><strong>事实：</strong>工信部披露，2026年1–7月软件业务收入同比增长9.2%，利润总额仅增长1.3%；软件产品增长6.3%，信息技术服务增长10.0%，信息安全增长6.2%。<strong>我的判断：</strong>需求并不消失，真正的约束是收入到利润的转化，以及AI功能能否从免费/试用转为可计费订阅。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>替代路线</th><th>谁更受益</th><th>对现有软件ETF的影响</th><th>需要观察的证据</th></tr></thead>
+      <tbody>
+        <tr><td>企业自研或开源替代</td><td>云平台、基础软件、低代码工具</td><td>压低项目型软件价格，利好真正平台化公司</td><td>毛利率、续费率、项目转订阅比例</td></tr>
+        <tr><td>AI原生应用替代传统模块</td><td>有数据和入口的软件公司</td><td>指数内部分化加剧，弱产品被平价AI功能挤压</td><td>AI功能ARPU、付费率、净留存与推理成本</td></tr>
+        <tr><td>客户把预算转向算力/硬件</td><td>芯片、服务器、云基础设施</td><td>软件ETF可能“有主题、缺订单”</td><td>企业IT预算中硬件与软件占比</td></tr>
+        <tr><td>直接购买工业软件细分布局</td><td>工业软件ETF、CAx/EDA/工业控制公司</td><td>宽基软件ETF对工业软件暴露不够纯</td><td>工业软件收入增速与制造业资本开支</td></tr>
+        <tr><td>直接持有个别软件龙头</td><td>同花顺、金山办公等</td><td>降低低质量成分拖累，但集中度风险上升</td><td>估值、业绩兑现与治理风险</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.2 护城河评分</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">维度</th><th scope="col">有无</th><th scope="col">强度</th><th scope="col">依据</th><th scope="col">财务验证</th></tr></thead>
+      <tbody>
+        <tr><td>无形资产/品牌</td><td>有，但集中于少数公司</td><td>中</td><td>办公、金融信息、核心交易系统具备客户信任与合规积累</td><td>头部10只2025年毛利率加权约60%，但6只净利率低于5%</td></tr>
+        <tr><td>转换成本</td><td>有</td><td>中</td><td>核心业务系统迁移影响运营、合规和数据连续性</td><td>头部组合ROIC约9.9%，只略高于资本成本</td></tr>
+        <tr><td>网络效应</td><td>较弱</td><td>低</td><td>多数企业软件不是双边平台</td><td>收入增长仍高度依赖销售与项目实施</td></tr>
+        <tr><td>成本优势</td><td>少数公司有</td><td>低至中</td><td>订阅化产品复制成本低，但定制交付削弱规模效应</td><td>软通动力等大收入公司净利率仅0.5%</td></tr>
+        <tr><td>规模与流动性（基金层）</td><td>有</td><td>强，仅限头部ETF</td><td>515230、159852成交与规模远高于同业</td><td>515230/159852单日成交1.60/2.82亿元</td></tr>
+        <tr><td><strong>综合</strong></td><td colspan="4"><strong>底层组合：窄护城河；基金产品：仅头部产品具备流动性规模优势。</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.3 候选基金与指数研究优先级</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>对象</th><th>Serenity研究优先级</th><th>为什么先研究</th><th>最大待验证项</th><th>什么证据会改变优先级</th></tr></thead>
+      <tbody>
+        <tr><td>515230 / H30202</td><td><span class="tag high">高</span></td><td>50只成分、头部集中度较低；规模53.78亿元、单日成交1.60亿元，H30202 PE分位更低</td><td>低利润成分占比仍高，指数整体盈利质量待改善</td><td>连续两个季度头部10只利润增速低于收入且CFO恶化，则降级</td></tr>
+        <tr><td>159852 / 930601</td><td><span class="tag high">高</span></td><td>规模88.94亿元、单日成交2.82亿元、跟踪误差0.38%，流动性最佳</td><td>30只成分、前三权重29.41%，集中度显著更高</td><td>若头部三公司盈利不达预期且份额转为净赎回，则降级</td></tr>
+        <tr><td>562930 / 930601</td><td><span class="tag mid">中高</span></td><td>同指数规模约11.69亿元，成交0.61亿元，具备备选流动性</td><td>费率不低、跟踪误差0.76%略逊</td><td>若规模跌破8亿元或成交低于0.2亿元，则降级</td></tr>
+        <tr><td>561010 / 932094</td><td><span class="tag mid">中</span></td><td>107只成分，宽度最高，单一公司风险相对低</td><td>规模仅2.41亿元，成交0.11亿元</td><td>若规模稳定超过8亿元并改善成交，则可升级</td></tr>
+        <tr><td>159068 / H30202</td><td><span class="tag low">低</span></td><td>综合费率仅0.20%，是长期持有者的成本基准</td><td>规模0.57亿元，份额较二季度少76.1%，流动性弱</td><td>规模恢复至10亿元以上且连续成交改善后才值得替换</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">“研究优先级”只表示下一步研究的先后，不代表预期收益或买入排序。基金规模、份额和成交额会快速变化，执行前需重新核验。</p>
+</section>
+
+<section class="section" id="chapter-4">
+  <div class="chapter-no">Chapter 04 · Governance &amp; Capital Allocation</div>
+  <h2>四、产品治理与资本配置</h2>
+  <p class="takeaway">本章要点：被动ETF没有主动“选股资本配置”，真正需要评价的是费率、跟踪、规模稳定性和份额变化；大产品更稳健，小产品则有清盘与流动性折价风险。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th class="num">515230</th><th class="num">159852</th><th class="num">562930</th><th class="num">561010</th><th class="num">159068</th></tr></thead>
+      <tbody>
+        <tr><td>成立日期</td><td>2021-02-03</td><td>2021-01-29</td><td>2023-05-22</td><td>2023-11-21</td><td>2026-06-29</td></tr>
+        <tr><td>基金经理</td><td>苗梦羽</td><td>田光远</td><td>伍臣东</td><td>苏卿云</td><td>司帆</td></tr>
+        <tr><td>管理/托管费</td><td>0.50% / 0.10%</td><td>0.50% / 0.10%</td><td>0.50% / 0.10%</td><td>0.50% / 0.10%</td><td>0.15% / 0.05%</td></tr>
+        <tr><td>跟踪误差</td><td class="num">0.44%</td><td class="num">0.38%</td><td class="num">0.76%</td><td class="num">0.57%</td><td>未获取到</td></tr>
+        <tr><td>6月末→10月20日份额变化</td><td class="num">+17.9%</td><td class="num">+23.6%</td><td class="num">+41.7%</td><td class="num">+16.9%</td><td class="num">-76.1%</td></tr>
+        <tr><td>操作评价</td><td>规模与流动性优秀，指数更分散</td><td>流动性和跟踪最佳，集中度更高</td><td>可交易备选</td><td>更分散但规模不足</td><td>低费率有吸引力，但产品连续性风险过高</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">来源：东方财富基金基本资料，2026-10-20；深交所、上交所ETF份额数据，2026-10-20。份额变化反映申赎与投资者行为，不等同净流入金额，也不作为业绩判断。</p>
+
+  <div class="grid three">
+    <div class="mini-card"><div class="big">优</div><div class="cap">515230/159852：规模、成交与跟踪误差同时达标</div></div>
+    <div class="mini-card"><div class="big">中</div><div class="cap">562930/159590/159899：有可用流动性，但规模层级低一档</div></div>
+    <div class="mini-card"><div class="big">差</div><div class="cap">159068：0.20%费率尚未抵消规模收缩和流动性风险</div></div>
+  </div>
+
+  <h3>4.1 指数供应商与基金公司</h3>
+  <p>中证指数公司负责H30202、930601和932094的编制与半年度调整；国泰、嘉实、易方达等基金公司提供被动复制工具。该环节的“管理层”影响小于主动基金，但基金公司仍需保证组合复制、现金拖累、申赎处理和信息披露质量。现有证据支持515230和159852的复制质量处于可用水平，不能据此推断其未来任何收益优势。</p>
+
+  <div class="callout">
+    <p><strong>我的判断：</strong>低费率只有在产品规模和流动性跨过门槛后才真正属于投资者。159068每年比主流产品省约0.40个百分点，但0.57亿元规模和单日约0.03亿元成交，使少量资金也可能显著影响成交价格；在规模和份额重新稳定前，不以费率作为入选理由。</p>
+  </div>
+</section>
+
+<section class="section" id="chapter-5">
+  <div class="chapter-no">Chapter 05 · Financial Quality</div>
+  <h2>五、财务与财报质量：收入增长没有同步变成利润</h2>
+  <p class="takeaway">本章要点：行业景气仍在，但利润增速远低于收入；头部组合现金流表面上合格，主要由少数高毛利公司拉动，低利润项目型公司仍是财务质量的主要拖累。</p>
+
+  <h3>5.1 行业与组合趋势</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>指标</th><th class="num">2023</th><th class="num">2024</th><th class="num">2025</th><th>解释</th></tr></thead>
+      <tbody>
+        <tr><td>头部10只按当前权重计算：毛利率</td><td class="num">60.7%</td><td class="num">59.7%</td><td class="num">60.0%</td><td>商业模式毛利稳定，未见结构性坍塌</td></tr>
+        <tr><td>净利率</td><td class="num">13.3%</td><td class="num">12.9%</td><td class="num">16.9%</td><td>2025改善，但被同花顺等头部公司放大</td></tr>
+        <tr><td>ROE</td><td class="num">8.6%</td><td class="num">8.1%</td><td class="num">11.6%</td><td>2025回升，仍不算宽护城河水平</td></tr>
+        <tr><td>ROIC</td><td class="num">6.8%</td><td class="num">6.7%</td><td class="num">9.9%</td><td>接近9.5%资本成本，增量回报不厚</td></tr>
+        <tr><td>应收账款周转天数</td><td class="num">82</td><td class="num">83</td><td class="num">82</td><td>总体稳定，但个体差异巨大</td></tr>
+        <tr><td>经营现金流/净利润</td><td class="num">1.40×</td><td class="num">2.82×</td><td class="num">1.83×</td><td>总体不差，但受金融信息服务现金流和个别异常值影响</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">计算：按930601最新权重对前十大公司2023–2025年年报指标加权平均；数据源为东方财富F10财务摘要，2026-10-20查询。权重随指数调整，历史加权仅用于理解当前组合结构，不是指数历史收益重算。</p>
+
+  <h3>5.2 财报质量检查</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">检查项</th><th scope="col">结果</th><th scope="col">判定</th><th scope="col">证据与影响</th></tr></thead>
+      <tbody>
+        <tr><td>应计/现金转化</td><td>头部10只加权CFO/净利润1.83×</td><td><span class="tag good">总体合格</span></td><td>但软通动力2025年经营现金流为负，指南针、拓维信息的高转化率存在业务结构影响，不能简单外推</td></tr>
+        <tr><td>应收/回款</td><td>加权应收周转约82天</td><td><span class="tag mid">分化</span></td><td>科大讯飞205.6天、润和软件186.6天、拓维信息112.4天，明显高于组合均值</td></tr>
+        <tr><td>非经常性损益</td><td>科大讯飞2026Q3归母净利0.22亿元、扣非-7.63亿元</td><td><span class="tag bad">红旗</span></td><td>利润表与经营质量背离，必要时降低该成分盈利权重</td></tr>
+        <tr><td>Beneish M-Score</td><td>未获取到完整全指数口径</td><td>无法统一定级</td><td>50/107只成分的完整资产负债表字段未逐一标准化；不对整个ETF伪造单一M-Score</td></tr>
+        <tr><td>收入确认/合同负债</td><td>公司口径分散</td><td><span class="tag mid">待核</span></td><td>项目验收、订阅续费、金融信息服务收入确认差异大，不能用一个行业KPI替代</td></tr>
+        <tr><td>治理/审计</td><td>未发现足以否定指数有效性的统一红旗</td><td><span class="tag good">组合可用</span></td><td>但个别公司治理或盈利质量问题只能通过权重、分散和再平衡消化</td></tr>
+        <tr><td><strong>组合财报可信度</strong></td><td colspan="3"><strong>B</strong>：头部公司总体有现金流和审计披露，但利润质量高度分化；若仅按少数高毛利公司评价整个ETF，会高估其盈利质量。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.3 SaaS/软件指标披露限制</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>指标</th><th>基金层面</th><th>头部公司观察</th><th>口径问题</th></tr></thead>
+      <tbody>
+        <tr><td>NRR / 净收入留存</td><td>未获取到</td><td>仅少数SaaS公司披露</td><td>多数A股软件公司未披露NRR，不能用ARR行业口径替代</td></tr>
+        <tr><td>RPO / cRPO / 剩余履约义务</td><td>未获取到</td><td>项目制与订阅制混用</td><td>合同期限变化会导致RPO增长失真</td></tr>
+        <tr><td>Rule of 40</td><td>未获取到统一口径</td><td>可对公司单独计算</td><td>收入增速和经营现金流口径需统一</td></tr>
+        <tr><td>Magic number / CAC payback / 获客回收期</td><td>未获取到</td><td>多数公司未披露</td><td>销售费用与新增ARR无法稳定对应</td></tr>
+        <tr><td>SBC / 收入</td><td>未获取到统一口径</td><td>部分公司披露股份支付</td><td>需同时考虑稀释，不能只看Non-GAAP利润</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">财务质量等级B不表示组合不会下跌；它只表示目前没有足以把整个ETF判定为“财报不可信”的统一证据。指数内个别高权重公司的问题会影响ETF表现，应在风险与反方论证中显性化。</p>
+</section>
+
+<section class="section" id="chapter-6">
+  <div class="chapter-no">Chapter 06 · Valuation</div>
+  <h2>六、估值：相对分位低，不等于经营现金流便宜</h2>
+  <p class="takeaway">本章要点：以515230为估值载体，情景DCF、EPV和EVA都指向现价依赖远期高增长；历史PE分位只是说“比过去便宜”，没有证明当前是多好的资产价格。</p>
+
+  <h3>6.1 反向 DCF + PVGO：现价隐含什么</h3>
+  <p>以2026-10-20的H30202 PE 51.23×计算，底层组合的盈利收益率约为1.95%。用ETF份额作为标准化资产口径，当前0.653元净值对应约0.01275元/份的滚动盈利。若资本成本为9.5%，零增长价值仅约0.13元，现价中约79%是在为未来增长付费。这个结论不需要精确预测某一只公司，只需要承认：现价不可能由当前盈利单独解释。</p>
+  <div class="callout warn">
+    <p><strong>我的判断：</strong>市场不是在按“成熟软件现金流”定价，而是在按“AI带来新一轮订阅化、提价与利润率扩张”的期权定价。除非收入增长与利润增长连续两个季度同向加速，否则这个期权价值容易被利率、业绩或资金风格压缩。</p>
+  </div>
+
+  <h3>6.2 三情景概率加权 DCF</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>情景</th><th class="num">概率</th><th>经营假设</th><th class="num">每股价值</th><th>证据强度</th></tr></thead>
+      <tbody>
+        <tr><td>熊市</td><td class="num">35%</td><td>盈利承压、现金流不增长；行业利润率继续被项目制拖累</td><td class="num">0.14元</td><td>中：工信部利润增速仅1.3%支持</td></tr>
+        <tr><td>基准</td><td class="num">50%</td><td>5年经营现金流约12%增长，随后向3%永续增长收敛</td><td class="num">0.333元</td><td>中：头部2025增长较快，但2026已降速</td></tr>
+        <tr><td>牛市</td><td class="num">15%</td><td>5年约22%增长，随后逐步收敛；AI订阅与提价形成更高经营杠杆</td><td class="num">0.573元</td><td>弱：尚无全行业收入结构证据</td></tr>
+        <tr><td><strong>概率加权</strong></td><td class="num">100%</td><td>WACC 9.5%，永续g 3%，退出P/FCF约15.8×</td><td class="num"><strong>0.301元</strong></td><td><strong>较现价约-54%</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 相对估值与EPV交叉验证</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>方法</th><th class="num">合理价值</th><th>关键假设</th><th>与现价关系</th><th>权重</th></tr></thead>
+      <tbody>
+        <tr><td>PE历史分位（H30202）</td><td class="num">0.669–0.827元</td><td>PE回到近5年25分位52.47×至中位64.90×</td><td>现价低于相对区间下沿约2.4%</td><td>20%</td></tr>
+        <tr><td>反向DCF + PVGO</td><td class="num">约0.13元零增长价值</td><td>盈利不再增长，r=9.5%</td><td>现价约5倍零增长价值</td><td>框架性</td></tr>
+        <tr><td>三情景DCF</td><td class="num">0.14–0.573元，加权0.301元</td><td>WACC9.5%，g3%，退出P/FCF15.8×</td><td>现价高于加权值</td><td>40%</td></tr>
+        <tr><td>EPV/三要素</td><td class="num">0.211–0.238元</td><td>常态化净利润0.020元/份；ROIIC12%、g4%</td><td>现价显著高于存量盈利能力</td><td>25%</td></tr>
+        <tr><td>EVA/剩余收益</td><td class="num">约0.112元</td><td>投入资本0.110元/份；NOPAT0.0102元/份</td><td>当前EVA略为负，增长若没有回报率改善会放大折价</td><td>10%</td></tr>
+        <tr><td>蒙特卡洛</td><td class="num">P25 0.2 / P50 0.3 / P75 0.5元</td><td>5,000次；增长与利润率分布</td><td>P(内在价值&lt;现价)=82%</td><td>5%</td></tr>
+        <tr><td><strong>综合区间</strong></td><td class="num"><strong>0.34–0.56元</strong></td><td>基本面权重高，仅给相对估值少量历史重估空间</td><td><strong>现价偏高</strong></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">估值由 <code>dcf.py</code> 运行：WACC 9.50%、永续g 3.00%、股本1.0、净债0；终值退出P/FCF 15.85×，TV占比53%–63%，低于80%警戒。相对PE区间也为通过同一脚本的EPV引擎按目标PE反算。上述是ETF份额的标准化相对价值，不是基金目标价。</p>
+
+  <h3>6.4 WACC × g 敏感性（基准情景）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>WACC \ g</th><th class="num">2.0%</th><th class="num">3.0%</th><th class="num">4.0%</th></tr></thead>
+      <tbody>
+        <tr><td>8.5%</td><td class="num">0.350</td><td class="num">0.398</td><td class="num">0.468</td></tr>
+        <tr><td>9.5%</td><td class="num">0.299</td><td class="num"><strong>0.333</strong></td><td class="num">0.379</td></tr>
+        <tr><td>10.5%</td><td class="num">0.261</td><td class="num">0.285</td><td class="num">0.317</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>只有在增长率、利润率和风险偏好同时显著改善时，现价才可能被现金流解释；单靠WACC或永续g的小幅调整无法把基准价值推到0.653元。</p>
+
+  <h3>6.5 估值汇总与 football field</h3>
+  <div class="football">
+    <h4>515230 每份价值区间（元）</h4>
+    <div class="range-row"><span>PE历史分位</span><div class="range-track"><div class="range-bar alt r-pe"></div></div><span>0.669–0.827</span></div>
+    <div class="range-row"><span>场景DCF</span><div class="range-track"><div class="range-bar r-dcf"></div></div><span>0.14–0.573</span></div>
+    <div class="range-row"><span>EPV</span><div class="range-track"><div class="range-bar r-epv"></div></div><span>0.211–0.238</span></div>
+    <div class="range-row"><span>EVA</span><div class="range-track"><div class="range-bar r-eva"></div></div><span>≈0.112</span></div>
+    <div class="range-row"><span>综合区间</span><div class="range-track"><div class="range-bar sum r-sum"></div><div class="price-dot p-current"></div></div><span>0.34–0.56</span></div>
+    <div class="scale"><span></span><span><span>0</span><span>0.4</span><span>0.8</span><span>1.2</span></span><span class="price-text">现价0.653 ▼</span></div>
+  </div>
+
+  <div class="callout risk">
+    <p><strong>估值结论：</strong>515230现价0.653元高于综合区间0.34–0.56元，按预注册规则落在“高估”；相对历史PE分位较低只意味着“比过去便宜”，不改变绝对现金流偏贵的判断。</p>
+  </div>
+</section>
+
+<section class="section" id="chapter-7">
+  <div class="chapter-no">Chapter 07 · Analyst View</div>
+  <h2>七、分析师观点：没有可靠的ETF目标价共识</h2>
+  <p class="takeaway">本章要点：指数层面未获取到统一、可复核的卖方盈利预测与目标价；基金本身也不存在分析师目标价。因此不把零散个股预测拼成“指数共识”。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>项目</th><th>可得信息</th><th>本报告处理</th><th>对结论的影响</th></tr></thead>
+      <tbody>
+        <tr><td>ETF目标价</td><td>未获取到</td><td>不使用</td><td>ETF没有企业目标价，只有指数和净值</td></tr>
+        <tr><td>指数一致盈利预测</td><td>未获取到覆盖家数和统计日</td><td>不伪造共识</td><td>改用市场隐含PE、反推现金流和行业官方数据</td></tr>
+        <tr><td>头部公司评级分布</td><td>存在个股评级，但口径与权重不可直接合成</td><td>仅作背景，不合成指数目标价</td><td>避免把券商“买入占比高”当收益预测</td></tr>
+        <tr><td>市场定价观察</td><td>H30202 PE 51.23×、5年约第19.8分位；软件指数年内跌28.8%</td><td>作为主要市场信号</td><td>市场已经下调估值，但没有把绝对盈利要求降为零</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>共识与本报告的最大分歧：</strong>市场倾向把当前下跌解释为“AI软件长期空间的折价机会”；我的判断是，行业收入和利润的差距尚未收敛，指数仍在为未来数年的高增长付费。最早可能在2026Q3报告和2027年企业IT预算确认时发现我判断错误：如果合同负债、续费收入和头部利润同步改善，而不是只有收入增长，则上调情景概率。</p>
+</section>
+
+<section class="section" id="chapter-8">
+  <div class="chapter-no">Chapter 08 · Catalysts &amp; Forecasts</div>
+  <h2>八、新闻、催化剂与验证登记</h2>
+  <p class="takeaway">本章要点：短期交易催化来自Q3业绩和超跌资金回补；真正的中期催化是利润增速追上收入增速，而不是又一轮主题发布会。</p>
+
+  <h3>8.1 近期事实</h3>
+  <ul class="compact">
+    <li><strong>2026-08-31：</strong>工信部披露2026年1–7月软件业务收入8.9785万亿元，同比+9.2%；利润总额1.0396万亿元，同比+1.3%。</li>
+    <li><strong>2026-10-20：</strong>515230收盘0.653元、+1.87%；159852收盘0.633元、+1.77%，但近1年仍分别下跌约28%。</li>
+    <li><strong>2026-10-20：</strong>科大讯飞三季报显示归母净利润0.22亿元、扣非净利润-7.63亿元，说明部分头部“AI软件”仍存在利润与非经常性收益依赖。</li>
+  </ul>
+
+  <h3>8.2 催化剂时间表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>时间</th><th>事件</th><th>方向</th><th>影响逻辑</th><th>确认状态</th></tr></thead>
+      <tbody>
+        <tr><td>2026年10月下旬</td><td>A股公司Q3报告集中披露</td><td>双向</td><td>收入、合同负债、应收和扣非利润将决定是否上修</td><td>法定披露窗口，具体公司日期以公告为准</td></tr>
+        <tr><td>2026年12月附近</td><td>中证指数半年度定期调整窗口</td><td>双向</td><td>成分和权重变化可能改变头部集中度与估值</td><td>待中证公告，具体生效日未确认</td></tr>
+        <tr><td>2027年1–2月</td><td>企业2027 IT预算与AI采购计划</td><td>双向</td><td>决定订单、续费和项目回款的先行变量</td><td>市场预期，非已确认事件</td></tr>
+        <tr><td>2027年4月</td><td>2026年年报</td><td>双向</td><td>验证利润率、CFO/NP、RPO与应收是否同步改善</td><td>法定年度报告期</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.3 预测与验证登记</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>预测对象</th><th>基准值/截止日</th><th>预测区间或方向</th><th>验证日期</th><th>先行指标与阈值</th><th>上行/下行失效条件</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>头部10只收入增长</td><td>2025年加权+15.6%</td><td>2026年降至+6%至+12%</td><td>2027-04-30</td><td>Q3收入增速、合同负债增速</td><td>上行：连续两季&gt;15%；下行：低于5%</td><td>待验证</td></tr>
+        <tr><td>头部10只净利率</td><td>2025年加权16.9%</td><td>2026年维持14%–17%</td><td>2027-04-30</td><td>扣非利润、毛利率</td><td>上行：&gt;18%；下行：&lt;12%</td><td>待验证</td></tr>
+        <tr><td>515230流动性</td><td>2026-10-20成交1.60亿元</td><td>未来20日日均成交&gt;0.8亿元</td><td>2026-11-20</td><td>成交额与份额</td><td>下行：低于0.3亿元且规模跌破35亿元</td><td>待验证</td></tr>
+        <tr><td>H30202估值</td><td>PE 51.23×</td><td>未来一季维持42–60×</td><td>2027-01-31</td><td>PE分位、盈利修正</td><td>上行：&gt;65×；下行：&lt;35×</td><td>待验证</td></tr>
+        <tr><td>同类产品相对表现</td><td>515230与159852近1年均约-28%</td><td>未来3个月收益差在±3个百分点内</td><td>2027-01-20</td><td>净值、指数差异</td><td>差异&gt;5个百分点则重新核对指数与费用</td><td>待验证</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" id="chapter-9">
+  <div class="chapter-no">Chapter 09 · Conclusion &amp; Counter-Case</div>
+  <h2>九、结论、反方论证与监控</h2>
+  <p class="takeaway">本章要点：工具选择不等于证券买入；515230是更均衡的软件ETF载体，但当前整个板块的价格仍需要高增长来消化，暂不具备把回撤直接视为安全边际的条件。</p>
+
+  <h3>9.1 结论复述</h3>
+  <div class="verdict">
+    <p><strong>内在价值判断：高估</strong>。相对PE分位已低，但绝对盈利收益率只有约2%，DCF与EPV不支持现价。</p>
+    <p><strong>未来 1–3 个月市场交易方向：低位震荡偏上</strong>。市场最可能先交易超跌、资金回补和Q3业绩，交易反弹可能发生，但尚不能把反弹当作基本面反转。</p>
+    <p><strong>投资动作：观望，不追高</strong>。工具研究优先级高，不等于证券动作是买入；如果未来收入、利润、合同负债和现金流同步改善，再重新标定。</p>
+  </div>
+
+  <p><strong>如果今天这是一笔现金：</strong>我不会因为软件ETF从高点回撤四成就直接买入。会等待两种信号之一：一是价格回到综合价值区间附近；二是Q3/Q4经营数据证明利润增长追回收入增长。对纯工具需求，515230作为软件Beta优先研究，159852作为流动性更好的交易载体保留。</p>
+
+  <h3>9.2 Pre-mortem：一年后失败最可能的三个原因</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>失败情景</th><th>触发机制</th><th>当前证据强度</th><th>监控信号</th><th>证伪时点</th></tr></thead>
+      <tbody>
+        <tr><td>AI只增加功能，不增加收费</td><td>项目报价下降、推理成本上升，软件公司无法通过提价或续费回收投入</td><td>中强：行业收入+9.2%、利润+1.3%</td><td>AI收入披露缺失；毛利率下降；合同负债不增</td><td>2026Q3/Q4与2027年报</td></tr>
+        <tr><td>头部盈利质量恶化</td><td>应收拉长、项目验收延后、非经常性收益掩盖主业亏损</td><td>中：科大讯飞Q3扣非-7.63亿元；软通动力CFO为负</td><td>CFO/NP、应收周转、扣非利润</td><td>每个财报期</td></tr>
+        <tr><td>低费率产品获得规模，但持有人承担流动性成本</td><td>小ETF份额萎缩、买卖价差扩大，甚至出现合并/清盘风险</td><td>中：159068份额较Q2减少76.1%</td><td>规模、20日成交、份额变化、公告</td><td>2026-12-31前</td></tr>
+        <tr><td>指数头部集中导致“看起来分散、实际集中”</td><td>930601前三权重约29.4%，个别公司盈利或监管事件拖累</td><td>中：现成权重证据</td><td>前三大与前十权重、单日偏离</td><td>下一指数调整</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>9.3 风险不对称与仓位量级</h3>
+  <p>情景DCF的上行/下行不对称性不佳：牛市情景0.573元仍低于现价0.653元，而熊市为0.14元。该结构不支持用“低估”或“抄底”作为中期配置理由。这里的仓位语言仅描述赔率形状，不是对任何人的资金配置建议。</p>
+
+  <h3>9.4 监控清单</h3>
+  <ul class="compact">
+    <li><strong>行业利润差：</strong>工信部月度软件收入与利润增速差，若利润增速连续两月回到8%以上，上调基本面判断。</li>
+    <li><strong>Q3/Q4头部公司：</strong>收入增速5%–12%区间、净利率14%–17%、CFO/NP不低于1.0。</li>
+    <li><strong>ETF流动性：</strong>515230 20日日均成交不低于0.8亿元、规模不低于35亿元；159852保持同类第一梯队。</li>
+    <li><strong>估值：</strong>H30202 PE高于65×时风险上升；低于40×且盈利预测未下修时才重新评估安全边际。</li>
+    <li><strong>产品存续：</strong>159068若规模持续低于1亿元、份额继续下降，低费率不足以构成选择理由。</li>
+  </ul>
+
+  <h3>9.5 置信度自评</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>评分</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>数据完整度</td><td><span class="tag mid">中高</span></td><td>交易所行情、份额、指数PE和持仓完整；基金公司实时AUM及全指数逐只财报未完整获取</td></tr>
+        <tr><td>估值收敛度</td><td><span class="tag low">低</span></td><td>相对PE与DCF差异较大，报告保留冲突而不平均</td></tr>
+        <tr><td>预期差清晰度</td><td><span class="tag high">中高</span></td><td>核心分歧是“低分位”是否足以抵消绝对现金流高估</td></tr>
+        <tr><td>财报可信度</td><td><span class="tag mid">B</span></td><td>头部组合出现利润质量分层，未发现可否定整个ETF的统一造假证据</td></tr>
+        <tr><td><strong>综合置信度</strong></td><td><span class="tag mid">中低</span></td><td>工具选择置信度高于证券估值置信度；产品规模和成交仍需交易前复核</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" id="appendix">
+  <div class="chapter-no">Appendix</div>
+  <h2>附录：来源、假设与检查器</h2>
+
+  <h3>数据来源与时间戳</h3>
+  <ul class="source-list">
+    <li><strong>上海证券交易所ETF列表：</strong><a href="https://www.sse.com.cn/assortment/fund/etf/list/">官方页面</a>，2026-10-20。用于沪市软件ETF规模、收盘价和成交额。</li>
+    <li><strong>深圳证券交易所ETF列表与基金行情：</strong><a href="https://www.szse.cn/disclosure/fund/etf/index.html">官方页面</a>，2026-10-20。用于深市软件ETF规模、收盘价和成交额。</li>
+    <li><strong>中证指数公司：</strong><a href="https://www.csindex.com.cn/#/indices/family/detail?indexCode=H30202">H30202</a>、<a href="https://www.csindex.com.cn/#/indices/family/detail?indexCode=930601">930601</a>、<a href="https://www.csindex.com.cn/#/indices/family/detail?indexCode=932094">932094</a>。基本信息、近1/3/5年收益、历史PE和权重，2026-10-20。</li>
+    <li><strong>工信部软件业运行情况：</strong><a href="https://www.miit.gov.cn/gxsj/tjfx/rjy/art/2026/art_3588c41c7dd34514868a93b3cb2c020c.html">2026年1–7月</a>，2026-08-31；<a href="https://www.miit.gov.cn/gxsj/tjfx/rjy/art/2026/art_f045c3cf6c244799b11e6d3973b3d10f.html">2026年1–6月</a>，2026-07-30。</li>
+    <li><strong>基金基本资料：</strong><a href="https://fundf10.eastmoney.com/jbgk_515230.html">515230</a>、<a href="https://fundf10.eastmoney.com/jbgk_159852.html">159852</a>及同目录其他代码页面，2026-10-20抓取。用于费率、基金规模历史、成立日、经理和跟踪误差。</li>
+    <li><strong>基金持仓：</strong><a href="https://fundf10.eastmoney.com/ccmx_515230.html">515230</a>、<a href="https://fundf10.eastmoney.com/ccmx_159852.html">159852</a>等，2026-06-30报告期。</li>
+    <li><strong>头部公司财务摘要：</strong>东方财富F10财务分析接口，2026-10-20查询；口径为各公司2025年年报，个别公司含2026Q3。科大讯飞2026年三季度报告：<a href="https://static.cninfo.com.cn/finalpage/2026-10-20/1225611744.pdf">巨潮PDF</a>。</li>
+    <li><strong>官方年报检索：</strong><a href="https://www.cninfo.com.cn/new/fulltextSearch/full?searchkey=002230&amp;isfulltext=false&amp;sortName=pubdate&amp;sortType=desc&amp;pageNum=1">巨潮资讯</a>。本报告未把第三方聚合数据冒充监管原文；全指数逐公司M-Score因字段缺失未完成，报告中已明确。</li>
+  </ul>
+
+  <h3>估值关键假设</h3>
+  <ul class="compact">
+    <li>WACC 9.50%，采用A股8%–10%资本成本区间的中上沿；当前10年期国债的完整逐日序列未获取到，因此没有伪称已完成逐项无风险利率和ERP重建。</li>
+    <li>永续增长率3.0%，低于中国长期名义增长锚；终值退出P/FCF约15.8×，TV占比53%–63%。</li>
+    <li>ETF无自身经营现金流，DCF使用ETF份额对应的底层组合盈利作为owner earnings代理；这是标准化比较，不等同基金分红现金流。</li>
+    <li>维护性资本开支与成长性资本开支未拆分，指数与ETF均未提供统一口径。因此模型用较保守的owner earnings路径，避免再把AI资本开支重复惩罚。</li>
+    <li>ETF的PE、EPV和DCF结果均以每份净值口径表达；不同ETF的净值面值不同，不能直接比较绝对价格，只能比较同一产品的价值区间。</li>
+  </ul>
+
+  <h3>检查器结果摘要</h3>
+  <p id="checker-status"><strong>检查器状态：</strong>2026-10-20已运行 <code>check_research_output.py --industry saas --language zh</code>，返回空问题列表，P0/P1/P2/P3均为0。HTML静态校验通过；报告仅有工作区规定的导航脚本，无内联事件或脚本伪协议链接。</p>
+  <p class="note">估值计算：<code>dcf.py</code>；财务/估值一致性：<code>check_research_output.py</code>。内部假设JSON与脚本原始输出不作为交付物。</p>
+
+  <div class="callout warn">
+    <p><strong>免责声明：</strong>本报告用于研究比较，不构成投资建议、收益承诺或个性化配置建议。ETF成交额、规模、折溢价和指数成分会变化；交易前应以交易所、基金公司和中证指数最新公告复核。</p>
+  </div>
+</section>
+
+<div class="foot">
+  <p><strong>报告结论：</strong>研究工具优先515230，流动性优先159852；产品选择与研究排序不等于证券买入排序。软件ETF目前是“相对历史分位便宜、绝对盈利现金流偏贵”，在盈利增长追上收入增长之前，观望比追反弹更符合证据。</p>
+</div>
+</main>
+
+<!-- ↓ 报告导航（通用组件，自动挂载；新增报告无需修改本文件） -->
+<script src="../scripts/report-nav.js" defer></script>
+</body>
+</html>
