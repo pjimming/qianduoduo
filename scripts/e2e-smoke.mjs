@@ -391,6 +391,84 @@ async function main() {
       '特殊事项没有进入待复核',
     )
 
+    await fetch(`${base}/api/trades`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trade_date: '2026-10-19',
+        confirm_date: '2026-10-20',
+        trade_type: 'buy',
+        status: 'confirmed',
+        product_code: '120056A',
+        product_name: '招银理财招睿添金90天持有期6号A',
+        issuer: '招银理财',
+        risk_level: 'R2',
+        amount: 5000,
+        term_days: 90,
+        maturity_date: null,
+        notes: 'e2e holding review',
+      }),
+    })
+    await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('#holding-reviews .hr-card')
+    const reviewCard = page.locator('#holding-reviews .hr-card').first()
+    assert(
+      ((await page.locator('#holding-reviews .rw-toolbar .rw-panel-title').textContent()) ?? '').includes(
+        '当前持仓 vs 同期限候选',
+      ),
+      '持仓复核卡片没有渲染',
+    )
+    await reviewCard.locator('.hr-actions button').click()
+    await page.waitForSelector('#holding-reviews .hr-candidate')
+    assert(
+      (await reviewCard.locator('.hr-candidate').count()) === 3,
+      '持仓复核默认应只展开前 3 个候选',
+    )
+    assert(
+      (await reviewCard.locator('.hr-compare').count()) === 1,
+      '持仓复核没有渲染首选候选并排对比',
+    )
+    assert(
+      (await reviewCard.locator('.hr-compare-col.is-current').count()) === 1 &&
+        (await reviewCard.locator('.hr-compare-col.is-candidate').count()) === 1,
+      '并排对比没有同时渲染当前持仓和首选候选',
+    )
+    assert(
+      ((await reviewCard.locator('.hr-compare-result').textContent()) ?? '').includes(
+        '预计多赚',
+      ),
+      '并排对比没有显示预计多赚结果',
+    )
+    assert(
+      (await reviewCard.locator('.hr-candidate').count()) > 0,
+      '持仓复核没有渲染同期限候选',
+    )
+    await reviewCard.getByLabel('赎回确认 T+N').fill('1')
+    await reviewCard.getByLabel('赎回到账 T+N').fill('1')
+    await reviewCard.getByLabel('口径核验日期').fill('2026-10-20')
+    await reviewCard.getByRole('button', { name: '保存并重算' }).click()
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#holding-reviews')?.textContent?.includes('T+1 / 到账 T+1'),
+      null,
+      { timeout: 5000 },
+    )
+    const planButton = reviewCard.getByRole('button', { name: '记录到期计划' })
+    const replaceButton = reviewCard.getByRole('button', { name: '记录替换决策' })
+    const actionButton =
+      (await planButton.count()) > 0 ? planButton.first() : replaceButton.first()
+    if ((await planButton.count()) > 0 || (await replaceButton.count()) > 0) {
+      await actionButton.click()
+      await reviewCard.locator('.hr-decision-form').waitFor()
+      await reviewCard.getByRole('button', { name: '写入决策日志' }).click()
+      await page.waitForFunction(
+        () =>
+          document.querySelector('.toast')?.textContent?.includes('已写入决策日志'),
+        null,
+        { timeout: 5000 },
+      )
+    }
+
     await page.goto(`${base}/ledger/evaluation`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#automation .rw-automation-grid')
     assert(
@@ -417,7 +495,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏六分区、每日记账、复盘模块卡与跨页补记、产品配置、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏六分区、每日记账、复盘模块卡与跨页补记、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

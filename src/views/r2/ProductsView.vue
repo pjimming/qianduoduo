@@ -5,6 +5,7 @@ import R2PageHeader from '@/components/r2/R2PageHeader.vue'
 import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
 import ProductsSection from '@/components/ProductsSection.vue'
 import ProductEventsPanel from '@/components/review/ProductEventsPanel.vue'
+import HoldingReviewPanel from '@/components/r2/HoldingReviewPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
 
 const props = defineProps<{
@@ -17,7 +18,17 @@ const openEvents = computed(
       .length,
 )
 
+const reviewSummary = computed(() => props.dashboard.workspace.holding_reviews_summary)
+
 const sections = computed(() => [
+  {
+    id: 'holding-reviews',
+    label: '持仓复核与替换',
+    meta:
+      reviewSummary.value.replace > 0
+        ? `${reviewSummary.value.replace} 只建议替换`
+        : `${reviewSummary.value.total} 只在持`,
+  },
   { id: 'products', label: '配置与候选池' },
   {
     id: 'events',
@@ -44,6 +55,15 @@ const sections = computed(() => [
     <R2SectionIndex :items="sections" />
 
     <div class="r2-stack">
+      <section id="holding-reviews" class="rw-panel r2-anchor" aria-label="持仓复核与替换">
+        <HoldingReviewPanel
+          :reviews="dashboard.workspace.holding_reviews"
+          :today="dashboard.meta.today"
+          :snapshot-date="dashboard.meta.product_snapshot_date"
+          :history-date="dashboard.meta.product_history_date"
+        />
+      </section>
+
       <section id="products" class="r2-anchor" aria-label="配置与候选池">
         <ProductsSection :dashboard="dashboard" />
       </section>

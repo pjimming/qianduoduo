@@ -217,6 +217,9 @@ export interface DecisionEntry {
   target_annualized: number
   bucket_plan: Record<string, number>
   evaluation_at: string[]
+  evidence_date: string
+  verify_date: string
+  review_meta: Record<string, unknown>
   rating: DecisionRating
   created_at: string
   updated_at: string
@@ -240,6 +243,171 @@ export interface Holding {
   allocated_principal?: number
   realized_pnl?: number
   source_trade_id?: number
+}
+
+export type HoldingReviewVerdict = 'replace' | 'watch' | 'hold'
+
+export interface HoldingReviewReminder {
+  level: 'urgent' | 'window' | 'none'
+  date: string
+  kind: 'maturity' | 'open' | 'daily' | 'none'
+  text: string
+}
+
+export interface HoldingReviewRedemption {
+  state: 'locked' | 'window' | 'open' | 'matured' | 'daily_open' | 'unknown'
+  redeemable_now: boolean
+  available_date: string
+  reason: string
+}
+
+export interface HoldingReviewPlannedAction {
+  action: 'replace_at_maturity'
+  candidate_code: string
+  candidate_name: string
+  available_date: string
+  reason: string
+}
+
+export interface HoldingReviewSwitch {
+  new_days: number
+  current_gross: number
+  redemption_fee: number
+  new_gross: number
+  purchase_fee: number
+  new_net: number
+  difference: number
+  break_even_yield_pct: number | null
+  idle_cost: number
+  fee_drag: number
+}
+
+export interface HoldingReviewCandidate {
+  code: string
+  name: string
+  issuer: string
+  risk_level: string
+  term_days: number | null
+  bucket: ProductBucket
+  benchmark: string
+  min_amount: number | null
+  fee_bps: number | null
+  data_date: string
+  next_open_date: string
+  history_months: number | null
+  selection_score: number | null
+  return_1m: number | null
+  return_3m: number | null
+  return_6m: number | null
+  return_1y: number | null
+  return_since_inception: number | null
+  yield_pct: number | null
+  yield_gap_pp: number | null
+  term_gap_days: number | null
+  comparison_days: number
+  term_warning: string
+  quota_available: number | null
+  quota_max_order: number | null
+  quota_window: string
+  quota_verified_at: string
+  execution_ready: boolean
+  verdict: HoldingReviewVerdict
+  verdict_label: string
+  reasons: string[]
+  data_gaps: string[]
+  switch: HoldingReviewSwitch | null
+  product: Product
+}
+
+export interface HoldingReviewSetting {
+  product_code: string
+  redemption_days: number | null
+  arrival_days: number | null
+  redemption_fee_bps: number
+  purchase_fee_bps: number
+  idle_days: number | null
+  compare_horizon_days: number
+  min_gain_amount: number
+  next_redeem_open_date: string
+  notes: string
+  verified_at: string
+  updated_at: string
+}
+
+export interface HoldingReview {
+  holding_id: number
+  lot_id: string
+  product_code: string
+  product_name: string
+  issuer: string
+  risk_level: string
+  amount: number
+  term_days: number | null
+  bucket: ProductBucket
+  maturity_date: string | null
+  days_to_maturity: number | null
+  next_open_date: string
+  days_to_open: number | null
+  next_redeem_open_date: string
+  days_to_redeem_open: number | null
+  horizon_days: number
+  current: {
+    found: boolean
+    product_code: string
+    return_1m: number | null
+    return_3m: number | null
+    return_6m: number | null
+    return_1y: number | null
+    return_since_inception: number | null
+    yield_pct: number | null
+    fee_bps: number | null
+    data_date: string
+    benchmark: string
+  }
+  review_setting: {
+    redemption_days: number | null
+    arrival_days: number | null
+    redemption_fee_bps: number
+    purchase_fee_bps: number
+    idle_days: number | null
+    idle_effective_days: number
+    idle_source: string
+    compare_horizon_days: number
+    min_gain_amount: number
+    next_redeem_open_date: string
+    notes: string
+    verified_at: string
+    complete: boolean
+  }
+  thresholds: {
+    min_yield_edge_pp: number
+    break_even_margin_pp: number
+    min_gain_amount: number
+    horizon_days: number
+    idle_days: number
+  }
+  reminders: HoldingReviewReminder[]
+  reminder: HoldingReviewReminder
+  redemption: HoldingReviewRedemption
+  data_gaps: string[]
+  candidates: HoldingReviewCandidate[]
+  verdict: HoldingReviewVerdict
+  verdict_label: string
+  summary: string
+  planned_action: HoldingReviewPlannedAction | null
+  top_candidate_code: string | null
+  decision: DecisionEntry | null
+  evidence_date: string
+  verify_date: string
+  generated_at: string
+}
+
+export interface HoldingReviewsSummary {
+  total: number
+  replace: number
+  watch: number
+  hold: number
+  window: number
 }
 
 export type TradeType = 'buy' | 'redeem' | 'switch'
@@ -443,6 +611,8 @@ export interface TimelineNode {
 export interface ReviewWorkspace {
   decisions: DecisionEntry[]
   holdings: Holding[]
+  holding_reviews: HoldingReview[]
+  holding_reviews_summary: HoldingReviewsSummary
   events: ProductEvent[]
   notes: ReviewNote[]
   quarterly: QuarterlyNote[]
@@ -859,7 +1029,23 @@ export interface DecisionInput {
   target_annualized: number
   bucket_plan: Record<string, number>
   evaluation_at: string[]
+  evidence_date: string
+  verify_date: string
+  review_meta: Record<string, unknown>
   rating: DecisionRating
+}
+
+export interface HoldingReviewSettingInput {
+  redemption_days: number | null
+  arrival_days: number | null
+  redemption_fee_bps: number
+  purchase_fee_bps: number
+  idle_days: number | null
+  compare_horizon_days: number
+  min_gain_amount: number
+  next_redeem_open_date: string
+  notes: string
+  verified_at: string
 }
 
 export interface HoldingInput {

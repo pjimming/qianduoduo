@@ -57,6 +57,9 @@ function emptyForm(): DecisionInput {
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
     evaluation_at: ['buy_day', 'holding', 'maturity'],
+    evidence_date: '',
+    verify_date: '',
+    review_meta: {},
     rating: '待评估',
   }
 }
@@ -84,6 +87,9 @@ function openEdit(item: DecisionEntry): void {
     target_annualized: item.target_annualized,
     bucket_plan: { ...item.bucket_plan },
     evaluation_at: [...item.evaluation_at],
+    evidence_date: item.evidence_date,
+    verify_date: item.verify_date,
+    review_meta: { ...item.review_meta },
     rating: item.rating,
   })
   formOpen.value = true
@@ -176,6 +182,36 @@ function statusLabel(status: string): string {
     undone: '已撤销',
   }[status] || status
 }
+
+function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: string }> {
+  const meta = item.review_meta || {}
+  const rows: Array<{ label: string; value: string }> = []
+  if (meta.candidate_name) {
+    rows.push({ label: '候选', value: String(meta.candidate_name) })
+  }
+  if (meta.snapshot_date) {
+    rows.push({ label: '快照', value: String(meta.snapshot_date) })
+  }
+  if (meta.break_even_yield_pct !== undefined && meta.break_even_yield_pct !== null) {
+    rows.push({
+      label: '盈亏平衡',
+      value: `${Number(meta.break_even_yield_pct).toFixed(2)}%`,
+    })
+  }
+  if (meta.difference !== undefined) {
+    rows.push({
+      label: '预计多赚',
+      value: `¥${Number(meta.difference).toFixed(2)}`,
+    })
+  }
+  if (meta.min_gain_amount !== undefined) {
+    rows.push({
+      label: '门槛',
+      value: `¥${Number(meta.min_gain_amount).toFixed(2)}`,
+    })
+  }
+  return rows
+}
 </script>
 
 <template>
@@ -240,6 +276,14 @@ function statusLabel(status: string): string {
         <label class="rw-field">
           <span>目标年化（%）</span>
           <input v-model.number="form.target_annualized" type="number" min="0.1" max="20" step="0.1" />
+        </label>
+        <label class="rw-field">
+          <span>证据日期</span>
+          <input v-model="form.evidence_date" type="date" />
+        </label>
+        <label class="rw-field">
+          <span>事后验证日期</span>
+          <input v-model="form.verify_date" type="date" />
         </label>
         <label class="rw-field">
           <span>短桶目标（%，0–30 天）</span>
@@ -313,11 +357,23 @@ function statusLabel(status: string): string {
           <span>
             <em>策略</em>{{ item.strategy_version }} · 目标 {{ item.target_annualized.toFixed(2) }}%
           </span>
+          <span v-if="item.evidence_date">
+            <em>证据日</em>{{ item.evidence_date }}
+          </span>
+          <span v-if="item.verify_date">
+            <em>验证日</em>{{ item.verify_date }}
+          </span>
           <span v-if="Object.keys(item.bucket_plan).length">
             <em>期限桶</em>
             短 {{ item.bucket_plan.short ?? '—' }}% / 中 {{ item.bucket_plan.medium ?? '—' }}% /
             长 {{ item.bucket_plan.long ?? '—' }}% · 单只上限
             {{ item.bucket_plan.max_single ?? 30 }}%
+          </span>
+        </div>
+        <div v-if="reviewMetaRows(item).length" class="rw-decision-review">
+          <span class="rw-muted">替换测算</span>
+          <span v-for="row in reviewMetaRows(item)" :key="row.label">
+            <em>{{ row.label }}</em>{{ row.value }}
           </span>
         </div>
         <div v-if="linkedTrades(item.id).length" class="rw-decision-links">

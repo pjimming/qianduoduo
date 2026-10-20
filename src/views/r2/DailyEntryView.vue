@@ -21,6 +21,7 @@ type ModuleKey =
   | 'trades'
   | 'holdings'
   | 'events'
+  | 'holding_reviews'
   | 'decisions'
   | 'automation'
   | 'monthly'
@@ -63,6 +64,7 @@ const moduleRoutes: Record<
   trades: { name: 'r2-trades', hash: '#trades' },
   holdings: { name: 'r2-trades', hash: '#holdings' },
   events: { name: 'r2-products', hash: '#events' },
+  holding_reviews: { name: 'r2-products', hash: '#holding-reviews' },
   decisions: { name: 'r2-evaluation', hash: '#decisions' },
   automation: { name: 'r2-evaluation', hash: '#automation' },
   monthly: { name: 'r2-review', hash: '#monthly-notes' },

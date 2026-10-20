@@ -26,6 +26,7 @@ type ModuleKey =
   | 'trades'
   | 'holdings'
   | 'events'
+  | 'holding_reviews'
   | 'decisions'
   | 'automation'
   | 'monthly'
@@ -62,6 +63,19 @@ const pendingEvaluations = computed(() => props.automation.pending_evaluations.l
 const openEvents = computed(
   () => props.workspace.events.filter((item) => item.status === '待复核').length,
 )
+const holdingReviewSummary = computed(
+  () =>
+    props.workspace.holding_reviews_summary ?? {
+      total: 0,
+      replace: 0,
+      watch: 0,
+      hold: 0,
+      window: 0,
+    },
+)
+const holdingReviewTodo = computed(
+  () => holdingReviewSummary.value.replace + holdingReviewSummary.value.window,
+)
 
 const todos = computed(() => [
   {
@@ -87,6 +101,12 @@ const todos = computed(() => [
     label: '待确认评估',
     value: pendingEvaluations.value,
     tone: pendingEvaluations.value > 0 ? 'is-warn' : 'is-done',
+  },
+  {
+    key: 'holding_reviews' as ModuleKey,
+    label: '持仓复核',
+    value: holdingReviewTodo.value,
+    tone: holdingReviewTodo.value > 0 ? 'is-warn' : 'is-done',
   },
   {
     key: 'events' as ModuleKey,

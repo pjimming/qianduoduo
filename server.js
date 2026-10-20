@@ -22,6 +22,7 @@ const {
   todayShanghai,
 } = require('./lib/metrics');
 const { buildProductView } = require('./lib/products');
+const { buildHoldingReviews } = require('./lib/holdings-review');
 const { shiftMonth } = require('./lib/review-store');
 const { parseTradeText } = require('./lib/trade-parser');
 const { ocrImage } = require('./lib/ocr');
@@ -368,6 +369,37 @@ function validateDecisionPayload(payload, options = {}) {
   ) {
     return { error: '评估时点必须是 buy_day、holding 或 maturity' };
   }
+  const evidenceDate = String(payload.evidence_date || '').trim();
+  if (evidenceDate) {
+    if (!parseYmd(evidenceDate)) {
+      return { error: '证据日期格式应为 YYYY-MM-DD' };
+    }
+    if (evidenceDate > today) {
+      return { error: '证据日期不能晚于今天' };
+    }
+  }
+  const verifyDate = String(payload.verify_date || '').trim();
+  if (verifyDate && !parseYmd(verifyDate)) {
+    return { error: '事后验证日期格式应为 YYYY-MM-DD' };
+  }
+  let reviewMeta = payload.review_meta ?? {};
+  if (typeof reviewMeta === 'string') {
+    try {
+      reviewMeta = JSON.parse(reviewMeta);
+    } catch {
+      return { error: '替换测算不是有效的 JSON' };
+    }
+  }
+  if (
+    !reviewMeta ||
+    typeof reviewMeta !== 'object' ||
+    Array.isArray(reviewMeta)
+  ) {
+    return { error: '替换测算格式不正确' };
+  }
+  if (JSON.stringify(reviewMeta).length > 8000) {
+    return { error: '替换测算内容过长' };
+  }
   return {
     value: {
       date,
@@ -380,6 +412,9 @@ function validateDecisionPayload(payload, options = {}) {
       target_annualized: Math.round(targetAnnualized * 100) / 100,
       bucket_plan: bucketPlan,
       evaluation_at: [...new Set(evaluationAt)],
+      evidence_date: evidenceDate,
+      verify_date: verifyDate,
+      review_meta: reviewMeta,
       rating,
     },
   };
@@ -1024,10 +1059,11 @@ function dashboardPayload(repository) {
   const principal =
     allocationSettings.principal_override ??
     (Number.isFinite(capital.current_principal) ? capital.current_principal : 0);
+  const decisions = repository.listDecisions();
   const productView = buildProductView(repository.listProducts(), {
     principal,
     settings: allocationSettings,
-    decisions: repository.listDecisions(),
+    decisions,
     holdings: tradeOverview.holdings,
     pending_trades: tradeOverview.trades.filter((item) => item.status === 'pending'),
   });
@@ -1048,6 +1084,43 @@ function dashboardPayload(repository) {
   const review = buildReview(records, today, {
     initialDate: capital.initial_date,
   });
+  const holdingReviewSettings = Object.fromEntries(
+    repository
+      .listHoldingReviewSettings()
+      .map((setting) => [setting.product_code, setting]),
+  );
+  const holdingReviews = buildHoldingReviews({
+    holdings: tradeOverview.holdings,
+    products: productView.all,
+    universe: repository.listProducts(),
+    settingsByCode: holdingReviewSettings,
+    quotaByCode: allocationSettings.quota_by_code || {},
+    today,
+    snapshotDate: snapshotDate || '',
+    decisions,
+  });
+  const workspace = repository.getReviewWorkspace({
+    today,
+    records,
+    review,
+    trades: tradeOverview,
+  });
+  workspace.holding_reviews = holdingReviews;
+  workspace.holding_reviews_summary = {
+    total: holdingReviews.length,
+    replace: holdingReviews.filter((item) => item.verdict === 'replace').length,
+    watch: holdingReviews.filter((item) => item.verdict === 'watch').length,
+    hold: holdingReviews.filter((item) => item.verdict === 'hold').length,
+    window: holdingReviews.filter((item) => item.reminder.level !== 'none').length,
+  };
+  for (const item of holdingReviews) {
+    if (item.reminder.level === 'none') continue;
+    workspace.holdings_summary.alerts.push({
+      level: item.reminder.level === 'urgent' ? 'warn' : 'info',
+      code: `review-${item.product_code}`,
+      text: `${item.product_name}：${item.reminder.text}`,
+    });
+  }
 
   return {
     meta: {
@@ -1067,12 +1140,7 @@ function dashboardPayload(repository) {
     summary: summarize(records),
     windows: buildWindows(records),
     review,
-    workspace: repository.getReviewWorkspace({
-      today,
-      records,
-      review,
-      trades: tradeOverview,
-    }),
+    workspace,
     automation: repository.automationStore.getWorkspace(today),
     capital,
     products: productView,
@@ -1365,6 +1433,87 @@ function createServer(options = {}) {
         const settings = repository.saveAllocationSettings(body);
         sendJson(response, 200, {
           settings,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const holdingReviewMatch = pathname.match(
+        /^\/api\/holding-reviews\/([^/]+)$/,
+      );
+      if (holdingReviewMatch && request.method === 'PUT') {
+        const productCode = decodeURIComponent(holdingReviewMatch[1]).trim();
+        if (!productCode || productCode.length > 80) {
+          sendError(response, 400, '产品代码格式不正确');
+          return;
+        }
+        const body = await readJsonBody(request);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+          sendError(response, 400, '持仓复核口径格式不正确');
+          return;
+        }
+        const integerRanges = {
+          redemption_days: [0, 30],
+          arrival_days: [0, 30],
+          idle_days: [0, 60],
+          compare_horizon_days: [1, 365],
+        };
+        for (const [key, [min, max]] of Object.entries(integerRanges)) {
+          if (body[key] === undefined) continue;
+          if (body[key] === null || body[key] === '') continue;
+          const value = Number(body[key]);
+          if (!Number.isInteger(value) || value < min || value > max) {
+            sendError(response, 400, `${key} 需要是 ${min}–${max} 的整数`);
+            return;
+          }
+        }
+        const feeRanges = {
+          redemption_fee_bps: [0, 500],
+          purchase_fee_bps: [0, 500],
+          min_gain_amount: [0, 1e6],
+        };
+        for (const [key, [min, max]] of Object.entries(feeRanges)) {
+          if (body[key] === undefined || body[key] === null || body[key] === '') continue;
+          const value = Number(body[key]);
+          if (!Number.isFinite(value) || value < min || value > max) {
+            sendError(response, 400, `${key} 需要在 ${min}–${max} 之间`);
+            return;
+          }
+        }
+        const notes = body.notes === undefined ? undefined : String(body.notes);
+        if (notes !== undefined && notes.length > 1000) {
+          sendError(response, 400, '赎回规则备注不能超过 1000 个字符');
+          return;
+        }
+        const verifiedAt =
+          body.verified_at === undefined ? undefined : String(body.verified_at).trim();
+        if (verifiedAt) {
+          if (!parseYmd(verifiedAt)) {
+            sendError(response, 400, '核验日期格式应为 YYYY-MM-DD');
+            return;
+          }
+          if (verifiedAt > todayShanghai()) {
+            sendError(response, 400, '核验日期不能晚于今天');
+            return;
+          }
+        }
+        const redeemOpenDate =
+          body.next_redeem_open_date === undefined
+            ? undefined
+            : String(body.next_redeem_open_date).trim();
+        if (redeemOpenDate && !parseYmd(redeemOpenDate)) {
+          sendError(response, 400, '下一赎回开放日格式应为 YYYY-MM-DD');
+          return;
+        }
+        const setting = repository.saveHoldingReviewSetting({
+          ...body,
+          product_code: productCode,
+          notes,
+          verified_at: verifiedAt,
+          next_redeem_open_date: redeemOpenDate,
+        });
+        sendJson(response, 200, {
+          setting,
           dashboard: dashboardPayload(repository),
         });
         return;

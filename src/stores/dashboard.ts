@@ -14,6 +14,7 @@ import type {
   DeleteResponse,
   HoldingInput,
   HoldingMutationResponse,
+  HoldingReviewSettingInput,
   InboxMutationResponse,
   InboxPruneResponse,
   LedgerRecord,
@@ -162,6 +163,21 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }>('/api/products/allocation', {
       method: 'PUT',
       body: JSON.stringify(patch),
+    })
+    dashboard.value = response.dashboard
+    return response.dashboard
+  }
+
+  async function saveHoldingReviewSetting(
+    productCode: string,
+    input: HoldingReviewSettingInput,
+  ): Promise<DashboardPayload> {
+    const response = await apiRequest<{
+      setting: unknown
+      dashboard: DashboardPayload
+    }>(`/api/holding-reviews/${encodeURIComponent(productCode)}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
     })
     dashboard.value = response.dashboard
     return response.dashboard
@@ -570,6 +586,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     deleteCapitalEvent,
     refreshProducts,
     updateAllocationSettings,
+    saveHoldingReviewSetting,
     loadAutomation,
     runAutomation,
     updateAutomationSettings,
