@@ -49,6 +49,7 @@
 - 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；当前约 90 ms/篇、检索索引约 25 KB/篇，50 篇以上需重新评估索引拆分。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
 - 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
+- `r2-wealth-management` skill 继续以本机全局安装目录 `C:\Users\Administrator\.codex\skills\r2-wealth-management` 为运行源，独立发布镜像在 `D:\codex\r2-wealth-management`，远程为 `https://github.com/pjimming/r2-wealth-management.git`；2026-10-20 已发布 v1.4.0（提交 `a214981`）。上传时排除 `scripts/__pycache__/` 和 `.pyc`，并在独立仓库提交、推送；应用仓库不内嵌 skill。
 ### 投资页原则
 
 - 脑图、树状、表格三种视图都使用原生 Vue；保留搜索、缩放、折叠、打印、全屏和 `?view=canvas|tree|table` 切换。
@@ -116,7 +117,8 @@
 - 回测还显示：短/中端动量明显强于长端（前期与随后 3M 的秩相关约为短 0.50、中 0.57、长 0.35；6M 约为 0.55/0.62/0.12），全短债 3M 时序约 2.98% 但 6M 仅约 1.80%，长债没有持续期限溢价。该结论只适用于当前快照，不是未来预测。
 - 公开数据源：`POST https://finprod.paas.cmbchina.com/api/prod/queryProdList`，条件 `type=PN/isOwn=C/isPublic=Z/status=1/riskLevel=R2/crossFinance=Z`；`pastPerf.tqilstw4z3` 的 A/B/C/D/F = 1M/3M/6M/1Y/成立以来；`zchrCst+chrmn2+chrsal` 为固定费率，`begdat` 为下一开放日，`buynfq` 为起购金额。签名从公开页面捕获，不硬编码。
 - 数据备份：启动时自动写入 `data/backups/r2_ledger-YYYY-MM-DD.sqlite`，保留 45 天；`npm run db:list|db:backup|db:restore` 可手动查看、备份和恢复。
-- Git 分支：`main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。
+- 钱多多应用 Git 仓库：远程 `https://github.com/pjimming/qianduoduo.git`，分支 `main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。
+- R2 skill Git 仓库：本地 `D:\codex\r2-wealth-management`，远程 `https://github.com/pjimming/r2-wealth-management.git`，分支 `main` 跟踪 `origin/main`；该仓库根目录就是 skill 目录，包含 `SKILL.md`、`agents/`、`assets/`、`references/` 和 `scripts/`。
 
 ## 6. 自动化任务
 
