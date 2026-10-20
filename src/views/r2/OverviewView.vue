@@ -36,12 +36,12 @@ const shortcuts = computed(() => [
   {
     key: 'daily',
     to: { name: 'r2-daily' },
-    label: '今日收益',
-    value: props.dashboard.meta.has_today_record ? '已记' : '待记',
-    hint: props.dashboard.meta.has_today_record
-      ? '今天已有记录，可继续补截图或特殊事项'
-      : '花一分钟记下今天的盈亏',
-    tone: props.dashboard.meta.has_today_record ? 'is-done' : 'is-warn',
+    label: '昨日收益',
+    value: props.dashboard.meta.has_reporting_record ? '已记' : '待记',
+    hint: props.dashboard.meta.has_reporting_record
+      ? `${props.dashboard.meta.reporting_date} 已记，可继续补截图或特殊事项`
+      : `花一分钟记下 ${props.dashboard.meta.reporting_date} 的盈亏`,
+    tone: props.dashboard.meta.has_reporting_record ? 'is-done' : 'is-warn',
   },
   {
     key: 'trades',

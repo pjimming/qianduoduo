@@ -48,7 +48,7 @@
 - 每天 21:00 读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
 - 第 0 步处理 Codex 判断队列：`screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
 - 第 1–8 步巡检收益记录、待确认交易、收件箱、对账、到期、自动评估、复盘节点和服务状态；
-- 晚上运行，收益记录按当天口径检查；个别产品净值未发布时允许标注待更新；
+- 收益记录按 `/api/dashboard` 的 `meta.reporting_date`（通常为昨日）检查；今日收益未披露不算缺记，也不能按今天日期补写；
 - 没有异常、没有待办时保持安静，不发送“今日无异常”；
 - 只维护账本事实和流程，不写投资建议、不做收益预测。
 
@@ -126,7 +126,7 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 ### 4.4 任务本身
 
 - `r2`：手动运行后检查 `data/` 是否生成当天 CSV，`/api/dashboard` 是否切换快照；
-- `r2-2`：没有异常或待办时应该“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
+- `r2-2`：最近披露收益按 `meta.reporting_date` 检查，今日未披露不计异常；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
 - `r2-3`：没有结构风险时应该“无消息”，有内容时只发一张周卡。
 
 ## 5. 常见问题

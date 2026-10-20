@@ -94,6 +94,54 @@ test('empty ledger still exposes the current month, missing dates and next actio
   assert.ok(review.alerts.some((item) => item.code === 'no-month-records'));
 });
 
+test('T+1 reporting cutoff excludes today from missing-day calculations', () => {
+  const rows = [];
+  for (let day = 1; day <= 18; day += 1) {
+    rows.push({
+      date: `2026-10-${String(day).padStart(2, '0')}`,
+      principal: 30000,
+      daily_pnl: 1,
+      action: '无操作',
+      notes: '',
+    });
+  }
+  const review = buildReview(enrichRecords(rows), '2026-10-20', {
+    reportingDate: '2026-10-19',
+  });
+  assert.equal(review.reporting_date, '2026-10-19');
+  assert.equal(review.current_month.elapsed_days, 19);
+  assert.equal(review.current_month.missing_days, 1);
+  assert.deepEqual(review.current_month.missing_dates, ['2026-10-19']);
+  assert.ok(!review.current_month.missing_dates.includes('2026-10-20'));
+  assert.equal(review.weekly.week_start, '2026-10-19');
+  assert.equal(review.weekly.elapsed_days, 1);
+  assert.equal(review.weekly.missing_days, 1);
+});
+
+test('T+1 cutoff keeps a completed prior month final on the first day of a new month', () => {
+  const review = buildReview(
+    enrichRecords([
+      {
+        date: '2026-10-31',
+        principal: 30000,
+        daily_pnl: 1,
+        action: '无操作',
+        notes: '',
+      },
+    ]),
+    '2026-11-01',
+    { reportingDate: '2026-10-31' },
+  );
+  const october = review.monthly.find((item) => item.month === '2026-10');
+  assert.equal(review.current_month.month, '2026-11');
+  assert.equal(review.current_month.elapsed_days, 0);
+  assert.equal(review.current_month.missing_days, 0);
+  assert.ok(october);
+  assert.equal(october.is_current, false);
+  assert.equal(october.provisional, false);
+  assert.equal(october.elapsed_days, 31);
+});
+
 test('records before the capital start date are outside the review period', () => {
   const review = buildReview(
     enrichRecords([

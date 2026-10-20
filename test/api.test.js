@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { openDatabase } = require('../lib/db');
 const { createServer } = require('../server');
+const { shiftDate, todayShanghai } = require('../lib/metrics');
 
 const { productCsv } = require('./fixtures');
 
@@ -39,6 +40,7 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   const productCount = dashboard.products.all.length;
   assert.ok(productCount > 0);
   assert.equal(dashboard.meta.target_annualized, 3);
+  assert.equal(dashboard.meta.reporting_date, shiftDate(todayShanghai(), -1));
 
   const refreshResponse = await fetch(`${base}/api/products/refresh`, { method: 'POST' });
   assert.equal(refreshResponse.status, 200);
@@ -213,4 +215,38 @@ test('API rejects future dates and records before capital initialization', async
   assert.equal(uninitialized.status, 400);
   const uninitializedBody = await uninitialized.json();
   assert.match(uninitializedBody.error, /本金账户/);
+});
+
+test('API rejects the current day because CMB returns are published T+1', async (t) => {
+  const base = await startTestServer(t);
+  const today = todayShanghai();
+  const reportingDate = shiftDate(today, -1);
+  const initResponse = await fetch(`${base}/api/capital/init`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      initial_principal: 10000,
+      initial_date: '2026-09-01',
+    }),
+  });
+  assert.equal(initResponse.status, 201);
+
+  const currentDay = await fetch(`${base}/api/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: today, daily_pnl: 1 }),
+  });
+  assert.equal(currentDay.status, 400);
+  assert.match((await currentDay.json()).error, /T\+1|已披露日/);
+
+  const previousDay = await fetch(`${base}/api/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: reportingDate, daily_pnl: 1 }),
+  });
+  assert.equal(previousDay.status, 201);
+  assert.equal(
+    (await previousDay.json()).dashboard.meta.has_reporting_record,
+    true,
+  );
 });

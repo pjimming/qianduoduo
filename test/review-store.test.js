@@ -159,6 +159,23 @@ test('review timeline marks completed periods and focuses the daily gap', (t) =>
   assert.equal(workspace.timeline.focus, 'daily');
 });
 
+test('review timeline checks yesterday instead of today for T+1 reporting', (t) => {
+  const repository = openTestRepository(t);
+  const workspace = repository.getReviewWorkspace({
+    today: '2026-10-20',
+    reportingDate: '2026-10-19',
+    records: [{ date: '2026-10-19', daily_pnl: 10 }],
+    review: {
+      reporting_date: '2026-10-19',
+      weekly: { record_days: 1, elapsed_days: 1, consecutive_negative_days: 0 },
+    },
+  });
+  const daily = workspace.timeline.nodes.find((node) => node.key === 'daily');
+  assert.equal(daily.status, 'done');
+  assert.equal(daily.title, '昨日收益已记');
+  assert.match(daily.detail, /10\.00/);
+});
+
 test('review timeline marks missing monthly notes as overdue after day five', (t) => {
   const repository = openTestRepository(t);
   const workspace = repository.getReviewWorkspace({

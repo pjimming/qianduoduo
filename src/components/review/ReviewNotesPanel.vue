@@ -265,7 +265,7 @@ function applySuggestion(): void {
   answers.value = [
     hasRecords
       ? `本月记录 ${recordText}，${actionText}，${tradeText}。先按记录回看是否有未按计划执行的买入、赎回或切换；无记录的日子不能补判断。`
-      : `本月还没有收益记录，无法判断是否按计划执行。${tradeText}；先补今天，再用交易流水核对买入、赎回和切换。`,
+      : `本月还没有收益记录，无法判断是否按计划执行。${tradeText}；先补最近已披露的收益，再用交易流水核对买入、赎回和切换。`,
     hasRecords
       ? `本月结果：${returnText}；已确认交易 ${confirmedMonthTrades.value.length} 笔，待确认 ${pendingMonthTrades.value.length} 笔。最好单日 ${formatSignedMoney(
           row?.best_day ?? 0,

@@ -53,8 +53,17 @@ const uploading = ref(false)
 const savingCase = ref(false)
 
 const today = computed(() => props.dashboard.meta.today)
-const todayRecord = computed(
-  () => props.dashboard.records.find((record) => record.date === today.value) ?? null,
+const reportingDate = computed(
+  () => props.dashboard.meta.reporting_date || props.dashboard.meta.today,
+)
+const reportingRecord = computed(
+  () =>
+    props.dashboard.records.find(
+      (record) => record.date === reportingDate.value,
+    ) ?? null,
+)
+const reportingLabel = computed(() =>
+  reportingDate.value === today.value ? '今日收益' : '昨日收益',
 )
 const inbox = computed(() => props.workspace.trades?.inbox ?? [])
 const pendingInbox = computed(() => inbox.value.filter((item) => item.status === 'pending'))
@@ -86,9 +95,9 @@ const todos = computed(() => [
   },
   {
     key: 'daily' as const,
-    label: '今日收益',
-    value: todayRecord.value ? '已记' : '未记',
-    tone: todayRecord.value ? 'is-done' : 'is-warn',
+    label: reportingLabel.value,
+    value: reportingRecord.value ? '已记' : '未记',
+    tone: reportingRecord.value ? 'is-done' : 'is-warn',
   },
   {
     key: 'trades' as ModuleKey,
@@ -129,7 +138,7 @@ const specialCase = reactive({
 
 function handleTodo(key: ModuleKey | 'daily'): void {
   if (key === 'daily') {
-    dailyRef.value?.startRecord(today.value)
+    dailyRef.value?.startRecord(reportingDate.value)
     return
   }
   emit('open-module', key)
@@ -353,8 +362,10 @@ defineExpose({
         <div class="rw-quick-card-head">
           <span class="rw-quick-step">02</span>
           <div>
-            <strong>今日收益</strong>
-            <p>只填今天赚了多少，本金和收益率自动计算。</p>
+            <strong>{{ reportingLabel }}</strong>
+            <p>
+              招行只披露到 {{ reportingDate }}；填这一天赚了多少，今天不计缺记。
+            </p>
           </div>
         </div>
         <EntryForm
@@ -364,7 +375,13 @@ defineExpose({
           @saved="handleRecordSaved"
         />
         <div class="rw-quick-meta">
-          <span>{{ todayRecord ? '今日已记，可直接改' : '今天还没记' }}</span>
+          <span>
+            {{
+              reportingRecord
+                ? `${reportingDate} 已记，可直接改`
+                : `${reportingDate} 还没记`
+            }}
+          </span>
           <button type="button" class="rw-link-button" @click="dailyRef?.resetForm()">
             补记其他日期
           </button>

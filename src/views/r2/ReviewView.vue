@@ -80,6 +80,7 @@ function handleRecord(date: string): void {
           :review="dashboard.review"
           :notes="workspace.notes"
           :today="dashboard.meta.today"
+          :reporting-date="dashboard.meta.reporting_date"
           @record="handleRecord"
         />
       </section>

@@ -19,7 +19,10 @@ const { show } = useToast()
 
 const formMode = ref<'create' | 'edit'>('create')
 const editingDate = ref<string | null>(null)
-const recordDate = ref(props.dashboard.meta.today)
+const reportingDate = computed(
+  () => props.dashboard.meta.reporting_date || props.dashboard.meta.today,
+)
+const recordDate = ref(reportingDate.value)
 const dailyPnl = ref<number | ''>('')
 const action = ref<LedgerAction>('无操作')
 const notes = ref('')
@@ -31,6 +34,11 @@ let focusTimer: number | undefined
 const isEditing = computed(() => formMode.value === 'edit')
 const principal = computed(() => dashboardStore.principalForDate(recordDate.value))
 const accountStartDate = computed(() => props.dashboard.capital.initial_date ?? null)
+const hasReportableDay = computed(
+  () =>
+    !accountStartDate.value ||
+    reportingDate.value >= (accountStartDate.value as string),
+)
 const isBeforeAccountStart = computed(
   () =>
     Boolean(accountStartDate.value && recordDate.value) &&
@@ -38,12 +46,15 @@ const isBeforeAccountStart = computed(
 )
 const showTodayNotice = computed(
   () =>
-    props.dashboard.meta.has_today_record &&
-    editingDate.value !== props.dashboard.meta.today,
+    props.dashboard.meta.has_reporting_record &&
+    editingDate.value !== reportingDate.value,
+)
+const reportingDayLabel = computed(() =>
+  reportingDate.value === props.dashboard.meta.today ? '今日' : '昨日',
 )
 const entryDateChip = computed(() =>
-  recordDate.value === props.dashboard.meta.today
-    ? '今天'
+  recordDate.value === reportingDate.value
+    ? reportingDayLabel.value
     : formatDateShort(recordDate.value),
 )
 
@@ -66,10 +77,15 @@ const preview = computed(() => {
 })
 
 watch(
-  () => [accountStartDate.value, props.dashboard.meta.today] as const,
+  () =>
+    [
+      accountStartDate.value,
+      props.dashboard.meta.today,
+      reportingDate.value,
+    ] as const,
   () => {
     if (!isEditing.value && isBeforeAccountStart.value) {
-      recordDate.value = props.dashboard.meta.today
+      recordDate.value = reportingDate.value
     }
   },
 )
@@ -86,7 +102,7 @@ function applyRecord(record: LedgerRecord): void {
 function resetForm(): void {
   editingDate.value = null
   formMode.value = 'create'
-  recordDate.value = props.dashboard.meta.today
+  recordDate.value = reportingDate.value
   dailyPnl.value = ''
   action.value = '无操作'
   notes.value = ''
@@ -105,12 +121,18 @@ function loadRecordForEdit(date: string, focus = true): void {
   focusTimer = window.setTimeout(() => dailyPnlInput.value?.focus(), 380)
 }
 
-function loadToday(): void {
-  loadRecordForEdit(props.dashboard.meta.today)
+function loadReportingRecord(): void {
+  loadRecordForEdit(reportingDate.value)
 }
 
 function startRecord(date: string): void {
   if (!date) return
+  if (date > reportingDate.value) {
+    show(`今日收益尚未披露，请记录 ${reportingDate.value} 或更早日期`, {
+      error: true,
+    })
+    return
+  }
   if (accountStartDate.value && date < accountStartDate.value) {
     show(`该日期早于本金起始日 ${accountStartDate.value}，不纳入收益账本`, {
       error: true,
@@ -133,8 +155,14 @@ async function handleSubmit(): Promise<void> {
     show('请选择日期', { error: true })
     return
   }
-  if (recordDate.value > props.dashboard.meta.today) {
-    show('不能记录未来日期', { error: true })
+  if (!hasReportableDay.value) {
+    show(`收益尚未披露到本金起始日 ${accountStartDate.value}`, { error: true })
+    return
+  }
+  if (recordDate.value > reportingDate.value) {
+    show(`今日收益尚未披露，请记录 ${reportingDate.value} 或更早日期`, {
+      error: true,
+    })
     return
   }
   if (!props.dashboard.capital.initialized) {
@@ -194,7 +222,7 @@ onUnmounted(() => {
 })
 
 onMounted(() => {
-  const record = dashboardStore.recordByDate(props.dashboard.meta.today)
+  const record = dashboardStore.recordByDate(reportingDate.value)
   if (record) applyRecord(record)
 })
 
@@ -212,15 +240,23 @@ defineExpose({
       <div>
         <p class="kicker">{{ compact ? '每日收益' : '每日一分钟' }}</p>
         <h2 id="formTitle">
-          {{ isEditing ? '修改这笔记录' : compact ? '今天赚了多少' : '记一笔收益' }}
+          {{
+            isEditing
+              ? '修改这笔记录'
+              : compact
+                ? `${reportingDayLabel}赚了多少`
+                : '记一笔收益'
+          }}
         </h2>
       </div>
       <span id="entryDateChip" class="entry-date-chip">{{ entryDateChip }}</span>
     </div>
 
     <div v-if="showTodayNotice" id="todayNotice" class="today-notice">
-      <span>今天已有记录</span>
-      <button id="loadTodayButton" type="button" @click="loadToday">载入修改</button>
+      <span>{{ reportingDayLabel }}已有记录</span>
+      <button id="loadTodayButton" type="button" @click="loadReportingRecord">
+        载入修改
+      </button>
     </div>
 
     <form id="recordForm" novalidate @submit.prevent="handleSubmit">
@@ -232,12 +268,19 @@ defineExpose({
           name="date"
           type="date"
           :min="accountStartDate || ''"
-          :max="dashboard.meta.today"
+          :max="reportingDate"
+          :disabled="!hasReportableDay"
           :readonly="isEditing"
           required
         />
+        <p class="date-window-note is-reporting">
+          招行收益按 T+1 展示：今天记录 {{ reportingDate }} 及之前的收益，今天不记为缺记。
+        </p>
         <p v-if="isBeforeAccountStart" class="date-window-note">
           该日期早于本金起始日 {{ accountStartDate }}，起始日前没有收益属于正常状态，无需补记。
+        </p>
+        <p v-if="!hasReportableDay" class="date-window-note">
+          本金自 {{ accountStartDate }} 起算，收益将在下一个披露日纳入账本。
         </p>
       </div>
 
@@ -257,6 +300,7 @@ defineExpose({
             step="0.01"
             inputmode="decimal"
             placeholder="0.00"
+            :disabled="!hasReportableDay"
             required
           />
         </div>
@@ -290,7 +334,12 @@ defineExpose({
       </div>
 
       <div class="form-actions">
-        <button id="submitButton" class="button button-primary" type="submit" :disabled="saving">
+        <button
+          id="submitButton"
+          class="button button-primary"
+          type="submit"
+          :disabled="saving || !hasReportableDay"
+        >
           <span>{{ saving ? '保存中…' : isEditing ? '保存修改' : '保存记录' }}</span>
           <svg viewBox="0 0 20 20" aria-hidden="true">
             <path d="M4 10h12m0 0-4-4m4 4-4 4" />
@@ -323,6 +372,10 @@ defineExpose({
   color: #8f4638;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.date-window-note.is-reporting {
+  color: var(--muted);
 }
 
 .today-notice {

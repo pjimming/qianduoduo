@@ -190,6 +190,8 @@ export interface ReviewData {
   target_annualized_pct: number
   target_month_pct: number
   account_start_date: string | null
+  reporting_date: string
+  reporting_lag_days: number
   daily: DailyReview | null
   weekly: WeeklyReview | null
   alerts: ReviewAlert[]
@@ -972,9 +974,13 @@ export interface ProductView {
 
 export interface DashboardMeta {
   today: string
+  reporting_date: string
+  reporting_lag_days: number
   target_annualized: number
   has_today_record: boolean
   today_record: RawLedgerRecord | null
+  has_reporting_record: boolean
+  reporting_record: RawLedgerRecord | null
   product_snapshot_date: string | null
   product_history_date: string | null
   product_csv: string | null

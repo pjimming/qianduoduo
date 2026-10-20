@@ -14,6 +14,7 @@ const props = defineProps<{
   review: ReviewData
   notes?: ReviewNote[]
   today: string
+  reportingDate: string
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +38,9 @@ const daily = computed(() => props.review.daily)
 const weekly = computed(() => props.review.weekly)
 const alerts = computed(() => props.review.alerts ?? [])
 const accountStartDate = computed(() => props.review.account_start_date ?? null)
+const reportingLabel = computed(() =>
+  props.reportingDate === props.today ? '今日' : '昨日',
+)
 const monthly = computed<MonthlyReview | null>(() => {
   if (selectedMonth.value) {
     return history.value.find((item) => item.month === selectedMonth.value) ?? null
@@ -131,8 +135,8 @@ function monthlyMessage(item: MonthlyReview | null): string {
   const maxEligibleDays = item.elapsed_days + item.days_remaining
   if (!item.has_records) {
     return item.before_start_days > 0
-      ? `账本自 ${item.account_start_date ?? '起始日'} 起算，本月可记 ${item.elapsed_days} 天；起始日前不计缺记，先补今天的记录。`
-      : `本月已过 ${item.elapsed_days} 天，还没有收益记录；先补今天，评分会在记录后自动生成。`
+      ? `账本自 ${item.account_start_date ?? '起始日'} 起算，本月可记 ${item.elapsed_days} 天；起始日前不计缺记，先补${reportingLabel.value}收益。`
+      : `截至 ${props.reportingDate} 本月可记 ${item.elapsed_days} 天，还没有收益记录；先补${reportingLabel.value}收益，评分会在记录后自动生成。`
   }
   if (item.provisional) {
     const range = item.grade_range
@@ -163,7 +167,13 @@ const calendarCells = computed(() => {
     key: string
     day: number
     date: string
-    status: 'recorded' | 'missing' | 'future' | 'outside' | 'before-start'
+    status:
+      | 'recorded'
+      | 'missing'
+      | 'pending'
+      | 'future'
+      | 'outside'
+      | 'before-start'
   }> = []
   for (let index = 0; index < leading; index += 1) {
     cells.push({ key: `blank-${index}`, day: 0, date: '', status: 'outside' })
@@ -180,8 +190,10 @@ const calendarCells = computed(() => {
         : date < periodStart
           ? 'before-start'
           : date > props.today
-          ? 'future'
-          : 'missing'
+            ? 'future'
+            : date > props.reportingDate
+              ? 'pending'
+              : 'missing'
     cells.push({ key: date, day, date, status })
   }
   return cells
@@ -199,7 +211,9 @@ const recentDays = computed(() => {
   const [year, month] = monthly.value.month.split('-').map(Number)
   const totalDays = new Date(Date.UTC(year, month, 0)).getUTCDate()
   const elapsedDays = monthly.value.is_current
-    ? Math.min(Number(props.today.slice(8, 10)), totalDays)
+    ? props.reportingDate.startsWith(monthly.value.month)
+      ? Math.min(Number(props.reportingDate.slice(8, 10)), totalDays)
+      : 0
     : totalDays
   const startDay =
     monthly.value.account_start_date?.startsWith(monthly.value.month)
@@ -229,7 +243,7 @@ const recordHint = computed(() => {
   if (!monthly.value.has_records) {
     return monthly.value.before_start_days > 0
       ? `账本自 ${monthly.value.account_start_date ?? '起始日'} 起算；本月可记 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天，起始日前不纳入。`
-      : `点下面任一天补记录；本月已过 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天。`
+      : `点下面任一天补记录；截至 ${props.reportingDate} 可记 ${monthly.value.elapsed_days} 天，缺记 ${monthly.value.missing_days} 天。`
   }
   if (monthly.value.provisional) {
     const maxEligibleDays =
@@ -288,8 +302,16 @@ const actionItems = computed(() => {
   if (!monthly.value) return []
   if (!monthly.value.has_records) {
     return monthly.value.before_start_days > 0
-      ? ['先补今天', '从起始日起逐日记账', '起始日前不追补']
-      : ['先补今天', '连续记满 7 天', '月末前至少 20 条']
+      ? [
+          `先补${reportingLabel.value}收益`,
+          '从起始日起逐日记账',
+          '起始日前不追补',
+        ]
+      : [
+          `先补${reportingLabel.value}收益`,
+          '连续记满 7 天',
+          '月末前至少 20 条',
+        ]
   }
   if (monthly.value.provisional && monthly.value.missing_days > 0) {
     return [
@@ -427,7 +449,7 @@ function selectMonth(month: string): void {
               {{
                 weekly
                   ? `本周收益率 ${formatPct(weekly.return_pct, 3, true)}`
-                  : '先补今天的账，周检查才有依据'
+                  : '先补最近披露的收益，周检查才有依据'
               }}
             </small>
           </div>
@@ -480,7 +502,9 @@ function selectMonth(month: string): void {
               type="button"
               class="recent-day-row"
               :class="`is-${item.status}`"
-              :aria-label="`${item.date} ${item.status === 'recorded' ? '已记录，点击修改' : '缺记，点击补记'}`"
+              :aria-label="`${item.date} ${
+                item.status === 'recorded' ? '已记录，点击修改' : '缺记，点击补记'
+              }`"
               @click="startRecord(item.date)"
             >
               <span class="recent-day-date">
@@ -496,7 +520,9 @@ function selectMonth(month: string): void {
           <div v-else class="recent-day-empty">本月还没有可显示的日期。</div>
           <div class="recent-day-foot">
             <span>点任意一天直接补记或修改</span>
-            <button type="button" @click="startRecord(today)">补今天</button>
+            <button type="button" @click="startRecord(reportingDate)">
+              记{{ reportingLabel }}
+            </button>
           </div>
         </article>
       </div>
@@ -722,9 +748,9 @@ function selectMonth(month: string): void {
                 <button
                   class="monthly-record-cta"
                   type="button"
-                  @click="startRecord(today)"
+                  @click="startRecord(reportingDate)"
                 >
-                  补今天
+                  记{{ reportingLabel }}
                 </button>
               </div>
               <div class="monthly-record-progress" aria-hidden="true">
@@ -748,6 +774,7 @@ function selectMonth(month: string): void {
                   :disabled="
                     cell.status === 'outside' ||
                     cell.status === 'future' ||
+                    cell.status === 'pending' ||
                     cell.status === 'before-start'
                   "
                   :aria-label="
@@ -758,6 +785,8 @@ function selectMonth(month: string): void {
                             ? '已记录'
                             : cell.status === 'missing'
                               ? '缺记'
+                              : cell.status === 'pending'
+                                ? '收益待披露，暂不计缺记'
                               : cell.status === 'before-start'
                                 ? '本金起始日前，未纳入账本'
                               : '未到'
@@ -772,6 +801,7 @@ function selectMonth(month: string): void {
                 <span class="record-legend">
                   <em class="is-recorded"></em>已记录
                   <em class="is-missing"></em>缺记
+                  <em class="is-pending"></em>待披露
                   <em class="is-before-start"></em>起始日前
                   <em class="is-future"></em>未到
                 </span>
@@ -1108,6 +1138,7 @@ function selectMonth(month: string): void {
 }
 
 .record-day.is-future,
+.record-day.is-pending,
 .record-day.is-outside,
 .record-day.is-before-start {
   color: var(--muted-light);
@@ -1120,6 +1151,14 @@ function selectMonth(month: string): void {
   border-style: dashed;
   background: rgba(139, 149, 142, 0.04);
   opacity: 0.72;
+}
+
+.record-day.is-pending {
+  border-color: rgba(83, 111, 101, 0.16);
+  border-style: dashed;
+  background: rgba(83, 111, 101, 0.05);
+  color: var(--muted);
+  opacity: 0.78;
 }
 
 .monthly-record-foot {
@@ -1158,6 +1197,11 @@ function selectMonth(month: string): void {
 
 .record-legend em.is-future {
   background: var(--line);
+}
+
+.record-legend em.is-pending {
+  border: 1px dashed rgba(83, 111, 101, 0.38);
+  background: rgba(83, 111, 101, 0.08);
 }
 
 .record-legend em.is-before-start {

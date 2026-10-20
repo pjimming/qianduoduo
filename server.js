@@ -18,6 +18,7 @@ const {
   buildWindows,
   enrichRecords,
   parseYmd,
+  shiftDate,
   summarize,
   todayShanghai,
 } = require('./lib/metrics');
@@ -202,12 +203,18 @@ function validateRecordPayload(payload, options = {}) {
     return { error: '记录格式不正确' };
   }
   const today = options.today || todayShanghai();
+  const reportingDate = options.reportingDate || shiftDate(today, -1);
   const date = String(payload.date ?? options.date ?? '').trim();
   if (!parseYmd(date)) {
     return { error: '日期格式应为 YYYY-MM-DD' };
   }
   if (date > today) {
     return { error: '不能记录未来日期' };
+  }
+  if (date > reportingDate) {
+    return {
+      error: `招行收益按 T+1 展示，收益只能记到最近已披露日 ${reportingDate}`,
+    };
   }
   if (date < '2000-01-01') {
     return { error: '日期过早，请检查是否填写正确' };
@@ -1052,7 +1059,10 @@ function dashboardPayload(repository) {
   const rawRecords = repository.listRecords();
   const records = enrichRecords(rawRecords);
   const today = todayShanghai();
+  const reportingDate = shiftDate(today, -1);
   const todayRecord = rawRecords.find((record) => record.date === today) || null;
+  const reportingRecord =
+    rawRecords.find((record) => record.date === reportingDate) || null;
   const capital = repository.getCapitalState(today);
   const tradeOverview = repository.tradeStore.getOverview(today);
   const allocationSettings = repository.getAllocationSettings();
@@ -1083,6 +1093,7 @@ function dashboardPayload(repository) {
   const backups = repository.backupDir ? listBackups(repository.backupDir) : [];
   const review = buildReview(records, today, {
     initialDate: capital.initial_date,
+    reportingDate,
   });
   const holdingReviewSettings = Object.fromEntries(
     repository
@@ -1101,6 +1112,7 @@ function dashboardPayload(repository) {
   });
   const workspace = repository.getReviewWorkspace({
     today,
+    reportingDate,
     records,
     review,
     trades: tradeOverview,
@@ -1125,9 +1137,13 @@ function dashboardPayload(repository) {
   return {
     meta: {
       today,
+      reporting_date: reportingDate,
+      reporting_lag_days: 1,
       target_annualized: TARGET_ANNUALIZED,
       has_today_record: Boolean(todayRecord),
       today_record: todayRecord,
+      has_reporting_record: Boolean(reportingRecord),
+      reporting_record: reportingRecord,
       product_snapshot_date: snapshotDate,
       product_history_date: historyDate,
       product_csv: repository.productCsvPath ? path.basename(repository.productCsvPath) : null,
@@ -2481,6 +2497,11 @@ function createServer(options = {}) {
 
       if (pathname === '/api/records' && request.method === 'POST') {
         const body = await readJsonBody(request);
+        const capitalState = repository.getCapitalState(todayShanghai());
+        if (!capitalState.initialized) {
+          sendError(response, 400, '请先初始化本金账户，再记录收益');
+          return;
+        }
         const basicValidation = validateRecordPayload(body);
         if (basicValidation.error) {
           sendError(response, 400, basicValidation.error);
