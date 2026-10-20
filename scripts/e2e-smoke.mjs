@@ -33,7 +33,38 @@ function assert(condition, message) {
   if (!condition) throw new Error(message)
 }
 
+async function assertFontFloor(page, selector, label) {
+  const offenders = await page.locator(selector).evaluate((root) => {
+    return Array.from(root.querySelectorAll('*'))
+      .filter((element) => {
+        const style = getComputedStyle(element)
+        if (
+          style.display === 'none' ||
+          style.visibility === 'hidden' ||
+          !element.getClientRects().length
+        ) {
+          return false
+        }
+        const hasDirectText = Array.from(element.childNodes).some(
+          (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+        )
+        return hasDirectText && Number.parseFloat(style.fontSize) < 12
+      })
+      .slice(0, 8)
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        text: element.textContent?.trim().slice(0, 40) || '',
+        size: getComputedStyle(element).fontSize,
+      }))
+  })
+  assert(
+    offenders.length === 0,
+    `${label}存在低于 12px 的信息文字：${JSON.stringify(offenders)}`,
+  )
+}
+
 async function main() {
+  process.env.R2_OCR = '0'
   if (!existsSync(path.join(root, 'dist', 'index.html'))) {
     throw new Error('缺少 dist/index.html，请先执行 npm run build')
   }
@@ -154,29 +185,38 @@ async function main() {
       '根路径应重定向到收益概览',
     )
     assert(
-      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 6,
-      '侧边栏理财分区应有 6 个入口',
+      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 7,
+      '侧边栏理财分区应有 7 个入口',
+    )
+    const wealthLinkTexts = await page
+      .locator('#nav-group-wealth .sidebar-link')
+      .allTextContents()
+    assert(
+      wealthLinkTexts[0]?.includes('收益概览') &&
+        wealthLinkTexts[1]?.includes('消息中心'),
+      '理财菜单前两项应为“收益概览、消息中心”',
     )
     assert(
-      (await page.locator('.r2-jump-card').count()) === 4,
-      '收益概览应有 4 个待办入口',
+      (await page.locator('.r2-jump-card').count()) === 3,
+      '收益概览应只保留两类截图和消息中心入口',
     )
 
     await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.ledger-panel')
     assert(
-      (await page.locator('.rw-quick-card').count()) === 3,
-      '每日记账应有 3 个提交入口',
+      (await page.locator('.rw-quick-card').count()) === 2,
+      '每日记账应只保留交易截图和收益截图两个主入口',
     )
     assert(
       (await page.locator('.ledger-table tbody tr').count()) === 1,
       '每日记账没有渲染历史记录',
     )
 
+    await page.locator('.capture-manual > summary').click()
     await page.getByLabel('发生了什么').fill('E2E 特殊事项：额度临时关闭')
-    await page.getByRole('button', { name: '提交给 AI' }).click()
+    await page.getByRole('button', { name: '交给平台跟踪' }).click()
     await page.waitForFunction(
-      () => document.querySelector('.toast')?.textContent?.includes('特殊事项已提交'),
+      () => document.querySelector('.toast')?.textContent?.includes('特殊情况已交给 AI 跟进'),
       null,
       { timeout: 5000 },
     )
@@ -258,6 +298,47 @@ async function main() {
       )?.includes('5,000'),
       '待确认金额没有正确显示',
     )
+
+    await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.inbox-page')
+    await assertFontFloor(page, '.inbox-page', '消息中心桌面端')
+    assert(
+      (await page.locator('.inbox-message').count()) > 0,
+      '消息中心没有聚合待处理交易或产品事件',
+    )
+    assert(
+      (await page.locator('.inbox-source-group').count()) >= 2,
+      '消息中心没有按来源分组',
+    )
+    const unreadBefore = await page.locator('.inbox-message.is-unread').count()
+    assert(unreadBefore > 0, '消息中心没有显示未读状态')
+    await page.getByRole('button', { name: /全部已读/ }).click()
+    await page.waitForTimeout(300)
+    assert(
+      (await page.locator('.inbox-message.is-unread').count()) === 0,
+      '全部已读后仍有未读消息',
+    )
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.income-capture-layout')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '移动端每日记账出现横向溢出',
+    )
+    await assertFontFloor(page, '.rw-quick', '每日记账移动端')
+    await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.inbox-page')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '移动端消息中心出现横向溢出',
+    )
+    await assertFontFloor(page, '.inbox-page', '消息中心移动端')
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.allocation-bucket')
@@ -502,7 +583,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏六分区、每日记账、复盘模块卡与跨页补记、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、复盘模块卡与跨页补记、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

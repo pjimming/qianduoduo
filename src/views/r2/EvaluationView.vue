@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const workspace = computed(() => props.dashboard.workspace)
 const pendingEvaluations = computed(
-  () => props.dashboard.automation.pending_evaluations.length,
+  () => props.dashboard.inbox_center.summary.by_source.evaluation?.pending ?? 0,
 )
 const wrongGood = computed(
   () =>

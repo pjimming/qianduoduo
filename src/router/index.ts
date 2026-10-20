@@ -22,6 +22,15 @@ const router = createRouter({
           redirect: { name: 'r2-overview' },
         },
         {
+          path: 'inbox',
+          name: 'r2-inbox',
+          component: () => import('@/views/r2/InboxView.vue'),
+          meta: {
+            module: 'wealth',
+            title: '理财 · 消息中心 · 钱多多',
+          },
+        },
+        {
           path: 'overview',
           name: 'r2-overview',
           component: () => import('@/views/r2/OverviewView.vue'),

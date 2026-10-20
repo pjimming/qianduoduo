@@ -15,6 +15,10 @@ import type {
   HoldingInput,
   HoldingMutationResponse,
   HoldingReviewSettingInput,
+  IncomeCaptureResponse,
+  IncomeApplyResponse,
+  IncomeInboxParsed,
+  InboxCenter,
   InboxMutationResponse,
   InboxPruneResponse,
   LedgerRecord,
@@ -269,6 +273,34 @@ export const useDashboardStore = defineStore('dashboard', () => {
     await loadAutomation()
   }
 
+  async function markInboxItem(
+    id: number,
+    action: 'read' | 'unread' | 'snooze' | 'unsnooze',
+    input: { until?: string } = {},
+  ): Promise<InboxCenter> {
+    const response = await apiRequest<{
+      inbox_center: InboxCenter
+      dashboard: DashboardPayload
+    }>(`/api/inbox/${id}/${action}`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response.inbox_center
+  }
+
+  async function markAllInboxRead(): Promise<InboxCenter> {
+    const response = await apiRequest<{
+      inbox_center: InboxCenter
+      dashboard: DashboardPayload
+    }>('/api/inbox/read-all', {
+      method: 'POST',
+      body: '{}',
+    })
+    dashboard.value = response.dashboard
+    return response.inbox_center
+  }
+
   async function resolveAutomationJob(
     id: number,
     status: 'done' | 'skipped' | 'failed',
@@ -380,6 +412,45 @@ export const useDashboardStore = defineStore('dashboard', () => {
     })
     applyTradeOverview(response.overview)
     return response
+  }
+
+  async function uploadIncomeScreenshot(input: {
+    filename: string
+    mime: string
+    data: string
+  }): Promise<IncomeCaptureResponse> {
+    const response = await apiRequest<IncomeCaptureResponse>('/api/income/inbox', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function applyIncomeScreenshot(
+    id: number,
+    input: IncomeInboxParsed,
+  ): Promise<IncomeApplyResponse> {
+    const response = await apiRequest<IncomeApplyResponse>(
+      `/api/income/inbox/${id}/apply`,
+      {
+      method: 'POST',
+      body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function ignoreIncomeScreenshot(id: number): Promise<void> {
+    const response = await apiRequest<{ dashboard: DashboardPayload }>(
+      `/api/income/inbox/${id}/ignore`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ note: '忽略收益截图' }),
+      },
+    )
+    dashboard.value = response.dashboard
   }
 
   async function updateTradeInbox(
@@ -594,6 +665,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     undoEvaluation,
     markNotification,
     markAllNotificationsRead,
+    markInboxItem,
+    markAllInboxRead,
     resolveAutomationJob,
     generateDraft,
     confirmDraft,
@@ -603,6 +676,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     confirmTrade,
     cancelTrade,
     uploadTradeScreenshot,
+    uploadIncomeScreenshot,
+    applyIncomeScreenshot,
+    ignoreIncomeScreenshot,
     updateTradeInbox,
     applyTradeInbox,
     ignoreTradeInbox,

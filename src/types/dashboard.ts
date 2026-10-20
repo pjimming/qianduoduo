@@ -26,6 +26,8 @@ export interface RawLedgerRecord {
   daily_pnl: number
   action: LedgerAction
   notes: string
+  source?: 'manual' | 'income-screenshot' | string
+  screenshot_id?: number | null
 }
 
 export interface CapitalEvent {
@@ -620,6 +622,12 @@ export interface ReviewWorkspace {
   quarterly: QuarterlyNote[]
   holdings_summary: HoldingsSummary
   trades: TradeOverview | null
+  income_inbox: IncomeInboxItem[]
+  income_summary: {
+    pending: number
+    applied: number
+    latest_date: string | null
+  }
   timeline: {
     today: string
     focus: 'daily' | 'weekly' | 'monthly' | 'quarterly' | null
@@ -705,6 +713,7 @@ export interface EvaluationSettings {
   strategy_version: string
   notifications_enabled: boolean
   automation_enabled: boolean
+  auto_confirm_reviews: boolean
 }
 
 export interface AutomationNotification {
@@ -778,6 +787,108 @@ export interface AutomationWorkspace {
     last_run: AutomationRun | null
     next_run: string | null
   }
+}
+
+export interface IncomeInboxParsed {
+  date?: string
+  daily_pnl?: number | null
+  principal?: number | null
+  confidence?: number
+  warnings?: string[]
+  fields_found?: string[]
+  action?: LedgerAction
+  notes?: string
+}
+
+export interface IncomeInboxItem {
+  id: number
+  original_name: string
+  stored_name: string
+  mime: string
+  bytes: number
+  sha256: string
+  status: 'pending' | 'applied' | 'ignored'
+  ocr_text: string
+  parsed: IncomeInboxParsed
+  parse_confidence: number
+  record_date: string | null
+  error: string
+  notes: string
+  received_at: string
+  applied_at: string | null
+  image_url: string | null
+}
+
+export type InboxCategory = 'action' | 'reminder' | 'system'
+export type InboxSeverity = 'urgent' | 'warn' | 'info'
+export type InboxStatus = 'active' | 'snoozed' | 'resolved'
+
+export interface InboxItem {
+  id: number
+  dedupe_key: string
+  source_type: string
+  source_id: string
+  source_label: string
+  category: InboxCategory
+  severity: InboxSeverity
+  title: string
+  summary: string
+  action_label: string
+  action_url: string
+  due_at: string | null
+  status: InboxStatus
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  read_at: string | null
+  snoozed_until: string | null
+  resolved_at: string | null
+}
+
+export interface InboxCenter {
+  generated_for: string
+  items: InboxItem[]
+  pending: InboxItem[]
+  reminders: InboxItem[]
+  handled: InboxItem[]
+  summary: {
+    pending_count: number
+    reminder_count: number
+    unread_count: number
+    urgent_count: number
+    handled_count: number
+    by_source: Record<
+      string,
+      {
+        label: string
+        pending: number
+        unread: number
+      }
+    >
+  }
+}
+
+export interface IncomeCaptureResponse {
+  inbox: IncomeInboxItem
+  record: RawLedgerRecord | null
+  duplicate: boolean
+  auto_applied: boolean
+  apply_error: string
+  ocr: {
+    ok: boolean
+    language: string | null
+    error: string
+  }
+  dashboard: DashboardPayload
+}
+
+export interface IncomeApplyResponse {
+  inbox: IncomeInboxItem
+  record: RawLedgerRecord | null
+  duplicate: boolean
+  matched_existing: boolean
+  overwritten: boolean
+  dashboard: DashboardPayload
 }
 
 export interface TradeInput {
@@ -996,6 +1107,7 @@ export interface DashboardPayload {
   review: ReviewData
   workspace: ReviewWorkspace
   automation: AutomationWorkspace
+  inbox_center: InboxCenter
   capital: CapitalState
   products: ProductView
 }

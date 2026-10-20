@@ -26,6 +26,7 @@ const { buildProductView } = require('./lib/products');
 const { buildHoldingReviews } = require('./lib/holdings-review');
 const { shiftMonth } = require('./lib/review-store');
 const { parseTradeText } = require('./lib/trade-parser');
+const { parseIncomeText } = require('./lib/income-parser');
 const { ocrImage } = require('./lib/ocr');
 
 const ROOT = __dirname;
@@ -1125,6 +1126,19 @@ function dashboardPayload(repository) {
     hold: holdingReviews.filter((item) => item.verdict === 'hold').length,
     window: holdingReviews.filter((item) => item.reminder.level !== 'none').length,
   };
+  workspace.income_inbox = repository.listIncomeScreenshots();
+  workspace.income_summary = {
+    pending: workspace.income_inbox.filter((item) => item.status === 'pending')
+      .length,
+    applied: workspace.income_inbox.filter((item) => item.status === 'applied')
+      .length,
+    latest_date:
+      workspace.income_inbox
+        .filter((item) => item.status === 'applied' && item.record_date)
+        .map((item) => item.record_date)
+        .sort()
+        .at(-1) || null,
+  };
   for (const item of holdingReviews) {
     if (item.reminder.level === 'none') continue;
     workspace.holdings_summary.alerts.push({
@@ -1134,7 +1148,8 @@ function dashboardPayload(repository) {
     });
   }
 
-  return {
+  const automation = repository.automationStore.getWorkspace(today);
+  const payload = {
     meta: {
       today,
       reporting_date: reportingDate,
@@ -1157,10 +1172,12 @@ function dashboardPayload(repository) {
     windows: buildWindows(records),
     review,
     workspace,
-    automation: repository.automationStore.getWorkspace(today),
+    automation,
     capital,
     products: productView,
   };
+  payload.inbox_center = repository.inboxCenter.sync(payload);
+  return payload;
 }
 
 function serveStatic(request, response, pathname) {
@@ -1542,6 +1559,53 @@ function createServer(options = {}) {
         return;
       }
 
+      if (pathname === '/api/inbox' && request.method === 'GET') {
+        const dashboard = dashboardPayload(repository);
+        sendJson(response, 200, {
+          inbox_center: dashboard.inbox_center,
+        });
+        return;
+      }
+
+      if (pathname === '/api/inbox/read-all' && request.method === 'POST') {
+        repository.inboxCenter.markAllRead();
+        const dashboard = dashboardPayload(repository);
+        sendJson(response, 200, {
+          inbox_center: dashboard.inbox_center,
+          dashboard,
+        });
+        return;
+      }
+
+      const inboxActionMatch = pathname.match(
+        /^\/api\/inbox\/(\d+)\/(read|unread|snooze|unsnooze)$/,
+      );
+      if (inboxActionMatch && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        let item;
+        try {
+          item = repository.inboxCenter.mark(
+            Number(inboxActionMatch[1]),
+            inboxActionMatch[2],
+            body,
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!item) {
+          sendError(response, 404, '没有找到这条消息');
+          return;
+        }
+        const dashboard = dashboardPayload(repository);
+        sendJson(response, 200, {
+          item,
+          inbox_center: dashboard.inbox_center,
+          dashboard,
+        });
+        return;
+      }
+
       if (pathname === '/api/automation/workspace' && request.method === 'GET') {
         sendJson(response, 200, {
           automation: repository.automationStore.getWorkspace(todayShanghai()),
@@ -1593,7 +1657,11 @@ function createServer(options = {}) {
           }
           patch[key] = value;
         }
-        for (const key of ['automation_enabled', 'notifications_enabled']) {
+        for (const key of [
+          'automation_enabled',
+          'notifications_enabled',
+          'auto_confirm_reviews',
+        ]) {
           if (body[key] !== undefined) patch[key] = Boolean(body[key]);
         }
         for (const key of ['rule_version', 'strategy_version']) {
@@ -1781,6 +1849,201 @@ function createServer(options = {}) {
           });
           return;
         }
+      }
+
+      if (pathname === '/api/income/inbox' && request.method === 'GET') {
+        sendJson(response, 200, {
+          inbox: repository.listIncomeScreenshots(),
+        });
+        return;
+      }
+
+      if (pathname === '/api/income/inbox/prune' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const olderThanDays = Number(body.olderThanDays || 180);
+        if (
+          !Number.isInteger(olderThanDays) ||
+          olderThanDays < 30 ||
+          olderThanDays > 3650
+        ) {
+          sendError(response, 400, '保留天数需要是 30–3650 的整数');
+          return;
+        }
+        const result = repository.incomeStore.pruneScreenshots({
+          today: todayShanghai(),
+          olderThanDays,
+        });
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (pathname === '/api/income/inbox' && request.method === 'POST') {
+        const body = await readJsonBody(request, 20 * 1024 * 1024);
+        const decoded = decodeImagePayload(body);
+        if (decoded.error) {
+          sendError(response, 400, decoded.error);
+          return;
+        }
+        const saved = repository.incomeStore.saveInboxImage({
+          buffer: decoded.value.buffer,
+          mime: decoded.value.mime,
+          originalName: decoded.value.original_name,
+        });
+        if (saved.duplicate) {
+          const dashboard = dashboardPayload(repository);
+          sendJson(response, 200, {
+            inbox: saved.item,
+            duplicate: true,
+            dashboard,
+          });
+          return;
+        }
+        const storedPath = path.join(
+          repository.incomeInboxDir,
+          saved.item.stored_name,
+        );
+        const ocr = await ocrImage(storedPath);
+        const today = todayShanghai();
+        const parsed = parseIncomeText(ocr.text, {
+          today,
+          reportingDate: shiftDate(today, -1),
+        });
+        let item = repository.incomeStore.addInbox({
+          original_name: saved.item.original_name,
+          stored_name: saved.item.stored_name,
+          mime: saved.item.mime,
+          bytes: saved.item.bytes,
+          sha256: saved.sha256,
+          ocr_text: ocr.text,
+          parsed,
+          parse_confidence: parsed.confidence,
+          record_date: parsed.date,
+          error: ocr.ok ? '' : ocr.error,
+        });
+        let record = null;
+        let autoApplied = false;
+        let applyError = '';
+        const threshold = Number(
+          repository.automationStore.getSettings().auto_confidence_threshold,
+        );
+        if (
+          ocr.ok &&
+          parsed.daily_pnl !== null &&
+          parsed.confidence >= threshold
+        ) {
+          try {
+            const applied = repository.applyIncomeScreenshot(item.id, parsed);
+            item = applied.inbox;
+            record = applied.record;
+            autoApplied = true;
+          } catch (error) {
+            applyError =
+              error instanceof Error ? error.message : String(error);
+            item = repository.incomeStore.updateInbox(item.id, {
+              error: applyError,
+            });
+          }
+        }
+        const dashboard = dashboardPayload(repository);
+        sendJson(response, 201, {
+          inbox: item,
+          record,
+          duplicate: false,
+          auto_applied: autoApplied,
+          apply_error: applyError,
+          ocr: {
+            ok: ocr.ok,
+            language: ocr.language,
+            error: ocr.error,
+          },
+          dashboard,
+        });
+        return;
+      }
+
+      const incomeImageMatch = pathname.match(
+        /^\/api\/income\/inbox\/(\d+)\/image$/,
+      );
+      if (incomeImageMatch && request.method === 'GET') {
+        const file = repository.incomeStore.getInboxFilePath(
+          Number(incomeImageMatch[1]),
+        );
+        if (!file) {
+          sendError(response, 404, '收益截图不存在或已清理');
+          return;
+        }
+        fs.stat(file.path, (error, stats) => {
+          if (error || !stats.isFile()) {
+            sendError(response, 404, '收益截图不存在或已清理');
+            return;
+          }
+          response.writeHead(200, {
+            'Content-Type': file.mime,
+            'Content-Length': stats.size,
+            'Cache-Control': 'no-store',
+            ...SECURITY_HEADERS,
+          });
+          if (request.method === 'HEAD') {
+            response.end();
+            return;
+          }
+          fs.createReadStream(file.path).pipe(response);
+        });
+        return;
+      }
+
+      const incomeApplyMatch = pathname.match(
+        /^\/api\/income\/inbox\/(\d+)\/apply$/,
+      );
+      if (incomeApplyMatch && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        let result;
+        try {
+          result = repository.applyIncomeScreenshot(
+            Number(incomeApplyMatch[1]),
+            {
+              date: body.date,
+              daily_pnl:
+                body.daily_pnl === undefined || body.daily_pnl === null
+                  ? undefined
+                  : Number(body.daily_pnl),
+              action: body.action,
+              notes: body.notes,
+            },
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!result) {
+          sendError(response, 404, '没有找到这张收益截图');
+          return;
+        }
+        sendJson(response, 200, {
+          ...result,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const incomeIgnoreMatch = pathname.match(
+        /^\/api\/income\/inbox\/(\d+)\/ignore$/,
+      );
+      if (incomeIgnoreMatch && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        const inbox = repository.incomeStore.ignoreInbox(
+          Number(incomeIgnoreMatch[1]),
+          String(body.note || '忽略收益截图'),
+        );
+        if (!inbox) {
+          sendError(response, 404, '没有找到这张收益截图');
+          return;
+        }
+        sendJson(response, 200, {
+          inbox,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
       }
 
       if (pathname === '/api/trades' && request.method === 'GET') {

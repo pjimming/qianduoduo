@@ -51,7 +51,7 @@ const pendingDeleteDate = ref<string | null>(null)
 let promptTimer: number | undefined
 
 const sections = [
-  { id: 'today', label: '今日三件事' },
+  { id: 'today', label: '两类截图' },
   { id: 'records', label: '历史记录' },
   { id: 'capital', label: '本金账户' },
 ]
@@ -140,9 +140,9 @@ onBeforeUnmount(() => {
 <template>
   <div class="r2-page">
     <R2PageHeader
-      kicker="DAILY LEDGER"
-      title="每天记一笔，本金与收益分开"
-      description="成交截图、当日收益、特殊事项都在这里提交；历史记录和本金账户在下方核对。其他页面只读汇总，不再重复放录入表单。"
+      kicker="TWO UPLOADS ONLY"
+      title="上传交易截图与收益截图，其余交给平台"
+      description="你只负责完成买入/赎回并上传两类截图。交易入账、持仓维护、决策、每日追踪、评估与复盘由 AI 和平台自动完成；只有识别歧义或平台看不到的事实时才需要补正。"
     >
       <template #actions>
         <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-overview' }">
@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
     <R2SectionIndex :items="sections" />
 
     <div class="r2-stack">
-      <section id="today" class="r2-anchor" aria-label="今日三件事">
+      <section id="today" class="r2-anchor" aria-label="两类截图">
         <QuickEntryPanel
           ref="quickRef"
           :dashboard="dashboard"

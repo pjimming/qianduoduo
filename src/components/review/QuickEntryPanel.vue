@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import EntryForm from '@/components/EntryForm.vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
-import { formatMoney } from '@/composables/useFormatters'
+import { formatDateShort } from '@/composables/useFormatters'
 import type {
   AutomationWorkspace,
   DashboardPayload,
+  IncomeInboxItem,
   ProductEventImpact,
   ProductEventType,
   ReviewWorkspace,
@@ -32,6 +34,13 @@ type ModuleKey =
   | 'monthly'
   | 'quarterly'
 
+interface IncomeDraft {
+  date: string
+  daily_pnl: number | null
+  action: '无操作' | '买入' | '赎回' | '切换'
+  notes: string
+}
+
 const props = defineProps<{
   dashboard: DashboardPayload
   workspace: ReviewWorkspace
@@ -47,83 +56,31 @@ const store = useDashboardStore()
 const { show } = useToast()
 
 const dailyRef = ref<EntryFormExposed | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
-const dragActive = ref(false)
-const uploading = ref(false)
+const manualDetailsRef = ref<HTMLDetailsElement | null>(null)
+const tradeFileInput = ref<HTMLInputElement | null>(null)
+const incomeFileInput = ref<HTMLInputElement | null>(null)
+const tradeDragActive = ref(false)
+const incomeDragActive = ref(false)
+const uploadingTrade = ref(false)
+const uploadingIncome = ref(false)
 const savingCase = ref(false)
+const applyingIncomeId = ref<number | null>(null)
+const incomeDrafts = reactive<Record<number, IncomeDraft>>({})
 
 const today = computed(() => props.dashboard.meta.today)
 const reportingDate = computed(
   () => props.dashboard.meta.reporting_date || props.dashboard.meta.today,
 )
-const reportingRecord = computed(
-  () =>
-    props.dashboard.records.find(
-      (record) => record.date === reportingDate.value,
-    ) ?? null,
+const tradeInbox = computed(() => props.workspace.trades?.inbox ?? [])
+const pendingTradeScreenshots = computed(() =>
+  tradeInbox.value.filter((item) => item.status === 'pending'),
 )
-const reportingLabel = computed(() =>
-  reportingDate.value === today.value ? '今日收益' : '昨日收益',
+const incomeInbox = computed(() => props.workspace.income_inbox ?? [])
+const pendingIncomeScreenshots = computed(() =>
+  incomeInbox.value.filter((item) => item.status === 'pending'),
 )
-const inbox = computed(() => props.workspace.trades?.inbox ?? [])
-const pendingInbox = computed(() => inbox.value.filter((item) => item.status === 'pending'))
-const tradeSummary = computed(() => props.workspace.trades?.summary ?? null)
-const pendingEvaluations = computed(() => props.automation.pending_evaluations.length)
-const openEvents = computed(
-  () => props.workspace.events.filter((item) => item.status === '待复核').length,
-)
-const holdingReviewSummary = computed(
-  () =>
-    props.workspace.holding_reviews_summary ?? {
-      total: 0,
-      replace: 0,
-      watch: 0,
-      hold: 0,
-      window: 0,
-    },
-)
-const holdingReviewTodo = computed(
-  () => holdingReviewSummary.value.replace + holdingReviewSummary.value.window,
-)
-
-const todos = computed(() => [
-  {
-    key: 'inbox' as ModuleKey,
-    label: '截图待校正',
-    value: pendingInbox.value.length,
-    tone: pendingInbox.value.length > 0 ? 'is-warn' : 'is-done',
-  },
-  {
-    key: 'daily' as const,
-    label: reportingLabel.value,
-    value: reportingRecord.value ? '已记' : '未记',
-    tone: reportingRecord.value ? 'is-done' : 'is-warn',
-  },
-  {
-    key: 'trades' as ModuleKey,
-    label: '待确认交易',
-    value: tradeSummary.value?.pending_count ?? 0,
-    tone: (tradeSummary.value?.pending_count ?? 0) > 0 ? 'is-warn' : 'is-done',
-  },
-  {
-    key: 'automation' as ModuleKey,
-    label: '待确认评估',
-    value: pendingEvaluations.value,
-    tone: pendingEvaluations.value > 0 ? 'is-warn' : 'is-done',
-  },
-  {
-    key: 'holding_reviews' as ModuleKey,
-    label: '持仓复核',
-    value: holdingReviewTodo.value,
-    tone: holdingReviewTodo.value > 0 ? 'is-warn' : 'is-done',
-  },
-  {
-    key: 'events' as ModuleKey,
-    label: '待复核事项',
-    value: openEvents.value,
-    tone: openEvents.value > 0 ? 'is-warn' : 'is-done',
-  },
-])
+const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
+const remainingWork = computed(() => props.dashboard.inbox_center.pending.slice(0, 5))
 
 const caseTypes: ProductEventType[] = ['额度', '费率', '赎回规则', '经理', '底层', '其他']
 const caseImpacts: ProductEventImpact[] = ['低', '中', '高']
@@ -136,13 +93,25 @@ const specialCase = reactive({
   description: '',
 })
 
-function handleTodo(key: ModuleKey | 'daily'): void {
-  if (key === 'daily') {
-    dailyRef.value?.startRecord(reportingDate.value)
-    return
-  }
-  emit('open-module', key)
-}
+watch(
+  () => incomeInbox.value,
+  (items) => {
+    for (const item of items) {
+      if (!incomeDrafts[item.id]) {
+        incomeDrafts[item.id] = {
+          date: item.parsed.date || item.record_date || reportingDate.value,
+          daily_pnl:
+            item.parsed.daily_pnl === null || item.parsed.daily_pnl === undefined
+              ? null
+              : Number(item.parsed.daily_pnl),
+          action: item.parsed.action || '无操作',
+          notes: item.parsed.notes || '',
+        }
+      }
+    }
+  },
+  { immediate: true },
+)
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -151,6 +120,18 @@ function readAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('读取图片失败'))
     reader.readAsDataURL(file)
   })
+}
+
+function validImage(file: File): boolean {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    show(`${file.name} 不是 PNG/JPEG/WebP 图片`, { error: true })
+    return false
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    show(`${file.name} 超过 10 MB`, { error: true })
+    return false
+  }
+  return true
 }
 
 async function tryAutoApply(item: TradeInboxItem, ocrOk: boolean): Promise<boolean> {
@@ -168,7 +149,7 @@ async function tryAutoApply(item: TradeInboxItem, ocrOk: boolean): Promise<boole
     trade_date: parsed.trade_date,
     confirm_date: parsed.confirm_date ?? '',
     trade_type: parsed.trade_type ?? 'buy',
-    status: 'pending',
+    status: parsed.status === 'confirmed' ? 'confirmed' : 'pending',
     product_code: parsed.product_code ?? '',
     product_name: parsed.product_name ?? '',
     issuer: parsed.issuer ?? '招银理财',
@@ -185,19 +166,12 @@ async function tryAutoApply(item: TradeInboxItem, ocrOk: boolean): Promise<boole
   return true
 }
 
-async function uploadFiles(files: FileList | File[]): Promise<void> {
+async function uploadTradeFiles(files: FileList | File[]): Promise<void> {
   const list = Array.from(files)
   if (!list.length) return
-  uploading.value = true
+  uploadingTrade.value = true
   for (const file of list) {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      show(`${file.name} 不是 PNG/JPEG/WebP 图片`, { error: true })
-      continue
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      show(`${file.name} 超过 10 MB`, { error: true })
-      continue
-    }
+    if (!validImage(file)) continue
     try {
       const data = await readAsDataUrl(file)
       const response = await store.uploadTradeScreenshot({
@@ -217,8 +191,8 @@ async function uploadFiles(files: FileList | File[]): Promise<void> {
       }
       show(
         applied
-          ? `${file.name} 已识别并生成交易，待确认份额`
-          : `${file.name} 已保存，识别不确定，请到「账本 → 交易收件箱」校正`,
+          ? `${file.name} 已自动入账；平台会继续生成决策、持仓与评估`
+          : `${file.name} 已交给平台；只有识别歧义才会进入消息中心`,
         applied ? undefined : { duration: 6000 },
       )
       emit('saved', today.value)
@@ -226,21 +200,93 @@ async function uploadFiles(files: FileList | File[]): Promise<void> {
       show(error instanceof Error ? error.message : '上传失败', { error: true })
     }
   }
-  uploading.value = false
-  if (fileInput.value) fileInput.value.value = ''
+  uploadingTrade.value = false
+  if (tradeFileInput.value) tradeFileInput.value.value = ''
 }
 
-function onDrop(event: DragEvent): void {
-  dragActive.value = false
-  if (event.dataTransfer?.files?.length) {
-    void uploadFiles(event.dataTransfer.files)
+async function uploadIncomeFiles(files: FileList | File[]): Promise<void> {
+  const list = Array.from(files)
+  if (!list.length) return
+  uploadingIncome.value = true
+  for (const file of list) {
+    if (!validImage(file)) continue
+    try {
+      const data = await readAsDataUrl(file)
+      const response = await store.uploadIncomeScreenshot({
+        filename: file.name,
+        mime: file.type,
+        data,
+      })
+      if (response.duplicate) {
+        show(`${file.name} 已处理过，平台不会重复记账`)
+      } else if (response.auto_applied) {
+        show(
+          `${file.name} 已自动记录 ${response.record?.date ?? ''} 收益 ¥${Number(
+            response.record?.daily_pnl ?? 0,
+          ).toFixed(2)}`,
+        )
+      } else {
+        show(
+          response.ocr?.ok
+            ? `${file.name} 已交给平台；识别有歧义，可在消息中心核对`
+            : `${file.name} 已保存；本地 OCR 未读到收益，可在下方补正`,
+          { duration: 6500 },
+        )
+      }
+      if (response.record?.date) emit('saved', response.record.date)
+      else emit('saved', reportingDate.value)
+    } catch (error) {
+      show(error instanceof Error ? error.message : '上传失败', { error: true })
+    }
+  }
+  uploadingIncome.value = false
+  if (incomeFileInput.value) incomeFileInput.value.value = ''
+}
+
+function onTradeDrop(event: DragEvent): void {
+  tradeDragActive.value = false
+  if (event.dataTransfer?.files?.length) void uploadTradeFiles(event.dataTransfer.files)
+}
+
+function onIncomeDrop(event: DragEvent): void {
+  incomeDragActive.value = false
+  if (event.dataTransfer?.files?.length) void uploadIncomeFiles(event.dataTransfer.files)
+}
+
+async function applyIncome(item: IncomeInboxItem): Promise<void> {
+  const draft = incomeDrafts[item.id]
+  if (!draft || draft.daily_pnl === null || !draft.date) {
+    show('请先确认日期和收益数字', { error: true })
+    return
+  }
+  applyingIncomeId.value = item.id
+  try {
+    const response = await store.applyIncomeScreenshot(item.id, draft)
+    show(
+      response.overwritten
+        ? '已用收益截图更新这笔记录'
+        : response.matched_existing
+          ? '截图已归档；该日期已有记录，平台没有覆盖'
+          : '收益截图已入账',
+    )
+    emit('saved', draft.date)
+  } catch (error) {
+    show(error instanceof Error ? error.message : '入账失败', { error: true })
+  } finally {
+    applyingIncomeId.value = null
   }
 }
 
-function onFileChange(event: Event): void {
-  const input = event.target as HTMLInputElement
-  if (input.files?.length) {
-    void uploadFiles(input.files)
+async function ignoreIncome(item: IncomeInboxItem): Promise<void> {
+  if (!window.confirm('忽略这张收益截图？原图会保留到定期清理。')) return
+  applyingIncomeId.value = item.id
+  try {
+    await store.ignoreIncomeScreenshot(item.id)
+    show('收益截图已忽略')
+  } catch (error) {
+    show(error instanceof Error ? error.message : '操作失败', { error: true })
+  } finally {
+    applyingIncomeId.value = null
   }
 }
 
@@ -264,7 +310,7 @@ async function saveSpecialCase(): Promise<void> {
     specialCase.product_name = ''
     specialCase.event_type = '额度'
     specialCase.impact = '中'
-    show('特殊事项已提交，AI 会跟进')
+    show('特殊情况已交给 AI 跟进')
     emit('saved', today.value)
   } catch (error) {
     show(error instanceof Error ? error.message : '提交失败', { error: true })
@@ -277,9 +323,21 @@ function handleRecordSaved(date: string): void {
   emit('saved', date)
 }
 
+async function startRecord(date: string): Promise<void> {
+  if (manualDetailsRef.value) manualDetailsRef.value.open = true
+  await nextTick()
+  dailyRef.value?.startRecord(date)
+}
+
+async function loadRecordForEdit(date: string): Promise<void> {
+  if (manualDetailsRef.value) manualDetailsRef.value.open = true
+  await nextTick()
+  dailyRef.value?.loadRecordForEdit(date)
+}
+
 defineExpose({
-  startRecord: (date: string) => dailyRef.value?.startRecord(date),
-  loadRecordForEdit: (date: string) => dailyRef.value?.loadRecordForEdit(date),
+  startRecord,
+  loadRecordForEdit,
   resetForm: () => dailyRef.value?.resetForm(),
   isEditingDate: (date: string) => dailyRef.value?.isEditingDate(date) ?? false,
 })
@@ -289,162 +347,263 @@ defineExpose({
   <section class="rw-quick" aria-labelledby="rwQuickTitle">
     <div class="rw-quick-head">
       <div>
-        <p class="kicker">今日入口</p>
-        <h3 id="rwQuickTitle">你只需要提交三件事</h3>
-        <p>截图、收益、特殊事项交给这里；决策、持仓、评估和复盘由 AI 维护。</p>
+        <p class="kicker">ONLY TWO UPLOADS</p>
+        <h3 id="rwQuickTitle">你只做两件事：买入 / 赎回，上传交易与收益截图</h3>
+        <p>
+          交易入账、持仓维护、决策、每日追踪、评估和复盘由 AI 与平台自动完成。
+          消息中心只保留平台无法自行消化的异常。
+        </p>
       </div>
-      <span class="rw-quick-badge">其余只读</span>
+      <span class="rw-quick-badge">
+        待处理 {{ inboxSummary.pending_count }}
+      </span>
     </div>
 
-    <div class="rw-todo-strip" aria-label="待我处理">
-      <button
-        v-for="item in todos"
-        :key="item.key"
-        type="button"
-        class="rw-todo-chip"
-        :class="item.tone"
-        @click="handleTodo(item.key)"
-      >
-        <span>{{ item.label }}</span>
-        <strong>{{ item.value }}</strong>
-      </button>
-    </div>
-
-    <div class="rw-quick-grid">
-      <section class="rw-quick-card">
+    <div class="income-capture-layout">
+      <section id="capture-trade" class="rw-quick-card capture-card r2-anchor">
         <div class="rw-quick-card-head">
           <span class="rw-quick-step">01</span>
           <div>
-            <strong>买入 / 赎回截图</strong>
-            <p>拖进来即可。高置信度截图自动生成交易，识别不准的才需要校正。</p>
+            <strong>交易截图</strong>
+            <p>完成买入、赎回或切换后上传成交截图。高置信度交易会直接进入持仓。</p>
           </div>
         </div>
         <div
           class="rw-dropzone is-compact"
-          :class="{ 'is-active': dragActive, 'is-busy': uploading }"
+          :class="{ 'is-active': tradeDragActive, 'is-busy': uploadingTrade }"
           role="button"
           tabindex="0"
-          @click="fileInput?.click()"
-          @keydown.enter.prevent="fileInput?.click()"
-          @keydown.space.prevent="fileInput?.click()"
-          @dragover.prevent="dragActive = true"
-          @dragleave.prevent="dragActive = false"
-          @drop.prevent="onDrop"
+          @click="tradeFileInput?.click()"
+          @keydown.enter.prevent="tradeFileInput?.click()"
+          @keydown.space.prevent="tradeFileInput?.click()"
+          @dragover.prevent="tradeDragActive = true"
+          @dragleave.prevent="tradeDragActive = false"
+          @drop.prevent="onTradeDrop"
         >
-          <strong>{{ uploading ? '正在识别…' : '拖入成交截图' }}</strong>
-          <span>或点击选择 PNG / JPEG / WebP，单张不超过 10 MB</span>
+          <strong>{{ uploadingTrade ? '平台正在识别…' : '拖入成交截图' }}</strong>
+          <span>PNG / JPEG / WebP，单张不超过 10 MB</span>
         </div>
         <input
-          ref="fileInput"
+          ref="tradeFileInput"
           class="rw-file-input"
           type="file"
           accept="image/png,image/jpeg,image/webp"
           multiple
-          @change="onFileChange"
-        />
-        <div class="rw-quick-meta">
-          <span v-if="pendingInbox.length">
-            {{ pendingInbox.length }} 张待校正
-          </span>
-          <span v-else>没有待校正截图</span>
-          <button
-            v-if="pendingInbox.length"
-            type="button"
-            class="rw-link-button"
-            @click="emit('open-module', 'inbox')"
-          >
-            去校正
-          </button>
-        </div>
-      </section>
-
-      <section class="rw-quick-card">
-        <div class="rw-quick-card-head">
-          <span class="rw-quick-step">02</span>
-          <div>
-            <strong>{{ reportingLabel }}</strong>
-            <p>
-              招行只披露到 {{ reportingDate }}；填这一天赚了多少，今天不计缺记。
-            </p>
-          </div>
-        </div>
-        <EntryForm
-          ref="dailyRef"
-          :dashboard="dashboard"
-          compact
-          @saved="handleRecordSaved"
+          @change="uploadTradeFiles(($event.target as HTMLInputElement).files || [])"
         />
         <div class="rw-quick-meta">
           <span>
-            {{
-              reportingRecord
-                ? `${reportingDate} 已记，可直接改`
-                : `${reportingDate} 还没记`
-            }}
+            待平台处理 {{ pendingTradeScreenshots.length }} 张 · 待确认交易
+            {{ inboxSummary.by_source.pending_trade?.pending ?? 0 }} 笔
           </span>
-          <button type="button" class="rw-link-button" @click="dailyRef?.resetForm()">
-            补记其他日期
-          </button>
+          <RouterLink class="rw-link-button" to="/ledger/trades#inbox">
+            查看交易收件箱
+          </RouterLink>
         </div>
       </section>
 
-      <section class="rw-quick-card">
+      <section id="capture-income" class="rw-quick-card capture-card r2-anchor">
         <div class="rw-quick-card-head">
-          <span class="rw-quick-step">03</span>
+          <span class="rw-quick-step">02</span>
           <div>
-            <strong>特殊事项</strong>
-            <p>额度变化、费率调整、赎回异常等，写一句就交给 AI 跟进。</p>
+            <strong>收益截图</strong>
+            <p>
+              上传招行收益页截图。平台识别日期与昨日收益，自动记录并更新收益曲线。
+            </p>
           </div>
         </div>
-        <form class="rw-case-form" @submit.prevent="saveSpecialCase">
-          <div class="rw-case-row">
-            <label>
-              <span>日期</span>
-              <input v-model="specialCase.date" type="date" :max="today" required />
-            </label>
-            <label>
-              <span>类型</span>
-              <select v-model="specialCase.event_type">
-                <option v-for="type in caseTypes" :key="type" :value="type">{{ type }}</option>
-              </select>
-            </label>
-            <label>
-              <span>影响</span>
-              <select v-model="specialCase.impact">
-                <option v-for="level in caseImpacts" :key="level" :value="level">{{ level }}</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            <span>产品（可不填）</span>
-            <input
-              v-model="specialCase.product_name"
-              type="text"
-              maxlength="100"
-              placeholder="不填则记为「组合」"
-            />
-          </label>
-          <label>
-            <span>发生了什么</span>
-            <textarea
-              v-model="specialCase.description"
-              rows="3"
-              maxlength="500"
-              placeholder="例如：某产品额度临时关闭，明天再看；赎回晚到账 1 天…"
-              required
-            ></textarea>
-          </label>
-          <button class="rw-button" type="submit" :disabled="savingCase">
-            {{ savingCase ? '提交中…' : '提交给 AI' }}
+        <div
+          class="rw-dropzone is-compact"
+          :class="{ 'is-active': incomeDragActive, 'is-busy': uploadingIncome }"
+          role="button"
+          tabindex="0"
+          @click="incomeFileInput?.click()"
+          @keydown.enter.prevent="incomeFileInput?.click()"
+          @keydown.space.prevent="incomeFileInput?.click()"
+          @dragover.prevent="incomeDragActive = true"
+          @dragleave.prevent="incomeDragActive = false"
+          @drop.prevent="onIncomeDrop"
+        >
+          <strong>{{ uploadingIncome ? '平台正在识别…' : '拖入收益截图' }}</strong>
+          <span>平台会识别“昨日收益”和截图日期</span>
+        </div>
+        <input
+          ref="incomeFileInput"
+          class="rw-file-input"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          multiple
+          @change="uploadIncomeFiles(($event.target as HTMLInputElement).files || [])"
+        />
+        <div class="rw-quick-meta">
+          <span>
+            {{ reportingDate }} 收益
+            {{ dashboard.meta.has_reporting_record ? '已自动记录' : '等待截图' }}
+            · 待核 {{ pendingIncomeScreenshots.length }} 张
+          </span>
+          <button
+            v-if="pendingIncomeScreenshots.length"
+            type="button"
+            class="rw-link-button"
+            @click="incomeFileInput?.click()"
+          >
+            继续上传
           </button>
-        </form>
+        </div>
       </section>
     </div>
 
-    <p class="rw-quick-foot">
-      待确认交易合计
-      <strong>¥{{ formatMoney(tradeSummary?.pending_buy_amount ?? 0, 0) }}</strong>
-      ，确认份额后自动进入持仓、评估和月度复盘。
-    </p>
+    <div class="capture-status-strip">
+      <div>
+        <span>平台自动完成</span>
+        <strong>交易入账 · 持仓维护 · 决策日志 · 每日追踪 · 自动评估 · 月季复盘</strong>
+      </div>
+      <div class="capture-status-actions">
+        <span class="capture-count">
+          {{ inboxSummary.pending_count }} 项待处理 · {{ inboxSummary.reminder_count }}
+          项提醒 · {{ inboxSummary.unread_count }} 项未读
+        </span>
+        <RouterLink class="button button-ghost button-small" to="/ledger/inbox">
+          打开消息中心
+        </RouterLink>
+      </div>
+    </div>
+
+    <div v-if="remainingWork.length" class="capture-exceptions">
+      <div class="capture-exceptions-head">
+        <strong>平台需要你补充的事实</strong>
+        <span>只有这些例外需要你查看；其余工作已在后台自动完成。</span>
+      </div>
+      <RouterLink
+        v-for="item in remainingWork"
+        :key="item.id"
+        :to="item.action_url"
+        class="capture-exception-row"
+        :class="`is-${item.severity}`"
+      >
+        <span>{{ item.source_label }}</span>
+        <strong>{{ item.title }}</strong>
+        <small>{{ item.summary }}</small>
+        <em>{{ item.action_label }} →</em>
+      </RouterLink>
+    </div>
+
+    <section v-if="pendingIncomeScreenshots.length" class="income-correction">
+      <div class="capture-exceptions-head">
+        <strong>收益截图识别补正</strong>
+        <span>平台已尽量自动识别；只有数字或日期不确定时才需要确认。</span>
+      </div>
+      <article
+        v-for="item in pendingIncomeScreenshots"
+        :key="item.id"
+        class="income-correction-card"
+      >
+        <div class="income-correction-meta">
+          <strong>{{ item.original_name || `收益截图 #${item.id}` }}</strong>
+          <span>
+            {{ formatDateShort(item.received_at.slice(0, 10)) }} · 识别
+            {{ item.parse_confidence }}%
+            <template v-if="item.error"> · {{ item.error }}</template>
+          </span>
+          <small v-if="item.parsed.warnings?.length">
+            {{ item.parsed.warnings.join('、') }}
+          </small>
+        </div>
+        <div class="income-correction-form">
+          <label>
+            <span>日期</span>
+            <input v-model="incomeDrafts[item.id].date" type="date" />
+          </label>
+          <label>
+            <span>昨日收益</span>
+            <input
+              v-model.number="incomeDrafts[item.id].daily_pnl"
+              type="number"
+              step="0.01"
+            />
+          </label>
+          <button
+            type="button"
+            class="rw-button"
+            :disabled="applyingIncomeId === item.id"
+            @click="applyIncome(item)"
+          >
+            自动入账
+          </button>
+          <button
+            type="button"
+            class="rw-link-button is-danger"
+            :disabled="applyingIncomeId === item.id"
+            @click="ignoreIncome(item)"
+          >
+            忽略
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <details ref="manualDetailsRef" class="capture-manual">
+      <summary>例外情况下手工维护</summary>
+      <div class="capture-manual-grid">
+        <section>
+          <h4>手工修正某天收益</h4>
+          <EntryForm
+            ref="dailyRef"
+            :dashboard="dashboard"
+            compact
+            @saved="handleRecordSaved"
+          />
+        </section>
+        <section>
+          <h4>补充平台看不到的事实</h4>
+          <form class="rw-case-form" @submit.prevent="saveSpecialCase">
+            <div class="rw-case-row">
+              <label>
+                <span>日期</span>
+                <input v-model="specialCase.date" type="date" :max="today" required />
+              </label>
+              <label>
+                <span>类型</span>
+                <select v-model="specialCase.event_type">
+                  <option v-for="type in caseTypes" :key="type" :value="type">
+                    {{ type }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>影响</span>
+                <select v-model="specialCase.impact">
+                  <option v-for="level in caseImpacts" :key="level" :value="level">
+                    {{ level }}
+                  </option>
+                </select>
+              </label>
+            </div>
+            <label>
+              <span>产品（可不填）</span>
+              <input
+                v-model="specialCase.product_name"
+                type="text"
+                maxlength="100"
+                placeholder="不填则记为「组合」"
+              />
+            </label>
+            <label>
+              <span>发生了什么</span>
+              <textarea
+                v-model="specialCase.description"
+                rows="3"
+                maxlength="500"
+                placeholder="只填截图中看不到、但会影响判断的事实"
+                required
+              ></textarea>
+            </label>
+            <button class="rw-button" type="submit" :disabled="savingCase">
+              {{ savingCase ? '提交中…' : '交给平台跟踪' }}
+            </button>
+          </form>
+        </section>
+      </div>
+    </details>
   </section>
 </template>

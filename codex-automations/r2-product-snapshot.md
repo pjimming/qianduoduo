@@ -29,11 +29,11 @@
 
 脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买候选池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、成立满 12 个月、期限可解析且 1M/3M/6M/1Y 完整）和 data/cmb_r2_selected-YYYY-MM-DD.csv（研究观察池，不含资金分配），并调用本地 /api/products/refresh 让应用立即使用新候选池。实际买什么、买多少由应用按本金、持仓、待确认买入、流动性和额度动态计算。
 
-运行后检查 http://127.0.0.1:8765/api/dashboard 的 meta.product_csv、products.all.length、products.watchlist.length，确认候选池和精选池已生效。
+运行后检查 http://127.0.0.1:8765/api/dashboard 的 `meta.product_csv`、`products.all.length`、`products.stats` 和 `products.watchlist.length`，确认候选池和观察池已生效。
 
-输出简短报告：最新数据日期、全量/候选/精选数量、期限桶分布、1Y/3M 明显变化、精选产品代码、哪些产品未获取到或已过期。
+成功且数据正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或 3M/6M/1Y 中位数显著跳变、候选池结构发生重要变化时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。
 
-若脚本失败，保留旧快照并报告错误，改为提醒我从招行 App 手动补录；不要伪造数据。不要登录招行账户、不要抓取实时额度、不要替我下单；额度、赎回到账和实际可买状态仍需我在 App 当日核验。
+若脚本失败，保留旧快照并报告错误，不要伪造数据。不要写买入建议、不给固定“每桶 3 只”配置；不要登录招行账户、不要抓取实时额度、不要替我下单；额度、赎回到账和实际可买状态仍需我在 App 当日核验。
 ```
 
 ## 本机当前命令
@@ -57,7 +57,7 @@ npm run r2:refresh-all
 - `data/cmb_r2_universe-YYYY-MM-DD.csv`
 - `data/cmb_r2_selected-YYYY-MM-DD.csv`
 - `/api/dashboard` 的 `meta.product_csv` 指向最新候选池
-- 一条简短的数据更新报告，不包含买入建议
+- 正常时无消息；异常时才有一条简短更新卡，不含买入建议
 
 ## 失败处理
 

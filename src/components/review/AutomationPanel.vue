@@ -29,6 +29,7 @@ const settings = reactive({
   single_product_cap_pct: props.automation.settings.single_product_cap_pct,
   auto_confidence_threshold: props.automation.settings.auto_confidence_threshold,
   scheduler_minutes: props.automation.settings.scheduler_minutes,
+  auto_confirm_reviews: props.automation.settings.auto_confirm_reviews,
 })
 
 async function runNow(): Promise<void> {
@@ -156,6 +157,7 @@ function runMeta(run: EvaluationRun): string {
 function jobLabel(type: string): string {
   return {
     screenshot_review: '截图歧义校正',
+    income_screenshot_review: '收益截图复核',
     evaluation_review: '评估人工复核',
     monthly_summary: '月度总结润色',
     quarterly_summary: '季度总结润色',
@@ -170,7 +172,8 @@ function jobLabel(type: string): string {
         <p class="kicker">AUTOMATION</p>
         <strong class="rw-panel-title">自动评估</strong>
         <p class="rw-panel-sub">
-          买入日、持有期和到期/赎回三个节点生成评估；低置信度进入待确认队列。
+          买入日、持有期和到期/赎回三个节点生成评估；低置信度留在 AI/平台队列，
+          只有需要补事实的例外才进入消息中心。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -240,10 +243,17 @@ function jobLabel(type: string): string {
           <span>本地巡检间隔（分钟）</span>
           <input v-model.number="settings.scheduler_minutes" type="number" min="1" max="1440" step="1" />
         </label>
+        <label class="rw-field">
+          <span>复盘自动归档</span>
+          <select v-model="settings.auto_confirm_reviews">
+            <option :value="true">开启</option>
+            <option :value="false">关闭</option>
+          </select>
+        </label>
       </div>
       <p class="rw-form-hint">
         3% 作为组合进取目标，不当作保本承诺；单只到期/赎回按期限 hurdle 判断结果好坏。
-        置信度低于门槛时只进入待确认队列，不覆盖手工评价。
+        置信度低于门槛时不覆盖手工评价，由 AI/平台继续补充证据。
       </p>
       <div class="rw-form-actions">
         <button type="submit" class="rw-button" :disabled="busy">保存设置</button>
@@ -253,7 +263,7 @@ function jobLabel(type: string): string {
     <section class="rw-subpanel">
       <div class="rw-subhead">
         <strong>待确认评估</strong>
-        <span>证据不足或与手工评价冲突时停在这里</span>
+        <span>证据不足或与手工评价冲突时由 AI/平台继续处理</span>
       </div>
       <div v-if="automation.pending_evaluations.length === 0" class="rw-empty is-compact">
         没有待确认评估。

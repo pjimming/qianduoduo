@@ -15,17 +15,17 @@
 
 - 工作区：`D:\codex\钱多多财富工作台`（统一承载 R2 理财、股票调研与 A 股科技图谱）。
 - 旧路径 `D:\codex\R2理财` 已停用（仅剩 Codex 占用的 `.git` 元数据）；迁移前副本在 `D:\codex\_archive\R2理财-pre-rename-2026-10-18`。
-- 钱多多是本地个人财富工作台，左侧导航分为“理财”和“投资”两组，均可折叠；理财下拆为收益概览、每日记账、交易与持仓、产品与配置、复盘、决策与评估六个页面，投资下为“科技全景图”和“调研报告”。分组折叠状态保存在浏览器 localStorage。
+- 钱多多是本地个人财富工作台，左侧导航分为“理财”和“投资”两组，均可折叠；理财下按“收益概览、消息中心、每日记账、交易与持仓、产品与配置、复盘、决策与评估”排列，投资下为“科技全景图”和“调研报告”。分组折叠状态保存在浏览器 localStorage。
 - 本地生产页：`http://127.0.0.1:8765`；开发页：`http://127.0.0.1:5173`。
 - 前端：Vue 3 + Vite + TypeScript + Pinia + Vue Router；后端：Node.js 24+、内置 `node:sqlite`。
-- R2 页面在 `src/views/r2/`：`R2LayoutView` 统一加载数据，`OverviewView`、`DailyEntryView`、`TradesView`、`ProductsView`、`ReviewView`、`EvaluationView` 六个子页；页面外壳在 `src/components/r2/`，样式在 `src/styles/r2-pages.css`。`/` 和 `/ledger` 都重定向到 `/ledger/overview`。
-- R2 路由：`/ledger/overview` 收益概览、`/ledger/daily` 每日记账、`/ledger/trades` 交易与持仓、`/ledger/products` 产品与配置、`/ledger/review` 复盘、`/ledger/evaluation` 决策与评估。六个页面共享同一个 `dashboard`，切换页面不重复请求 `/api/dashboard`。
+- R2 页面在 `src/views/r2/`：`R2LayoutView` 统一加载数据，`InboxView`、`OverviewView`、`DailyEntryView`、`TradesView`、`ProductsView`、`ReviewView`、`EvaluationView` 七个子页；页面外壳在 `src/components/r2/`，样式在 `src/styles/r2-pages.css` 与 `src/styles/inbox.css`。`/` 和 `/ledger` 都重定向到 `/ledger/overview`。
+- R2 路由：`/ledger/overview` 收益概览、`/ledger/inbox` 消息中心、`/ledger/daily` 每日记账、`/ledger/trades` 交易与持仓、`/ledger/products` 产品与配置、`/ledger/review` 复盘、`/ledger/evaluation` 决策与评估。七个页面共享同一个 `dashboard`，切换页面不重复请求 `/api/dashboard`。
 - R2 顶部悬浮分区导航已移除；左侧 sidebar 是唯一的跨页分区入口。页面内的 `R2SectionIndex` 只做当前页锚点（如复盘页的复盘节奏 / 日周月评分 / 月度五问 / 季度复盘），不重复承载跨页导航。
 - R2 卡片规范：每个模块用白色卡片包起来，卡片头固定为“英文小标签 + 中文标题 + 一行说明 + 右侧操作”，统计标签放在标题下方；产品页使用 `product-module-card`，复盘页使用 `review-module-card`。内层子卡片不再叠加厚重阴影，避免卡片套卡片。
 - 收益概览：压缩 hero 与 KPI 高度，两个图表在所有宽度下单列全宽排列（桌面高 340px、移动端 300px），待办入口放到图表下方；图表宽度随主内容区铺满，优先保证数据可读性。
 - 产品与配置页：持仓复核与替换、配置目标与期限桶、分配假设、目标产品、额度核验、观察名单、风险边界分别为白卡；观察名单卡片和“查看全部产品”表格行共用 `ProductDetailDialog`，查看收益快照、产品信息、研究评分、当前配置、额度和分配原因。候选池打开详情时暂时收起，避免嵌套 `<dialog>`；关闭后恢复筛选、排序、滚动位置和原产品焦点。
 - 复盘页：复盘节奏、自动复盘评分与记录、月度五问、季度复盘为四张白卡；页内索引在页面标题下方；月度/季度默认折叠，折叠头显示英文标签、标题和保存进度；`ReviewNotesPanel` 内部不再重复标题。
-- 交易收件箱默认只显示待校正截图，已处理截图折叠；每日记账的紧凑表单也保留“操作”选择。
+- 交易收件箱和收益收件箱默认只显示待处理截图，已处理原图折叠；每日记账的例外维护表单仍保留手工修正能力。
 - 收益账本与自动复盘的阅读字号下限为 **12px**：功能性文字、辅助说明、状态标签、分页、日历图例、备注、按钮、产品详情弹窗和全部产品弹窗内的筛选/排序/代码都不得低于 12px；关键数据 12.5–13px，卡片标题 13–14px。自动复盘左栏由“每日复盘 + 每周检查 + 最近可记日”组成，最近可记日最多显示 7 天，起始较晚时按实际可记天数显示；卡片自适应填满左栏剩余高度，点击日期可直接补记或修改。
 - 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
 - 本金起始日口径：`capital_settings.initial_date` 之前的日期不属于收益账本，不计收益、不计缺记、不计记录完整度和目标进度，也不能补记。复盘日历显示“起始日前”并禁用点击；日/周/月统计和评级只从起始日起算；起始月可记录天数不足 28 天时不落最终评级；上月/上季若完全早于起始日，时间轴显示“未纳入复盘”，即使存在旧笔记也不标为待补或已完成。记账表单和接口均拒绝起始日前的收益记录。
@@ -68,7 +68,9 @@
 - 月收益率 = 当月累计收益 ÷ 当月平均本金。
 - 月度评级：低于 0.16% 不及格；0.16% 及格；0.20% 良好；0.25% 优秀；0.30% 卓越。
 - 复盘区：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计账本期内收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负日占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间；自本金起始日起可记录天数满 28 天且账本期内达到 20 条记录、月份结束后才落最终评级。
-- 每日记账页保留 `QuickEntryPanel` 的三个提交入口（成交截图、每日收益、特殊事项），下方是每日记录表和本金账户；交易收件箱、交易流水、持仓移到交易与持仓页；产品事件移到产品与配置页；决策日志移到决策与评估页；月度五问/季度复盘移到复盘页并默认折叠为摘要。决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
+- 每日记账页的 `QuickEntryPanel` 只保留两个主入口（成交截图、收益截图），手工收益与特殊事项收进“例外情况”折叠区；下方是每日记录表和本金账户。交易收件箱、交易流水、持仓移到交易与持仓页；产品事件移到产品与配置页；决策日志移到决策与评估页；月度五问/季度复盘移到复盘页并默认折叠为摘要。决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
+- 消息中心由 `lib/inbox-center.js` 动态聚合并持久化状态，统一承接交易/收益截图、待确认交易、对账、评估、产品事件、持仓复核、复盘草稿和平台提醒。消息只保存状态与深链，不复制交易或账本事实；源事项消失后自动归档。
+- 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析日期与昨日/当日收益；高置信度自动写 `daily_records.source=income-screenshot`，冲突时不覆盖手工记录。高置信度成交截图按 OCR 状态确认，平台在自动巡检中为确认交易补建决策日志。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现收益。待确认交易只进入待确认金额，不进入已确认持仓、期限桶和流动性比例。
 - 交易收件箱支持本地拖入 PNG/JPEG/WebP；每日巡检以视觉识别原图为准，`scripts/split-trade-rows.mjs` 负责把多笔总览按行切分；`lib/ocr.js` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），只用于金额与代码的交叉校验，`POST /api/trades/inbox/:id/vision-apply` 在冲突时返回 409 拒绝写入。`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`，已处理/已忽略的 180 天后自动清理。
@@ -82,7 +84,7 @@
 - 评估置信度默认 75% 才自动写入；低置信度、金额缺失或与手工评价冲突时进入 pending 队列，并存 `automation_jobs`。写入记录 `evaluation_runs.previous_*`/`applied_*` 快照，可撤销；单产品评估与组合决策评估分 scope 保存。
 - 本地自动化在 `startServer` 启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。
 - 月度/季度草稿自动汇总收益、目标差距、流程正确/错误数、评估 pending、产品事件、持仓和异常；草稿不会自动写成正式复盘，需在“月度五问/季度复盘”采用并确认。
-- Codex 定时任务“钱多多R2每日巡检（含队列处理）”每日 21:00 运行，先处理 `screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再按 `meta.reporting_date`（通常为昨日）巡检最近已披露收益及账本；今日未披露不算缺记，队列为空且无异常时不通知，不改交易流水、不代替用户下单。
+- Codex 定时任务“钱多多R2每日巡检（含AI队列与消息中心）”每日 21:00 运行，先处理 `screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再按 `meta.reporting_date`（通常为昨日）巡检最近已披露收益及账本；今日未披露不算缺记，队列为空且无异常时不通知，不改交易流水、不代替用户下单。
 - 导出 CSV：`date,principal,daily_pnl,action,notes`。
 
 ### 复盘与评估口径
@@ -102,7 +104,7 @@
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 当前测试通过；`npm run test:e2e` 会检查侧边栏六个 R2 分区入口、每日记账三入口、复盘时间轴与记录日历、复盘模块白卡、跨页补记、产品分配桶、观察名单产品详情、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
+- 当前测试通过；`npm run test:e2e` 会检查侧边栏七个 R2 入口、消息中心分组与全部已读、每日记账两个主入口、复盘时间轴与记录日历、复盘模块白卡、跨页补记、产品分配桶、观察名单产品详情、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git

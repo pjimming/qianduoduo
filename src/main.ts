@@ -13,5 +13,6 @@ import './styles/review-workspace.css'
 import './styles/research.css'
 import './styles/report.css'
 import './styles/r2-pages.css'
+import './styles/inbox.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

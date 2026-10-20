@@ -31,50 +31,34 @@ const openEvents = computed(
 const pendingEvaluations = computed(
   () => props.dashboard.automation.pending_evaluations.length,
 )
+const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
 
 const shortcuts = computed(() => [
   {
-    key: 'daily',
-    to: { name: 'r2-daily' },
-    label: '昨日收益',
-    value: props.dashboard.meta.has_reporting_record ? '已记' : '待记',
-    hint: props.dashboard.meta.has_reporting_record
-      ? `${props.dashboard.meta.reporting_date} 已记，可继续补截图或特殊事项`
-      : `花一分钟记下 ${props.dashboard.meta.reporting_date} 的盈亏`,
+    key: 'trade-capture',
+    to: { name: 'r2-daily', hash: '#capture-trade' },
+    label: '交易截图',
+    value: '完成操作后上传',
+    hint: `待平台识别 ${pendingInbox.value} 张 · 高置信度自动进入持仓`,
+    tone: pendingInbox.value > 0 ? 'is-warn' : 'is-done',
+  },
+  {
+    key: 'income-capture',
+    to: { name: 'r2-daily', hash: '#capture-income' },
+    label: '收益截图',
+    value: props.dashboard.meta.has_reporting_record ? '已自动记录' : '上传截图',
+    hint: `${props.dashboard.meta.reporting_date} · 平台识别后更新收益曲线`,
     tone: props.dashboard.meta.has_reporting_record ? 'is-done' : 'is-warn',
   },
   {
-    key: 'trades',
-    to: { name: 'r2-trades' },
-    label: '交易待确认',
-    value: `${pendingTrades.value} 笔`,
-    hint:
-      pendingTrades.value > 0
-        ? `待确认买入 ¥${pendingBuyAmount.value.toLocaleString('zh-CN')} · 截图待校正 ${pendingInbox.value} 张`
-        : `截图待校正 ${pendingInbox.value} 张`,
-    tone: pendingTrades.value + pendingInbox.value > 0 ? 'is-warn' : 'is-done',
-  },
-  {
-    key: 'products',
-    to: { name: 'r2-products' },
-    label: '产品待复核',
-    value: `${openEvents.value} 条`,
-    hint:
-      openEvents.value > 0
-        ? '费率、额度、赎回规则等变化需要确认'
-        : '暂无待复核的产品事件',
-    tone: openEvents.value > 0 ? 'is-warn' : 'is-done',
-  },
-  {
-    key: 'evaluation',
-    to: { name: 'r2-evaluation' },
-    label: '评估待确认',
-    value: `${pendingEvaluations.value} 条`,
-    hint:
-      pendingEvaluations.value > 0
-        ? '自动评估停在队列里，等人工判断'
-        : '自动评估队列为空',
-    tone: pendingEvaluations.value > 0 ? 'is-warn' : 'is-done',
+    key: 'inbox',
+    to: { name: 'r2-inbox' },
+    label: '其余由平台完成',
+    value: inboxSummary.value.pending_count
+      ? `${inboxSummary.value.pending_count} 项例外待看`
+      : '无需你维护',
+    hint: `未读 ${inboxSummary.value.unread_count} · 交易、持仓、决策、追踪、评估、复盘已自动汇总`,
+    tone: inboxSummary.value.pending_count > 0 ? 'is-warn' : 'is-done',
   },
 ])
 </script>
@@ -93,7 +77,7 @@ const shortcuts = computed(() => [
       <PnlChart :records="dashboard.records" />
     </section>
 
-    <section class="r2-jump-grid" aria-label="今天先做什么">
+    <section class="r2-jump-grid is-capture-only" aria-label="你只需要做什么">
       <RouterLink
         v-for="item in shortcuts"
         :key="item.key"
@@ -106,5 +90,11 @@ const shortcuts = computed(() => [
         <small>{{ item.hint }}</small>
       </RouterLink>
     </section>
+    <p class="overview-automation-note">
+      当前平台状态：交易待确认 {{ pendingTrades }} 笔、
+      待确认买入 ¥{{ pendingBuyAmount.toLocaleString('zh-CN') }}、
+      待复核产品 {{ openEvents }} 条、自动评估 {{ pendingEvaluations }}
+      条。这些项目由 AI 继续处理，只有无法自行消化的例外才会进入消息中心。
+    </p>
   </div>
 </template>

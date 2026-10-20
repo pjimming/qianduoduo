@@ -16,7 +16,7 @@ const router = useRouter()
 const overview = computed(() => props.dashboard.workspace.trades)
 const today = computed(() => props.dashboard.workspace.timeline.today)
 const pendingInbox = computed(
-  () => overview.value?.inbox.filter((item) => item.status === 'pending').length ?? 0,
+  () => props.dashboard.inbox_center.summary.by_source.trade_screenshot?.pending ?? 0,
 )
 
 const sections = computed(() => [

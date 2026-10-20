@@ -260,7 +260,9 @@ test('scheduled cycles create previous month and quarter drafts once', (t) => {
     trigger: 'interval',
   });
   assert.equal(monthResult.summary.drafts_generated, 1);
-  assert.ok(automation.getDraft('monthly', '2026-10'));
+  const monthlyDraft = automation.getDraft('monthly', '2026-10');
+  assert.equal(monthlyDraft.status, 'confirmed');
+  assert.ok(repository.getReviewNote('2026-10'));
   automation.runCycle({ today: '2026-11-02', trigger: 'interval' });
   assert.equal(automation.listDrafts().filter((item) => item.period === '2026-10').length, 1);
 
@@ -270,6 +272,79 @@ test('scheduled cycles create previous month and quarter drafts once', (t) => {
   });
   assert.ok(quarterResult.summary.drafts_generated >= 1);
   assert.ok(automation.getDraft('quarterly', '2026-Q3'));
+});
+
+test('confirmed screenshot trades receive an automatic decision record', (t) => {
+  const { repository, automation } = openTemp(t);
+  const trade = repository.tradeStore.createTrade({
+    trade_date: '2026-10-18',
+    confirm_date: '2026-10-18',
+    trade_type: 'buy',
+    status: 'confirmed',
+    product_code: 'AUTO001',
+    product_name: '截图自动入账产品',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 5000,
+    term_days: 30,
+    decision_id: null,
+    source: 'inbox',
+    screenshot_id: 1,
+    notes: '',
+  });
+
+  const result = automation.runCycle({
+    today: '2026-10-19',
+    trigger: 'test',
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.summary.auto_decisions_created, 1);
+  const decisions = repository.listDecisions();
+  const decision = decisions.find(
+    (item) =>
+      item.review_meta?.source === 'trade-auto' &&
+      Number(item.review_meta?.trade_id) === trade.id,
+  );
+  assert.ok(decision);
+  assert.equal(
+    repository.tradeStore.getTrade(trade.id).decision_id,
+    decision.id,
+  );
+});
+
+test('uncertain income screenshots enter the Codex review queue', (t) => {
+  const { repository, automation } = openTemp(t);
+  const screenshot = repository.incomeStore.addInbox({
+    original_name: 'income.png',
+    stored_name: 'income.png',
+    mime: 'image/png',
+    bytes: 10,
+    sha256: 'income-review-test',
+    ocr_text: '昨日收益待核对',
+    parsed: {
+      date: '2026-10-19',
+      daily_pnl: null,
+      confidence: 20,
+      warnings: ['未识别到昨日/当日收益'],
+    },
+    parse_confidence: 20,
+    record_date: '2026-10-19',
+  });
+
+  const result = automation.runCycle({
+    today: '2026-10-20',
+    trigger: 'test',
+  });
+  assert.equal(result.ok, true);
+  assert.ok(result.summary.inbox_notifications >= 1);
+  const job = automation
+    .listJobs({ status: 'pending' })
+    .find(
+      (item) =>
+        item.job_type === 'income_screenshot_review' &&
+        Number(item.payload.income_inbox_id) === screenshot.id,
+    );
+  assert.ok(job);
 });
 
 test('pending evaluation job closes when missing evidence is filled', (t) => {

@@ -16,7 +16,7 @@
 | ID（本机） | 名称 | 时间 | RRULE | 模型 | Reasoning | 执行环境 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2-2` | 钱多多R2每日巡检（含队列处理） | 每天 21:00 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
+| `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每天 21:00 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 
 > `ID` 是当前机器上 `%USERPROFILE%\.codex\automations\<id>\automation.toml` 的目录名。新建任务时 Codex 可能生成不同的 ID，**以任务名称、时间、提示词和运行配置为准**，不要为了复刻 ID 去手工改 Codex 内部目录。
@@ -43,11 +43,13 @@
 
 提示词：[r2-product-snapshot.md](r2-product-snapshot.md)
 
-### `r2-2` — 钱多多R2每日巡检（含队列处理）
+### `r2-2` — 钱多多R2每日巡检（含AI队列与消息中心）
 
 - 每天 21:00 读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
-- 第 0 步处理 Codex 判断队列：`screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
+- 第 0 步处理 Codex 判断队列：`screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
 - 第 1–8 步巡检收益记录、待确认交易、收件箱、对账、到期、自动评估、复盘节点和服务状态；
+- 用户日常只上传成交截图与收益截图；交易入账、决策补建、每日追踪、自动评估和复盘归档由应用与 Codex 自动完成；
+- 优先读取 `/api/inbox`；常规事项已在消息中心去重，只有用户补事实或最后确认的例外才进入用户消息；
 - 收益记录按 `/api/dashboard` 的 `meta.reporting_date`（通常为昨日）检查；今日收益未披露不算缺记，也不能按今天日期补写；
 - 没有异常、没有待办时保持安静，不发送“今日无异常”；
 - 只维护账本事实和流程，不写投资建议、不做收益预测。

@@ -13,9 +13,7 @@ const props = defineProps<{
 }>()
 
 const openEvents = computed(
-  () =>
-    props.dashboard.workspace.events.filter((item) => item.status === '待复核')
-      .length,
+  () => props.dashboard.inbox_center.summary.by_source.product_event?.pending ?? 0,
 )
 
 const reviewSummary = computed(() => props.dashboard.workspace.holding_reviews_summary)

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { useDashboardStore } from '@/stores/dashboard'
 
 defineProps<{
   open: boolean
@@ -14,6 +15,10 @@ type GroupId = 'wealth' | 'investment'
 
 const STORAGE_KEY = 'qianduoduo:sidebar-groups:v1'
 const route = useRoute()
+const dashboardStore = useDashboardStore()
+const inboxUnread = computed(
+  () => dashboardStore.dashboard?.inbox_center.summary.unread_count ?? 0,
+)
 const groupOpen = ref<Record<GroupId, boolean>>({
   wealth: true,
   investment: true,
@@ -131,6 +136,30 @@ watch(
             <span class="sidebar-link-copy">
               <strong>收益概览</strong>
               <small>净值 · 收益 · 曲线</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
+            to="/ledger/inbox"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.5 5.5h13v9h-13z"></path>
+                <path d="m4 6 6 4.5L16 6"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>消息中心</strong>
+              <small>待处理 · 异常 · 提醒</small>
+            </span>
+            <span
+              v-if="inboxUnread > 0"
+              class="sidebar-link-badge"
+              :aria-label="`${inboxUnread} 条未读消息`"
+            >
+              {{ inboxUnread > 99 ? '99+' : inboxUnread }}
             </span>
           </RouterLink>
           <RouterLink
