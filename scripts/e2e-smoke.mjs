@@ -10,7 +10,7 @@
 
 import { chromium } from 'playwright-core'
 import { createRequire } from 'node:module'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -63,7 +63,14 @@ async function main() {
     await page.goto(`${base}/investment/research`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.library-page')
     const cards = await page.locator('.report-card').count()
-    assert(cards === 13, `报告库应有 13 张卡片，实际 ${cards}`)
+    const reportManifest = JSON.parse(
+      readFileSync(path.join(root, 'src', 'data', 'stockReports.json'), 'utf8'),
+    )
+    const expectedReports = Number(reportManifest.count ?? reportManifest.reports?.length)
+    assert(
+      cards === expectedReports,
+      `报告库应有 ${expectedReports} 张卡片，实际 ${cards}`,
+    )
 
     await page.fill('.library-search input', '合同负债')
     await page.waitForSelector('.body-hit', { timeout: 15000 })
