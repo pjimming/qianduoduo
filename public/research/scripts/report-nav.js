@@ -20,6 +20,7 @@
   /* 由 update-nav.ps1 自动生成 —— 请勿手工编辑此区块 */
   var REPORTS = [
     //>NAV:BEGIN
+    { f: "鼎捷数智-300378-个股深度-2026-10-21.html", t: "鼎捷数智（300378）｜个股深度", d: "2026-10-21", p: "2026-10-21 00:55", g: "工业软件", s: "AI签约和工业数据闭环已形成中等强度证据，但利润被一次性收益放大、研发资本化和应收账款削弱可信度；38.36元已接近牛情景价值，当前更适合等待Q3经营验证。", k: "鼎捷数智 300378 工业软件 ERP MES PLM 雅典娜 EIOSpace AI 智能体 半导体 数智化" },
     { f: "A股场内纳斯达克100ETF-横向比较与底层资产调研-2026-10-21.html", t: "A股场内纳斯达克100 ETF（同指数产品组）｜ETF横向比较与底层资产调研", d: "2026-10-21", p: "2026-10-21 00:45", g: "纳斯达克100 ETF", s: "12只直接跟踪纳斯达克100的场内QDII ETF在10月20日收盘价较IOPV溢价约10.0%–18.0%，多数于10月21日发布溢价风险提示或早盘停牌；当前不应追价，159632、513390、159513仅在溢价显著收敛后具备继续研究价值。", k: "纳斯达克100 ETF 纳指ETF 513100 159941 513110 513300 513390 513870 159501 159513 159632 159659 159660 159696 NDX QQQ QDII" },
     { f: "A股场内软件ETF-横向比较与底层资产调研-2026-10-20.html", t: "A股场内软件ETF（主题组合）｜ETF横向比较与底层资产调研", d: "2026-10-20", p: "2026-10-21 00:02", g: "软件ETF", s: "A股软件ETF已从高位回撤逾四成，估值分位回落但绝对盈利估值仍高；产品工具优先研究515230，证券动作暂以观望为主，低费率小规模产品不因费率低而入选。", k: "软件ETF 515230 159852 562930 561010 159068 159590 159899 560360 560790 159035 159036 159180 930601 H30202 932094" },
     { f: "光智科技-300489-个股深度-2026-10-20.html", t: "光智科技（300489）｜个股深度", d: "2026-10-20", p: "2026-10-20 23:37", g: "半导体材料", s: "现价已把红外探测器拐点、6 英寸磷化铟放量和锗资源化同时折现；但新增业务尚未形成报表利润，综合价值区间仅 20–140 元，现价 241 元对应显著高估。", k: "300489 光智科技 磷化铟 InP 锗 红外探测器" },
@@ -45,7 +46,7 @@
   /* 清单生成时间（同样由 update-nav.ps1 写入） */
   var NAV_META = {
     //>META:BEGIN
-    generated: "2026-10-21 00:52"
+    generated: "2026-10-21 00:56"
     //>META:END
   };
 
@@ -128,7 +129,7 @@
       "#rpnav-btn:hover{background:#2a5480;border-color:#2a5480;}",
       "#rpnav-btn:focus-visible{outline:2px solid #b8860b;outline-offset:2px;}",
       ".rpnav-ico{font-size:15px;line-height:1;}",
-      ".rpnav-cnt{background:rgba(255,255,255,.18);border-radius:999px;padding:1px 7px;font-size:11.5px;}",
+      ".rpnav-cnt{background:rgba(255,255,255,.18);border-radius:999px;padding:1px 7px;font-size:12px;}",
       "#rpnav-panel{position:absolute;right:0;bottom:calc(100% + 10px);width:min(430px,calc(100vw - 36px));",
       "max-height:min(66vh,620px);display:flex;flex-direction:column;background:#fff;",
       "border:1px solid #dfe4ec;border-radius:10px;box-shadow:0 16px 44px rgba(16,35,55,.22);overflow:hidden;}",
@@ -136,7 +137,7 @@
       ".rpnav-hd{padding:13px 15px 11px;border-bottom:1px solid #eef1f6;background:#f8fafc;}",
       ".rpnav-hd .rpnav-ttl{font-size:14px;font-weight:700;color:#1b3a5c;display:flex;",
       "justify-content:space-between;align-items:baseline;gap:10px;}",
-      ".rpnav-hd .rpnav-sub{font-size:11.5px;color:#68768a;font-weight:400;}",
+      ".rpnav-hd .rpnav-sub{font-size:12px;color:#68768a;font-weight:400;}",
       "#rpnav-q{width:100%;margin-top:9px;padding:7px 10px;border:1px solid #dfe4ec;border-radius:6px;",
       "font-size:13px;font-family:inherit;color:#141b26;background:#fff;}",
       "#rpnav-q:focus{outline:none;border-color:#2a5480;box-shadow:0 0 0 3px rgba(42,84,128,.12);}",
@@ -146,17 +147,17 @@
       "a.rpnav-item:hover{background:#f2f6fb;border-color:#dbe5f0;}",
       ".rpnav-item .rpnav-t{display:block;font-size:13.5px;font-weight:600;color:#1b3a5c;",
       "text-decoration:none;word-break:break-word;}",
-      ".rpnav-item .rpnav-m{display:block;margin-top:3px;font-size:11.5px;color:#68768a;",
+      ".rpnav-item .rpnav-m{display:block;margin-top:3px;font-size:12px;color:#68768a;",
       "font-variant-numeric:tabular-nums;}",
       ".rpnav-chip{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;",
-      "background:#e7eef6;color:#2a5480;font-size:11px;font-weight:600;}",
+      "background:#e7eef6;color:#2a5480;font-size:12px;font-weight:600;}",
       ".rpnav-item.rpnav-cur{background:#fff8e8;border-color:#f0dcb4;}",
       ".rpnav-item.rpnav-cur .rpnav-t{color:#8a5a10;}",
       ".rpnav-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;",
-      "background:#b8860b;color:#fff;font-size:11px;font-weight:700;}",
+      "background:#b8860b;color:#fff;font-size:12px;font-weight:700;}",
       ".rpnav-empty{padding:16px 12px;color:#68768a;font-size:13px;text-align:center;}",
       ".rpnav-ft{padding:9px 14px;border-top:1px solid #eef1f6;background:#f8fafc;",
-      "font-size:11.5px;color:#68768a;}",
+      "font-size:12px;color:#68768a;}",
       "@media (max-width:520px){#" + ROOT_ID + "{right:12px;bottom:12px;}",
       ".rpnav-txthide{display:none;}}"
     ].join("");
