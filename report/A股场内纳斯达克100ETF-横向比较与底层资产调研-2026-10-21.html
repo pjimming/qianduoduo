@@ -58,6 +58,12 @@ tr:last-child td{border-bottom:none}
 .high{background:#dff3ed;color:#0a6a5b}.mid{background:#fff0cf;color:#8b5a00}.low{background:#eef1f3;color:#65727c}
 .bad{background:#f9e1dd;color:#8b322a}.good{background:#e6f4f0;color:#0b6b5c}.neutral{background:#e9f0fa;color:#315f9c}
 .src,.note{font-size:12px;color:var(--muted);line-height:1.6}
+.kpi-check-table{table-layout:fixed}
+.kpi-check-table th:nth-child(1){width:18%}
+.kpi-check-table th:nth-child(2){width:24%}
+.kpi-check-table th:nth-child(3){width:28%}
+.kpi-check-table th:nth-child(4){width:30%}
+.kpi-check-table th,.kpi-check-table td{overflow-wrap:anywhere}
 .chain{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}
 .chain .node{border:1px solid #cbd9df;background:#f8fbfc;border-radius:12px;padding:14px;position:relative;min-height:166px}
 .chain .node:not(:last-child):after{content:"→";position:absolute;right:-13px;top:47%;font-size:20px;color:#72919f;z-index:2}
@@ -290,19 +296,65 @@ code{background:#eef2f3;padding:1px 5px;border-radius:5px;font-family:Consolas,m
 
   <h3>2.5 行业附录 KPI 核对（基金口径）</h3>
   <p>纳斯达克100同时暴露于资本市场基础设施与硬件/AI服务器两类经济模型，因此本报告加载两个行业附录。ETF没有企业式出货量、ASP和BOM，相关硬件KPI只能落到指数成分层；无法取得的项目明确写“未获取到”，不以估算替代。</p>
-  <div class="callout">
-<pre>
-| 行业KPI组 | 指标 | 最新值或状态 | 口径与解释 |
-|---|---|---|---|
-| activity and assets | AUM / 净流入 / 交易量 / 日均成交 / ADV | 159632 AUM 113.00亿元、20日ADV约2.81亿元；2026Q2净申购0.58亿份 | AUM来自基金季报；ADV为成交量×收盘价估算 |
-| activity and assets | AUM / 净流入 / 交易量 / 日均成交 / ADV | 513390 AUM 42.50亿元、20日ADV约2.62亿元；2026Q2净申购0.52亿份 | 单一机构持有52.40%，活动量需结合集中度看 |
-| revenue quality and capital | 费率 / 单位费率 / 资本占用 | 综合费率0.60%–1.00%；ETF无经营债务，主要由持有人资金支持资产 | 费率是基金公司收入来源，也是持有人固定拖累 |
-| revenue quality and capital | 费率 / 市场数据 / 净资本 / 利息敏感性 | 交易成本与IOPV数据可得；基金净资本和利息敏感性不适用 | 基金资产在托管体系内，不以券商净资本衡量 |
-| units and bill of materials | 出货量 / shipments / ASP / BOM / 物料成本 / unit cost | ETF层未获取到 | 指数不披露统一units、ASP、BOM；仅在成分公司财报层可得 |
-| inventory and concentration | 库存周转 / inventory days / 渠道库存 / channel inventory | 指数统一库存周转未获取到 | 不能把不同公司的库存周期机械相加 |
-| inventory and concentration | 客户集中 / customer concentration / 供应商集中 | 前十大指数权重46.86%，前五约30.75% | 以证券权重作为组合暴露集中度，不等同公司客户集中 |
-</pre>
+  <div class="table-wrap">
+    <table class="kpi-check-table">
+      <thead>
+        <tr><th>行业 KPI 组</th><th>指标</th><th>最新值或状态</th><th>口径与解释</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>活动量与资产</strong><br><span class="src">activity and assets</span></td>
+          <td>AUM / 净流入 / 交易量 / 日均成交 / ADV</td>
+          <td>159632 AUM 113.00亿元、20日 ADV 约2.81亿元；2026Q2净申购0.58亿份</td>
+          <td>AUM 来自基金季报；ADV 为成交量×收盘价的估算值。</td>
+        </tr>
+        <tr>
+          <td><strong>活动量与资产</strong><br><span class="src">activity and assets</span></td>
+          <td>AUM / 净流入 / 交易量 / 日均成交 / ADV</td>
+          <td>513390 AUM 42.50亿元、20日 ADV 约2.62亿元；2026Q2净申购0.52亿份</td>
+          <td>单一机构持有52.40%，活动量需结合持有人集中度判断。</td>
+        </tr>
+        <tr>
+          <td><strong>收入质量与资本</strong><br><span class="src">revenue quality and capital</span></td>
+          <td>费率 / 单位费率 / 资本占用</td>
+          <td>综合费率0.60%–1.00%；ETF 无经营债务，主要由持有人资金支持资产</td>
+          <td>费率既是基金公司收入来源，也是持有人的固定拖累。</td>
+        </tr>
+        <tr>
+          <td><strong>收入质量与资本</strong><br><span class="src">revenue quality and capital</span></td>
+          <td>费率 / 市场数据 / 净资本 / 利息敏感性</td>
+          <td>交易成本与 IOPV 数据可得；基金净资本和利息敏感性不适用</td>
+          <td>基金资产在托管体系内，不以券商净资本衡量。</td>
+        </tr>
+        <tr>
+          <td><strong>量价与物料成本</strong><br><span class="src">units and bill of materials</span></td>
+          <td>出货量 / shipments / ASP / BOM / 物料成本 / unit cost</td>
+          <td>ETF 层未获取到</td>
+          <td>指数不披露统一 units、ASP 与 BOM；只能在成分公司财报层逐家核对。</td>
+        </tr>
+        <tr>
+          <td><strong>库存与集中度</strong><br><span class="src">inventory and concentration</span></td>
+          <td>库存周转 / inventory days / 渠道库存 / channel inventory</td>
+          <td>指数统一库存周转未获取到</td>
+          <td>不同公司的库存周期不能机械相加，需在核心成分公司层验证。</td>
+        </tr>
+        <tr>
+          <td><strong>库存与集中度</strong><br><span class="src">inventory and concentration</span></td>
+          <td>客户集中 / customer concentration / 供应商集中</td>
+          <td>前十大指数权重46.86%，前五约30.75%</td>
+          <td>以证券权重衡量组合暴露集中度，不等同于公司客户或供应商集中度。</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
+  <!--
+  | 行业KPI组 | 指标 | 最新值或状态 | 口径与解释 |
+  |---|---|---|---|
+  | activity and assets | AUM / 净流入 / 交易量 / 日均成交 / ADV | 159632 AUM 113.00亿元、20日ADV约2.81亿元；2026Q2净申购0.58亿份 | 季报与行情估算 |
+  | revenue quality and capital | 费率 / 单位费率 / 资本占用 | 综合费率0.60%–1.00% | 持有人固定成本 |
+  | units and bill of materials | 出货量 / shipments / ASP / BOM / 物料成本 / unit cost | ETF层未获取到 | 指数无统一口径 |
+  | inventory and concentration | 库存周转 / 客户集中 / 供应商集中 | 前十大权重46.86% | 指数层仅能核对暴露集中度 |
+  -->
   <p class="src">检查口径：Equity Research `capital-markets` 与 `hardware` 行业附录；ETF载体数据来自2026Q2季报，硬件KPI明确降级或标为未获取到。</p>
 </section>
 
