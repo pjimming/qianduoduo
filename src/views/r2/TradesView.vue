@@ -105,6 +105,7 @@ function openTrades(): void {
         <TradeInboxPanel
           v-if="overview"
           :inbox="overview.inbox"
+          :decisions="dashboard.workspace.decisions"
           :today="today"
         />
         <div v-else class="rw-panel-body">

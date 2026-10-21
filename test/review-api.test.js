@@ -70,6 +70,9 @@ test('review API stores decisions, holdings, events, notes and exports Markdown'
     action: '买入',
     reason: '额度命中且期限匹配',
     expectation: '持有到期年化 2.9%',
+    invalidation_condition: '实际年化低于期限 hurdle 或产品规则变化时重新评估',
+    evidence_date: '2026-10-15',
+    verify_date: '2027-01-13',
     actual_result: '',
     rating: '待评估',
   });

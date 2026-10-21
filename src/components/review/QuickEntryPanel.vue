@@ -214,9 +214,9 @@ async function uploadTradeFiles(files: FileList | File[]): Promise<void> {
       }
       show(
         applied
-          ? `${file.name} 已自动入账；平台会继续生成决策、持仓与评估`
+          ? `${file.name} 已自动入账；平台已匹配已采纳提案或建立计划外决策，并继续审计`
           : `${file.name} 已交给平台；只有识别歧义才会进入消息中心`,
-        applied ? undefined : { duration: 6000 },
+        applied ? { duration: 7000 } : { duration: 6000 },
       )
       emit('saved', today.value)
     } catch (error) {
@@ -390,8 +390,8 @@ defineExpose({
         <p class="kicker">ONLY TWO UPLOADS</p>
         <h3 id="rwQuickTitle">你只做两件事：买入 / 赎回，上传交易与收益截图</h3>
         <p>
-          交易入账、持仓维护、决策、每日追踪、评估和复盘由 AI 与平台自动完成。
-          消息中心只保留平台无法自行消化的异常。
+          交易入账、持仓维护、追踪和复盘由平台自动完成。图片看不到你的原始决策理由，
+          自动建临时决策后只需补齐一次关键证据；消息中心只保留真正需要你处理的例外。
         </p>
       </div>
       <span class="rw-quick-badge">
@@ -436,9 +436,18 @@ defineExpose({
             待平台处理 {{ pendingTradeScreenshots.length }} 张 · 待确认交易
             {{ inboxSummary.by_source.pending_trade?.pending ?? 0 }} 笔
           </span>
-          <RouterLink class="rw-link-button" to="/ledger/trades#inbox">
-            查看交易收件箱
-          </RouterLink>
+          <div class="capture-status-actions">
+            <button
+              type="button"
+              class="rw-link-button"
+              @click="emit('open-module', 'decisions')"
+            >
+              交易前先写决策
+            </button>
+            <RouterLink class="rw-link-button" to="/ledger/trades#inbox">
+              查看交易收件箱
+            </RouterLink>
+          </div>
         </div>
       </section>
 
@@ -496,7 +505,7 @@ defineExpose({
     <div class="capture-status-strip">
       <div>
         <span>平台自动完成</span>
-        <strong>交易入账 · 持仓维护 · 决策日志 · 每日追踪 · 自动评估 · 月季复盘</strong>
+        <strong>交易入账 · 临时决策 · 持仓维护 · 每日追踪 · 自动评估 · 月季复盘</strong>
       </div>
       <div class="capture-status-actions">
         <span class="capture-count">

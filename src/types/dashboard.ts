@@ -209,6 +209,13 @@ export type DecisionRating =
   | '流程错误，结果好'
   | '流程错误，结果差'
 
+export interface DecisionCompleteness {
+  complete: boolean
+  status: 'complete' | 'incomplete'
+  missing_fields: string[]
+  missing_labels: string[]
+}
+
 export interface DecisionEntry {
   id: number
   date: string
@@ -216,6 +223,7 @@ export interface DecisionEntry {
   action: DecisionAction
   reason: string
   expectation: string
+  invalidation_condition: string
   actual_result: string
   strategy_version: string
   target_annualized: number
@@ -597,6 +605,7 @@ export interface TradeInboxParsed {
   target_product_name?: string
   target_term_days?: number | null
   target_maturity_date?: string | null
+  decision_id?: number | null
   confidence?: number
   warnings?: string[]
   fields_found?: string[]
@@ -734,6 +743,70 @@ export interface ReviewWorkspace {
   }
 }
 
+export type DecisionProposalStatus =
+  | 'pending'
+  | 'accepted'
+  | 'executed'
+  | 'confirmed'
+  | 'rejected'
+  | 'expired'
+
+export interface DecisionProposal {
+  id: number
+  dedupe_key: string
+  group_key: string
+  proposal_type: 'holding_switch' | 'cash_allocation'
+  title: string
+  summary: string
+  action: DecisionAction
+  product_name: string
+  product_code: string
+  target_product_code: string
+  target_product_name: string
+  amount: number
+  evidence_date: string
+  expires_at: string
+  verify_date: string
+  confidence: number
+  status: DecisionProposalStatus
+  decision_id: number | null
+  payload: {
+    decision?: Partial<DecisionInput>
+    review_meta?: Record<string, unknown>
+    expected_legs?: Array<{
+      side: 'buy' | 'redeem'
+      product_code: string
+      product_name: string
+      amount: number
+    }>
+    [key: string]: unknown
+  }
+  created_at: string
+  updated_at: string
+  accepted_at: string | null
+  rejected_at: string | null
+  reject_reason: string
+  executed_at: string | null
+  decision_execution_status?: string | null
+  decision_audit_status?: string | null
+}
+
+export interface DecisionProposalWorkspace {
+  generated_for: string
+  proposals: DecisionProposal[]
+  pending: DecisionProposal[]
+  accepted: DecisionProposal[]
+  executed: DecisionProposal[]
+  history: DecisionProposal[]
+  summary: {
+    pending: number
+    accepted: number
+    executed: number
+    rejected: number
+    expired: number
+  }
+}
+
 export type EvaluationStage = 'buy_day' | 'holding' | 'maturity'
 export type EvaluationStatus = 'pending' | 'auto' | 'confirmed' | 'undone'
 
@@ -754,6 +827,8 @@ export interface EvaluationEvidence {
   previous_liquidity_ratio_pct?: number | null
   liquidity_delta_pp?: number | null
   high_impact_event_ids?: number[]
+  decision_quality?: DecisionCompleteness
+  decision_missing_fields?: string[]
   open_trade_ids?: number[]
   hurdle?: number
   allocations?: TradeAllocation[]
@@ -1263,6 +1338,7 @@ export interface DashboardPayload {
   review: ReviewData
   workspace: ReviewWorkspace
   automation: AutomationWorkspace
+  decision_proposals: DecisionProposalWorkspace
   inbox_center: InboxCenter
   capital: CapitalState
   products: ProductView
@@ -1298,6 +1374,7 @@ export interface DecisionInput {
   action: DecisionAction
   reason: string
   expectation: string
+  invalidation_condition: string
   actual_result: string
   strategy_version: string
   target_annualized: number
@@ -1400,6 +1477,14 @@ export interface TradeInboxResponse {
     language: string | null
     error: string
   }
+}
+
+export interface DecisionProposalMutationResponse {
+  result: {
+    proposal: DecisionProposal
+    decision?: DecisionEntry
+  }
+  dashboard: DashboardPayload
 }
 
 export interface InboxMutationResponse {

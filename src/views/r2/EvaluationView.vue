@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import R2PageHeader from '@/components/r2/R2PageHeader.vue'
 import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
+import DecisionProposalPanel from '@/components/review/DecisionProposalPanel.vue'
 import DecisionLogPanel from '@/components/review/DecisionLogPanel.vue'
 import AutomationPanel from '@/components/review/AutomationPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
@@ -15,6 +16,9 @@ const workspace = computed(() => props.dashboard.workspace)
 const pendingEvaluations = computed(
   () => props.dashboard.inbox_center.summary.by_source.evaluation?.pending ?? 0,
 )
+const pendingProposals = computed(
+  () => props.dashboard.decision_proposals.summary.pending,
+)
 const wrongGood = computed(
   () =>
     workspace.value.decisions.filter(
@@ -23,6 +27,14 @@ const wrongGood = computed(
 )
 
 const sections = computed(() => [
+  {
+    id: 'proposals',
+    label: '决策提案',
+    meta:
+      pendingProposals.value > 0
+        ? `${pendingProposals.value} 条待采纳`
+        : '暂无待采纳',
+  },
   {
     id: 'decisions',
     label: '决策日志',
@@ -43,15 +55,22 @@ const sections = computed(() => [
   <div class="r2-page">
     <R2PageHeader
       kicker="DECISIONS &amp; EVALUATION"
-      title="决策日志与自动评估"
-      description="先写下当时的理由、预期和失效条件，再由自动评估补证据。自动评估只把结果送进待确认队列，不代替人工判断。"
+      title="决策提案、决策日志与自动评估"
+      description="平台先提出有证据的配置或换仓提案；你采纳后仍需自行交易，再上传截图。平台匹配实际交易、记录偏差，并继续评估结果。"
     >
       <template #actions>
+        <RouterLink
+          v-if="pendingProposals > 0"
+          class="r2-head-chip is-warn"
+          :to="{ name: 'r2-evaluation', hash: '#proposals' }"
+        >
+          待采纳提案 · {{ pendingProposals }}
+        </RouterLink>
         <RouterLink
           v-if="pendingEvaluations > 0"
           class="r2-head-chip is-warn"
           :to="{ name: 'r2-evaluation', hash: '#automation' }"
-          title="自动评估只进入待确认队列，不代替人工判断"
+          title="待确认评估需要补齐证据后才能形成结论"
         >
           待确认评估 · {{ pendingEvaluations }}
         </RouterLink>
@@ -71,6 +90,13 @@ const sections = computed(() => [
     <R2SectionIndex :items="sections" />
 
     <div class="r2-stack">
+      <section id="proposals" class="rw-panel r2-anchor" aria-label="决策提案">
+        <DecisionProposalPanel
+          :proposals="dashboard.decision_proposals"
+          :decisions="workspace.decisions"
+        />
+      </section>
+
       <section id="decisions" class="rw-panel r2-anchor" aria-label="决策日志">
         <DecisionLogPanel
           :decisions="workspace.decisions"

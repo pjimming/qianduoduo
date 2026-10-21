@@ -319,7 +319,17 @@ function validateDecisionPayload(payload, options = {}) {
   if (!reason) return { error: '请填写当时的理由' };
   if (reason.length > 1000) return { error: '理由不能超过 1000 个字符' };
   const expectation = String(payload.expectation || '').trim();
+  if (!expectation) return { error: '请填写收益、流动性或风险预期' };
   if (expectation.length > 1000) return { error: '预期不能超过 1000 个字符' };
+  const invalidationCondition = String(
+    payload.invalidation_condition || '',
+  ).trim();
+  if (!invalidationCondition) {
+    return { error: '请填写失效条件，明确什么变化会推翻这次决策' };
+  }
+  if (invalidationCondition.length > 1000) {
+    return { error: '失效条件不能超过 1000 个字符' };
+  }
   const actualResult = String(payload.actual_result || '').trim();
   if (actualResult.length > 1000) return { error: '实际结果不能超过 1000 个字符' };
   const rating = String(payload.rating || '待评估').trim();
@@ -402,17 +412,20 @@ function validateDecisionPayload(payload, options = {}) {
     return { error: '评估时点必须是 buy_day、holding 或 maturity' };
   }
   const evidenceDate = String(payload.evidence_date || '').trim();
-  if (evidenceDate) {
-    if (!parseYmd(evidenceDate)) {
-      return { error: '证据日期格式应为 YYYY-MM-DD' };
-    }
-    if (evidenceDate > today) {
-      return { error: '证据日期不能晚于今天' };
-    }
+  if (!evidenceDate) return { error: '请填写证据日期' };
+  if (!parseYmd(evidenceDate)) {
+    return { error: '证据日期格式应为 YYYY-MM-DD' };
+  }
+  if (evidenceDate > today) {
+    return { error: '证据日期不能晚于今天' };
   }
   const verifyDate = String(payload.verify_date || '').trim();
-  if (verifyDate && !parseYmd(verifyDate)) {
+  if (!verifyDate) return { error: '请填写事后验证日期' };
+  if (!parseYmd(verifyDate)) {
     return { error: '事后验证日期格式应为 YYYY-MM-DD' };
+  }
+  if (verifyDate < evidenceDate) {
+    return { error: '事后验证日期不能早于证据日期' };
   }
   let reviewMeta = payload.review_meta ?? {};
   if (typeof reviewMeta === 'string') {
@@ -439,6 +452,7 @@ function validateDecisionPayload(payload, options = {}) {
       action,
       reason,
       expectation,
+      invalidation_condition: invalidationCondition,
       actual_result: actualResult,
       strategy_version: strategyVersion,
       target_annualized: Math.round(targetAnnualized * 100) / 100,
@@ -742,6 +756,12 @@ function validateInboxOverridePayload(payload) {
     'target_product_name',
     'target_term_days',
     'target_maturity_date',
+    'decision_id',
+    'decision_reason',
+    'decision_expectation',
+    'decision_invalidation_condition',
+    'decision_evidence_date',
+    'decision_verify_date',
     'confidence',
     'notes',
   ];
@@ -1086,6 +1106,27 @@ function buildMonthlyReviewMarkdown({
   return `${lines.join('\n')}\n`;
 }
 
+function syncTradeDecisionAndEvaluate(repository, trade, trigger) {
+  const today = todayShanghai();
+  const matched = repository.decisionProposalStore.matchTrade(trade, today);
+  if (matched?.trade) trade = matched.trade;
+  repository.decisionProposalStore.reconcileExecutionStatuses(today);
+  repository.automationStore.ensureTradeDecisions();
+  repository.automationStore.runCycle({
+    today,
+    trigger,
+  });
+  repository.decisionProposalStore.reconcileExecutionStatuses(today);
+  return trade?.id ? repository.tradeStore.getTrade(trade.id) : trade;
+}
+
+function evaluateDecisionChanges(repository, trigger) {
+  repository.automationStore.runCycle({
+    today: todayShanghai(),
+    trigger,
+  });
+}
+
 function dashboardPayload(repository) {
   const rawRecords = repository.listRecords();
   const records = enrichRecords(rawRecords);
@@ -1210,6 +1251,8 @@ function dashboardPayload(repository) {
     capital,
     products: productView,
   };
+  repository.decisionProposalStore.sync(payload);
+  payload.decision_proposals = repository.decisionProposalStore.getWorkspace(today);
   payload.inbox_center = repository.inboxCenter.sync(payload);
   return payload;
 }
@@ -1750,6 +1793,49 @@ function createServer(options = {}) {
       if (pathname === '/api/automation/workspace' && request.method === 'GET') {
         sendJson(response, 200, {
           automation: repository.automationStore.getWorkspace(todayShanghai()),
+        });
+        return;
+      }
+
+      if (pathname === '/api/decision-proposals' && request.method === 'GET') {
+        const dashboard = dashboardPayload(repository);
+        sendJson(response, 200, {
+          decision_proposals: dashboard.decision_proposals,
+          dashboard,
+        });
+        return;
+      }
+
+      const proposalActionMatch = pathname.match(
+        /^\/api\/decision-proposals\/(\d+)\/(adopt|reject)$/,
+      );
+      if (proposalActionMatch && request.method === 'POST') {
+        const id = Number(proposalActionMatch[1]);
+        const action = proposalActionMatch[2];
+        const body = await readJsonBody(request);
+        let result;
+        try {
+          result =
+            action === 'adopt'
+              ? repository.decisionProposalStore.adoptProposal(id, {
+                  today: todayShanghai(),
+                })
+              : {
+                  proposal: repository.decisionProposalStore.rejectProposal(id, {
+                    reason: body.reason,
+                  }),
+                };
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        if (!result?.proposal) {
+          sendError(response, 404, '没有找到这条决策提案');
+          return;
+        }
+        sendJson(response, 200, {
+          result,
+          dashboard: dashboardPayload(repository),
         });
         return;
       }
@@ -2331,6 +2417,15 @@ function createServer(options = {}) {
           sendError(response, 400, validation.error);
           return;
         }
+        if (
+          validation.value.decision_id &&
+          !repository
+            .listDecisions()
+            .some((item) => item.id === validation.value.decision_id)
+        ) {
+          sendError(response, 400, '关联决策不存在');
+          return;
+        }
         let trade;
         try {
           trade = repository.tradeStore.createTrade(validation.value, '页面手工录入');
@@ -2342,6 +2437,11 @@ function createServer(options = {}) {
           );
           return;
         }
+        trade = syncTradeDecisionAndEvaluate(
+          repository,
+          trade,
+          'trade-create',
+        );
         sendJson(response, 201, {
           trade,
           overview: repository.tradeStore.getOverview(todayShanghai()),
@@ -2384,6 +2484,11 @@ function createServer(options = {}) {
           sendError(response, 404, '没有找到这笔交易');
           return;
         }
+        trade = syncTradeDecisionAndEvaluate(
+          repository,
+          trade,
+          'trade-confirm',
+        );
         sendJson(response, 200, {
           trade,
           overview: repository.tradeStore.getOverview(todayShanghai()),
@@ -2412,6 +2517,11 @@ function createServer(options = {}) {
           sendError(response, 404, '没有找到这笔交易');
           return;
         }
+        trade = syncTradeDecisionAndEvaluate(
+          repository,
+          trade,
+          'trade-update',
+        );
         sendJson(response, 200, {
           trade,
           overview: repository.tradeStore.getOverview(todayShanghai()),
@@ -2451,6 +2561,15 @@ function createServer(options = {}) {
           sendError(response, 400, validation.error);
           return;
         }
+        if (
+          validation.value.decision_id &&
+          !repository
+            .listDecisions()
+            .some((item) => item.id === validation.value.decision_id)
+        ) {
+          sendError(response, 400, '关联决策不存在');
+          return;
+        }
         let trade;
         try {
           trade = repository.tradeStore.updateTrade(
@@ -2466,6 +2585,11 @@ function createServer(options = {}) {
           );
           return;
         }
+        trade = syncTradeDecisionAndEvaluate(
+          repository,
+          trade,
+          'trade-update',
+        );
         sendJson(response, 200, {
           trade,
           overview: repository.tradeStore.getOverview(todayShanghai()),
@@ -2607,6 +2731,15 @@ function createServer(options = {}) {
           sendError(response, 400, validation.error);
           return;
         }
+        if (
+          validation.value.decision_id &&
+          !repository
+            .listDecisions()
+            .some((item) => item.id === validation.value.decision_id)
+        ) {
+          sendError(response, 400, '关联决策不存在');
+          return;
+        }
         let result;
         try {
           result = repository.tradeStore.applyInbox(id, validation.value);
@@ -2618,6 +2751,11 @@ function createServer(options = {}) {
           );
           return;
         }
+        result.trade = syncTradeDecisionAndEvaluate(
+          repository,
+          result.trade,
+          'trade-inbox-apply',
+        );
         sendJson(response, 200, {
           ...result,
           overview: repository.tradeStore.getOverview(todayShanghai()),
@@ -2644,6 +2782,15 @@ function createServer(options = {}) {
         const validation = validateTradePayload(body);
         if (validation.error) {
           sendError(response, 400, validation.error);
+          return;
+        }
+        if (
+          validation.value.decision_id &&
+          !repository
+            .listDecisions()
+            .some((item) => item.id === validation.value.decision_id)
+        ) {
+          sendError(response, 400, '关联决策不存在');
           return;
         }
         const fields = validation.value;
@@ -2747,6 +2894,11 @@ function createServer(options = {}) {
           notes: String(body.note || '视觉识别写入').slice(0, 500),
         });
         const result = repository.tradeStore.applyInbox(id, fields);
+        result.trade = syncTradeDecisionAndEvaluate(
+          repository,
+          result.trade,
+          'trade-inbox-vision-apply',
+        );
         sendJson(response, 200, {
           ...result,
           inbox,
@@ -2811,6 +2963,7 @@ function createServer(options = {}) {
           return;
         }
         const decision = repository.createDecision(validation.value);
+        evaluateDecisionChanges(repository, 'decision-create');
         sendJson(response, 201, {
           decision,
           dashboard: dashboardPayload(repository),
@@ -2832,6 +2985,7 @@ function createServer(options = {}) {
           sendError(response, 404, '没有找到这条决策记录');
           return;
         }
+        evaluateDecisionChanges(repository, 'decision-update');
         sendJson(response, 200, {
           decision,
           dashboard: dashboardPayload(repository),
@@ -2840,11 +2994,29 @@ function createServer(options = {}) {
       }
 
       if (decisionMatch && request.method === 'DELETE') {
-        const deleted = repository.deleteDecision(Number(decisionMatch[1]));
+        const id = Number(decisionMatch[1]);
+        const linked = repository
+          .tradeStore.listTrades()
+          .find((trade) => trade.decision_id === id);
+        if (linked) {
+          sendJson(response, 409, {
+            error: `决策 #${id} 已关联交易 #${linked.id}，请先改绑或撤销交易`,
+          });
+          return;
+        }
+        const deleted = repository.deleteDecision(id);
         if (!deleted) {
           sendError(response, 404, '没有找到这条决策记录');
           return;
         }
+        repository.decisionProposalStore.detachDecision(
+          id,
+          `决策 #${id} 已删除，提案取消`,
+        );
+        repository.automationStore.discardDecisionEvaluations(
+          id,
+          `决策 #${id} 已删除`,
+        );
         sendJson(response, 200, {
           deleted: true,
           dashboard: dashboardPayload(repository),

@@ -142,7 +142,7 @@ onBeforeUnmount(() => {
     <R2PageHeader
       kicker="TWO UPLOADS ONLY"
       title="上传交易截图与收益截图，其余交给平台"
-      description="你只负责完成买入/赎回并上传两类截图。交易入账、持仓维护、决策、每日追踪、评估与复盘由 AI 和平台自动完成；只有识别歧义或平台看不到的事实时才需要补正。"
+      description="手工录入交易前先写决策；截图自动入账时，平台会立即建立临时决策并提示补齐理由、预期、证据日和失效条件，补齐后才进入有效评估。"
     >
       <template #actions>
         <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-overview' }">

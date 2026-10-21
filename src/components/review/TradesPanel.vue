@@ -4,6 +4,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatMoney } from '@/composables/useFormatters'
 import type {
+  DecisionAction,
   DecisionEntry,
   TradeInput,
   TradeOverview,
@@ -40,6 +41,11 @@ interface TradeForm {
   target_term_days: string
   target_maturity_date: string
   decision_id: string
+  decision_reason: string
+  decision_expectation: string
+  decision_invalidation_condition: string
+  decision_evidence_date: string
+  decision_verify_date: string
   notes: string
 }
 
@@ -89,6 +95,11 @@ function emptyForm(type: TradeType = 'buy'): TradeForm {
     target_term_days: '',
     target_maturity_date: '',
     decision_id: '',
+    decision_reason: '',
+    decision_expectation: '',
+    decision_invalidation_condition: '',
+    decision_evidence_date: props.today,
+    decision_verify_date: addDays(props.today, 14),
     notes: '',
   }
 }
@@ -126,6 +137,11 @@ function openEdit(trade: TradeTransaction): void {
       trade.target_term_days === null ? '' : String(trade.target_term_days),
     target_maturity_date: trade.target_maturity_date || '',
     decision_id: trade.decision_id === null ? '' : String(trade.decision_id),
+    decision_reason: '',
+    decision_expectation: '',
+    decision_invalidation_condition: '',
+    decision_evidence_date: props.today,
+    decision_verify_date: addDays(props.today, 14),
     notes: trade.notes,
   })
   formOpen.value = true
@@ -152,6 +168,8 @@ async function save(): Promise<void> {
   const targetTermRaw = String(form.target_term_days ?? '').trim()
   const termDays = termRaw === '' ? null : Number(termRaw)
   const targetTermDays = targetTermRaw === '' ? null : Number(targetTermRaw)
+  let decisionId = form.decision_id ? Number(form.decision_id) : null
+  let createdDecisionId: number | null = null
   const payload: TradeInput = {
     trade_date: form.trade_date,
     confirm_date: form.confirm_date || null,
@@ -174,22 +192,69 @@ async function save(): Promise<void> {
     target_product_name: form.target_product_name.trim(),
     target_term_days: targetTermDays,
     target_maturity_date: form.target_maturity_date || null,
-    decision_id: form.decision_id ? Number(form.decision_id) : null,
+    decision_id: decisionId,
     notes: form.notes.trim(),
   }
   saving.value = true
   try {
+    if (decisionId === null) {
+      if (!form.decision_reason.trim()) {
+        show('请填写交易前的决策理由', { error: true })
+        return
+      }
+      if (!form.decision_expectation.trim()) {
+        show('请填写收益、流动性或风险预期', { error: true })
+        return
+      }
+      if (!form.decision_invalidation_condition.trim()) {
+        show('请填写什么变化会使这次决策失效', { error: true })
+        return
+      }
+      const targetName =
+        form.trade_type === 'switch'
+          ? `${form.product_name.trim()} → ${form.target_product_name.trim()}`
+          : form.product_name.trim()
+      const created = await store.createDecision({
+        date: form.trade_date,
+        product_name: targetName,
+        action: decisionAction(form.trade_type),
+        reason: form.decision_reason.trim(),
+        expectation: form.decision_expectation.trim(),
+        invalidation_condition: form.decision_invalidation_condition.trim(),
+        actual_result: '',
+        strategy_version: 'r2-3pct-v1',
+        target_annualized: 3,
+        bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+        evaluation_at: ['buy_day', 'holding', 'maturity'],
+        evidence_date: form.decision_evidence_date || form.trade_date,
+        verify_date: form.decision_verify_date || addDays(form.trade_date, 14),
+        review_meta: {
+          source: 'trade-predecision',
+          product_code: form.product_code.trim(),
+        },
+        rating: '待评估',
+      })
+      createdDecisionId = created.decision.id
+      decisionId = created.decision.id
+      payload.decision_id = decisionId
+    }
     if (editingId.value === null) {
       await store.createTrade(payload)
-      show('交易已保存')
+      show(`交易已保存，并关联决策 #${decisionId}`)
     } else {
       await store.updateTrade(editingId.value, payload)
-      show('交易已更新')
+      show(`交易已更新，并关联决策 #${decisionId}`)
     }
     formOpen.value = false
     resetForm()
   } catch (error) {
-    show(error instanceof Error ? error.message : '保存失败', { error: true })
+    const message = error instanceof Error ? error.message : '保存失败'
+    show(
+      createdDecisionId !== null
+        ? `决策 #${createdDecisionId} 已保存，但交易未保存：${message}`
+        : message,
+      { error: true, duration: createdDecisionId !== null ? 8000 : undefined },
+    )
   } finally {
     saving.value = false
   }
@@ -244,6 +309,16 @@ function sourceLabel(source: string): string {
     manual: '手工录入',
     'holding-api': '兼容接口',
   }[source] || source
+}
+
+function decisionAction(type: TradeType): DecisionAction {
+  return ({ buy: '买入', redeem: '赎回', switch: '切换' } as const)[type]
+}
+
+function addDays(date: string, days: number): string {
+  const stamp = new Date(`${date}T00:00:00Z`)
+  stamp.setUTCDate(stamp.getUTCDate() + days)
+  return stamp.toISOString().slice(0, 10)
 }
 </script>
 
@@ -375,12 +450,52 @@ function sourceLabel(source: string): string {
         <label class="rw-field">
           <span>关联决策</span>
           <select v-model="form.decision_id">
-            <option value="">不关联</option>
+            <option value="">新建本次决策（必填）</option>
             <option v-for="item in decisions" :key="item.id" :value="String(item.id)">
               {{ item.date }} · {{ item.product_name }}
             </option>
           </select>
         </label>
+        <template v-if="!form.decision_id">
+          <label class="rw-field is-wide">
+            <span>交易前决策理由</span>
+            <textarea
+              v-model="form.decision_reason"
+              rows="2"
+              maxlength="1000"
+              placeholder="为什么做这笔操作？依据了哪些已验证事实？"
+              required
+            ></textarea>
+          </label>
+          <label class="rw-field is-wide">
+            <span>收益 / 流动性 / 风险预期</span>
+            <textarea
+              v-model="form.decision_expectation"
+              rows="2"
+              maxlength="1000"
+              placeholder="例如：30 天同比较收益多 0.2pp，等待 2 天，预计净多赚 7 元"
+              required
+            ></textarea>
+          </label>
+          <label class="rw-field is-wide">
+            <span>失效条件</span>
+            <textarea
+              v-model="form.decision_invalidation_condition"
+              rows="2"
+              maxlength="1000"
+              placeholder="例如：低于期限 hurdle、额度或赎回规则变化、预计净增益低于门槛"
+              required
+            ></textarea>
+          </label>
+          <label class="rw-field">
+            <span>证据日期</span>
+            <input v-model="form.decision_evidence_date" type="date" required />
+          </label>
+          <label class="rw-field">
+            <span>事后验证日期</span>
+            <input v-model="form.decision_verify_date" type="date" required />
+          </label>
+        </template>
         <template v-if="form.trade_type === 'switch'">
           <label class="rw-field">
             <span>目标产品代码</span>
@@ -401,7 +516,8 @@ function sourceLabel(source: string): string {
         </label>
       </div>
       <p class="rw-form-hint">
-        赎回按买入批次先进先出匹配；待确认交易不会进入持仓。实际到账金额留空时，已实现盈亏暂按 0 计。
+        新交易必须先选择已有决策或填写本次决策；保存时先写决策，再关联交易。
+        赎回按买入批次先进先出匹配；待确认交易不会进入持仓。
       </p>
       <div class="rw-form-actions">
         <button type="submit" class="rw-button" :disabled="saving">

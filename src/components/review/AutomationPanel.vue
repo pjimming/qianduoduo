@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort } from '@/composables/useFormatters'
@@ -67,6 +68,10 @@ async function saveSettings(): Promise<void> {
 }
 
 async function applyRun(run: EvaluationRun): Promise<void> {
+  if (!canConfirm(run)) {
+    show('评估结果尚不明确，请先补齐交易、到账或决策证据', { error: true })
+    return
+  }
   const rating =
     run.rating === '待评估' && run.outcome !== 'unknown'
       ? window.prompt('请输入最终评价', '流程正确，结果好') || run.rating
@@ -163,6 +168,22 @@ function jobLabel(type: string): string {
     monthly_summary: '月度总结润色',
     quarterly_summary: '季度总结润色',
   }[type] || type
+}
+
+function canConfirm(run: EvaluationRun): boolean {
+  return run.rating !== '待评估' && run.outcome !== 'unknown'
+}
+
+function missingDecisionLabels(run: EvaluationRun): string[] {
+  const fields = run.evidence.decision_missing_fields || []
+  const labels: Record<string, string> = {
+    reason: '决策理由',
+    expectation: '收益/流动性预期',
+    evidence_date: '证据日期',
+    verify_date: '验证日期',
+    invalidation_condition: '失效条件',
+  }
+  return fields.map((field) => labels[field] || field)
 }
 </script>
 
@@ -291,9 +312,23 @@ function jobLabel(type: string): string {
             <span>建议评价：{{ run.rating }}</span>
           </div>
           <div class="rw-row-actions">
-            <button type="button" class="rw-link-button" :disabled="busy" @click="applyRun(run)">
+            <RouterLink
+              v-if="missingDecisionLabels(run).length"
+              class="rw-link-button"
+              :to="{ name: 'r2-evaluation', hash: '#decisions' }"
+            >
+              补充决策证据
+            </RouterLink>
+            <button
+              v-if="canConfirm(run)"
+              type="button"
+              class="rw-link-button"
+              :disabled="busy"
+              @click="applyRun(run)"
+            >
               {{ run.scope === 'trade' ? '确认结果' : '确认写入' }}
             </button>
+            <span v-else class="rw-muted">等待交易或结果证据</span>
           </div>
         </article>
       </div>

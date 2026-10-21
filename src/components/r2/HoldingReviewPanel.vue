@@ -398,6 +398,8 @@ async function saveDecision(review: HoldingReview): Promise<void> {
       action: actionableNow ? '切换' : '观察',
       reason: decisionForm.reason,
       expectation: decisionForm.expectation,
+      invalidation_condition:
+        '到验证日若实际起息、到账、费用或比较期收益未达到本次测算，或当前产品已不再锁定时，重新评估；若候选额度、风险、期限或赎回规则恶化，则取消替换。',
       actual_result: '',
       strategy_version: 'r2-holding-review-v5',
       target_annualized: 3,

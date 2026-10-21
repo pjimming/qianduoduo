@@ -46,12 +46,15 @@ test('automation API persists strategy fields, evaluates, applies and undoes', a
     action: '买入',
     reason: '按策略配置',
     expectation: '持有到期达到目标',
+    invalidation_condition: '实际年化低于目标或期限桶偏离计划时重新评估',
     actual_result: '',
     rating: '待评估',
     strategy_version: 'custom-ladder-v1',
     target_annualized: 3,
     bucket_plan: { short: 0, medium: 100, long: 0, max_single: 100 },
     evaluation_at: ['buy_day', 'maturity'],
+    evidence_date: '2026-10-01',
+    verify_date: '2026-12-31',
   });
   assert.equal(decisionResponse.status, 201);
   const decisionPayload = await decisionResponse.json();
@@ -219,6 +222,9 @@ test('target3 and daily-open policy are enforced through the API', async (t) => 
     action: '买入',
     reason: '策略校准',
     expectation: '按 30/35/35 执行',
+    invalidation_condition: '实际年化低于目标或期限桶偏离计划时重新评估',
+    evidence_date: '2026-10-01',
+    verify_date: '2026-12-31',
     strategy_version: 'r2-3pct-v1',
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
@@ -240,6 +246,10 @@ test('target3 and daily-open policy are enforced through the API', async (t) => 
     product_name: '错误 target3',
     action: '买入',
     reason: '测试硬约束',
+    expectation: '按 30/35/35 执行',
+    invalidation_condition: '期限桶偏离计划时重新评估',
+    evidence_date: '2026-10-01',
+    verify_date: '2026-12-31',
     strategy_version: 'r2-3pct-v1',
     target_annualized: 3,
     bucket_plan: { short: 0, medium: 100, long: 0 },
@@ -251,9 +261,147 @@ test('target3 and daily-open policy are enforced through the API', async (t) => 
     product_name: '错误日开仓位',
     action: '买入',
     reason: '测试硬约束',
+    expectation: '验证日开额度固定为 0%',
+    invalidation_condition: '出现新增日开额度时重新评估',
+    evidence_date: '2026-10-01',
+    verify_date: '2026-12-31',
     strategy_version: 'custom-ladder-v1',
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, cash: 5 },
   });
   assert.equal(dailyOpenPlan.status, 400);
+});
+
+test('trade API immediately creates and links a decision for pending transactions', async (t) => {
+  const { base } = await startTestServer(t);
+  const response = await postJson(`${base}/api/trades`, {
+    trade_date: '2026-10-22',
+    confirm_date: null,
+    trade_type: 'buy',
+    status: 'pending',
+    product_code: 'AUTO-PENDING',
+    product_name: '待确认自动建档产品',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 3000,
+    term_days: 7,
+    decision_id: null,
+    notes: '',
+  });
+  assert.equal(response.status, 201);
+  const payload = await response.json();
+  assert.ok(payload.trade.decision_id);
+  const decision = payload.dashboard.workspace.decisions.find(
+    (item) => item.id === payload.trade.decision_id,
+  );
+  assert.ok(decision);
+  assert.equal(decision.review_meta.source, 'trade-auto');
+  assert.equal(decision.review_meta.decision_completeness.complete, false);
+  assert.match(decision.reason, /^待补充：/);
+  assert.ok(
+    payload.dashboard.automation.pending_evaluations.some(
+      (item) => item.decision_id === decision.id,
+    ),
+  );
+  assert.ok(
+    payload.dashboard.inbox_center.items.some(
+      (item) =>
+        item.metadata.decision_id === decision.id &&
+        item.title === '决策证据待补充',
+    ),
+  );
+});
+
+test('decision API requires complete evidence fields and protects linked decisions', async (t) => {
+  const { base } = await startTestServer(t);
+  const incomplete = await postJson(`${base}/api/review/decisions`, {
+    date: '2026-10-22',
+    product_name: '缺字段决策',
+    action: '买入',
+    reason: '理由已填',
+    expectation: '预期已填',
+    evidence_date: '2026-10-22',
+    verify_date: '2026-11-05',
+  });
+  assert.equal(incomplete.status, 400);
+  assert.match((await incomplete.json()).error, /失效条件/);
+
+  const completeResponse = await postJson(`${base}/api/review/decisions`, {
+    date: '2026-10-22',
+    product_name: '完整决策',
+    action: '买入',
+    reason: '完成期限匹配和收益比较',
+    expectation: '持有 30 天达到短期限 hurdle',
+    invalidation_condition: '实际收益或规则偏离预期时重新评估',
+    evidence_date: '2026-10-22',
+    verify_date: '2026-11-21',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+  });
+  assert.equal(completeResponse.status, 201);
+  const complete = (await completeResponse.json()).decision;
+  const tradeResponse = await postJson(`${base}/api/trades`, {
+    trade_date: '2026-10-22',
+    confirm_date: null,
+    trade_type: 'buy',
+    status: 'pending',
+    product_code: 'LINK-001',
+    product_name: '关联保护测试',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 1000,
+    term_days: 30,
+    decision_id: complete.id,
+    notes: '',
+  });
+  assert.equal(tradeResponse.status, 201);
+  const linkedPayload = await tradeResponse.json();
+  assert.ok(
+    linkedPayload.dashboard.inbox_center.items.some(
+      (item) =>
+        item.metadata.decision_id === complete.id &&
+        item.title === '等待交易确认后评估',
+    ),
+  );
+  const deletion = await fetch(`${base}/api/review/decisions/${complete.id}`, {
+    method: 'DELETE',
+  });
+  assert.equal(deletion.status, 409);
+  assert.match((await deletion.json()).error, /关联交易/);
+
+  const standaloneResponse = await postJson(`${base}/api/review/decisions`, {
+    date: '2026-10-22',
+    product_name: '未执行计划',
+    action: '买入',
+    reason: '等待额度与交易规则复核后执行买入',
+    expectation: '规则满足后按计划完成买入',
+    invalidation_condition: '额度售罄或规则变化时取消买入计划',
+    evidence_date: '2026-10-22',
+    verify_date: '2026-11-21',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+  });
+  assert.equal(standaloneResponse.status, 201);
+  const standalone = (await standaloneResponse.json()).decision;
+  assert.ok(
+    (await fetch(`${base}/api/automation/workspace`).then((response) =>
+      response.json(),
+    )).automation.pending_evaluations.some(
+      (item) => item.decision_id === standalone.id,
+    ),
+  );
+  const standaloneDeletion = await fetch(
+    `${base}/api/review/decisions/${standalone.id}`,
+    { method: 'DELETE' },
+  );
+  assert.equal(standaloneDeletion.status, 200);
+  const afterDeletion = await standaloneDeletion.json();
+  assert.equal(
+    afterDeletion.dashboard.automation.pending_evaluations.some(
+      (item) => item.decision_id === standalone.id,
+    ),
+    false,
+  );
 });

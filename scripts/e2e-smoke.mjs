@@ -410,6 +410,24 @@ async function main() {
     await page.getByLabel('产品名称').fill('招银理财14天')
     await page.getByLabel('买入金额').fill('5000')
     await page.getByLabel('期限（天，0 = 日开）').fill('14')
+    await page
+      .getByLabel('交易前决策理由')
+      .fill('14 天期限与用钱安排匹配，完成买入前规则核对')
+    await page
+      .getByLabel('收益 / 流动性 / 风险预期')
+      .fill('持有到期达到短期限 hurdle，并满足 14 天后流动性需求')
+    await page
+      .getByLabel('失效条件')
+      .fill('实际收益低于 hurdle、规则变化或用钱日期提前时重新评估')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(page, '#trades .rw-form', '交易前决策表单移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '交易前决策表单移动端出现横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: '保存交易' }).click()
     await page.waitForSelector('.rw-trade-status.is-pending')
     assert(
@@ -423,6 +441,31 @@ async function main() {
       '待确认金额没有正确显示',
     )
 
+    repository.decisionProposalStore.sync({
+      meta: {
+        today: '2026-10-22',
+        product_snapshot_date: '2026-10-21',
+      },
+      workspace: { holding_reviews: [] },
+      products: {
+        allocation: { available_cash: 1800 },
+        watchlist: [
+          {
+            code: 'E2E-CASH',
+            name: 'E2E 资金冗余产品',
+            selected: true,
+            target_amount: 1800,
+            target_pct: 6,
+            allocation_bucket: 'short',
+            allocation_reason: 'E2E 短期桶目标不足',
+            selection_score: 80,
+            quota_status: 'verified',
+            quota_available: 3000,
+            quota_verified_at: '2026-10-22',
+          },
+        ],
+      },
+    })
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.inbox-page')
     await assertFontFloor(page, '.inbox-page', '消息中心桌面端')
@@ -434,6 +477,26 @@ async function main() {
       (await page.locator('.inbox-source-group').count()) >= 2,
       '消息中心没有按来源分组',
     )
+    const proposalMessage = page
+      .locator('.inbox-message')
+      .filter({ hasText: 'E2E 资金冗余产品' })
+      .first()
+    await proposalMessage.waitFor()
+    page.once('dialog', (dialog) => void dialog.accept())
+    await proposalMessage.getByRole('button', { name: '采纳提案' }).click()
+    await page.waitForFunction(
+      () => document.querySelector('.toast')?.textContent?.includes('提案已采纳'),
+      null,
+      { timeout: 5000 },
+    )
+    await page.getByRole('tab', { name: /提醒/ }).click()
+    assert(
+      ((await page.locator('.inbox-page').textContent()) ?? '').includes(
+        '决策已采纳，待执行',
+      ),
+      '采纳后的提案没有进入待执行提醒',
+    )
+    await page.getByRole('tab', { name: /待处理/ }).click()
     const unreadBefore = await page.locator('.inbox-message.is-unread').count()
     assert(unreadBefore > 0, '消息中心没有显示未读状态')
     await page.getByRole('button', { name: /全部已读/ }).click()
@@ -838,9 +901,24 @@ async function main() {
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      evaluationSectionOrder.join(',') === 'decisions,automation',
+      evaluationSectionOrder.join(',') === 'proposals,decisions,automation',
       `决策与评估页模块顺序不正确：${evaluationSectionOrder.join(',')}`,
     )
+    assert(
+      ((await page.locator('#proposals .rw-panel-body').textContent()) ?? '').includes(
+        'E2E 资金冗余产品',
+      ),
+      '决策与评估页没有展示已采纳提案',
+    )
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(page, '#proposals', '决策提案移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '决策提案移动端出现横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
     assert(
       (await page.getByRole('button', { name: '立即运行自动化' }).count()) === 1,
       '自动评估面板没有运行入口',
@@ -854,6 +932,22 @@ async function main() {
         '切换等待',
       ),
       '替换决策没有展示切换等待与核验状态',
+    )
+    const decisionText =
+      (await page.locator('#decisions .rw-panel-body').textContent()) ?? ''
+    assert(decisionText.includes('证据完整'), '决策日志没有显示完整证据状态')
+    assert(decisionText.includes('待补证据'), '决策日志没有显示待补证据状态')
+    assert(
+      ((await page.locator('#automation .rw-panel-body').textContent()) ?? '').includes(
+        '补充决策证据',
+      ),
+      '自动评估没有给出决策补证入口',
+    )
+    assert(
+      ((await page.locator('#automation .rw-panel-body').textContent()) ?? '').includes(
+        '等待交易或结果证据',
+      ),
+      '未知评估仍显示可空确认状态',
     )
 
     const errorPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
@@ -871,7 +965,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

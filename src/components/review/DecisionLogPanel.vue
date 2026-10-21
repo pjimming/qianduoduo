@@ -4,6 +4,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import type {
   AutomationWorkspace,
+  DecisionCompleteness,
   DecisionEntry,
   DecisionInput,
   DecisionRating,
@@ -64,13 +65,14 @@ function emptyForm(): DecisionInput {
     action: '买入',
     reason: '',
     expectation: '',
+    invalidation_condition: '',
     actual_result: '',
     strategy_version: 'r2-3pct-v1',
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
     evaluation_at: ['buy_day', 'holding', 'maturity'],
-    evidence_date: '',
-    verify_date: '',
+    evidence_date: props.today,
+    verify_date: addDays(props.today, 14),
     review_meta: {},
     rating: '待评估',
   }
@@ -94,6 +96,7 @@ function openEdit(item: DecisionEntry): void {
     action: item.action,
     reason: item.reason,
     expectation: item.expectation,
+    invalidation_condition: item.invalidation_condition,
     actual_result: item.actual_result,
     strategy_version: item.strategy_version,
     target_annualized: item.target_annualized,
@@ -238,6 +241,68 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
   }
   return rows
 }
+
+function addDays(date: string, days: number): string {
+  const stamp = new Date(`${date}T00:00:00Z`)
+  stamp.setUTCDate(stamp.getUTCDate() + days)
+  return stamp.toISOString().slice(0, 10)
+}
+
+function completeness(item: DecisionEntry): DecisionCompleteness {
+  const stored = item.review_meta?.decision_completeness as
+    | DecisionCompleteness
+    | undefined
+  if (stored) return stored
+  const missing: Array<{ key: string; label: string }> = []
+  const placeholder = (value: string) =>
+    !value.trim() ||
+    value.startsWith('待补充：') ||
+    value.includes('原始决策理由尚未记录') ||
+    value.includes('需要说明什么变化会使该决策失效')
+  if (placeholder(item.reason)) missing.push({ key: 'reason', label: '决策理由' })
+  if (placeholder(item.expectation)) {
+    missing.push({ key: 'expectation', label: '收益/流动性预期' })
+  }
+  if (!item.evidence_date) {
+    missing.push({ key: 'evidence_date', label: '证据日期' })
+  }
+  if (!item.verify_date) {
+    missing.push({ key: 'verify_date', label: '验证日期' })
+  }
+  if (placeholder(item.invalidation_condition || '')) {
+    missing.push({ key: 'invalidation_condition', label: '失效条件' })
+  }
+  return {
+    complete: missing.length === 0,
+    status: missing.length === 0 ? 'complete' : 'incomplete',
+    missing_fields: missing.map((entry) => entry.key),
+    missing_labels: missing.map((entry) => entry.label),
+  }
+}
+
+function executionLabel(item: DecisionEntry): string {
+  const meta = item.review_meta || {}
+  if (meta.proposal_id && meta.execution_status === 'pending') {
+    return '已采纳，待执行'
+  }
+  return {
+    partial: '部分执行',
+    executed: '已执行，待确认',
+    confirmed: '交易已确认',
+    deviation: '执行偏差',
+    unplanned: '计划外执行',
+  }[String(meta.execution_status || '')] || ''
+}
+
+function auditLabel(item: DecisionEntry): string {
+  return {
+    matched: '审计一致',
+    review: '审计待补证据',
+    'amount-adjustment': '金额与提案有偏差',
+    deviation: '执行偏差',
+    unplanned: '计划外执行',
+  }[String(item.review_meta?.audit_status || '')] || ''
+}
 </script>
 
 <template>
@@ -379,6 +444,16 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
           ></textarea>
         </label>
         <label class="rw-field is-wide">
+          <span>失效条件（什么变化会推翻这次决策）</span>
+          <textarea
+            v-model="form.invalidation_condition"
+            rows="2"
+            maxlength="1000"
+            placeholder="例如：实际年化低于期限 hurdle、组合偏离目标桶超过 10pp、产品规则恶化或用钱时间变化"
+            required
+          ></textarea>
+        </label>
+        <label class="rw-field is-wide">
           <span>实际结果</span>
           <textarea
             v-model="form.actual_result"
@@ -405,12 +480,34 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
             <strong>{{ item.product_name }}</strong>
             <span class="action-tag" :class="actionClass(item.action)">{{ item.action }}</span>
             <span class="rw-muted">{{ item.date }}</span>
+            <span
+              class="rw-type-badge"
+              :class="{ 'is-warn': !completeness(item).complete }"
+              :title="completeness(item).missing_labels.join('、')"
+            >
+              {{ completeness(item).complete ? '证据完整' : '待补证据' }}
+            </span>
+            <span
+              v-if="executionLabel(item)"
+              class="rw-type-badge"
+              :class="{ 'is-warn': item.review_meta.execution_status === 'unplanned' }"
+            >
+              {{ executionLabel(item) }}
+            </span>
+            <span
+              v-if="auditLabel(item)"
+              class="rw-type-badge"
+              :class="{ 'is-warn': ['review', 'amount-adjustment', 'deviation', 'unplanned'].includes(String(item.review_meta?.audit_status || '')) }"
+            >
+              {{ auditLabel(item) }}
+            </span>
           </div>
           <span class="rw-rating" :class="ratingClass(item.rating)">{{ item.rating }}</span>
         </div>
         <p class="rw-decision-reason">{{ item.reason }}</p>
         <div class="rw-decision-meta">
           <span><em>预期</em>{{ item.expectation || '未填写' }}</span>
+          <span><em>失效条件</em>{{ item.invalidation_condition || '未填写' }}</span>
           <span><em>结果</em>{{ item.actual_result || '待观察' }}</span>
           <span>
             <em>策略</em>{{ item.strategy_version }} · 目标 {{ item.target_annualized.toFixed(2) }}%
@@ -420,6 +517,9 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
           </span>
           <span v-if="item.verify_date">
             <em>验证日</em>{{ item.verify_date }}
+          </span>
+          <span v-if="!completeness(item).complete && completeness(item).missing_labels.length">
+            <em>待补</em>{{ completeness(item).missing_labels.join('、') }}
           </span>
           <span v-if="Object.keys(item.bucket_plan).length">
             <em>期限桶</em>

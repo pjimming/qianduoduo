@@ -120,6 +120,8 @@ test('holding review API builds candidates, stores redemption rules and links a 
     action: '观察',
     reason: '锁定期内不可赎回，记录到期后计划；同桶候选参考年化更高',
     expectation: '到期前重新核验候选、额度与赎回规则，再决定是否执行替换',
+    invalidation_condition:
+      '候选额度、风险、期限或赎回规则恶化，或比较期净增益低于门槛时取消替换',
     actual_result: '',
     strategy_version: 'r2-holding-review-v6',
     target_annualized: 3,

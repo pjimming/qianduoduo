@@ -31,6 +31,9 @@ const openEvents = computed(
 const pendingEvaluations = computed(
   () => props.dashboard.automation.pending_evaluations.length,
 )
+const pendingProposals = computed(
+  () => props.dashboard.decision_proposals.summary.pending,
+)
 const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
 
 const shortcuts = computed(() => [
@@ -93,7 +96,8 @@ const shortcuts = computed(() => [
     <p class="overview-automation-note">
       当前平台状态：交易待确认 {{ pendingTrades }} 笔、
       待确认买入 ¥{{ pendingBuyAmount.toLocaleString('zh-CN') }}、
-      待复核产品 {{ openEvents }} 条、自动评估 {{ pendingEvaluations }}
+      待复核产品 {{ openEvents }} 条、待采纳提案 {{ pendingProposals }} 条、
+      自动评估 {{ pendingEvaluations }}
       条。这些项目由 AI 继续处理，只有无法自行消化的例外才会进入消息中心。
     </p>
   </div>

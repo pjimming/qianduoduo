@@ -29,7 +29,10 @@ function decisionInput(overrides = {}) {
     action: '买入',
     reason: '按策略配置',
     expectation: '持有到期达到目标',
+    invalidation_condition: '实际年化低于 3% 或期限桶偏离计划时重新评估',
     actual_result: '',
+    evidence_date: '2026-10-01',
+    verify_date: '2026-12-31',
     rating: '待评估',
     strategy_version: 'custom-ladder-v1',
     target_annualized: 3,
@@ -155,6 +158,41 @@ test('correcting a decision date supersedes the stale buy-day evaluation', (t) =
           job.job_type === 'evaluation_review' &&
           Number(job.payload.evaluation_id) === firstPending.id,
       ),
+  );
+});
+
+test('a new rule version supersedes pending runs from the previous version', (t) => {
+  const { repository, automation } = openTemp(t);
+  const decision = repository.createDecision(decisionInput());
+  automation.updateSettings({ rule_version: 'r2-eval-test-v1' });
+  automation.runCycle({ today: '2026-10-02', trigger: 'v1' });
+  const first = automation
+    .listPendingRuns()
+    .find((item) => item.decision_id === decision.id);
+  assert.ok(first);
+
+  automation.updateSettings({ rule_version: 'r2-eval-test-v2' });
+  automation.runCycle({ today: '2026-10-02', trigger: 'v2' });
+  const runs = automation
+    .listRuns()
+    .filter(
+      (item) =>
+        item.decision_id === decision.id && item.stage === 'buy_day',
+    );
+  const current = runs.find((item) => item.rule_version === 'r2-eval-test-v2');
+  const previous = runs.find((item) => item.id === first.id);
+  assert.ok(current);
+  assert.equal(current.status, 'pending');
+  assert.equal(previous.status, 'undone');
+  assert.equal(
+    automation
+      .listJobs({ status: 'pending' })
+      .filter(
+        (job) =>
+          job.job_type === 'evaluation_review' &&
+          Number(job.payload.decision_id) === decision.id,
+      ).length,
+    1,
   );
 });
 
@@ -334,13 +372,13 @@ test('scheduled cycles create previous month and quarter drafts once', (t) => {
   assert.ok(automation.getDraft('quarterly', '2026-Q3'));
 });
 
-test('confirmed screenshot trades receive an automatic decision record', (t) => {
+test('pending screenshot trades immediately receive an incomplete decision record', (t) => {
   const { repository, automation } = openTemp(t);
   const trade = repository.tradeStore.createTrade({
     trade_date: '2026-10-18',
-    confirm_date: '2026-10-18',
+    confirm_date: null,
     trade_type: 'buy',
-    status: 'confirmed',
+    status: 'pending',
     product_code: 'AUTO001',
     product_name: '截图自动入账产品',
     issuer: '招银理财',
@@ -370,6 +408,30 @@ test('confirmed screenshot trades receive an automatic decision record', (t) => 
     repository.tradeStore.getTrade(trade.id).decision_id,
     decision.id,
   );
+  assert.equal(decision.review_meta.decision_completeness.complete, false);
+  assert.deepEqual(decision.review_meta.decision_completeness.missing_fields, [
+    'reason',
+    'expectation',
+    'invalidation_condition',
+  ]);
+  assert.equal(decision.review_meta.transaction_status, 'pending');
+});
+
+test('unknown evaluations cannot be confirmed without a real conclusion', (t) => {
+  const { repository, automation } = openTemp(t);
+  const decision = repository.createDecision(decisionInput());
+  automation.runCycle({ today: '2026-10-02', trigger: 'test' });
+  const pending = automation
+    .listPendingRuns()
+    .find((item) => item.decision_id === decision.id);
+  assert.ok(pending);
+  assert.equal(pending.outcome, 'unknown');
+  assert.equal(pending.rating, '待评估');
+  assert.throws(
+    () => automation.forceApplyRun(pending.id, {}),
+    /评估结果仍不明确/,
+  );
+  assert.equal(automation.getRun(pending.id).status, 'pending');
 });
 
 test('uncertain income screenshots enter the Codex review queue', (t) => {

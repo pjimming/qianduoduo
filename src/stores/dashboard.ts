@@ -10,6 +10,7 @@ import type {
   DashboardMutationResponse,
   DashboardPayload,
   DecisionInput,
+  DecisionProposalMutationResponse,
   DecisionMutationResponse,
   DeleteResponse,
   HoldingInput,
@@ -243,6 +244,40 @@ export const useDashboardStore = defineStore('dashboard', () => {
       body: JSON.stringify(input),
     })
     dashboard.value = response.dashboard
+  }
+
+  async function loadDecisionProposals(): Promise<DashboardPayload> {
+    const response = await apiRequest<{ dashboard: DashboardPayload }>(
+      '/api/decision-proposals',
+    )
+    dashboard.value = response.dashboard
+    return response.dashboard
+  }
+
+  async function adoptDecisionProposal(
+    id: number,
+  ): Promise<DecisionProposalMutationResponse> {
+    const response = await apiRequest<DecisionProposalMutationResponse>(
+      `/api/decision-proposals/${id}/adopt`,
+      { method: 'POST', body: '{}' },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function rejectDecisionProposal(
+    id: number,
+    reason = '',
+  ): Promise<DecisionProposalMutationResponse> {
+    const response = await apiRequest<DecisionProposalMutationResponse>(
+      `/api/decision-proposals/${id}/reject`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
   }
 
   async function undoEvaluation(id: number): Promise<void> {
@@ -704,6 +739,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     updateAutomationSettings,
     applyEvaluation,
     undoEvaluation,
+    loadDecisionProposals,
+    adoptDecisionProposal,
+    rejectDecisionProposal,
     markNotification,
     markAllNotificationsRead,
     markInboxItem,

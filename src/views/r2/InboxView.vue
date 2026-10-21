@@ -136,6 +136,45 @@ async function markAllRead(): Promise<void> {
     markingAll.value = false
   }
 }
+
+async function adoptProposal(item: InboxItem): Promise<void> {
+  const proposalId = Number(item.metadata.proposal_id);
+  if (!proposalId) return
+  busyId.value = item.id
+  try {
+    const result = await store.adoptDecisionProposal(proposalId)
+    show(
+      `提案已采纳，决策 #${result.result.decision?.id ?? ''} 进入待执行状态。请自行完成交易后上传截图。`,
+      { duration: 8000 },
+    )
+  } catch (error) {
+    show(error instanceof Error ? error.message : '采纳提案失败', { error: true })
+  } finally {
+    busyId.value = null
+  }
+}
+
+async function rejectProposal(item: InboxItem): Promise<void> {
+  const proposalId = Number(item.metadata.proposal_id)
+  if (!proposalId) return
+  const reason =
+    window.prompt(
+      `${
+        item.metadata.proposal_status === 'accepted' ? '取消采纳' : '拒绝'
+      }原因（可留空）`,
+      '当前不接受该收益、期限或流动性取舍。',
+    ) ??
+    ''
+  busyId.value = item.id
+  try {
+    await store.rejectDecisionProposal(proposalId, reason)
+    show('提案已拒绝，不会生成正式决策')
+  } catch (error) {
+    show(error instanceof Error ? error.message : '拒绝提案失败', { error: true })
+  } finally {
+    busyId.value = null
+  }
+}
 </script>
 
 <template>
@@ -253,6 +292,41 @@ async function markAllRead(): Promise<void> {
             </span>
           </button>
           <div class="inbox-message-tools">
+            <template
+              v-if="
+                item.source_type === 'decision_proposal' &&
+                item.metadata.proposal_status === 'pending'
+              "
+            >
+              <button
+                type="button"
+                class="rw-button button-small"
+                :disabled="busyId === item.id"
+                @click="adoptProposal(item)"
+              >
+                采纳提案
+              </button>
+              <button
+                type="button"
+                class="rw-link-button is-danger"
+                :disabled="busyId === item.id"
+                @click="rejectProposal(item)"
+              >
+                拒绝
+              </button>
+            </template>
+            <button
+              v-if="
+                item.source_type === 'decision_proposal' &&
+                item.metadata.proposal_status === 'accepted'
+              "
+              type="button"
+              class="rw-link-button is-danger"
+              :disabled="busyId === item.id"
+              @click="rejectProposal(item)"
+            >
+              取消采纳
+            </button>
             <button
               v-if="item.status !== 'resolved'"
               type="button"

@@ -3,10 +3,17 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatMoney } from '@/composables/useFormatters'
-import type { TradeInboxItem, TradeInboxParsed } from '@/types/dashboard'
+import type {
+  DecisionAction,
+  DecisionEntry,
+  TradeInboxItem,
+  TradeInboxParsed,
+  TradeType,
+} from '@/types/dashboard'
 
 const props = defineProps<{
   inbox: TradeInboxItem[]
+  decisions: DecisionEntry[]
   today: string
 }>()
 
@@ -17,7 +24,15 @@ const uploading = ref(false)
 const busyId = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showProcessed = ref(false)
-const drafts = reactive<Record<number, TradeInboxParsed>>({})
+interface InboxDraft extends TradeInboxParsed {
+  decision_reason: string
+  decision_expectation: string
+  decision_invalidation_condition: string
+  decision_evidence_date: string
+  decision_verify_date: string
+}
+
+const drafts = reactive<Record<number, InboxDraft>>({})
 
 const pendingItems = computed(() =>
   props.inbox.filter((item) => item.status === 'pending'),
@@ -46,6 +61,15 @@ watch(
           shares: item.parsed.shares ?? null,
           term_days: item.parsed.term_days ?? null,
           maturity_date: item.parsed.maturity_date || '',
+          decision_id: item.parsed.decision_id ?? null,
+          decision_reason: '',
+          decision_expectation: '',
+          decision_invalidation_condition: '',
+          decision_evidence_date: item.parsed.trade_date || props.today,
+          decision_verify_date: addDays(
+            item.parsed.trade_date || props.today,
+            14,
+          ),
           confidence: item.parsed.confidence,
           warnings: item.parsed.warnings || [],
         }
@@ -120,15 +144,66 @@ async function saveDraft(item: TradeInboxItem): Promise<void> {
 
 async function applyDraft(item: TradeInboxItem): Promise<void> {
   busyId.value = item.id
+  let createdDecisionId: number | null = null
   try {
-    const response = await store.applyTradeInbox(item.id, drafts[item.id] || {})
+    const draft = drafts[item.id] || draftFor(item)
+    if (!draft.decision_id) {
+      if (!draft.decision_reason.trim()) throw new Error('请填写交易前决策理由')
+      if (!draft.decision_expectation.trim()) {
+        throw new Error('请填写收益、流动性或风险预期')
+      }
+      if (!draft.decision_invalidation_condition.trim()) {
+        throw new Error('请填写什么变化会使这次决策失效')
+      }
+      const type = draft.trade_type || 'buy'
+      const productName =
+        type === 'switch' && draft.target_product_name
+          ? `${draft.product_name || '当前产品'} → ${draft.target_product_name}`
+          : draft.product_name || draft.product_code || '待识别产品'
+      const created = await store.createDecision({
+        date: draft.trade_date || props.today,
+        product_name: productName,
+        action: decisionAction(type),
+        reason: draft.decision_reason.trim(),
+        expectation: draft.decision_expectation.trim(),
+        invalidation_condition: draft.decision_invalidation_condition.trim(),
+        actual_result: '',
+        strategy_version: 'r2-3pct-v1',
+        target_annualized: 3,
+        bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+        evaluation_at: ['buy_day', 'holding', 'maturity'],
+        evidence_date:
+          draft.decision_evidence_date || draft.trade_date || props.today,
+        verify_date:
+          draft.decision_verify_date ||
+          addDays(draft.trade_date || props.today, 14),
+        review_meta: {
+          source: 'trade-inbox-predecision',
+          screenshot_id: item.id,
+          product_code: draft.product_code || '',
+        },
+        rating: '待评估',
+      })
+      createdDecisionId = created.decision.id
+      draft.decision_id = created.decision.id
+    }
+    const response = await store.applyTradeInbox(item.id, {
+      ...draft,
+      decision_id: draft.decision_id,
+    })
     show(
       response.matched
-        ? '已匹配到已有交易，截图已归档'
-        : '已生成交易流水，待确认后进入持仓',
+        ? `已匹配交易 #${response.trade?.id || item.trade_id || ''}，并关联决策 #${draft.decision_id}`
+        : `已生成交易 #${response.trade?.id || ''}，并关联决策 #${draft.decision_id}`,
     )
   } catch (error) {
-    show(error instanceof Error ? error.message : '生成交易失败', { error: true })
+    const message = error instanceof Error ? error.message : '生成交易失败'
+    show(
+      createdDecisionId !== null
+        ? `决策 #${createdDecisionId} 已保存，但交易未生成：${message}`
+        : message,
+      { error: true, duration: createdDecisionId !== null ? 8000 : undefined },
+    )
   } finally {
     busyId.value = null
   }
@@ -167,7 +242,7 @@ function confidenceLabel(item: TradeInboxItem): string {
   return `识别 ${value}% · 需手工补充`
 }
 
-function draftFor(item: TradeInboxItem): TradeInboxParsed {
+function draftFor(item: TradeInboxItem): InboxDraft {
   if (!drafts[item.id]) {
     drafts[item.id] = {
       trade_date: item.parsed.trade_date || props.today,
@@ -176,9 +251,25 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
       product_code: item.parsed.product_code || '',
       product_name: item.parsed.product_name || '',
       amount: item.parsed.amount ?? null,
+      decision_id: item.parsed.decision_id ?? null,
+      decision_reason: '',
+      decision_expectation: '',
+      decision_invalidation_condition: '',
+      decision_evidence_date: item.parsed.trade_date || props.today,
+      decision_verify_date: addDays(item.parsed.trade_date || props.today, 14),
     }
   }
   return drafts[item.id]
+}
+
+function decisionAction(type: TradeType): DecisionAction {
+  return ({ buy: '买入', redeem: '赎回', switch: '切换' } as const)[type]
+}
+
+function addDays(date: string, days: number): string {
+  const stamp = new Date(`${date}T00:00:00Z`)
+  stamp.setUTCDate(stamp.getUTCDate() + days)
+  return stamp.toISOString().slice(0, 10)
 }
 </script>
 
@@ -189,8 +280,8 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
         <p class="kicker">TRADE INBOX</p>
         <strong class="rw-panel-title">把成交截图拖进来</strong>
         <p class="rw-panel-sub">
-          图片只在本地识别并归档，不上传银行。OCR 也会看错数字，
-          生成交易前请逐项核对产品、金额和状态。
+          图片只在本地识别并归档，不上传银行。生成交易前请核对产品、金额和状态，
+          并选择已有决策或填写本次交易前决策。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -306,6 +397,56 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
               <span>确认日期</span>
               <input v-model="draftFor(item).confirm_date" type="date" />
             </label>
+            <label class="rw-field">
+              <span>关联决策</span>
+              <select v-model="draftFor(item).decision_id">
+                <option :value="null">新建本次决策（必填）</option>
+                <option
+                  v-for="decision in decisions"
+                  :key="decision.id"
+                  :value="decision.id"
+                >
+                  {{ decision.date }} · {{ decision.product_name }}
+                </option>
+              </select>
+            </label>
+            <template v-if="!draftFor(item).decision_id">
+              <label class="rw-field is-wide">
+                <span>交易前决策理由</span>
+                <textarea
+                  v-model="draftFor(item).decision_reason"
+                  rows="2"
+                  maxlength="1000"
+                  placeholder="为什么做这笔操作？依据了哪些已验证事实？"
+                ></textarea>
+              </label>
+              <label class="rw-field is-wide">
+                <span>收益 / 流动性 / 风险预期</span>
+                <textarea
+                  v-model="draftFor(item).decision_expectation"
+                  rows="2"
+                  maxlength="1000"
+                  placeholder="例如：预计提升同比较收益，并满足下次用钱日期"
+                ></textarea>
+              </label>
+              <label class="rw-field is-wide">
+                <span>失效条件</span>
+                <textarea
+                  v-model="draftFor(item).decision_invalidation_condition"
+                  rows="2"
+                  maxlength="1000"
+                  placeholder="例如：额度、期限、赎回规则或实际收益未达到门槛"
+                ></textarea>
+              </label>
+              <label class="rw-field">
+                <span>证据日期</span>
+                <input v-model="draftFor(item).decision_evidence_date" type="date" />
+              </label>
+              <label class="rw-field">
+                <span>事后验证日期</span>
+                <input v-model="draftFor(item).decision_verify_date" type="date" />
+              </label>
+            </template>
             <label
               v-if="draftFor(item).trade_type === 'redeem' || draftFor(item).trade_type === 'switch'"
               class="rw-field"
