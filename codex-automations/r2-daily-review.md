@@ -31,6 +31,8 @@
 - GET /api/review/workspace：决策、交易流水、收件箱、持仓、产品事件、时间轴。
 如果 8765 无法连接，只报告“本地服务未运行，巡检未执行”，不要猜测账本数据，也不要反复重试。
 
+凡需要用户补事实或做最后确认、且平台不能自行完成的事项，必须先调用 `POST /api/inbox/confirmations` 写入消息中心。请求至少包含确定性的 `dedupe_key`、`title`、`message`、`category`（action/reminder/system）、`severity`（info/warn/urgent）、`action_label`、`action_url`，有日期时传 `due_at`。同一事项重复运行必须复用同一个 `dedupe_key`，不得跨日重复堆消息；卡片只是摘要，不能替代消息中心入库。平台可自行处理的事项不得推给用户。
+
 第 0 步：处理 Codex 判断队列
 1. screenshot_review：读取对应收件箱条目的 OCR 原文和已解析字段。若产品代码、金额、日期、状态能从原文明确确认，可用 PUT /api/trades/inbox/:id 保存校正，再 POST /api/automation/jobs/:id/resolve 标记 done；存在歧义时保留 pending，并列出需要人工确认的字段。
 2. income_screenshot_review：读取 dashboard.workspace.income_inbox 对应条目的 OCR 原文、日期、账户收益和 `parsed.products`。日期与账户收益能明确确认时，用 POST /api/income/inbox/:id/apply 入账并标记 job done；原图能确认的产品代码、持仓金额和当日收益随同提交，不能确认的产品行不要猜，也不要把缺失产品写成 0。无法确认账户收益时保留 pending，只要求用户补上传清晰收益截图。
@@ -51,6 +53,7 @@
 
 输出规则：
 - 没有异常、没有待办、没有需要用户确认的事项时，保持安静，不发送任何面向用户的消息，也不要发“今日无异常”这类例行状态。
+- 有需要用户确认的事项时，先把每条实际事实和所需确认动作写入消息中心，再在卡片中摘要。平台已自动生成且事实相同的提醒优先复用，不重复入库。
 - 有内容时只输出一张简短卡片（不超过 10 行）：结论（N 项待处理）；最多 3 条“优先处理”，每条写“问题 → 建议动作”；“我已处理”最多 2 条，只写实际完成的写操作；“需要你确认”最多 3 条。涉及收益时明确写 reporting_date；涉及产品时写产品代码、产品合计、账户总收益与差额，不写含糊的“今天收益未记”。
 - 不写投资建议，不做收益预测，不评价产品好坏；只维护账本事实和流程。
 

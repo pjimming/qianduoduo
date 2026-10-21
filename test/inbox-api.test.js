@@ -105,6 +105,44 @@ test('message center aggregates, reads, snoozes and resolves a pending trade', a
   assert.equal(resolved.status, 'resolved');
 });
 
+test('confirmation API publishes deduplicated action items to the message center', async (t) => {
+  const { base } = await startTestServer(t);
+  const payload = {
+    dedupe_key: 'agent-confirmation:test-daily-open',
+    title: '现有日开持仓待确认迁移',
+    message: '107320A 现有持仓 ¥3,000，需确认迁移安排。',
+    category: 'action',
+    severity: 'warn',
+    action_label: '查看持仓复核',
+    action_url: '/ledger/products#holding-reviews',
+    due_at: '2026-11-03',
+  };
+  const created = await postJson(`${base}/api/inbox/confirmations`, payload);
+  assert.equal(created.status, 201);
+  const createdPayload = await created.json();
+  const item = createdPayload.inbox_center.pending.find(
+    (entry) => entry.title === payload.title,
+  );
+  assert.ok(item);
+  assert.equal(item.source_type, 'system_notification');
+  assert.equal(item.summary, payload.message);
+  assert.equal(item.action_label, payload.action_label);
+  assert.equal(item.action_url, payload.action_url);
+  assert.equal(item.due_at, payload.due_at);
+
+  const updated = await postJson(`${base}/api/inbox/confirmations`, {
+    ...payload,
+    message: '107320A 现有持仓 ¥3,000，已核对赎回规则，等待确认迁移安排。',
+  });
+  assert.equal(updated.status, 201);
+  const updatedPayload = await updated.json();
+  const matches = updatedPayload.inbox_center.pending.filter(
+    (entry) => entry.title === payload.title,
+  );
+  assert.equal(matches.length, 1);
+  assert.match(matches[0].summary, /已核对赎回规则/);
+});
+
 test('income screenshot API accepts a queued capture and records the P&L', async (t) => {
   const previousOcr = process.env.R2_OCR;
   process.env.R2_OCR = '0';

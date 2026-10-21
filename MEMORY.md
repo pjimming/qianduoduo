@@ -75,6 +75,7 @@
 - 复盘区：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计账本期内收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负日占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间；自本金起始日起可记录天数满 28 天且账本期内达到 20 条记录、月份结束后才落最终评级。
 - 每日记账页的 `QuickEntryPanel` 只保留两个主入口（成交截图、收益截图），手工收益与特殊事项收进“例外情况”折叠区；下方是每日记录表和本金账户。交易收件箱、交易流水、持仓移到交易与持仓页；产品事件移到产品与配置页；决策日志移到决策与评估页；月度五问/季度复盘移到复盘页并默认折叠为摘要。决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
 - 消息中心由 `lib/inbox-center.js` 动态聚合并持久化状态，统一承接交易/收益截图、待确认交易、对账、评估、产品事件、持仓复核、复盘草稿和平台提醒。消息只保存状态与深链，不复制交易或账本事实；源事项消失后自动归档。
+- `r2-2` / `r2-3` 中需要用户补事实或最后确认、且平台不能自行处理的事项，必须通过 `POST /api/inbox/confirmations` 写入消息中心；请求使用确定性的 `dedupe_key`，支持 `action|reminder|system`、`info|warn|urgent`、站内 `action_url` 和可选 `due_at`。Codex 回复卡片只作摘要，不能替代消息中心持久化。
 - 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析账户合计与多产品明细；高置信度自动写 `daily_records.source=income-screenshot`，冲突时不覆盖手工记录。产品级记录进入 `product_daily_valuations`，按 `(product_code, yield_date)` 去重；产品合计只与账户总账对账，不重复计入收益，差异进入消息中心。截图漏掉的持仓只标记“本次未拍到”，不得写 0 或视为赎回；人工修正写入 `product_daily_valuation_audit`。高置信度成交截图按 OCR 状态确认，平台在自动巡检中为确认交易补建决策日志。
 - `/api/dashboard` 的 `workspace.product_valuation_summary` 提供产品数、持有/已赎回数、最新档案日；`product_valuation_summaries` 提供每只产品的累计个人收益、档案/持有天数、负收益天数、最差单日与状态；`product_valuation_reconciliation` 提供产品合计和账户总账的匹配/差异。完整逐日历史通过 `/api/product-valuations?product_code=...` 按需读取，避免 dashboard 随时间无限膨胀。
 - 持仓结构不再手工维护快照，而是由交易流水推导。

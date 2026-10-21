@@ -1612,6 +1612,88 @@ function createServer(options = {}) {
         return;
       }
 
+      if (
+        pathname === '/api/inbox/confirmations' &&
+        request.method === 'POST'
+      ) {
+        const body = await readJsonBody(request);
+        const dedupeKey = String(body.dedupe_key || '').trim();
+        const title = String(body.title || '').trim();
+        const message = String(body.message || body.summary || '').trim();
+        const category = String(body.category || 'action').trim();
+        const level = String(body.level || 'warn').trim();
+        const severity = String(body.severity || level).trim();
+        const actionLabel = String(body.action_label || '查看详情').trim();
+        const actionUrl = String(body.action_url || '/ledger/overview').trim();
+        const dueAt = String(body.due_at || '').trim();
+        if (!/^[A-Za-z0-9:_-]{3,160}$/.test(dedupeKey)) {
+          sendError(
+            response,
+            400,
+            'dedupe_key 需为 3–160 位字母、数字、冒号、下划线或连字符',
+          );
+          return;
+        }
+        if (!title || title.length > 100) {
+          sendError(response, 400, 'title 不能为空或超过 100 个字符');
+          return;
+        }
+        if (!message || message.length > 1200) {
+          sendError(response, 400, 'message 不能为空或超过 1200 个字符');
+          return;
+        }
+        if (!['action', 'reminder', 'system'].includes(category)) {
+          sendError(response, 400, 'category 必须是 action、reminder 或 system');
+          return;
+        }
+        if (!['info', 'warn'].includes(level)) {
+          sendError(response, 400, 'level 必须是 info 或 warn');
+          return;
+        }
+        if (!['info', 'warn', 'urgent'].includes(severity)) {
+          sendError(response, 400, 'severity 必须是 info、warn 或 urgent');
+          return;
+        }
+        if (!actionLabel || actionLabel.length > 40) {
+          sendError(response, 400, 'action_label 不能为空或超过 40 个字符');
+          return;
+        }
+        if (
+          !actionUrl.startsWith('/') ||
+          actionUrl.startsWith('//') ||
+          /[\r\n]/.test(actionUrl)
+        ) {
+          sendError(response, 400, 'action_url 必须是以 / 开头的站内地址');
+          return;
+        }
+        if (dueAt && !parseYmd(dueAt)) {
+          sendError(response, 400, 'due_at 格式应为 YYYY-MM-DD');
+          return;
+        }
+        const notification = repository.automationStore.saveNotification({
+          dedupe_key: dedupeKey,
+          kind: 'agent_confirmation',
+          level,
+          title,
+          message,
+          data: {
+            category,
+            severity,
+            action_label: actionLabel,
+            action_url: actionUrl,
+            due_at: dueAt || null,
+            source: 'codex-r2-review',
+          },
+        });
+        const dashboard = dashboardPayload(repository);
+        sendJson(response, 201, {
+          notification,
+          inbox_center: dashboard.inbox_center,
+          dashboard,
+        });
+        return;
+      }
+
       if (pathname === '/api/inbox/read-all' && request.method === 'POST') {
         repository.inboxCenter.markAllRead();
         const dashboard = dashboardPayload(repository);

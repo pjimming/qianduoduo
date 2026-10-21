@@ -281,6 +281,35 @@ test('an unverified redemption rule is surfaced as a data gap and blocks executi
   assert.ok(review.data_gaps.some((gap) => /T\+N 未核验/.test(gap)));
 });
 
+test('zero remaining quota blocks candidate execution readiness', () => {
+  const candidate = product({
+    code: 'SOLD901',
+    term_days: 90,
+    return_3m: 4,
+    return_6m: 4,
+    return_1y: 4,
+  });
+  const review = buildHoldingReview({
+    holding: holding(),
+    products: [candidate],
+    universe: [current()],
+    setting: {
+      redemption_days: 1,
+      arrival_days: 1,
+      verified_at: '2026-10-20',
+      next_redeem_open_date: '2026-10-20',
+    },
+    quotaByCode: {
+      SOLD901: { available: 0, max_order: 0, verified_at: '2026-10-20' },
+    },
+    today: '2026-10-20',
+  });
+  assert.equal(review.candidates[0].execution_ready, false);
+  assert.ok(
+    review.candidates[0].data_gaps.some((gap) => /额度售罄或为 0/.test(gap)),
+  );
+});
+
 test('latest replacement decision is matched back to the holding', () => {
   const review = buildHoldingReview({
     holding: holding(),

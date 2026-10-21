@@ -21,6 +21,7 @@
 - 产品当日收益合计与账户 `daily_records.daily_pnl` 只做对账。差异提示漏识别、重复、尚未披露或代码错误，不自动覆盖账户总账。
 - 完全赎回的产品仍保留历史，页面按“已赎回”展示；逐产品累计收益、负收益天数和最差单日只代表个人观察结果，不得冒充产品市场 3M/6M/1Y 收益或稳定年化。
 - `r2-2` 与 `r2-3` 定时任务必须读取 `/api/dashboard` 的 `workspace.product_valuation_summary`、`product_valuation_summaries` 和 `product_valuation_reconciliation`，有差异或产品明细缺口时只提示事实与待补项。
+- `r2-2` 与 `r2-3` 中凡需要用户补事实或最后确认、且平台不能自行完成的事项，必须先通过 `POST /api/inbox/confirmations` 写入应用消息中心；使用确定性的 `dedupe_key` 防止跨日重复，并写清标题、事实摘要、严重度、深链和到期日。回复卡片只是摘要，不能替代消息中心入库。
 - 修改 Codex 定时任务时，必须同步 `codex-automations/*.md`、`codex-automations/README.md`、`USAGE.md`、`MEMORY.md` 与本机实际任务定义；实际任务通过 Codex 的自动化工具更新，不手改内部 TOML。
 
 ## 股票调研工作流
