@@ -144,7 +144,7 @@ test('confirmation API publishes deduplicated action items to the message center
   assert.match(matches[0].summary, /已核对赎回规则/);
 });
 
-test('holding review message explains candidate, comparison period, gain and threshold', () => {
+test('non-replace holding review still creates a review-window reminder', () => {
   const items = makeSourceItems({
     meta: { today: '2026-10-21' },
     workspace: {
@@ -153,11 +153,11 @@ test('holding review message explains candidate, comparison period, gain and thr
           lot_id: '6:107320A',
           product_name: '招银理财招睿添利日开1号A',
           product_code: '107320A',
-          verdict: 'replace',
-          verdict_label: '建议替换',
+          verdict: 'hold',
+          verdict_label: '继续持有',
           reminder: {
-            level: 'none',
-            text: '日开产品无固定到期日，按月复核即可',
+            level: 'window',
+            text: '距到期 12 天，进入替换/续作比较窗口',
           },
           horizon_days: 30,
           top_candidate_code: 'JX040213',
@@ -184,22 +184,11 @@ test('holding review message explains candidate, comparison period, gain and thr
   });
   const item = items.find((entry) => entry.source_type === 'holding_review');
   assert.ok(item);
-  assert.equal(item.title, '持仓出现替换候选');
-  assert.match(item.summary, /招银理财招睿添利日开1号A → 建信理财/);
-  assert.match(item.summary, /比较 30 天/);
-  assert.match(item.summary, /切换等待 2 天（已核验）、有效计息 28 天/);
-  assert.match(item.summary, /预计多赚 ¥6\.85/);
-  assert.match(item.summary, /门槛 ¥1\.00/);
-  assert.match(item.summary, /当前可赎回/);
-  assert.doesNotMatch(item.summary, /日开产品无固定到期日/);
-  assert.equal(item.action_label, '查看替换测算');
-  assert.equal(item.metadata.candidate_code, 'JX040213');
-  assert.equal(item.metadata.comparison_days, 30);
-  assert.equal(item.metadata.switch_wait_days, 2);
-  assert.equal(item.metadata.switch_wait_status, 'verified');
-  assert.equal(item.metadata.effective_days, 28);
-  assert.equal(item.metadata.expected_difference, 6.85);
-  assert.equal(item.metadata.min_gain_amount, 1);
+  assert.equal(item.title, '持仓进入复核窗口');
+  assert.match(item.summary, /招银理财招睿添利日开1号A/);
+  assert.match(item.summary, /距到期 12 天/);
+  assert.equal(item.action_label, '查看持仓复核');
+  assert.equal(item.metadata.verdict, 'hold');
   assert.equal(item.due_at, '2026-11-05');
 });
 

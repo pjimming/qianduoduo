@@ -95,6 +95,7 @@ test('buy-day evaluation checks strategy and updates the decision text', (t) => 
   assert.equal(run.process_ok, true);
   assert.equal(run.status, 'auto');
   assert.ok(run.confidence >= 75);
+  assert.match(run.evidence.next_update, /持有期或到期\/赎回后更新/);
   const updated = repository.listDecisions().find((item) => item.id === decision.id);
   assert.match(updated.actual_result, /\[自动评估\]/);
   assert.match(updated.actual_result, /流程通过/);

@@ -148,6 +148,27 @@ test('an active switch proposal replaces the duplicate holding-review reminder',
   );
 });
 
+test('an existing replacement decision does not create a holding-review message', () => {
+  const review = holdingReview();
+  review.decision = { id: 2 };
+  const items = makeSourceItems({
+    meta: { today: '2026-10-22', reporting_date: '2026-10-21' },
+    workspace: {
+      holding_reviews: [review],
+      trades: { inbox: [], trades: [], reconciliation: { items: [] } },
+      events: [],
+      income_inbox: [],
+    },
+    automation: { pending_evaluations: [], drafts: [], notifications: [] },
+    decision_proposals: { proposals: [] },
+    capital: { initialized: false },
+  });
+  assert.equal(
+    items.filter((item) => item.source_type === 'holding_review').length,
+    0,
+  );
+});
+
 test('adopting a switch proposal creates a pending decision and screenshot trades match both legs', (t) => {
   const repository = openTemp(t);
   repository.tradeStore.createTrade({

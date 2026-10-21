@@ -814,6 +814,17 @@
   font-size: 12px;
 }
 
+.rw-subhead-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rw-subhead-copy strong {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
 .rw-bucket-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

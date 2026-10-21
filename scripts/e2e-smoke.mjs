@@ -949,6 +949,16 @@ async function main() {
       ),
       '未知评估仍显示可空确认状态',
     )
+    const automationText =
+      (await page.locator('#automation .rw-panel-body').textContent()) ?? ''
+    assert(
+      automationText.includes('当前评估结论'),
+      '自动评估没有区分当前结论与审计历史',
+    )
+    assert(
+      automationText.includes('下次更新'),
+      '自动评估没有说明结论更新时间',
+    )
 
     const errorPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
     await errorPage.route('**/api/dashboard', (route) => route.abort())

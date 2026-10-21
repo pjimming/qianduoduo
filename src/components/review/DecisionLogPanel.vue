@@ -167,7 +167,9 @@ function linkedTrades(id: number): TradeTransaction[] {
 }
 
 function decisionRuns(id: number) {
-  return props.automation.runs.filter((run) => run.decision_id === id)
+  return props.automation.runs.filter(
+    (run) => run.decision_id === id && run.status !== 'undone',
+  )
 }
 
 function latestRun(id: number) {
@@ -303,6 +305,41 @@ function auditLabel(item: DecisionEntry): string {
     unplanned: '计划外执行',
   }[String(item.review_meta?.audit_status || '')] || ''
 }
+
+function runConclusionLabel(run: ReturnType<typeof latestRun>): string {
+  if (run.stage === 'buy_day') {
+    if (run.process_ok === true) return '流程检查通过'
+    if (run.process_ok === false) return '流程检查未通过'
+    return '等待流程证据'
+  }
+  if (run.outcome === 'good') return '结果好'
+  if (run.outcome === 'bad') return '结果差'
+  return '等待结果证据'
+}
+
+function runConclusionClass(run: ReturnType<typeof latestRun>): string {
+  if (run.stage === 'buy_day') {
+    if (run.process_ok === true) return 'is-good'
+    if (run.process_ok === false) return 'is-warn'
+    return 'is-pending'
+  }
+  if (run.outcome === 'good') return 'is-good'
+  if (run.outcome === 'bad') return 'is-bad'
+  return 'is-pending'
+}
+
+function runNextUpdate(run: ReturnType<typeof latestRun>): string {
+  const next = (
+    run as typeof run & { evidence?: { next_update?: string } }
+  ).evidence?.next_update
+  if (next) return next
+  if (run.stage === 'buy_day' && run.process_ok !== null) {
+    return '结果评价将在持有期或到期/赎回后更新'
+  }
+  if (run.stage === 'holding') return '满足本月收益样本后重评'
+  if (run.stage === 'maturity') return '补齐到账金额后重评'
+  return '下一证据到达后自动重评'
+}
 </script>
 
 <template>
@@ -322,7 +359,7 @@ function auditLabel(item: DecisionEntry): string {
 
     <div class="rw-stat-row rw-stat-row-spaced">
       <span class="rw-stat-chip">本月决策 <strong>{{ stats.thisMonth }}</strong></span>
-      <span class="rw-stat-chip">待评估 <strong>{{ stats.pending }}</strong></span>
+      <span class="rw-stat-chip">结果待评估 <strong>{{ stats.pending }}</strong></span>
       <span class="rw-stat-chip" :class="{ 'is-warn': stats.pendingEvaluations > 0 }">
         待确认评估 <strong>{{ stats.pendingEvaluations }}</strong>
       </span>
@@ -502,7 +539,9 @@ function auditLabel(item: DecisionEntry): string {
               {{ auditLabel(item) }}
             </span>
           </div>
-          <span class="rw-rating" :class="ratingClass(item.rating)">{{ item.rating }}</span>
+          <span class="rw-rating" :class="ratingClass(item.rating)">
+            {{ item.rating === '待评估' ? '结果待评估' : item.rating }}
+          </span>
         </div>
         <p class="rw-decision-reason">{{ item.reason }}</p>
         <div class="rw-decision-meta">
@@ -552,11 +591,14 @@ function auditLabel(item: DecisionEntry): string {
               {{ statusLabel(latestRun(item.id).status) }} · 置信度
               {{ latestRun(item.id).confidence }}%
             </span>
-            <span class="rw-rating" :class="ratingClass(latestRun(item.id).rating)">
-              {{ latestRun(item.id).rating }}
+            <span class="rw-rating" :class="runConclusionClass(latestRun(item.id))">
+              {{ runConclusionLabel(latestRun(item.id)) }}
             </span>
           </div>
           <p>{{ latestRun(item.id).summary }}</p>
+          <small class="rw-muted">
+            下次更新：{{ runNextUpdate(latestRun(item.id)) }}
+          </small>
         </div>
         <div class="rw-row-actions">
           <button type="button" class="rw-link-button" @click="openEdit(item)">编辑</button>

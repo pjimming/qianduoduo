@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
@@ -7,7 +7,6 @@ import { formatDateShort } from '@/composables/useFormatters'
 import type {
   AutomationWorkspace,
   DecisionEntry,
-  DecisionRating,
   EvaluationRun,
 } from '@/types/dashboard'
 
@@ -21,6 +20,7 @@ const store = useDashboardStore()
 const { show } = useToast()
 const busy = ref(false)
 const settingsOpen = ref(false)
+const showAllHistory = ref(false)
 const settings = reactive({
   target_annualized: props.automation.settings.target_annualized,
   hurdle_short: props.automation.settings.hurdle_short,
@@ -33,6 +33,21 @@ const settings = reactive({
   scheduler_minutes: props.automation.settings.scheduler_minutes,
   auto_confirm_reviews: props.automation.settings.auto_confirm_reviews,
 })
+
+const currentRuns = computed(() => {
+  const seen = new Set<string>()
+  return props.automation.runs.filter((run) => {
+    if (run.status === 'undone') return false
+    const key = `${run.scope}:${run.decision_id ?? run.trade_id ?? 'none'}:${run.stage}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+})
+
+const displayedRuns = computed(() =>
+  showAllHistory.value ? props.automation.runs : currentRuns.value,
+)
 
 async function runNow(): Promise<void> {
   busy.value = true
@@ -144,20 +159,12 @@ function statusLabel(status: string): string {
   }[status] || status
 }
 
-function ratingClass(rating: DecisionRating): string {
-  if (rating === '流程正确，结果好') return 'is-good'
-  if (rating === '流程正确，结果差') return 'is-neutral'
-  if (rating === '流程错误，结果好') return 'is-warn'
-  if (rating === '流程错误，结果差') return 'is-bad'
-  return 'is-pending'
-}
-
 function confidenceClass(level: string): string {
   return level === 'high' ? 'is-good' : level === 'medium' ? 'is-warn' : 'is-bad'
 }
 
 function runMeta(run: EvaluationRun): string {
-  return `${stageLabel(run.stage)} · ${run.period} · ${run.rule_version} · 置信度 ${run.confidence}%`
+  return `${stageLabel(run.stage)} · ${run.period} · ${run.rule_version} · 置信度 ${run.confidence}% · 更新 ${formatDateShort(run.updated_at.slice(0, 10))}`
 }
 
 function jobLabel(type: string): string {
@@ -185,6 +192,43 @@ function missingDecisionLabels(run: EvaluationRun): string[] {
   }
   return fields.map((field) => labels[field] || field)
 }
+
+function conclusionLabel(run: EvaluationRun): string {
+  if (run.status === 'undone') return '已撤销'
+  if (run.stage === 'buy_day') {
+    if (run.process_ok === true) return '流程检查通过'
+    if (run.process_ok === false) return '流程检查未通过'
+    return '等待流程证据'
+  }
+  if (run.outcome === 'good') return '结果好'
+  if (run.outcome === 'bad') return '结果差'
+  return '等待结果证据'
+}
+
+function conclusionClass(run: EvaluationRun): string {
+  if (run.stage === 'buy_day') {
+    if (run.process_ok === true) return 'is-good'
+    if (run.process_ok === false) return 'is-warn'
+    return 'is-pending'
+  }
+  if (run.outcome === 'good') return 'is-good'
+  if (run.outcome === 'bad') return 'is-bad'
+  return 'is-pending'
+}
+
+function nextUpdateLabel(run: EvaluationRun): string {
+  if (run.evidence.next_update) return run.evidence.next_update
+  if (missingDecisionLabels(run).length) return '补齐决策证据后自动重评'
+  if ((run.evidence.pending_trade_ids || []).length) {
+    return '关联交易确认后自动重评'
+  }
+  if (run.stage === 'buy_day' && run.process_ok !== null) {
+    return '结果评价将在持有期或到期/赎回后更新'
+  }
+  if (run.stage === 'holding') return '满足本月收益记录样本后重评'
+  if (run.stage === 'maturity') return '补齐到账金额后重评'
+  return '下一证据到达后自动重评'
+}
 </script>
 
 <template>
@@ -194,8 +238,8 @@ function missingDecisionLabels(run: EvaluationRun): string[] {
         <p class="kicker">AUTOMATION</p>
         <strong class="rw-panel-title">自动评估</strong>
         <p class="rw-panel-sub">
-          买入日、持有期和到期/赎回三个节点生成评估；低置信度留在 AI/平台队列，
-          只有需要补事实的例外才进入消息中心。
+          买入日只判断流程，持有期和到期/赎回才判断结果。“结果待评估”表示证据还没到，
+          不是失败；每次更新都会显示下一次触发条件。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -214,6 +258,9 @@ function missingDecisionLabels(run: EvaluationRun): string[] {
       </span>
       <span class="rw-stat-chip">
         待确认评估 <strong>{{ automation.pending_evaluations.length }}</strong>
+      </span>
+      <span class="rw-stat-chip">
+        当前结论 <strong>{{ currentRuns.length }}</strong>
       </span>
       <span class="rw-stat-chip" :class="{ 'is-warn': automation.notifications.some((item) => item.level === 'warn') }">
         未读提醒 <strong>{{ automation.notifications.filter((item) => !item.read_at).length }}</strong>
@@ -309,7 +356,8 @@ function missingDecisionLabels(run: EvaluationRun): string[] {
           <div class="rw-eval-checks">
             <span>流程：{{ run.process_ok === null ? '无法确认' : run.process_ok ? '通过' : '未通过' }}</span>
             <span>结果：{{ run.outcome === 'good' ? '好' : run.outcome === 'bad' ? '差' : '未知' }}</span>
-            <span>建议评价：{{ run.rating }}</span>
+            <span>当前结论：{{ conclusionLabel(run) }}</span>
+            <span>下次更新：{{ nextUpdateLabel(run) }}</span>
           </div>
           <div class="rw-row-actions">
             <RouterLink
@@ -336,10 +384,30 @@ function missingDecisionLabels(run: EvaluationRun): string[] {
 
     <section class="rw-subpanel">
       <div class="rw-subhead">
-        <strong>评估历史</strong>
-        <span>保留规则版本、置信度和写入前后快照</span>
+        <div class="rw-subhead-copy">
+          <strong>{{ showAllHistory ? '全部审计历史' : '当前评估结论' }}</strong>
+          <span>
+            {{
+              showAllHistory
+                ? '包含已撤销和旧规则版本记录，仅用于审计'
+                : '每个决策阶段只显示最新一条，避免旧版本重复'
+            }}
+          </span>
+        </div>
+        <button
+          v-if="automation.runs.length > currentRuns.length"
+          type="button"
+          class="rw-link-button"
+          @click="showAllHistory = !showAllHistory"
+        >
+          {{
+            showAllHistory
+              ? `仅看当前结论（${currentRuns.length}）`
+              : `显示全部审计历史（${automation.runs.length}）`
+          }}
+        </button>
       </div>
-      <div v-if="automation.runs.length === 0" class="rw-empty is-compact">还没有评估记录。</div>
+      <div v-if="displayedRuns.length === 0" class="rw-empty is-compact">还没有评估记录。</div>
       <div v-else class="rw-table-wrap">
         <table class="rw-table">
           <thead>
@@ -354,14 +422,15 @@ function missingDecisionLabels(run: EvaluationRun): string[] {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="run in automation.runs.slice(0, 20)" :key="run.id">
+            <tr v-for="run in displayedRuns.slice(0, 20)" :key="run.id">
               <td>
                 <strong>{{ decisionName(run.decision_id) }}</strong>
                 <small>{{ runMeta(run) }}</small>
               </td>
               <td>{{ stageLabel(run.stage) }}</td>
               <td>
-                <span class="rw-rating" :class="ratingClass(run.rating)">{{ run.rating }}</span>
+                <span class="rw-rating" :class="conclusionClass(run)">{{ conclusionLabel(run) }}</span>
+                <small>下次：{{ nextUpdateLabel(run) }}</small>
               </td>
               <td class="is-number">
                 <span class="rw-rating" :class="confidenceClass(run.confidence_level)">

@@ -811,6 +811,7 @@ export type EvaluationStage = 'buy_day' | 'holding' | 'maturity'
 export type EvaluationStatus = 'pending' | 'auto' | 'confirmed' | 'undone'
 
 export interface EvaluationEvidence {
+  next_update?: string
   checks?: Array<{ key: string; label: string; pass: boolean; detail: string }>
   buckets?: Record<string, number>
   by_product?: Array<{ code: string; name: string; amount: number }>
