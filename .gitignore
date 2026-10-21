@@ -3,6 +3,7 @@ data/*.sqlite-wal
 data/*.sqlite-shm
 data/backups/
 data/trade-inbox/
+data/income-inbox/
 node_modules/
 dist/
 .env
