@@ -23,6 +23,12 @@ const {
   todayShanghai,
 } = require('./lib/metrics');
 const { buildProductView } = require('./lib/products');
+const {
+  DAILY_OPEN_TARGET_PCT,
+  TARGET3_STRATEGY_VERSION,
+  normalizeDecisionBucketPlan,
+  validateDecisionBucketPolicy,
+} = require('./lib/r2-policy');
 const { buildHoldingReviews } = require('./lib/holdings-review');
 const { shiftMonth } = require('./lib/review-store');
 const { parseTradeText } = require('./lib/trade-parser');
@@ -321,7 +327,7 @@ function validateDecisionPayload(payload, options = {}) {
     return { error: '事后评价不在允许范围内' };
   }
   const strategyVersion = String(
-    payload.strategy_version || 'r2-3pct-v1',
+    payload.strategy_version || TARGET3_STRATEGY_VERSION,
   ).trim();
   if (!strategyVersion || strategyVersion.length > 60) {
     return { error: '策略版本需要填写，且不能超过 60 个字符' };
@@ -349,6 +355,17 @@ function validateDecisionPayload(payload, options = {}) {
   ) {
     return { error: '期限桶计划格式不正确' };
   }
+  const policyError = validateDecisionBucketPolicy(bucketPlanInput, {
+    strategyVersion,
+    targetAnnualized,
+  });
+  if (policyError) return { error: policyError };
+  if (
+    /r2-3pct|target3/i.test(strategyVersion) &&
+    Math.abs(targetAnnualized - 3) > 0.0001
+  ) {
+    return { error: `${TARGET3_STRATEGY_VERSION} 的目标年化固定为 3.00%` };
+  }
   const bucketPlan = {};
   for (const key of ['short', 'medium', 'long', 'max_single']) {
     if (
@@ -364,6 +381,13 @@ function validateDecisionPayload(payload, options = {}) {
     }
     bucketPlan[key] = value;
   }
+  Object.assign(
+    bucketPlan,
+    normalizeDecisionBucketPlan(bucketPlan, {
+      strategyVersion,
+      targetAnnualized,
+    }),
+  );
   const evaluationInput = Array.isArray(payload.evaluation_at)
     ? payload.evaluation_at
     : String(payload.evaluation_at || 'buy_day,holding,maturity').split(',');
@@ -1019,7 +1043,13 @@ function buildMonthlyReviewMarkdown({
     }`,
   );
   lines.push(
-    `- 日开及 30 天内成本占比：${pctText(holdingsSummary.liquidity_ratio_pct, 1)}`,
+    `- 短期 7–30 天成本占比：${pctText(holdingsSummary.short_ratio_pct, 1)}`,
+  );
+  lines.push(
+    `- 现有日开金额与占比：${moneyText(holdingsSummary.buckets.liquid)}，${pctText(
+      holdingsSummary.daily_open_ratio_pct,
+      1,
+    )}（新增目标固定 0%）`,
   );
   lines.push(
     `- 已到期持仓：${holdingsSummary.overdue_count} 笔，${moneyText(
@@ -1402,6 +1432,17 @@ function createServer(options = {}) {
             return;
           }
         }
+        if (
+          body.daily_open_target_pct !== undefined &&
+          Number(body.daily_open_target_pct) !== DAILY_OPEN_TARGET_PCT
+        ) {
+          sendError(
+            response,
+            400,
+            `本项目新增日开额度固定为 ${DAILY_OPEN_TARGET_PCT}%`,
+          );
+          return;
+        }
         const ranges = {
           liquidity_floor_pct: [0, 100],
           max_single_pct: [25, 30],
@@ -1632,6 +1673,17 @@ function createServer(options = {}) {
 
       if (pathname === '/api/automation/settings' && request.method === 'PUT') {
         const body = await readJsonBody(request);
+        if (
+          body.daily_open_target_pct !== undefined &&
+          Number(body.daily_open_target_pct) !== DAILY_OPEN_TARGET_PCT
+        ) {
+          sendError(
+            response,
+            400,
+            `本项目新增日开额度固定为 ${DAILY_OPEN_TARGET_PCT}%`,
+          );
+          return;
+        }
         const numericRules = {
           target_annualized: [0.1, 20],
           hurdle_short: [0, 20],

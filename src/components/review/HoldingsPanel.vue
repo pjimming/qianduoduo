@@ -82,8 +82,12 @@ function barWidth(value: number | null): string {
         <strong>{{ formatPct(summary.max_product?.pct, 1) }}</strong>
       </span>
       <span class="rw-stat-chip">
-        日开及30天内占比
-        <strong>{{ formatPct(summary.liquidity_ratio_pct, 1) }}</strong>
+        短期 7–30 天占比
+        <strong>{{ formatPct(summary.short_ratio_pct, 1) }}</strong>
+      </span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': summary.daily_open_ratio_pct !== null }">
+        现有日开
+        <strong>{{ formatPct(summary.daily_open_ratio_pct, 1) }}</strong>
       </span>
       <span class="rw-stat-chip" :class="{ 'is-warn': summary.overdue_count > 0 }">
         到期未赎回 <strong>{{ summary.overdue_count }} 笔</strong>
@@ -151,7 +155,7 @@ function barWidth(value: number | null): string {
     <section class="rw-subpanel">
       <div class="rw-subhead">
         <strong>未赎回成本的产品期限分布</strong>
-        <span>日开及 30 天内建议不低于 30%</span>
+        <span>短期 7–30 天建议不低于 30%；新增日开目标固定 0%</span>
       </div>
       <div class="rw-bucket-grid">
         <div v-for="bucket in bucketRows" :key="bucket.label" class="rw-bucket">

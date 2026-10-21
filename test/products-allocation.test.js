@@ -219,5 +219,55 @@ test('allocation settings normalize unsafe inputs and default to 30/35/35', () =
   });
   assert.equal(settings.max_single_pct, 30);
   assert.equal(settings.max_issuer_pct, 40);
+  assert.equal(settings.daily_open_target_pct, 0);
   assert.deepEqual(settings.bucket_targets, { short: 20, medium: 40, long: 40 });
+});
+
+test('daily-open products never receive a target even under maximum liquidity and cash-flow pressure', () => {
+  const cashProducts = Array.from({ length: 4 }, (_, index) =>
+    product({
+      term_days: 0,
+      code: `CASH${index + 1}`,
+      return_3m: 8 - index * 0.1,
+      return_6m: 8 - index * 0.1,
+      return_1y: 8 - index * 0.1,
+    }),
+  );
+  const view = buildProductView([...cashProducts, ...basePool()], {
+    principal: 100000,
+    settings: {
+      liquidity_floor_pct: 100,
+      cashflow_0_3: 100000,
+      bucket_targets: { short: 30, medium: 35, long: 35 },
+    },
+  });
+  assert.equal(view.watchlist.some((item) => item.bucket === 'cash'), false);
+  assert.ok(view.watchlist.length > 0);
+  assert.ok(
+    view.watchlist.every((item) => item.bucket === 'short' && item.target_amount > 0),
+  );
+  assert.equal(view.allocation.daily_open.target_pct, 0);
+  assert.equal(view.allocation.daily_open.target_amount, 0);
+});
+
+test('existing daily-open holdings remain visible as migration facts without becoming a new target', () => {
+  const view = buildProductView(basePool(), {
+    principal: 30000,
+    holdings: [
+      {
+        product_code: '107320A',
+        product_name: '招银理财招睿添利日开1号A',
+        issuer: '招银理财',
+        amount: 3000,
+        term_days: 0,
+      },
+    ],
+  });
+  assert.equal(view.allocation.daily_open.existing_amount, 3000);
+  assert.equal(view.allocation.daily_open.target_amount, 0);
+  assert.equal(view.allocation.daily_open.migration_required, true);
+  assert.equal(view.watchlist.some((item) => item.bucket === 'cash'), false);
+  assert.ok(view.allocation.buckets.find((item) => item.key === 'short').new_amount > 0);
+  assert.equal(view.allocation.liquidity.existing_amount, 0);
+  assert.ok(view.allocation.reasons.some((item) => item.includes('现有日开')));
 });

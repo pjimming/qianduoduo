@@ -667,6 +667,8 @@ export interface HoldingsSummary {
   bucket_pct: Record<'liquid' | 'short' | 'medium' | 'long' | 'unknown', number | null>
   liquidity_amount: number
   liquidity_ratio_pct: number | null
+  short_ratio_pct: number | null
+  daily_open_ratio_pct: number | null
   max_product: HoldingConcentration | null
   max_issuer: HoldingConcentration | null
   by_product: HoldingConcentration[]
@@ -735,6 +737,9 @@ export interface EvaluationEvidence {
   target_progress_pct?: number | null
   monthly?: MonthlyReview | null
   liquidity_ratio_pct?: number | null
+  short_ratio_pct?: number | null
+  previous_short_ratio_pct?: number | null
+  daily_open_ratio_pct?: number | null
   previous_liquidity_ratio_pct?: number | null
   liquidity_delta_pp?: number | null
   high_impact_event_ids?: number[]
@@ -791,6 +796,7 @@ export interface EvaluationSettings {
   hurdle_medium: number
   hurdle_long: number
   liquidity_floor_pct: number
+  daily_open_target_pct: number
   single_product_cap_pct: number
   bucket_tolerance_pp: number
   auto_confidence_threshold: number
@@ -1109,6 +1115,7 @@ export interface ProductAllocationBucket {
 export interface ProductAllocationSettings {
   principal_override: number | null
   liquidity_floor_pct: number
+  daily_open_target_pct: number
   max_single_pct: number
   max_issuer_pct: number
   target_slice_pct: number
@@ -1150,6 +1157,14 @@ export interface ProductAllocation {
     final_amount: number
     shortfall_amount: number
     status: 'covered' | 'shortfall'
+  }
+  daily_open: {
+    target_pct: number
+    target_amount: number
+    existing_amount: number
+    migration_required: boolean
+    status: 'zero' | 'migration_required'
+    note: string
   }
   cashflow: Array<{
     key: string

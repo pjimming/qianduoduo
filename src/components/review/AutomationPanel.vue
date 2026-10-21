@@ -26,6 +26,7 @@ const settings = reactive({
   hurdle_medium: props.automation.settings.hurdle_medium,
   hurdle_long: props.automation.settings.hurdle_long,
   liquidity_floor_pct: props.automation.settings.liquidity_floor_pct,
+  daily_open_target_pct: 0,
   single_product_cap_pct: props.automation.settings.single_product_cap_pct,
   auto_confidence_threshold: props.automation.settings.auto_confidence_threshold,
   scheduler_minutes: props.automation.settings.scheduler_minutes,
@@ -228,8 +229,12 @@ function jobLabel(type: string): string {
           <input v-model.number="settings.hurdle_long" type="number" min="0" max="20" step="0.1" />
         </label>
         <label class="rw-field">
-          <span>流动性下限（%）</span>
+          <span>短期桶下限（%）</span>
           <input v-model.number="settings.liquidity_floor_pct" type="number" min="0" max="100" step="1" />
+        </label>
+        <label class="rw-field">
+          <span>日开新增额度（固定）</span>
+          <input :value="0" type="number" disabled />
         </label>
         <label class="rw-field">
           <span>单只产品上限（%）</span>
@@ -253,6 +258,7 @@ function jobLabel(type: string): string {
       </div>
       <p class="rw-form-hint">
         3% 作为组合进取目标，不当作保本承诺；单只到期/赎回按期限 hurdle 判断结果好坏。
+        本项目新增日开额度固定为 0%，现有日开持仓只作为迁移事实；流动性由短期 7–30 天桶承担。
         置信度低于门槛时不覆盖手工评价，由 AI/平台继续补充证据。
       </p>
       <div class="rw-form-actions">

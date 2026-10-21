@@ -31,7 +31,7 @@ function decisionInput(overrides = {}) {
     expectation: '持有到期达到目标',
     actual_result: '',
     rating: '待评估',
-    strategy_version: 'r2-3pct-v1',
+    strategy_version: 'custom-ladder-v1',
     target_annualized: 3,
     bucket_plan: { short: 0, medium: 100, long: 0, max_single: 100 },
     evaluation_at: ['buy_day'],

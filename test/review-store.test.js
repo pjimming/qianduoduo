@@ -81,11 +81,38 @@ test('holdings compute maturity, buckets and ladder', (t) => {
   assert.equal(summary.buckets.medium, 100000);
   assert.equal(summary.buckets.liquid, 50000);
   assert.equal(summary.liquidity_ratio_pct, 33.33);
+  assert.equal(summary.short_ratio_pct, 0);
+  assert.equal(summary.daily_open_ratio_pct, 33.33);
   assert.equal(summary.max_product.amount, 100000);
   assert.equal(summary.max_product.pct, 66.67);
   assert.equal(summary.ladder[3].month, '2027-01');
   assert.equal(summary.ladder[3].amount, 100000);
   assert.ok(summary.alerts.some((alert) => alert.code === 'single-product'));
+  assert.ok(summary.alerts.some((alert) => alert.code === 'daily-open-migration'));
+});
+
+test('decision storage normalizes target3 and daily-open targets', (t) => {
+  const repository = openTestRepository(t);
+  const target3 = repository.createDecision({
+    date: '2026-10-15',
+    product_name: '3% 策略',
+    action: '买入',
+    reason: '固定目标',
+    expectation: '30/35/35',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 0, medium: 100, long: 0, cash: 10, liquid: 8 },
+  });
+  assert.deepEqual(
+    {
+      short: target3.bucket_plan.short,
+      medium: target3.bucket_plan.medium,
+      long: target3.bucket_plan.long,
+      cash: target3.bucket_plan.cash,
+      liquid: target3.bucket_plan.liquid,
+    },
+    { short: 30, medium: 35, long: 35, cash: 0, liquid: 0 },
+  );
 });
 
 test('product events can be closed and reopened', (t) => {

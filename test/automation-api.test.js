@@ -48,7 +48,7 @@ test('automation API persists strategy fields, evaluates, applies and undoes', a
     expectation: '持有到期达到目标',
     actual_result: '',
     rating: '待评估',
-    strategy_version: 'r2-3pct-v1',
+    strategy_version: 'custom-ladder-v1',
     target_annualized: 3,
     bucket_plan: { short: 0, medium: 100, long: 0, max_single: 100 },
     evaluation_at: ['buy_day', 'maturity'],
@@ -56,8 +56,9 @@ test('automation API persists strategy fields, evaluates, applies and undoes', a
   assert.equal(decisionResponse.status, 201);
   const decisionPayload = await decisionResponse.json();
   const decision = decisionPayload.decision;
-  assert.equal(decision.strategy_version, 'r2-3pct-v1');
+  assert.equal(decision.strategy_version, 'custom-ladder-v1');
   assert.equal(decision.bucket_plan.medium, 100);
+  assert.equal(decision.bucket_plan.cash, 0);
   assert.deepEqual(decision.evaluation_at, ['buy_day', 'maturity']);
 
   const buy = await postJson(`${base}/api/trades`, {
@@ -197,9 +198,62 @@ test('automation API rejects invalid settings and draft periods', async (t) => {
     'PUT',
   );
   assert.equal(badThreshold.status, 400);
+  const badDailyOpen = await postJson(
+    `${base}/api/automation/settings`,
+    { daily_open_target_pct: 5 },
+    'PUT',
+  );
+  assert.equal(badDailyOpen.status, 400);
   const badPeriod = await postJson(
     `${base}/api/review/drafts/monthly/2026-13/generate`,
     {},
   );
   assert.equal(badPeriod.status, 400);
+});
+
+test('target3 and daily-open policy are enforced through the API', async (t) => {
+  const { base } = await startTestServer(t);
+  const validTarget3 = await postJson(`${base}/api/review/decisions`, {
+    date: '2026-10-01',
+    product_name: '3% 固定策略',
+    action: '买入',
+    reason: '策略校准',
+    expectation: '按 30/35/35 执行',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+  });
+  assert.equal(validTarget3.status, 201);
+  const validPayload = await validTarget3.json();
+  assert.deepEqual(
+    {
+      short: validPayload.decision.bucket_plan.short,
+      medium: validPayload.decision.bucket_plan.medium,
+      long: validPayload.decision.bucket_plan.long,
+      cash: validPayload.decision.bucket_plan.cash,
+    },
+    { short: 30, medium: 35, long: 35, cash: 0 },
+  );
+
+  const wrongTarget3 = await postJson(`${base}/api/review/decisions`, {
+    date: '2026-10-01',
+    product_name: '错误 target3',
+    action: '买入',
+    reason: '测试硬约束',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 0, medium: 100, long: 0 },
+  });
+  assert.equal(wrongTarget3.status, 400);
+
+  const dailyOpenPlan = await postJson(`${base}/api/review/decisions`, {
+    date: '2026-10-01',
+    product_name: '错误日开仓位',
+    action: '买入',
+    reason: '测试硬约束',
+    strategy_version: 'custom-ladder-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, cash: 5 },
+  });
+  assert.equal(dailyOpenPlan.status, 400);
 });

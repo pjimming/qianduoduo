@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import type {
@@ -33,6 +33,18 @@ const formOpen = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
 const form = reactive<DecisionInput>(emptyForm())
+const target3Locked = computed(() => /r2-3pct|target3/i.test(form.strategy_version))
+
+watch(
+  () => form.strategy_version,
+  (value) => {
+    if (!/r2-3pct|target3/i.test(value)) return
+    form.target_annualized = 3
+    form.bucket_plan.short = 30
+    form.bucket_plan.medium = 35
+    form.bucket_plan.long = 35
+  },
+)
 
 const stats = computed(() => {
   const currentMonth = props.today.slice(0, 7)
@@ -275,7 +287,14 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
         </label>
         <label class="rw-field">
           <span>目标年化（%）</span>
-          <input v-model.number="form.target_annualized" type="number" min="0.1" max="20" step="0.1" />
+          <input
+            v-model.number="form.target_annualized"
+            type="number"
+            min="0.1"
+            max="20"
+            step="0.1"
+            :disabled="target3Locked"
+          />
         </label>
         <label class="rw-field">
           <span>证据日期</span>
@@ -287,20 +306,45 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
         </label>
         <label class="rw-field">
           <span>短桶目标（%，0–30 天）</span>
-          <input v-model.number="form.bucket_plan.short" type="number" min="0" max="100" step="1" />
+          <input
+            v-model.number="form.bucket_plan.short"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            :disabled="target3Locked"
+          />
         </label>
         <label class="rw-field">
           <span>中桶目标（%，31–100 天）</span>
-          <input v-model.number="form.bucket_plan.medium" type="number" min="0" max="100" step="1" />
+          <input
+            v-model.number="form.bucket_plan.medium"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            :disabled="target3Locked"
+          />
         </label>
         <label class="rw-field">
           <span>长桶目标（%，100 天以上）</span>
-          <input v-model.number="form.bucket_plan.long" type="number" min="0" max="100" step="1" />
+          <input
+            v-model.number="form.bucket_plan.long"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            :disabled="target3Locked"
+          />
         </label>
         <label class="rw-field">
           <span>单只上限（%）</span>
           <input v-model.number="form.bucket_plan.max_single" type="number" min="0" max="100" step="1" />
         </label>
+        <p class="rw-form-hint is-wide">
+          本项目日开新增额度固定为 0%；`r2-3pct-v1` / target3 固定为短期 30% / 中期 35% / 长期 35%。
+          现有日开持仓只作为真实持仓事实保留，按赎回规则迁移。
+        </p>
         <label class="rw-field is-wide">
           <span>当时的理由</span>
           <textarea

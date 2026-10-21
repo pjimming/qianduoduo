@@ -44,7 +44,7 @@ const productSortLabels: Record<ProductSortKey, string> = {
 
 const filters: Array<{ value: TermFilter; label: string }> = [
   { value: 'all', label: '全部' },
-  { value: 'cash', label: '日开/流动性' },
+  { value: 'cash', label: '日开（非配置目标）' },
   { value: 'short', label: '短期 7–30 天' },
   { value: 'medium', label: '中期 31–100 天' },
   { value: 'long', label: '长期 100 天+' },

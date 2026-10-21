@@ -284,6 +284,15 @@ async function saveQuotas(): Promise<void> {
           </span>
         </div>
 
+        <div class="daily-open-policy" :class="{ 'is-migration': allocation.daily_open.migration_required }">
+          <strong>日开新增额度 {{ allocation.daily_open.target_pct }}%</strong>
+          <span>固定为 0%；短桶承担流动性。target3 固定为短期 30% / 中期 35% / 长期 35%。</span>
+          <span v-if="allocation.daily_open.migration_required">
+            现有日开 ¥{{ formatMoney(allocation.daily_open.existing_amount, 0) }} 保留为真实持仓，
+            按到期、赎回空档和同期限候选迁移。
+          </span>
+        </div>
+
         <div class="allocation-buckets">
           <article
             v-for="bucket in allocation.buckets"
@@ -323,7 +332,7 @@ async function saveQuotas(): Promise<void> {
           <p class="kicker">ASSUMPTIONS</p>
           <h3 id="assumptionsCardTitle" class="rw-panel-title">分配假设</h3>
           <p class="rw-panel-sub">
-            调整本金、期限桶、流动性、现金流和集中度上限；保存后立即重算目标金额。
+            调整本金、期限桶、短期下限、现金流和集中度上限；日开新增额度固定为 0%。
           </p>
         </div>
         <div class="rw-toolbar-actions">
@@ -360,7 +369,7 @@ async function saveQuotas(): Promise<void> {
           <input v-model.number="settingsForm.long" type="number" min="0" max="100" step="1" />
         </label>
         <label>
-          <span>流动性下限 %</span>
+          <span>短期桶下限 %（日开另固定 0%）</span>
           <input
             v-model.number="settingsForm.liquidity_floor_pct"
             type="number"
@@ -594,7 +603,8 @@ async function saveQuotas(): Promise<void> {
           <path d="M7.5 10.2 9.2 12l3.5-4" />
         </svg>
         <span>
-          目标金额由本金、已确认持仓、待确认买入、期限桶目标、流动性下限、未来现金流和集中度共同计算。
+          目标金额由本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来现金流和集中度共同计算。
+          本项目日开新增额度固定为 0%，现有日开持仓只作为真实持仓保留并提示迁移；短桶承担流动性。
           公开额度缺失时只给分配上限，不假装可买；买入前必须在招行 App 核对额度、起购金额、赎回规则和产品说明书。
           未分配金额不会为了凑数强行买入，不构成推荐或买入建议。
         </span>
@@ -661,6 +671,35 @@ async function saveQuotas(): Promise<void> {
   margin-top: 0;
 }
 
+.daily-open-policy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(23, 100, 86, 0.18);
+  border-radius: 10px;
+  background: var(--green-wash);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.daily-open-policy strong {
+  color: var(--green);
+  font-size: 12.5px;
+}
+
+.daily-open-policy span {
+  color: var(--muted);
+}
+
+.daily-open-policy.is-migration {
+  border-color: rgba(185, 137, 58, 0.35);
+  background: #fbf7ed;
+}
+
 .product-module-body .allocation-reasons {
   margin-bottom: 0;
 }
@@ -688,7 +727,7 @@ async function saveQuotas(): Promise<void> {
   display: grid;
   gap: 5px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .allocation-settings input,
@@ -701,7 +740,7 @@ async function saveQuotas(): Promise<void> {
   background: var(--card);
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 
 .allocation-settings-actions {
@@ -753,7 +792,7 @@ async function saveQuotas(): Promise<void> {
 .allocation-bucket-meta {
   color: var(--muted-light);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .allocation-bucket-amount {
@@ -768,7 +807,7 @@ async function saveQuotas(): Promise<void> {
 
 .allocation-bucket-amount span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .allocation-bucket-meta {
@@ -780,7 +819,7 @@ async function saveQuotas(): Promise<void> {
 .allocation-bucket p {
   margin: 8px 0 0;
   color: #a14d40;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -793,7 +832,7 @@ async function saveQuotas(): Promise<void> {
   border-radius: 4px 8px 8px 4px;
   background: #fbf7ed;
   color: #7b6129;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -818,13 +857,13 @@ async function saveQuotas(): Promise<void> {
 .allocation-target span {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .allocation-reason {
   margin: 9px 0 0;
   color: var(--muted-light);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -844,7 +883,7 @@ async function saveQuotas(): Promise<void> {
 .allocation-empty p {
   margin: 7px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
 }
 

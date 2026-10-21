@@ -96,6 +96,13 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   });
   assert.equal(invalidAllocation.status, 400);
 
+  const invalidDailyOpen = await fetch(`${base}/api/products/allocation`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ daily_open_target_pct: 5 }),
+  });
+  assert.equal(invalidDailyOpen.status, 400);
+
   const depositResponse = await fetch(`${base}/api/capital/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

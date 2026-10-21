@@ -35,7 +35,7 @@
 
 ### `r2` — R2产品快照每周更新
 
-- 运行 `scripts/fetch-cmb-r2-all.cjs`，拉取招行公开 R2 产品池；
+- 运行 `scripts/fetch-cmb-r2-all.cjs`，拉取招行公开 R2 产品池；新增日开目标固定为 0%，target3 固定为短期 30% / 中期 35% / 长期 35%；
 - 生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`、`cmb_r2_selected-*.csv`；
 - 调用本地 `/api/products/refresh` 让应用使用新快照；
 - 检查 `/api/dashboard` 的 `meta.product_csv`、`products.all.length`、`products.watchlist.length`；
@@ -47,7 +47,7 @@
 
 - 每天 21:00 读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
 - 第 0 步处理 Codex 判断队列：`screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
-- 第 1–8 步巡检账户收益、逐产品收益档案与账户/产品对账、待确认交易、收件箱、交易对账、到期、自动评估、复盘节点和服务状态；
+- 第 1–8 步巡检账户收益、逐产品收益档案与账户/产品对账、待确认交易、收件箱、交易对账、到期、现有日开迁移事实、自动评估、复盘节点和服务状态；
 - 用户日常只上传成交截图与收益截图；交易入账、决策补建、每日追踪、自动评估和复盘归档由应用与 Codex 自动完成；
 - 优先读取 `/api/inbox`；常规事项已在消息中心去重，只有用户补事实或最后确认的例外才进入用户消息；
 - 收益记录按 `/api/dashboard` 的 `meta.reporting_date`（通常为昨日）检查；今日收益未披露不算缺记，也不能按今天日期补写；
@@ -59,7 +59,7 @@
 
 ### `r2-3` — 钱多多R2周五结构巡检
 
-- 每周五 18:30 检查本周记录完整度、逐产品个人表现、账户/产品对账、持仓结构、逐只替代复核、集中度、流动性、到期阶梯、产品事件、交易对账和下周安排；
+- 每周五 18:30 检查本周记录完整度、逐产品个人表现、账户/产品对账、持仓结构、逐只替代复核、集中度、短期桶流动性、现有日开迁移、到期阶梯、产品事件、交易对账和下周安排；
 - 逐只替代复核读取 `workspace.holding_reviews`，输出继续持有/观察/建议替换、盈亏平衡、费用与空档、数据缺口和验证日；
 - 逐产品个人收益只作观察证据；短样本不换算稳定年化，产品收益不重复计入账户总收益；
 - 只在存在结构风险、待办或下周动作时发周卡；
@@ -182,6 +182,6 @@ cwds = ["<WORKSPACE>"]
 | Codex 定时任务 | 3 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
 | 生产守护 | Supervisor 运行中，Health OK |
 | Windows 看门狗任务 | `QianDuoDuo-Production` 未安装 |
-| 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，流动性下限 30%，置信度 75%，巡检 5 分钟；包含逐产品收益对账 |
+| 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，短期桶下限 30%，新增日开 0%，置信度 75%，巡检 5 分钟；包含逐产品收益对账和现有日开迁移提示 |
 
 这份快照会随环境变化；分享项目时以 `SETUP.md` 的步骤为准，不要把快照当成永久配置。
