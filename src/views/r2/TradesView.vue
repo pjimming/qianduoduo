@@ -6,6 +6,7 @@ import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
 import TradeInboxPanel from '@/components/review/TradeInboxPanel.vue'
 import TradesPanel from '@/components/review/TradesPanel.vue'
 import HoldingsPanel from '@/components/review/HoldingsPanel.vue'
+import ProductValuationPanel from '@/components/r2/ProductValuationPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
 
 const props = defineProps<{
@@ -83,6 +84,11 @@ function openTrades(): void {
       </section>
 
       <section id="holdings" class="rw-panel r2-anchor" aria-label="持仓结构">
+        <ProductValuationPanel
+          :summaries="dashboard.workspace.product_valuation_summaries"
+          :reconciliation="dashboard.workspace.product_valuation_reconciliation"
+          :today="today"
+        />
         <HoldingsPanel
           :holdings="dashboard.workspace.holdings"
           :summary="dashboard.workspace.holdings_summary"

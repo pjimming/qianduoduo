@@ -1139,6 +1139,10 @@ function dashboardPayload(repository) {
         .sort()
         .at(-1) || null,
   };
+  Object.assign(
+    workspace,
+    repository.productValuationStore.getWorkspace(today, tradeOverview.holdings),
+  );
   for (const item of holdingReviews) {
     if (item.reminder.level === 'none') continue;
     workspace.holdings_summary.alerts.push({
@@ -1894,6 +1898,10 @@ function createServer(options = {}) {
           sendJson(response, 200, {
             inbox: saved.item,
             duplicate: true,
+            saved_valuations: [],
+            valuation_conflicts: [],
+            missing_product_codes: [],
+            reconciliation: null,
             dashboard,
           });
           return;
@@ -1907,6 +1915,7 @@ function createServer(options = {}) {
         const parsed = parseIncomeText(ocr.text, {
           today,
           reportingDate: shiftDate(today, -1),
+          products: repository.tradeStore.getPortfolio(),
         });
         let item = repository.incomeStore.addInbox({
           original_name: saved.item.original_name,
@@ -1923,6 +1932,10 @@ function createServer(options = {}) {
         let record = null;
         let autoApplied = false;
         let applyError = '';
+        let savedValuations = [];
+        let valuationConflicts = [];
+        let missingProductCodes = parsed.missing_product_codes || [];
+        let reconciliation = null;
         const threshold = Number(
           repository.automationStore.getSettings().auto_confidence_threshold,
         );
@@ -1935,6 +1948,10 @@ function createServer(options = {}) {
             const applied = repository.applyIncomeScreenshot(item.id, parsed);
             item = applied.inbox;
             record = applied.record;
+            savedValuations = applied.saved_valuations || [];
+            valuationConflicts = applied.valuation_conflicts || [];
+            missingProductCodes = applied.missing_product_codes || [];
+            reconciliation = applied.reconciliation || null;
             autoApplied = true;
           } catch (error) {
             applyError =
@@ -1951,6 +1968,10 @@ function createServer(options = {}) {
           duplicate: false,
           auto_applied: autoApplied,
           apply_error: applyError,
+          saved_valuations: savedValuations,
+          valuation_conflicts: valuationConflicts,
+          missing_product_codes: missingProductCodes,
+          reconciliation,
           ocr: {
             ok: ocr.ok,
             language: ocr.language,
@@ -2007,6 +2028,26 @@ function createServer(options = {}) {
                 body.daily_pnl === undefined || body.daily_pnl === null
                   ? undefined
                   : Number(body.daily_pnl),
+              products: Array.isArray(body.products)
+                ? body.products.map((item) => ({
+                    ...item,
+                    daily_pnl:
+                      item.daily_pnl === undefined || item.daily_pnl === null
+                        ? null
+                        : Number(item.daily_pnl),
+                    holding_amount:
+                      item.holding_amount === undefined ||
+                      item.holding_amount === null ||
+                      item.holding_amount === ''
+                        ? null
+                        : Number(item.holding_amount),
+                    confidence:
+                      item.confidence === undefined ||
+                      item.confidence === null
+                        ? undefined
+                        : Number(item.confidence),
+                  }))
+                : undefined,
               action: body.action,
               notes: body.notes,
             },
@@ -2041,6 +2082,87 @@ function createServer(options = {}) {
         }
         sendJson(response, 200, {
           inbox,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      if (pathname === '/api/product-valuations' && request.method === 'GET') {
+        const url = new URL(request.url, 'http://127.0.0.1');
+        const productCode = String(url.searchParams.get('product_code') || '');
+        if (productCode) {
+          sendJson(response, 200, {
+            detail: repository.productValuationStore.getProductDetail(
+              productCode,
+              todayShanghai(),
+            ),
+          });
+          return;
+        }
+        sendJson(response, 200, {
+          valuations: repository.productValuationStore.listValuations(),
+          ...repository.productValuationStore.getWorkspace(
+            todayShanghai(),
+            repository.tradeStore.getPortfolio(),
+          ),
+        });
+        return;
+      }
+
+      if (pathname === '/api/product-valuations' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        let result;
+        try {
+          result = repository.productValuationStore.upsertValuation(body, {
+            source: 'manual-correction',
+            auditNote: body.correction_note || '手工补录产品收益',
+          });
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        sendJson(response, 201, {
+          valuation: result.valuation,
+          conflict: result.conflict,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
+      const productValuationMatch = pathname.match(
+        /^\/api\/product-valuations\/(\d+)$/,
+      );
+      if (productValuationMatch && request.method === 'PUT') {
+        const before = repository.productValuationStore.getValuation(
+          Number(productValuationMatch[1]),
+        );
+        if (!before) {
+          sendError(response, 404, '没有找到这条产品收益记录');
+          return;
+        }
+        const body = await readJsonBody(request);
+        let result;
+        try {
+          result = repository.productValuationStore.upsertValuation(
+            {
+              ...before,
+              ...body,
+              product_code: before.product_code,
+              yield_date: before.yield_date,
+              source: 'manual-correction',
+            },
+            {
+              source: 'manual-correction',
+              auditNote: body.correction_note || '手工修正产品收益',
+            },
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        sendJson(response, 200, {
+          valuation: result.valuation,
+          conflict: result.conflict,
           dashboard: dashboardPayload(repository),
         });
         return;

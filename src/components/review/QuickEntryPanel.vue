@@ -39,6 +39,14 @@ interface IncomeDraft {
   daily_pnl: number | null
   action: '无操作' | '买入' | '赎回' | '切换'
   notes: string
+  products: Array<{
+    product_code: string
+    product_name: string
+    holding_amount: number | null
+    daily_pnl: number | null
+    confidence: number
+    notes: string
+  }>
 }
 
 const props = defineProps<{
@@ -106,6 +114,21 @@ watch(
               : Number(item.parsed.daily_pnl),
           action: item.parsed.action || '无操作',
           notes: item.parsed.notes || '',
+          products: (item.parsed.products || []).map((product) => ({
+            product_code: product.product_code,
+            product_name: product.product_name || '',
+            holding_amount:
+              product.holding_amount === null ||
+              product.holding_amount === undefined
+                ? null
+                : Number(product.holding_amount),
+            daily_pnl:
+              product.daily_pnl === null || product.daily_pnl === undefined
+                ? null
+                : Number(product.daily_pnl),
+            confidence: Number(product.confidence ?? item.parse_confidence),
+            notes: product.notes || '',
+          })),
         }
       }
     }
@@ -220,10 +243,15 @@ async function uploadIncomeFiles(files: FileList | File[]): Promise<void> {
       if (response.duplicate) {
         show(`${file.name} 已处理过，平台不会重复记账`)
       } else if (response.auto_applied) {
+        const savedCount = response.saved_valuations?.length ?? 0
+        const mismatch = response.reconciliation?.status === 'mismatch'
         show(
-          `${file.name} 已自动记录 ${response.record?.date ?? ''} 收益 ¥${Number(
-            response.record?.daily_pnl ?? 0,
-          ).toFixed(2)}`,
+          mismatch
+            ? `${file.name} 已记录账户与 ${savedCount} 只产品收益；产品合计与总账不一致，已转入对账提醒`
+            : `${file.name} 已自动记录 ${response.record?.date ?? ''} 收益 ¥${Number(
+                response.record?.daily_pnl ?? 0,
+              ).toFixed(2)}${savedCount ? `，含 ${savedCount} 只产品明细` : ''}`,
+          mismatch ? { duration: 7000 } : undefined,
         )
       } else {
         show(
@@ -259,15 +287,27 @@ async function applyIncome(item: IncomeInboxItem): Promise<void> {
     show('请先确认日期和收益数字', { error: true })
     return
   }
+  const incompleteProduct = draft.products.find(
+    (product) => !product.product_code.trim() || product.daily_pnl === null,
+  )
+  if (incompleteProduct) {
+    show('产品明细需要产品代码和当日收益；无法确认的行可先移除', { error: true })
+    return
+  }
   applyingIncomeId.value = item.id
   try {
     const response = await store.applyIncomeScreenshot(item.id, draft)
+    const savedCount = response.saved_valuations?.length ?? 0
+    const mismatch = response.reconciliation?.status === 'mismatch'
     show(
-      response.overwritten
+      mismatch
+        ? `截图已入账；${savedCount} 只产品收益合计与账户总账不一致，已进入对账提醒`
+        : response.overwritten
         ? '已用收益截图更新这笔记录'
         : response.matched_existing
           ? '截图已归档；该日期已有记录，平台没有覆盖'
-          : '收益截图已入账',
+          : `收益截图已入账${savedCount ? `，同步 ${savedCount} 只产品明细` : ''}`,
+      mismatch ? { duration: 7000 } : undefined,
     )
     emit('saved', draft.date)
   } catch (error) {
@@ -509,6 +549,44 @@ defineExpose({
             {{ item.parsed.warnings.join('、') }}
           </small>
         </div>
+        <div v-if="incomeDrafts[item.id]?.products.length" class="income-product-editor">
+          <div class="income-product-head">
+            <strong>产品明细</strong>
+            <span>产品收益只进个人档案，不重复计入账户总收益</span>
+          </div>
+          <div
+            v-for="(product, index) in incomeDrafts[item.id].products"
+            :key="`${item.id}-${product.product_code}-${index}`"
+            class="income-product-row"
+          >
+            <label>
+              <span>产品代码</span>
+              <input v-model.trim="product.product_code" type="text" maxlength="32" />
+            </label>
+            <label class="is-name">
+              <span>产品名称</span>
+              <input v-model.trim="product.product_name" type="text" maxlength="100" />
+            </label>
+            <label>
+              <span>持仓金额</span>
+              <input v-model.number="product.holding_amount" type="number" min="0" step="0.01" />
+            </label>
+            <label>
+              <span>当日收益</span>
+              <input v-model.number="product.daily_pnl" type="number" step="0.01" />
+            </label>
+            <button
+              type="button"
+              class="rw-link-button is-danger"
+              @click="incomeDrafts[item.id].products.splice(index, 1)"
+            >
+              移除
+            </button>
+          </div>
+        </div>
+        <p v-else class="income-product-empty">
+          本次截图没有可确认的产品明细，只会记录账户总收益；当前持仓会标记为“本次未拍到”，不会自动记 0 或视为赎回。
+        </p>
         <div class="income-correction-form">
           <label>
             <span>日期</span>

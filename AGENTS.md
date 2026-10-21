@@ -13,6 +13,16 @@
 - R2 理财的记账口径、数据库位置和运行方式以 `MEMORY.md` 与 `README.md` 为准；具体选品方法以 `r2-wealth-management` skill 为准。
 - 旧路径 `D:\codex\R2理财` 已停用（仅剩 Codex 占用的 `.git` 元数据）；如果 Codex 仍显示旧路径，请重新打开 `D:\codex\钱多多财富工作台`。迁移前副本归档在 `D:\codex\_archive\R2理财-pre-rename-2026-10-18`。
 
+### R2 产品收益档案与定时任务
+
+- `daily_records` 只保存账户每日汇总收益；逐产品收益必须写入 `product_daily_valuations`，不得把产品收益再次加到账户总收益。
+- 产品记录按 `(product_code, yield_date)` 去重，并保留 `holding_amount`、来源截图、置信度、备注和时间戳；人工修正必须写入 `product_daily_valuation_audit`。
+- 一张收益截图按已确认持仓代码拆分多只产品。截图中没有出现的持仓只标记“本次未拍到”，不得写成 0 元，也不得据此判定赎回。
+- 产品当日收益合计与账户 `daily_records.daily_pnl` 只做对账。差异提示漏识别、重复、尚未披露或代码错误，不自动覆盖账户总账。
+- 完全赎回的产品仍保留历史，页面按“已赎回”展示；逐产品累计收益、负收益天数和最差单日只代表个人观察结果，不得冒充产品市场 3M/6M/1Y 收益或稳定年化。
+- `r2-2` 与 `r2-3` 定时任务必须读取 `/api/dashboard` 的 `workspace.product_valuation_summary`、`product_valuation_summaries` 和 `product_valuation_reconciliation`，有差异或产品明细缺口时只提示事实与待补项。
+- 修改 Codex 定时任务时，必须同步 `codex-automations/*.md`、`codex-automations/README.md`、`USAGE.md`、`MEMORY.md` 与本机实际任务定义；实际任务通过 Codex 的自动化工具更新，不手改内部 TOML。
+
 ## 股票调研工作流
 
 股票相关内容适用以下规则。以下规则为硬性约定，每次调研都必须遵守。

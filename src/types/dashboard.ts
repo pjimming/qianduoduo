@@ -249,6 +249,83 @@ export interface Holding {
   source_trade_id?: number
 }
 
+export interface ProductDailyValuation {
+  id: number
+  valuation_date: string
+  yield_date: string
+  product_code: string
+  product_name: string
+  holding_amount: number | null
+  daily_pnl: number
+  source: string
+  screenshot_id: number | null
+  confidence: number
+  notes: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductValuationDay {
+  yield_date: string
+  daily_pnl: number
+}
+
+export interface ProductValuationSummary {
+  product_code: string
+  product_name: string
+  status: 'active' | 'redeemed'
+  active_amount: number
+  latest_holding_amount: number | null
+  first_yield_date: string
+  last_yield_date: string
+  holding_start: string
+  holding_end: string
+  holding_days: number
+  observed_days: number
+  cumulative_pnl: number
+  negative_days: number
+  latest_daily_pnl: number | null
+  worst_day: ProductValuationDay | null
+  best_day: ProductValuationDay | null
+}
+
+export interface ProductValuationReconciliationItem {
+  yield_date: string
+  product_pnl: number
+  product_count: number
+  account_pnl: number | null
+  difference: number | null
+  status: 'matched' | 'mismatch' | 'missing-account-total'
+  message: string
+  record_id: number | null
+}
+
+export interface ProductValuationReconciliation {
+  items: ProductValuationReconciliationItem[]
+  counts: {
+    matched: number
+    mismatch: number
+    missing_account_total: number
+  }
+}
+
+export interface ProductValuationAudit {
+  id: number
+  valuation_id: number
+  action: 'create' | 'update'
+  before: Partial<ProductDailyValuation>
+  after: Partial<ProductDailyValuation>
+  note: string
+  source: string
+  created_at: string
+}
+
+export interface ProductValuationDetail {
+  summary: ProductValuationSummary | null
+  valuations: ProductDailyValuation[]
+  audit: ProductValuationAudit[]
+}
+
 export type HoldingReviewVerdict = 'replace' | 'watch' | 'hold'
 
 export interface HoldingReviewReminder {
@@ -628,6 +705,15 @@ export interface ReviewWorkspace {
     applied: number
     latest_date: string | null
   }
+  product_valuation_summaries: ProductValuationSummary[]
+  product_valuation_reconciliation: ProductValuationReconciliation
+  product_valuation_summary: {
+    products: number
+    active: number
+    redeemed: number
+    valuation_days: number
+    latest_date: string | null
+  }
   timeline: {
     today: string
     focus: 'daily' | 'weekly' | 'monthly' | 'quarterly' | null
@@ -791,13 +877,18 @@ export interface AutomationWorkspace {
 
 export interface IncomeInboxParsed {
   date?: string
+  valuation_date?: string
   daily_pnl?: number | null
+  product_daily_total?: number | null
   principal?: number | null
   confidence?: number
   warnings?: string[]
   fields_found?: string[]
   action?: LedgerAction
   notes?: string
+  products?: ProductValuationInput[]
+  missing_product_codes?: string[]
+  reconciliation?: ProductValuationReconciliationItem | null
 }
 
 export interface IncomeInboxItem {
@@ -874,6 +965,15 @@ export interface IncomeCaptureResponse {
   duplicate: boolean
   auto_applied: boolean
   apply_error: string
+  saved_valuations: ProductDailyValuation[]
+  valuation_conflicts: Array<{
+    product_code: string
+    yield_date: string
+    reason: string
+    existing: ProductDailyValuation
+  }>
+  missing_product_codes: string[]
+  reconciliation: ProductValuationReconciliationItem | null
   ocr: {
     ok: boolean
     language: string | null
@@ -888,6 +988,36 @@ export interface IncomeApplyResponse {
   duplicate: boolean
   matched_existing: boolean
   overwritten: boolean
+  saved_valuations: ProductDailyValuation[]
+  valuation_conflicts: Array<{
+    product_code: string
+    yield_date: string
+    reason: string
+    existing: ProductDailyValuation
+  }>
+  missing_product_codes: string[]
+  reconciliation: ProductValuationReconciliationItem | null
+  dashboard: DashboardPayload
+}
+
+export interface ProductValuationInput {
+  valuation_date?: string
+  yield_date?: string
+  date?: string
+  product_code: string
+  product_name?: string
+  holding_amount?: number | null
+  daily_pnl?: number | null
+  source?: string
+  screenshot_id?: number | null
+  confidence?: number
+  notes?: string
+  correction_note?: string
+}
+
+export interface ProductValuationMutationResponse {
+  valuation: ProductDailyValuation
+  conflict: string | null
   dashboard: DashboardPayload
 }
 

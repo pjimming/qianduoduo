@@ -74,7 +74,8 @@
 - 复盘区：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计账本期内收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负日占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间；自本金起始日起可记录天数满 28 天且账本期内达到 20 条记录、月份结束后才落最终评级。
 - 每日记账页的 `QuickEntryPanel` 只保留两个主入口（成交截图、收益截图），手工收益与特殊事项收进“例外情况”折叠区；下方是每日记录表和本金账户。交易收件箱、交易流水、持仓移到交易与持仓页；产品事件移到产品与配置页；决策日志移到决策与评估页；月度五问/季度复盘移到复盘页并默认折叠为摘要。决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
 - 消息中心由 `lib/inbox-center.js` 动态聚合并持久化状态，统一承接交易/收益截图、待确认交易、对账、评估、产品事件、持仓复核、复盘草稿和平台提醒。消息只保存状态与深链，不复制交易或账本事实；源事项消失后自动归档。
-- 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析日期与昨日/当日收益；高置信度自动写 `daily_records.source=income-screenshot`，冲突时不覆盖手工记录。高置信度成交截图按 OCR 状态确认，平台在自动巡检中为确认交易补建决策日志。
+- 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析账户合计与多产品明细；高置信度自动写 `daily_records.source=income-screenshot`，冲突时不覆盖手工记录。产品级记录进入 `product_daily_valuations`，按 `(product_code, yield_date)` 去重；产品合计只与账户总账对账，不重复计入收益，差异进入消息中心。截图漏掉的持仓只标记“本次未拍到”，不得写 0 或视为赎回；人工修正写入 `product_daily_valuation_audit`。高置信度成交截图按 OCR 状态确认，平台在自动巡检中为确认交易补建决策日志。
+- `/api/dashboard` 的 `workspace.product_valuation_summary` 提供产品数、持有/已赎回数、最新档案日；`product_valuation_summaries` 提供每只产品的累计个人收益、档案/持有天数、负收益天数、最差单日与状态；`product_valuation_reconciliation` 提供产品合计和账户总账的匹配/差异。完整逐日历史通过 `/api/product-valuations?product_code=...` 按需读取，避免 dashboard 随时间无限膨胀。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现收益。待确认交易只进入待确认金额，不进入已确认持仓、期限桶和流动性比例。
 - 交易收件箱支持本地拖入 PNG/JPEG/WebP；每日巡检以视觉识别原图为准，`scripts/split-trade-rows.mjs` 负责把多笔总览按行切分；`lib/ocr.js` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），只用于金额与代码的交叉校验，`POST /api/trades/inbox/:id/vision-apply` 在冲突时返回 409 拒绝写入。`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`，已处理/已忽略的 180 天后自动清理。
@@ -84,11 +85,11 @@
 - 决策日志新增 `strategy_version`、`target_annualized`、`bucket_plan`、`evaluation_at`；`bucket_plan` 默认 `{short, medium, long, max_single}`，评估时点默认 `buy_day,holding,maturity`。旧库由 `migrateDecisionColumns` 自动补列，现有“3%策略组合”会种子为 30/35/35、单只上限 30%。
 - 决策日志另有 `evidence_date`、`verify_date`、`review_meta`：替换决策把当前/候选代码、快照日、比较期限、空档、费用、盈亏平衡和预计差额写入 `review_meta`，旧库由迁移自动补列。
 - 持仓复核口径保存在 `holding_review_settings`（按 `product_code`）：赎回确认/到账 T+N、赎回费/申购费、空档覆盖、比较期限、最低多赚门槛、下一赎回开放日、备注、核验日期；计算逻辑在 `lib/holdings-review.js`，版本为 `r2-holding-review-v1`。
-- 自动评估规则：买入日检查理由、预期、期限桶（默认容差 10pp）、单只上限和流动性下限；持有期只做组合级月度评估，因为缺少逐产品每日净值；到期/赎回按批次本金、加权持有天数、到账金额计算实际年化。结果按期限 hurdle 判断，默认短 2.5%、中 2.8%、长 3.0%，组合目标默认 3%。
+- 自动评估规则：买入日检查理由、预期、期限桶（默认容差 10pp）、单只上限和流动性下限；持有期仍做组合级月度评估，逐产品每日收益只作为个人持有表现档案，短样本不直接生成稳定年化结论；到期/赎回按批次本金、加权持有天数、到账金额计算实际年化。结果按期限 hurdle 判断，默认短 2.5%、中 2.8%、长 3.0%，组合目标默认 3%。
 - 评估置信度默认 75% 才自动写入；低置信度、金额缺失或与手工评价冲突时进入 pending 队列，并存 `automation_jobs`。写入记录 `evaluation_runs.previous_*`/`applied_*` 快照，可撤销；单产品评估与组合决策评估分 scope 保存。
 - 本地自动化在 `startServer` 启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。
 - 月度/季度草稿自动汇总收益、目标差距、流程正确/错误数、评估 pending、产品事件、持仓和异常；草稿不会自动写成正式复盘，需在“月度五问/季度复盘”采用并确认。
-- Codex 定时任务“钱多多R2每日巡检（含AI队列与消息中心）”每日 21:00 运行，先处理 `screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再按 `meta.reporting_date`（通常为昨日）巡检最近已披露收益及账本；今日未披露不算缺记，队列为空且无异常时不通知，不改交易流水、不代替用户下单。
+- Codex 定时任务“钱多多R2每日巡检（含AI队列与消息中心）”每日 21:00 运行，先处理 `screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再按 `meta.reporting_date`（通常为昨日）巡检最近已披露收益、逐产品收益档案与账户/产品对账；今日未披露不算缺记，产品缺失不写 0，差异不覆盖总账。队列为空且无异常时不通知，不改交易流水、不代替用户下单。
 - 导出 CSV：`date,principal,daily_pnl,action,notes`。
 
 ### 复盘与评估口径
@@ -108,7 +109,7 @@
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 当前测试通过；`npm run test:e2e` 会检查侧边栏七个 R2 入口、消息中心分组与全部已读、每日记账两个主入口、复盘时间轴与记录日历、复盘模块白卡、跨页补记、产品分配桶、观察名单产品详情、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
+- 当前测试通过；`npm run test:e2e` 会检查侧边栏七个 R2 入口、消息中心分组与全部已读、每日记账两个主入口、复盘时间轴与记录日历、复盘模块白卡、跨页补记、逐产品收益档案与手工补录、产品分配桶、观察名单产品详情、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
 ## 5. 当前数据与 Git
@@ -129,8 +130,8 @@
 ## 6. 自动化任务
 
 - `r2`：每周一 08:30 运行 `scripts/fetch-cmb-r2-all.cjs`，刷新全量/候选/精选 CSV 并调用刷新接口；额度仍需在招行 App 当日核验。
-- `r2-2`：每日 21:00 先处理 Codex 判断队列（截图视觉优先、多笔图按行切分，OCR 只做金额/代码交叉校验），再巡检最近已披露收益记录（昨日及之前）、待确认交易、到期/对账、自动评估和复盘节点；今日收益未披露不算缺记，无异常保持安静。
-- `r2-3`：每周五 18:30 检查记录完整度、集中度、流动性、到期阶梯和下周动作；只在有风险/待办时发周卡。
+- `r2-2`：每日 21:00 先处理 Codex 判断队列（截图视觉优先、多笔图按行切分，OCR 只做金额/代码交叉校验），再巡检最近已披露收益记录（昨日及之前）、逐产品收益与对账、待确认交易、到期、自动评估和复盘节点；产品仪表盘字段为 `workspace.product_valuation_*`。今日收益未披露不算缺记，无异常保持安静。
+- `r2-3`：每周五 18:30 检查记录完整度、逐产品个人表现、账户/产品对账、集中度、流动性、到期阶梯和下周动作；个人产品表现只作观察证据，不换算稳定年化。只在有风险/待办时发周卡。
 - 三个任务统一使用 `deepseek-flash`、reasoning `high`；原每日 21:10 的“自动化队列巡检”已并入 `r2-2` 并删除。
 - 定时任务的完整提示词、模型配置和跨机器复现步骤见 `codex-automations/README.md`；从零初始化与分享清单见 `SETUP.md`。本机实际定义在 `%USERPROFILE%\.codex\automations\<id>\automation.toml`，不要把该目录原样分享给他人。
 - 分工：事实层可由自动化维护；判断层由 Codex 起草证据、用户确认后落库；禁止下单/赎回/转账、删除记录、覆盖手工评价或对外发送。

@@ -177,6 +177,57 @@ async function main() {
         notes: 'e2e',
       }),
     })
+    repository.tradeStore.createTrade({
+      trade_date: '2026-10-01',
+      confirm_date: '2026-10-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: '120056A',
+      product_name: '招银理财90天',
+      issuer: '招银理财',
+      risk_level: 'R2',
+      amount: 2000,
+      term_days: 90,
+      source: 'manual',
+      notes: 'e2e',
+    })
+    repository.tradeStore.createTrade({
+      trade_date: '2026-10-01',
+      confirm_date: '2026-10-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: '120026A',
+      product_name: '招银理财14天',
+      issuer: '招银理财',
+      risk_level: 'R2',
+      amount: 1000,
+      term_days: 14,
+      source: 'manual',
+      notes: 'e2e',
+    })
+    repository.productValuationStore.upsertMany(
+      [
+        {
+          yield_date: '2026-10-18',
+          valuation_date: '2026-10-18',
+          product_code: '120056A',
+          product_name: '招银理财90天',
+          holding_amount: 2000,
+          daily_pnl: 1.44,
+          confidence: 95,
+        },
+        {
+          yield_date: '2026-10-18',
+          valuation_date: '2026-10-18',
+          product_code: '120026A',
+          product_name: '招银理财14天',
+          holding_amount: 1000,
+          daily_pnl: 0.58,
+          confidence: 95,
+        },
+      ],
+      { source: 'income-screenshot', screenshotId: 99 },
+    )
 
     await page.goto(`${base}/`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.stats-grid')
@@ -281,6 +332,40 @@ async function main() {
       (await page.locator('#holdings .rw-bucket').count()) >= 4,
       '持仓期限桶没有渲染',
     )
+    assert(
+      (await page.locator('.product-valuation-panel .pv-card').count()) === 2,
+      '逐产品收益档案没有渲染两张产品卡',
+    )
+    await page.locator('.product-valuation-panel .pv-card').first().click()
+    await page.waitForSelector('.product-valuation-panel .pv-table')
+    assert(
+      (await page.locator('.product-valuation-panel .pv-table tbody tr').count()) ===
+        1,
+      '逐产品收益详情没有渲染逐日记录',
+    )
+    await page
+      .locator('.product-valuation-panel')
+      .getByRole('button', { name: '补录一天' })
+      .click()
+    const valuationForm = page.locator('.product-valuation-panel .pv-form')
+    await valuationForm.getByLabel('收益日期').fill('2026-10-19')
+    await valuationForm.getByLabel('持仓金额').fill('2000')
+    await valuationForm.getByLabel('当日收益').fill('0.25')
+    await valuationForm.getByLabel('修正原因（写入审计）').fill('E2E 手工补录')
+    await valuationForm.getByRole('button', { name: '补录收益' }).click()
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll(
+          '.product-valuation-panel .pv-table tbody tr',
+        ).length === 2,
+    )
+    assert(
+      (await page.locator('.product-valuation-panel .pv-audit').textContent())?.includes(
+        'E2E 手工补录',
+      ),
+      '产品收益手工补录没有显示审计留痕',
+    )
+    await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案桌面端')
     await page.getByRole('button', { name: '记一笔交易', exact: true }).click()
     await page.getByLabel('产品代码').fill('120026A')
     await page.getByLabel('产品名称').fill('招银理财14天')
@@ -338,6 +423,15 @@ async function main() {
       '移动端消息中心出现横向溢出',
     )
     await assertFontFloor(page, '.inbox-page', '消息中心移动端')
+    await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.product-valuation-panel .pv-card')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '移动端逐产品收益档案出现横向溢出',
+    )
+    await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案移动端')
     await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
@@ -583,7 +677,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、复盘模块卡与跨页补记、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

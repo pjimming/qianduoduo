@@ -47,10 +47,11 @@
 
 - 每天 21:00 读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
 - 第 0 步处理 Codex 判断队列：`screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
-- 第 1–8 步巡检收益记录、待确认交易、收件箱、对账、到期、自动评估、复盘节点和服务状态；
+- 第 1–8 步巡检账户收益、逐产品收益档案与账户/产品对账、待确认交易、收件箱、交易对账、到期、自动评估、复盘节点和服务状态；
 - 用户日常只上传成交截图与收益截图；交易入账、决策补建、每日追踪、自动评估和复盘归档由应用与 Codex 自动完成；
 - 优先读取 `/api/inbox`；常规事项已在消息中心去重，只有用户补事实或最后确认的例外才进入用户消息；
 - 收益记录按 `/api/dashboard` 的 `meta.reporting_date`（通常为昨日）检查；今日收益未披露不算缺记，也不能按今天日期补写；
+- 产品明细缺失只标记“本次未拍到”，不写 0、不判定赎回；产品合计与账户总账差异只提示核对，不覆盖任何一侧；
 - 没有异常、没有待办时保持安静，不发送“今日无异常”；
 - 只维护账本事实和流程，不写投资建议、不做收益预测。
 
@@ -58,14 +59,13 @@
 
 ### `r2-3` — 钱多多R2周五结构巡检
 
-- 每周五 18:30 检查本周记录完整度、持仓结构、逐只替代复核、集中度、流动性、到期阶梯、产品事件、交易对账和下周安排；
+- 每周五 18:30 检查本周记录完整度、逐产品个人表现、账户/产品对账、持仓结构、逐只替代复核、集中度、流动性、到期阶梯、产品事件、交易对账和下周安排；
 - 逐只替代复核读取 `workspace.holding_reviews`，输出继续持有/观察/建议替换、盈亏平衡、费用与空档、数据缺口和验证日；
+- 逐产品个人收益只作观察证据；短样本不换算稳定年化，产品收益不重复计入账户总收益；
 - 只在存在结构风险、待办或下周动作时发周卡；
 - 不把历史年化当作未来收益，不把巡检正常写成“没有风险”；替换建议不等于买入指令，执行前仍需核对额度与赎回规则。
 
 提示词：[r2-weekly-structure.md](r2-weekly-structure.md)
-
-> 当前线上提示词仍引用旧文件 `cmb_r2_products-*.csv`；新环境请按提示词文件里的模板改用 `cmb_r2_selected-*.csv`（精选）或 `cmb_r2_universe-*.csv`（全量候选）。
 
 ## 3. 在另一台机器上创建
 
@@ -128,8 +128,8 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 ### 4.4 任务本身
 
 - `r2`：手动运行后检查 `data/` 是否生成当天 CSV，`/api/dashboard` 是否切换快照；
-- `r2-2`：最近披露收益按 `meta.reporting_date` 检查，今日未披露不计异常；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
-- `r2-3`：没有结构风险时应该“无消息”，有内容时只发一张周卡。
+- `r2-2`：最近披露收益按 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation` 与“本次未拍到”，今日未披露不计异常；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
+- `r2-3`：逐产品个人表现只作观察证据，没有结构风险、产品对账异常或下周动作时应该“无消息”，有内容时只发一张周卡。
 
 ## 5. 常见问题
 
@@ -139,7 +139,7 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 | 任务跑了但读不到数据 | 本地服务 `8765` 未启动 | `npm run prod:start` 或双击 `start.bat` |
 | 提示项目不存在 | 工作区没有在 Codex 中打开，或路径变了 | 重新打开项目，更新任务的 working directory |
 | 提示模型不存在 | 换了账号或模型目录 | 选择同等能力模型，保持 high reasoning |
-| 周报读不到产品快照 | 提示词引用了旧文件 `cmb_r2_products-*.csv` | 改用 `cmb_r2_universe-*.csv` 或 `cmb_r2_selected-*.csv` |
+| 周报读不到产品快照 | 最新 `cmb_r2_universe-*.csv` 未生成或应用未刷新 | 检查 `r2` 任务、`data/` 快照和 `/api/dashboard` 的 `meta.product_csv` |
 | 任务重复发消息 | 应用通知未去重，或手动运行+定时运行叠加 | 检查 `/api/automation/workspace` 的 notifications 和 runs |
 | 任务改了不该改的数据 | 提示词边界被忽略 | 暂停任务，恢复原状态，重新粘贴完整提示词 |
 
@@ -172,7 +172,7 @@ cwds = ["<WORKSPACE>"]
 
 ## 7. 当前环境快照
 
-截至 2026-10-20：
+截至 2026-10-21：
 
 | 项目 | 当前值 |
 | --- | --- |
@@ -182,6 +182,6 @@ cwds = ["<WORKSPACE>"]
 | Codex 定时任务 | 3 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
 | 生产守护 | Supervisor 运行中，Health OK |
 | Windows 看门狗任务 | `QianDuoDuo-Production` 未安装 |
-| 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，流动性下限 30%，置信度 75%，巡检 5 分钟 |
+| 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，流动性下限 30%，置信度 75%，巡检 5 分钟；包含逐产品收益对账 |
 
 这份快照会随环境变化；分享项目时以 `SETUP.md` 的步骤为准，不要把快照当成永久配置。

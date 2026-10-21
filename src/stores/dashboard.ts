@@ -25,6 +25,9 @@ import type {
   ProductEventInput,
   ProductEventMutationResponse,
   ProductRefreshResponse,
+  ProductValuationDetail,
+  ProductValuationInput,
+  ProductValuationMutationResponse,
   RecordInput,
   RecordMutationResponse,
   ReviewNoteInput,
@@ -453,6 +456,44 @@ export const useDashboardStore = defineStore('dashboard', () => {
     dashboard.value = response.dashboard
   }
 
+  async function loadProductValuationDetail(
+    productCode: string,
+  ): Promise<ProductValuationDetail> {
+    const response = await apiRequest<{ detail: ProductValuationDetail }>(
+      `/api/product-valuations?product_code=${encodeURIComponent(productCode)}`,
+    )
+    return response.detail
+  }
+
+  async function saveProductValuation(
+    input: ProductValuationInput,
+  ): Promise<ProductValuationMutationResponse> {
+    const response = await apiRequest<ProductValuationMutationResponse>(
+      '/api/product-valuations',
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
+  async function updateProductValuation(
+    id: number,
+    input: ProductValuationInput,
+  ): Promise<ProductValuationMutationResponse> {
+    const response = await apiRequest<ProductValuationMutationResponse>(
+      `/api/product-valuations/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
   async function updateTradeInbox(
     id: number,
     parsed: TradeInboxParsed,
@@ -679,6 +720,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     uploadIncomeScreenshot,
     applyIncomeScreenshot,
     ignoreIncomeScreenshot,
+    loadProductValuationDetail,
+    saveProductValuation,
+    updateProductValuation,
     updateTradeInbox,
     applyTradeInbox,
     ignoreTradeInbox,

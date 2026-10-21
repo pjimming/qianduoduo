@@ -132,9 +132,9 @@
 
 .income-correction-card {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(280px, 1.2fr);
+  grid-template-columns: 1fr;
   gap: 14px;
-  align-items: center;
+  align-items: stretch;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -160,6 +160,79 @@
 
 .income-correction-meta small {
   color: #8a5c1c;
+}
+
+.income-product-editor {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-soft);
+}
+
+.income-product-head,
+.income-product-row {
+  display: grid;
+  grid-template-columns:
+    minmax(110px, 0.8fr)
+    minmax(170px, 1.3fr)
+    minmax(110px, 0.8fr)
+    minmax(110px, 0.8fr)
+    auto;
+  gap: 8px;
+  align-items: end;
+  min-width: 650px;
+  padding: 9px 10px;
+}
+
+.income-product-head {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.income-product-head strong {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+
+.income-product-head span {
+  grid-column: 2 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.income-product-row + .income-product-row {
+  border-top: 1px dashed rgba(221, 227, 218, 0.9);
+}
+
+.income-product-row label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.income-product-row input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffefa;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.income-product-empty {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed rgba(183, 124, 45, 0.35);
+  border-radius: 9px;
+  background: #fbf5e9;
+  color: #7c5b22;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .income-correction-form {

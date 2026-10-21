@@ -14,7 +14,7 @@
 
 ## 用途
 
-每周检查记录完整度、持仓结构、逐只替代复核、集中度、流动性、到期阶梯、产品事件、交易对账和下周安排。它是账本维护与持有决策复核，不是选品报告。
+每周检查记录完整度、逐产品个人收益表现、账户/产品对账、持仓结构、逐只替代复核、集中度、流动性、到期阶梯、产品事件、交易对账和下周安排。它是账本维护与持有决策复核，不是选品报告。
 
 ## 提示词
 
@@ -23,17 +23,17 @@
 
 先读取以下接口，所有判断以账本当前数据为准：
 - GET /api/inbox：统一消息中心，先复用已去重的用户例外，不把平台内部事项重复推给用户。
-- GET /api/dashboard：每日收益记录、本金、收益汇总。
+- GET /api/dashboard：每日收益记录、本金、收益汇总，以及 `workspace.product_valuation_summary`、`product_valuation_summaries`、`product_valuation_reconciliation`。
 - GET /api/review/workspace：决策、交易流水、收件箱、持仓、产品事件、时间轴。
 - GET /api/automation/workspace：待确认评估、提醒、Codex 队列、复盘草稿、调度状态。
 产品快照取 data/cmb_r2_selected-YYYY-MM-DD.csv 中日期最新的一份；只用其中的期限、静态字段与历史年化做比较，不把历史年化当作未来收益。逐只替代复核直接读 workspace.holding_reviews，不自己另算一套口径。
 
 按以下清单巡检：
-1. 本周记录：按本周已过去的周一至周五计算每日收益记录完整度、缺记天数、连续负收益天数、操作次数；周末未到不催，不把周末算作缺记。指出最值得回看的一天。
-2. 持仓结构与逐只替代复核：先报单只超过 30%、多发行方时单发行方超过 50%（单银行 mandate 可 100%）、日开+30 天低于 30%、已到期、未来 12 个月到期阶梯空档。再逐只读取 workspace.holding_reviews：列出 verdict（继续持有/观察/建议替换）、当前参考年化（3M/6M/1Y 加权）、首选同期限候选、年化差、比较期限、空档天数、赎回费与申购费、盈亏平衡、切换后预计差额、data_gaps 和最近决策。只有 verdict=replace 或 reminder.level 为 urgent/window 时才进入下周动作；口径未核验就写“待核”，不猜赎回 T+N、到账 T+N、额度或费率。研究排序不等于买入指令。
+1. 本周记录与逐产品表现：按本周已过去的周一至周五计算账户收益记录完整度、缺记天数、连续负收益天数、操作次数；周末未到不催，不把周末算作缺记。指出最值得回看的一天。再读 `product_valuation_summaries`：只对本周有实际记录的产品展示个人累计收益、档案天数、负收益天数、最差单日和最近档案日；负收益连续 3 个记录日或本周出现明显最差单日时才列为异常。这里只判断个人持有体验，样本不足不换算稳定年化，不把产品记录再次加到账户收益。
+2. 持仓结构与逐只替代复核：先报单只超过 30%、多发行方时单发行方超过 50%（单银行 mandate 可 100%）、日开+30 天低于 30%、已到期、未来 12 个月到期阶梯空档。再逐只读取 workspace.holding_reviews：列出 verdict（继续持有/观察/建议替换）、当前参考年化（3M/6M/1Y 加权）、首选同期限候选、年化差、比较期限、空档天数、赎回费与申购费、盈亏平衡、切换后预计差额、data_gaps 和最近决策。逐产品个人收益只能作为补充证据，替换判断仍以同期限参考收益、费用、空档和执行门槛为准，没有足够样本不得用个人短周期收益外推。只有 verdict=replace 或 reminder.level 为 urgent/window 时才进入下周动作；口径未核验就写“待核”，不猜赎回 T+N、到账 T+N、额度或费率。研究排序不等于买入指令。
 3. 产品事件：高影响且待复核；费率、经理、底层、赎回规则、额度变化；给出需要复核的产品和原因。
-4. 交易与对账：本周交易笔数、待确认、已实现收益、对账警告；指出未闭环的交易。
-5. 自动评估与 Codex 队列：所有 pending、持有期月度评估、到期评估；列出需要人工确认的证据缺口；检查 screenshot_review、evaluation_review、monthly_summary、quarterly_summary 是否仍待处理。
+4. 交易与对账：本周交易笔数、待确认、已实现收益、交易对账警告；指出未闭环的交易。读取 `product_valuation_reconciliation`：本周任一 mismatch 都要列产品合计、账户总收益和差额，提示核对漏拍、重复、尚未披露或代码错误；missing-account-total 只说明缺账户总账。不能自动覆盖任一侧。已应用截图的 `parsed.missing_product_codes` 只视为“本次未拍到”，不写 0、不判定赎回。
+5. 自动评估与 Codex 队列：所有 pending、持有期月度评估、到期评估；列出需要人工确认的证据缺口；检查 screenshot_review、income_screenshot_review、evaluation_review、monthly_summary、quarterly_summary 是否仍待处理。
 6. 下周安排：7 天内到期、下一赎回开放日（holding_reviews.next_redeem_open_date，没有就写“未填”）、需要提前安排的资金与替换验证日。
 7. 复盘节点：月度五问、季度清单是否到期；读取 workspace.timeline.nodes。应用默认自动生成并归档复盘；只检查异常项和事实缺口，不要求用户逐期手工填写。确有 overdue 且平台无法补齐时，再写入用户例外。
 8. 服务状态：如果 8765 无法连接，只报告“本地服务未运行，巡检未执行”，不要猜测账本数据。
@@ -46,7 +46,7 @@
 严格边界：
 - 不登录招行，不查实时额度，不下单、不赎回、不转账。
 - 不把待确认交易改成已确认；必须有截图、回单或银行确认。
-- 不猜缺失的金额、日期、份额、确认日、到期日；缺失就标“待补”。不自行填写每日收益数字；没有用户提供的实际收益就只提醒，不估算。
+- 不猜缺失的金额、日期、份额、确认日、到期日或产品收益；缺失就标“待补”。不自行填写账户或产品收益数字；没有用户提供的实际收益就只提醒，不估算。产品截图漏拍不写 0，不据此判定赎回；产品合计与账户总账冲突时不覆盖任何一侧。
 - 不覆盖用户手工评价，不删除交易、决策或事件；错误优先更正或撤销留痕，删除必须先问用户。
 - 不替用户确认月度或季度复盘结论，只生成、整理草稿并提示需要人工修改的部分。
 - 所有写操作先读当前状态；使用本地 API，不直接改 SQLite；失败时保留原状态并报告。
@@ -58,6 +58,7 @@
 
 - 产品快照使用 `data/cmb_r2_selected-YYYY-MM-DD.csv`；要看全量候选时再用 `data/cmb_r2_universe-YYYY-MM-DD.csv`。
 - 逐只替代复核直接读 `/api/dashboard` 的 `workspace.holding_reviews`，不要用精选池或旧 CSV 重新拼一套计算。
+- 逐产品个人表现和对账读取 `/api/dashboard` 的 `workspace.product_valuation_summary`、`product_valuation_summaries`、`product_valuation_reconciliation`；完整逐日历史再按产品代码调用 `/api/product-valuations?product_code=...`。
 - 公开快照里的 `next_open_date` 是申购开放日，不能当作赎回开放日；赎回窗口只看 `holding_reviews.next_redeem_open_date` 或持仓到期日。
 
 ## 边界
