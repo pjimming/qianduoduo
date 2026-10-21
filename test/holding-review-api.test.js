@@ -85,8 +85,7 @@ test('holding review API builds candidates, stores redemption rules and links a 
       arrival_days: 1,
       redemption_fee_bps: 0,
       purchase_fee_bps: 0,
-      idle_days: null,
-      compare_horizon_days: 30,
+      purchase_confirm_days: 2,
       next_redeem_open_date: '2027-01-18',
       notes: '产品说明书：赎回 T+1 确认、T+1 到账，赎回费 0',
       verified_at: '2026-10-20',
@@ -97,7 +96,12 @@ test('holding review API builds candidates, stores redemption rules and links a 
   dashboard = (await saved.json()).dashboard;
   const updated = dashboard.workspace.holding_reviews[0];
   assert.equal(updated.review_setting.complete, true);
-  assert.equal(updated.review_setting.idle_effective_days, 3);
+  assert.equal(updated.review_setting.purchase_confirm_days, 2);
+  assert.equal(updated.review_setting.rollover_gap_days, 0);
+  assert.equal('idle_days' in updated.review_setting, false);
+  assert.equal('compare_horizon_days' in updated.review_setting, false);
+  assert.equal('min_gain_amount' in updated.review_setting, false);
+  assert.equal('idle_source' in updated.review_setting, false);
   assert.equal(
     updated.thresholds.min_gain_amount,
     Math.round(
@@ -114,10 +118,10 @@ test('holding review API builds candidates, stores redemption rules and links a 
     date: '2026-10-20',
     product_name: '招银理财招睿添金90天持有期6号A → 测试候选',
     action: '观察',
-    reason: '锁定期内不可赎回，记录到期后计划；同期限候选参考年化更高',
+    reason: '锁定期内不可赎回，记录到期后计划；同桶候选参考年化更高',
     expectation: '到期前重新核验候选、额度与赎回规则，再决定是否执行替换',
     actual_result: '',
-    strategy_version: 'r2-holding-review-v1',
+    strategy_version: 'r2-holding-review-v6',
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
     evaluation_at: ['holding', 'maturity'],
@@ -167,6 +171,16 @@ test('holding review API rejects invalid redemption settings', async (t) => {
   );
   assert.equal(invalid.status, 400);
 
+  const invalidPurchaseConfirm = await postJson(
+    `${base}/api/holding-reviews/120056A`,
+    {
+      purchase_confirm_days: 1.5,
+      verified_at: '2026-10-20',
+    },
+    'PUT',
+  );
+  assert.equal(invalidPurchaseConfirm.status, 400);
+
   const future = await postJson(
     `${base}/api/holding-reviews/120056A`,
     {
@@ -186,4 +200,18 @@ test('holding review API rejects invalid redemption settings', async (t) => {
     'PUT',
   );
   assert.equal(badOpenDate.status, 400);
+
+  for (const field of [
+    'idle_days',
+    'compare_horizon_days',
+    'min_gain_amount',
+  ]) {
+    const deprecated = await postJson(
+      `${base}/api/holding-reviews/120056A`,
+      { [field]: 1 },
+      'PUT',
+    );
+    assert.equal(deprecated.status, 400);
+    assert.match((await deprecated.json()).error, /已停用/);
+  }
 });

@@ -1530,11 +1530,26 @@ function createServer(options = {}) {
           sendError(response, 400, '持仓复核口径格式不正确');
           return;
         }
+        const deprecatedFields = [
+          'idle_days',
+          'compare_horizon_days',
+          'min_gain_amount',
+        ];
+        const deprecatedField = deprecatedFields.find((key) =>
+          Object.prototype.hasOwnProperty.call(body, key),
+        );
+        if (deprecatedField) {
+          sendError(
+            response,
+            400,
+            `${deprecatedField} 已停用，请使用统一期限和动态门槛`,
+          );
+          return;
+        }
         const integerRanges = {
           redemption_days: [0, 30],
           arrival_days: [0, 30],
-          idle_days: [0, 60],
-          compare_horizon_days: [1, 365],
+          purchase_confirm_days: [0, 30],
         };
         for (const [key, [min, max]] of Object.entries(integerRanges)) {
           if (body[key] === undefined) continue;
@@ -1548,7 +1563,6 @@ function createServer(options = {}) {
         const feeRanges = {
           redemption_fee_bps: [0, 500],
           purchase_fee_bps: [0, 500],
-          min_gain_amount: [0, 1e6],
         };
         for (const [key, [min, max]] of Object.entries(feeRanges)) {
           if (body[key] === undefined || body[key] === null || body[key] === '') continue;

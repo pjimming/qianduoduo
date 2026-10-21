@@ -204,6 +204,20 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
   if (meta.snapshot_date) {
     rows.push({ label: '快照', value: String(meta.snapshot_date) })
   }
+  if (meta.horizon_days !== undefined && meta.horizon_days !== null) {
+    rows.push({ label: '比较期限', value: `${Number(meta.horizon_days)} 天` })
+  }
+  if (meta.switch_wait_days !== undefined && meta.switch_wait_days !== null) {
+    const waitStatus =
+      meta.switch_wait_status === 'verified' ? '已核验' : '估算'
+    rows.push({
+      label: '切换等待',
+      value: `${Number(meta.switch_wait_days)} 天（${waitStatus}）`,
+    })
+  }
+  if (meta.effective_days !== undefined && meta.effective_days !== null) {
+    rows.push({ label: '有效计息', value: `${Number(meta.effective_days)} 天` })
+  }
   if (meta.break_even_yield_pct !== undefined && meta.break_even_yield_pct !== null) {
     rows.push({
       label: '盈亏平衡',

@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { DatabaseSync } = require('node:sqlite');
 const { openDatabase } = require('../lib/db');
 const { buildHoldingsSummary } = require('../lib/review-store');
 
@@ -89,6 +90,65 @@ test('holdings compute maturity, buckets and ladder', (t) => {
   assert.equal(summary.ladder[3].amount, 100000);
   assert.ok(summary.alerts.some((alert) => alert.code === 'single-product'));
   assert.ok(summary.alerts.some((alert) => alert.code === 'daily-open-migration'));
+});
+
+test('legacy holding review settings rebuild without losing verified facts', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-review-migrate-'));
+  const dbPath = path.join(directory, 'test.sqlite');
+  const legacy = new DatabaseSync(dbPath);
+  legacy.exec(`
+    CREATE TABLE holding_review_settings (
+      product_code TEXT PRIMARY KEY,
+      redemption_days INTEGER,
+      arrival_days INTEGER,
+      redemption_fee_bps REAL NOT NULL DEFAULT 0,
+      purchase_fee_bps REAL NOT NULL DEFAULT 0,
+      idle_days INTEGER,
+      compare_horizon_days INTEGER NOT NULL DEFAULT 30,
+      min_gain_amount REAL NOT NULL DEFAULT 10,
+      next_redeem_open_date TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      verified_at TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL,
+      purchase_confirm_days INTEGER
+    );
+    INSERT INTO holding_review_settings VALUES (
+      'LEGACY01', 1, 0, 0, 5, 2, 45, 88, '2026-11-03',
+      'App 已核验', '2026-10-21', '2026-10-21T10:00:00.000Z', 2
+    );
+  `);
+  legacy.close();
+
+  const repository = openDatabase({
+    dbPath,
+    productCsvPath: null,
+    logger: { warn() {} },
+  });
+  t.after(() => {
+    repository.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  const columns = repository.db
+    .prepare('PRAGMA table_info(holding_review_settings)')
+    .all()
+    .map((column) => column.name);
+  assert.equal(columns.includes('idle_days'), false);
+  assert.equal(columns.includes('compare_horizon_days'), false);
+  assert.equal(columns.includes('min_gain_amount'), false);
+
+  assert.deepEqual(repository.getHoldingReviewSetting('LEGACY01'), {
+    product_code: 'LEGACY01',
+    redemption_days: 1,
+    arrival_days: 0,
+    redemption_fee_bps: 0,
+    purchase_fee_bps: 5,
+    purchase_confirm_days: 2,
+    next_redeem_open_date: '2026-11-03',
+    notes: 'App 已核验',
+    verified_at: '2026-10-21',
+    updated_at: '2026-10-21T10:00:00.000Z',
+  });
 });
 
 test('decision storage normalizes target3 and daily-open targets', (t) => {

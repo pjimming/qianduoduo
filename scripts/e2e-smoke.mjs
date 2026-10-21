@@ -588,7 +588,7 @@ async function main() {
       (await holdingReviewCards.count()) === holdingReviewCount,
       '清除结论筛选后没有恢复全部持仓',
     )
-    await assertFontFloor(page, '#holding-reviews', '当前持仓与同期限候选桌面端')
+    await assertFontFloor(page, '#holding-reviews', '当前持仓与同桶候选桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
     await holdingSearch.scrollIntoViewIfNeeded()
     await holdingSearch.click()
@@ -753,12 +753,21 @@ async function main() {
     const reviewCard = page.locator('#holding-reviews .hr-card').first()
     assert(
       ((await page.locator('#holding-reviews .rw-toolbar .rw-panel-title').textContent()) ?? '').includes(
-        '当前持仓 vs 同期限候选',
+        '当前持仓 vs 同桶候选',
       ),
       '持仓复核卡片没有渲染',
     )
     await reviewCard.locator('.hr-actions button').click()
     await page.waitForSelector('#holding-reviews .hr-candidate')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(page, '#holding-reviews', '当前持仓与同桶候选移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '持仓复核移动端出现横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
     assert(
       (await reviewCard.locator('.hr-candidate').count()) === 3,
       '持仓复核默认应只展开前 3 个候选',
@@ -780,7 +789,13 @@ async function main() {
     )
     assert(
       (await reviewCard.locator('.hr-candidate').count()) > 0,
-      '持仓复核没有渲染同期限候选',
+      '持仓复核没有渲染同桶候选',
+    )
+    assert(
+      ((await reviewCard.locator('.hr-metrics').textContent()) ?? '').includes(
+        '估算 T+1 / T+0',
+      ),
+      '未核验的当前产品 T+N 没有显示估算标识',
     )
     await reviewCard.getByLabel('赎回确认 T+N').fill('1')
     await reviewCard.getByLabel('赎回到账 T+N').fill('1')
@@ -789,6 +804,15 @@ async function main() {
     await page.waitForFunction(
       () =>
         document.querySelector('#holding-reviews')?.textContent?.includes('T+1 / 到账 T+1'),
+      null,
+      { timeout: 5000 },
+    )
+    await reviewCard.getByRole('button', { name: '核验 T+1' }).first().click()
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#holding-reviews .hr-compare')?.textContent?.includes(
+          '已核验',
+        ),
       null,
       { timeout: 5000 },
     )
@@ -824,6 +848,12 @@ async function main() {
     assert(
       (await page.locator('#decisions .rw-panel-body').count()) === 1,
       '决策日志没有渲染',
+    )
+    assert(
+      ((await page.locator('#decisions .rw-panel-body').textContent()) ?? '').includes(
+        '切换等待',
+      ),
+      '替换决策没有展示切换等待与核验状态',
     )
 
     const errorPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })

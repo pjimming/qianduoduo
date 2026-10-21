@@ -3,10 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  BUCKET_COMPARISON_DAYS,
   buildHoldingReview,
   calculateSwitch,
+  comparisonDaysForBucket,
   dynamicMinGainAmount,
   referenceYield,
+  resolveSwitchWaitDays,
 } = require('../lib/holdings-review');
 
 let sequence = 0;
@@ -75,6 +78,19 @@ function current(overrides = {}) {
   });
 }
 
+function candidateRule(
+  code,
+  purchaseConfirmDays = 1,
+  verifiedAt = '2026-10-20',
+) {
+  return {
+    [code]: {
+      purchase_confirm_days: purchaseConfirmDays,
+      verified_at: verifiedAt,
+    },
+  };
+}
+
 test('reference yield weights 3M/6M/1Y and ignores missing fields', () => {
   assert.equal(
     referenceYield({ return_3m: 2, return_6m: 3, return_1y: 4 }),
@@ -84,20 +100,74 @@ test('reference yield weights 3M/6M/1Y and ignores missing fields', () => {
   assert.equal(referenceYield({}), null);
 });
 
-test('switch calculation matches the documented break-even example', () => {
+test('bucket comparison horizons are fixed constants', () => {
+  assert.deepEqual(BUCKET_COMPARISON_DAYS, {
+    short: 30,
+    medium: 100,
+    long: 360,
+  });
+  assert.equal(comparisonDaysForBucket('short'), 30);
+  assert.equal(comparisonDaysForBucket('medium'), 100);
+  assert.equal(comparisonDaysForBucket('long'), 360);
+});
+
+test('switch waiting days are derived from redemption, arrival and purchase confirmation', () => {
+  assert.deepEqual(resolveSwitchWaitDays({
+    redemption_days: 1,
+    arrival_days: 0,
+    verified_at: '2026-10-20',
+  }, {
+    purchase_confirm_days: 2,
+    verified_at: '2026-10-20',
+  }), {
+    value: 3,
+    status: 'verified',
+    source: '已核验：当前产品赎回 T+1 + 到账 T+0 + 候选申购确认 T+2',
+  });
+  assert.deepEqual(resolveSwitchWaitDays({}, {}), {
+    value: 2,
+    status: 'estimated',
+    source:
+      '估算：当前产品赎回 T+1（默认） + 到账 T+0（默认） + 候选申购确认 T+1（默认）',
+  });
+  assert.deepEqual(
+    resolveSwitchWaitDays(
+      { redemption_days: 2, arrival_days: 0, verified_at: '2026-10-20' },
+      {},
+    ),
+    {
+      value: 3,
+      status: 'estimated',
+      source:
+        '估算：当前产品赎回 T+2 + 到账 T+0 + 候选申购确认 T+1（默认）',
+    },
+  );
+});
+
+test('switch calculation compounds returns and solves the break-even annual yield', () => {
   const result = calculateSwitch({
     amount: 100000,
     currentYieldPct: 3,
     horizonDays: 90,
     redemptionFeeBps: 0,
-    idleDays: 3,
+    switchWaitDays: 3,
     newYieldPct: 3.5,
     purchaseFeeBps: 0,
   });
   assert.equal(result.new_days, 87);
-  assert.equal(result.current_gross, 739.73);
-  assert.equal(result.difference, 94.52);
-  assert.ok(Math.abs(result.break_even_yield_pct - 3.1034) < 0.01);
+  assert.equal(result.current_gross, 731.51);
+  assert.equal(result.difference, 91.84);
+  assert.ok(Math.abs(result.break_even_yield_pct - 3.105) < 0.001);
+  assert.equal('idle_cost' in result, false);
+
+  const breakEven = calculateSwitch({
+    amount: 100000,
+    currentYieldPct: 3,
+    horizonDays: 90,
+    switchWaitDays: 3,
+    newYieldPct: result.break_even_yield_pct,
+  });
+  assert.ok(Math.abs(breakEven.difference) < 0.02);
 });
 
 test('minimum gain threshold scales with holding principal instead of using a fixed 10 yuan', () => {
@@ -114,7 +184,6 @@ test('minimum gain threshold scales with holding principal instead of using a fi
     holding: holding({ amount: 7500 }),
     products: [],
     universe: [current()],
-    setting: { min_gain_amount: 10 },
     today: '2026-10-20',
   });
   assert.equal(
@@ -148,6 +217,7 @@ test('same-term candidate above the net gain threshold is a replace candidate', 
       purchase_fee_bps: 0,
       next_redeem_open_date: '2026-10-20',
     },
+    settingsByCode: candidateRule('NEW90'),
     quotaByCode: { NEW90: { available: 50000, max_order: 50000, verified_at: '2026-10-20' } },
     today: '2026-10-20',
     snapshotDate: '2026-10-19',
@@ -160,7 +230,8 @@ test('same-term candidate above the net gain threshold is a replace candidate', 
     dynamicMinGainAmount(100000, review.candidates[0].comparison_days),
   );
   assert.ok(review.candidates[0].switch.difference > review.thresholds.min_gain_amount);
-  assert.equal(review.horizon_days, 42);
+  assert.equal(review.horizon_days, 100);
+  assert.equal(review.candidates[0].comparison_days, 100);
 });
 
 test('yield edge below 0.15pp is not worth switching even if fees are zero', () => {
@@ -180,6 +251,7 @@ test('yield edge below 0.15pp is not worth switching even if fees are zero', () 
       arrival_days: 1,
       verified_at: '2026-10-20',
     },
+    settingsByCode: candidateRule('TINY90'),
     today: '2026-10-20',
     snapshotDate: '2026-10-19',
   });
@@ -187,7 +259,7 @@ test('yield edge below 0.15pp is not worth switching even if fees are zero', () 
   assert.equal(review.verdict, 'hold');
 });
 
-test('a much shorter candidate cannot be compared as if its yield lasted the full horizon', () => {
+test('a shorter minimum-holding candidate uses the bucket horizon without a term penalty', () => {
   const shortCandidate = product({
     code: 'WEEK7',
     term_days: 7,
@@ -209,11 +281,17 @@ test('a much shorter candidate cannot be compared as if its yield lasted the ful
       }),
     ],
     setting: { redemption_days: 1, arrival_days: 1, verified_at: '2026-10-20' },
+    settingsByCode: candidateRule('WEEK7', 2),
     today: '2026-10-20',
   });
-  assert.equal(review.candidates[0].comparison_days, 7);
-  assert.equal(review.candidates[0].verdict, 'watch');
-  assert.match(review.candidates[0].reasons.join('；'), /短于比较期/);
+  assert.equal(review.horizon_days, 30);
+  assert.equal(review.candidates[0].comparison_days, 30);
+  assert.equal(review.candidates[0].purchase_confirm_days, 2);
+  assert.equal(review.candidates[0].switch_wait_days, 4);
+  assert.equal(review.candidates[0].effective_days, 26);
+  assert.equal('term_warning' in review.candidates[0], false);
+  assert.equal(review.candidates[0].verdict, 'replace');
+  assert.doesNotMatch(review.candidates[0].reasons.join('；'), /短于比较期/);
 });
 
 test('a positive but sub-threshold net gain stays in watch', () => {
@@ -233,6 +311,7 @@ test('a positive but sub-threshold net gain stays in watch', () => {
       arrival_days: 1,
       verified_at: '2026-10-20',
     },
+    settingsByCode: candidateRule('SMALL90'),
     today: '2026-10-20',
     snapshotDate: '2026-10-19',
   });
@@ -253,7 +332,7 @@ test('candidates outside the same risk/term bucket are excluded', () => {
   assert.equal(review.verdict, 'hold');
 });
 
-test('daily-open holding uses the configured comparison horizon and open-day reminder', () => {
+test('daily-open holding uses the fixed short-bucket horizon and open-day reminder', () => {
   const review = buildHoldingReview({
     holding: holding({
       product_code: 'DAILY',
@@ -274,10 +353,10 @@ test('daily-open holding uses the configured comparison horizon and open-day rem
         return_1y: 1.5,
       }),
     ],
-    setting: { compare_horizon_days: 45, next_redeem_open_date: '2026-10-22' },
+    setting: { next_redeem_open_date: '2026-10-22' },
     today: '2026-10-20',
   });
-  assert.equal(review.horizon_days, 45);
+  assert.equal(review.horizon_days, 30);
   assert.equal(review.reminder.level, 'window');
   assert.match(review.reminder.text, /赎回开放日/);
 });
@@ -329,7 +408,7 @@ test('daily-open holding compares with the short bucket instead of other daily-o
         return_1y: 1.5,
       }),
     ],
-    setting: { compare_horizon_days: 30 },
+    setting: {},
     today: '2026-10-20',
   });
   assert.equal(review.horizon_days, 30);
@@ -346,6 +425,42 @@ test('daily-open holding compares with the short bucket instead of other daily-o
   assert.ok(
     review.candidates.every((item) => item.term_days > 0 && item.term_days <= 30),
   );
+  assert.ok(review.candidates.every((item) => item.comparison_days === 30));
+});
+
+test('long-bucket products use the fixed 360-day horizon instead of their own terms', () => {
+  const longCandidate = product({
+    code: 'LONG791',
+    name: '长期791天产品',
+    term_days: 791,
+    bucket: 'long',
+    return_3m: 3,
+    return_6m: 3,
+    return_1y: 3,
+  });
+  const review = buildHoldingReview({
+    holding: holding({
+      product_code: 'OLD180',
+      product_name: '旧产品180天',
+      term_days: 180,
+      maturity_date: '2027-04-19',
+    }),
+    products: [longCandidate],
+    universe: [
+      current({
+        code: 'OLD180',
+        name: '旧产品180天',
+        term_days: 180,
+        bucket: 'long',
+        return_3m: 2,
+        return_6m: 2,
+        return_1y: 2,
+      }),
+    ],
+    today: '2026-10-20',
+  });
+  assert.equal(review.horizon_days, 360);
+  assert.equal(review.candidates[0].comparison_days, 360);
 });
 
 test('maturity inside 14 days creates a replacement window reminder', () => {
@@ -359,7 +474,7 @@ test('maturity inside 14 days creates a replacement window reminder', () => {
   assert.match(review.reminder.text, /替换\/续作比较窗口/);
 });
 
-test('an unverified redemption rule is surfaced as a data gap and blocks execution readiness', () => {
+test('an unverified redemption rule uses a labelled estimate and still computes candidate economics', () => {
   const candidate = product({
     code: 'NEW90',
     term_days: 90,
@@ -372,11 +487,24 @@ test('an unverified redemption rule is surfaced as a data gap and blocks executi
     products: [candidate],
     universe: [current()],
     setting: { next_redeem_open_date: '2026-10-20' },
+    settingsByCode: candidateRule('NEW90'),
     today: '2026-10-20',
   });
   assert.equal(review.verdict, 'replace');
+  assert.ok(review.candidates[0].switch);
+  assert.equal(review.candidates[0].switch_wait_days, 2);
+  assert.equal(review.candidates[0].switch_wait_status, 'estimated');
+  assert.match(review.candidates[0].switch_wait_source, /^估算/);
+  assert.equal(review.candidates[0].effective_days, 98);
   assert.equal(review.candidates[0].execution_ready, false);
-  assert.ok(review.data_gaps.some((gap) => /T\+N 未核验/.test(gap)));
+  assert.ok(
+    review.data_gaps.some((gap) => /T\+N 未核验.*估算/.test(gap)),
+  );
+  assert.ok(
+    review.candidates[0].data_gaps.some((gap) =>
+      /切换等待按 2 天估算/.test(gap),
+    ),
+  );
 });
 
 test('zero remaining quota blocks candidate execution readiness', () => {
@@ -397,6 +525,7 @@ test('zero remaining quota blocks candidate execution readiness', () => {
       verified_at: '2026-10-20',
       next_redeem_open_date: '2026-10-20',
     },
+    settingsByCode: candidateRule('SOLD901'),
     quotaByCode: {
       SOLD901: { available: 0, max_order: 0, verified_at: '2026-10-20' },
     },
@@ -441,6 +570,7 @@ test('a locked fixed-term lot cannot be labelled replace-now', () => {
     products: [candidate],
     universe: [current()],
     setting: { redemption_days: 1, arrival_days: 1, verified_at: '2026-10-20' },
+    settingsByCode: candidateRule('NEW90'),
     quotaByCode: { NEW90: { available: 50000, verified_at: '2026-10-20' } },
     today: '2026-10-20',
   });

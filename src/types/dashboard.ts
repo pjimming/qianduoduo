@@ -359,9 +359,10 @@ export interface HoldingReviewSwitch {
   new_net: number
   difference: number
   break_even_yield_pct: number | null
-  idle_cost: number
   fee_drag: number
 }
+
+export type HoldingReviewSwitchWaitStatus = 'verified' | 'estimated'
 
 export interface HoldingReviewCandidate {
   code: string
@@ -386,11 +387,16 @@ export interface HoldingReviewCandidate {
   yield_gap_pp: number | null
   term_gap_days: number | null
   comparison_days: number
+  purchase_confirm_days: number | null
+  switch_wait_days: number | null
+  switch_wait_status: HoldingReviewSwitchWaitStatus
+  switch_wait_source: string
+  effective_days: number | null
+  rollover_gap_days: number
   min_gain_amount: number
   min_gain_rule_pct: number
   min_gain_base_days: number
   min_gain_floor: number
-  term_warning: string
   quota_available: number | null
   quota_max_order: number | null
   quota_window: string
@@ -410,9 +416,7 @@ export interface HoldingReviewSetting {
   arrival_days: number | null
   redemption_fee_bps: number
   purchase_fee_bps: number
-  idle_days: number | null
-  compare_horizon_days: number
-  min_gain_amount: number
+  purchase_confirm_days: number | null
   next_redeem_open_date: string
   notes: string
   verified_at: string
@@ -454,11 +458,8 @@ export interface HoldingReview {
     arrival_days: number | null
     redemption_fee_bps: number
     purchase_fee_bps: number
-    idle_days: number | null
-    idle_effective_days: number
-    idle_source: string
-    compare_horizon_days: number
-    min_gain_amount: number
+    purchase_confirm_days: number | null
+    rollover_gap_days: number
     min_gain_rule_pct: number
     min_gain_base_days: number
     min_gain_floor: number
@@ -475,7 +476,7 @@ export interface HoldingReview {
     min_gain_base_days: number
     min_gain_floor: number
     horizon_days: number
-    idle_days: number
+    rollover_gap_days: number
   }
   reminders: HoldingReviewReminder[]
   reminder: HoldingReviewReminder
@@ -1309,16 +1310,14 @@ export interface DecisionInput {
 }
 
 export interface HoldingReviewSettingInput {
-  redemption_days: number | null
-  arrival_days: number | null
-  redemption_fee_bps: number
-  purchase_fee_bps: number
-  idle_days: number | null
-  compare_horizon_days: number
-  min_gain_amount?: number
-  next_redeem_open_date: string
-  notes: string
-  verified_at: string
+  redemption_days?: number | null
+  arrival_days?: number | null
+  redemption_fee_bps?: number
+  purchase_fee_bps?: number
+  purchase_confirm_days?: number | null
+  next_redeem_open_date?: string
+  notes?: string
+  verified_at?: string
 }
 
 export interface HoldingInput {

@@ -166,6 +166,9 @@ test('holding review message explains candidate, comparison period, gain and thr
               code: 'JX040213',
               name: '建信理财嘉鑫固收类最低持有30天产品第9期',
               comparison_days: 30,
+              switch_wait_days: 2,
+              switch_wait_status: 'verified',
+              effective_days: 28,
               min_gain_amount: 1,
               execution_ready: false,
               switch: { difference: 6.85 },
@@ -184,6 +187,7 @@ test('holding review message explains candidate, comparison period, gain and thr
   assert.equal(item.title, '持仓出现替换候选');
   assert.match(item.summary, /招银理财招睿添利日开1号A → 建信理财/);
   assert.match(item.summary, /比较 30 天/);
+  assert.match(item.summary, /切换等待 2 天（已核验）、有效计息 28 天/);
   assert.match(item.summary, /预计多赚 ¥6\.85/);
   assert.match(item.summary, /门槛 ¥1\.00/);
   assert.match(item.summary, /当前可赎回/);
@@ -191,6 +195,9 @@ test('holding review message explains candidate, comparison period, gain and thr
   assert.equal(item.action_label, '查看替换测算');
   assert.equal(item.metadata.candidate_code, 'JX040213');
   assert.equal(item.metadata.comparison_days, 30);
+  assert.equal(item.metadata.switch_wait_days, 2);
+  assert.equal(item.metadata.switch_wait_status, 'verified');
+  assert.equal(item.metadata.effective_days, 28);
   assert.equal(item.metadata.expected_difference, 6.85);
   assert.equal(item.metadata.min_gain_amount, 1);
   assert.equal(item.due_at, '2026-11-05');

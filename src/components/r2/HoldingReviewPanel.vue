@@ -33,8 +33,6 @@ interface SettingDraft {
   arrival_days: string | number
   redemption_fee_bps: string | number
   purchase_fee_bps: string | number
-  idle_days: string | number
-  compare_horizon_days: string | number
   next_redeem_open_date: string
   notes: string
   verified_at: string
@@ -213,8 +211,6 @@ function ensureDraft(review: HoldingReview): void {
     arrival_days: setting.arrival_days ?? '',
     redemption_fee_bps: setting.redemption_fee_bps,
     purchase_fee_bps: setting.purchase_fee_bps,
-    idle_days: setting.idle_days ?? '',
-    compare_horizon_days: setting.compare_horizon_days,
     next_redeem_open_date: setting.next_redeem_open_date,
     notes: setting.notes,
     verified_at: setting.verified_at,
@@ -247,8 +243,6 @@ async function saveSetting(review: HoldingReview): Promise<void> {
     arrival_days: optionalNumber(draft.arrival_days),
     redemption_fee_bps: Number(draft.redemption_fee_bps) || 0,
     purchase_fee_bps: Number(draft.purchase_fee_bps) || 0,
-    idle_days: optionalNumber(draft.idle_days),
-    compare_horizon_days: Number(draft.compare_horizon_days) || 30,
     next_redeem_open_date: draft.next_redeem_open_date,
     notes: draft.notes,
     verified_at: draft.verified_at,
@@ -264,13 +258,58 @@ async function saveSetting(review: HoldingReview): Promise<void> {
   }
 }
 
+async function saveCandidatePurchaseConfirm(
+  candidate: HoldingReviewCandidate,
+  value: string | number,
+): Promise<void> {
+  savingProduct.value = candidate.code
+  try {
+    await store.saveHoldingReviewSetting(candidate.code, {
+      purchase_confirm_days: Number(value),
+      verified_at: props.today,
+    })
+    show(`${candidate.code} 申购确认 T+${Number(value)} 已核验，等待期已重算`)
+  } catch (error) {
+    show(error instanceof Error ? error.message : '候选申购确认规则保存失败', {
+      error: true,
+    })
+  } finally {
+    savingProduct.value = ''
+  }
+}
+
+function candidatePurchaseConfirmValue(event: Event): string {
+  return (event.target as HTMLSelectElement).value
+}
+
 function openDetail(product: Product): void {
   detailProduct.value = product
   detailOpen.value = true
 }
 
 function candidateScopeLabel(review: HoldingReview): string {
-  return review.term_days === 0 ? '短期限' : '同期限'
+  if (review.term_days === 0 || review.bucket === 'short' || review.bucket === 'cash') {
+    return '短期限'
+  }
+  if (review.bucket === 'medium') return '中期限'
+  if (review.bucket === 'long') return '长期限'
+  return '同桶'
+}
+
+function switchWaitLabel(candidate: HoldingReviewCandidate): string {
+  if (candidate.switch_wait_days === null) return '待核'
+  return `${candidate.switch_wait_days} 天（${
+    candidate.switch_wait_status === 'verified' ? '已核验' : '估算'
+  }）`
+}
+
+function candidateReasonItems(candidate: HoldingReviewCandidate): string[] {
+  return candidate.reasons.filter(
+    (reason) =>
+      !candidate.data_gaps.some(
+        (gap) => reason.includes(gap) || gap.includes(reason),
+      ),
+  )
 }
 
 function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate): void {
@@ -284,7 +323,7 @@ function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate)
     `${actionableNow ? '持仓复核' : '到期后计划（锁定期内不可赎回）'} ` +
     `${review.evidence_date || props.today}：${review.product_name}（${review.product_code}）` +
     `${candidateScopeLabel(review)}候选 ${candidate.name}（${candidate.code}）参考年化 ${formatPct(candidate.yield_pct, 2)}，` +
-    `当前 ${formatPct(currentYield, 2)}；比较 ${candidate.comparison_days} 天、空档 ${review.thresholds.idle_days} 天，` +
+    `当前 ${formatPct(currentYield, 2)}；本桶统一比较 ${candidate.comparison_days} 天、切换等待 ${switchWaitLabel(candidate)}、有效计息 ${candidate.effective_days ?? '待核'} 天，` +
     `费用 ¥${formatMoney(switchResult?.fee_drag ?? 0, 2)}，切换后预计多赚 ` +
     `¥${formatMoney(switchResult?.difference ?? 0, 2)}，盈亏平衡 ${formatPct(
       switchResult?.break_even_yield_pct,
@@ -292,8 +331,8 @@ function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate)
     )}。${actionableNow ? '' : `当前${review.redemption.reason}，到期前不执行替换。`}`
   decisionForm.expectation =
     actionableNow
-      ? `按 ${candidate.comparison_days} 天比较期执行替换，先确认赎回 T+${review.review_setting.redemption_days ?? 'N'}、` +
-        `到账 T+${review.review_setting.arrival_days ?? 'N'} 与新产品额度；到验证日核对实际到账、起息和收益是否达到测算。`
+      ? `按 ${candidate.comparison_days} 天统一比较期执行替换，切换等待 ${switchWaitLabel(candidate)}、有效计息 ${candidate.effective_days ?? '待核'} 天，后续到期自动续作；先确认新产品额度与交易规则，` +
+        `到验证日核对实际起息和收益是否达到测算。`
       : `锁定期内不操作；最早 ${review.redemption.available_date || '到期日'} 处理。到期前重新核验候选、额度、赎回 T+N 与费用，确认仍达到门槛后再写实际替换交易。`
   decisionForm.verify_date = review.verify_date
 }
@@ -306,7 +345,7 @@ function cancelDecision(): void {
 function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): Record<string, unknown> {
   const result = candidate.switch
   return {
-    review_version: 'r2-holding-review-v1',
+    review_version: 'r2-holding-review-v5',
     holding_lot_id: review.lot_id,
     holding_code: review.product_code,
     holding_name: review.product_name,
@@ -317,7 +356,11 @@ function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): R
     verify_date: decisionForm.verify_date,
     horizon_days: candidate.comparison_days,
     holding_horizon_days: review.horizon_days,
-    idle_days: review.thresholds.idle_days,
+    switch_wait_days: candidate.switch_wait_days,
+    switch_wait_status: candidate.switch_wait_status,
+    switch_wait_source: candidate.switch_wait_source,
+    effective_days: candidate.effective_days,
+    rollover_gap_days: candidate.rollover_gap_days,
     min_yield_edge_pp: review.thresholds.min_yield_edge_pp,
     min_gain_amount: candidate.min_gain_amount,
     min_gain_rule_pct: candidate.min_gain_rule_pct,
@@ -356,7 +399,7 @@ async function saveDecision(review: HoldingReview): Promise<void> {
       reason: decisionForm.reason,
       expectation: decisionForm.expectation,
       actual_result: '',
-      strategy_version: 'r2-holding-review-v1',
+      strategy_version: 'r2-holding-review-v5',
       target_annualized: 3,
       bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
       evaluation_at: ['holding', 'maturity'],
@@ -456,9 +499,9 @@ function clearReviewFilters(): void {
     <div class="rw-toolbar">
       <div class="rw-card-heading">
         <p class="kicker">HOLDING REVIEW</p>
-        <strong class="rw-panel-title">当前持仓 vs 同期限候选</strong>
+        <strong class="rw-panel-title">当前持仓 vs 同桶候选</strong>
         <p class="rw-panel-sub">
-          用最新产品快照逐只复核，先算赎回、空档和费用后的盈亏平衡，再给出继续持有、观察或建议替换。日开持仓改看短期限（7–30 天）候选；研究排序不等于买入指令。
+          用最新产品快照逐只复核。短、中、长期限桶统一按 30、100、360 天比较；本次切换等待的赎回、到账和申购确认时间不计收益，到期后的自动续作不再重复扣空档。日开持仓改看短期限候选。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -642,7 +685,7 @@ function clearReviewFilters(): void {
               {{
                 review.review_setting.complete
                   ? `T+${review.review_setting.redemption_days} / 到账 T+${review.review_setting.arrival_days}`
-                  : '待核对'
+                  : '估算 T+1 / T+0'
               }}
             </strong>
           </span>
@@ -721,7 +764,9 @@ function clearReviewFilters(): void {
                 </div>
                 <small>
                   {{ formatTerm(top.term_days, top.bucket) }} · 比较
-                  {{ top.comparison_days }} 天 ·
+                  {{ top.comparison_days }} 天 · 切换等待
+                  {{ switchWaitLabel(top) }} · 有效
+                  {{ top.effective_days ?? '待核' }} 天 ·
                   {{ formatPct(top.return_3m, 2) }} /
                   {{ formatPct(top.return_6m, 2) }} /
                   {{ formatPct(top.return_1y, 2) }}
@@ -733,20 +778,20 @@ function clearReviewFilters(): void {
               <div>
                 <span>预计多赚</span>
                 <strong :class="{ 'is-positive': (top.switch?.difference ?? 0) > 0 }">
-                  ¥{{ formatMoney(top.switch?.difference ?? 0, 2) }}
+                  {{ top.switch ? `¥${formatMoney(top.switch.difference, 2)}` : '—' }}
                 </strong>
+              </div>
+              <div>
+                <span>切换等待</span>
+                <strong>{{ switchWaitLabel(top) }}</strong>
+              </div>
+              <div>
+                <span>有效计息</span>
+                <strong>{{ top.effective_days ?? '待核' }} 天</strong>
               </div>
               <div>
                 <span>盈亏平衡</span>
                 <strong>{{ formatPct(top.switch?.break_even_yield_pct, 2) }}</strong>
-              </div>
-              <div>
-                <span>门槛</span>
-                <strong>¥{{ formatMoney(top.min_gain_amount, 2) }}</strong>
-              </div>
-              <div>
-                <span>空档</span>
-                <strong>{{ review.thresholds.idle_days }} 天</strong>
               </div>
             </div>
           </section>
@@ -765,8 +810,16 @@ function clearReviewFilters(): void {
         <section v-if="expanded === review.lot_id" class="hr-expanded">
           <form class="hr-settings" @submit.prevent="saveSetting(review)">
             <div class="hr-settings-head">
-              <strong>赎回与空档口径</strong>
-              <span>只填说明书或 App 能确认的数字；留空按估算处理</span>
+              <div class="hr-settings-heading">
+                <strong>赎回与费用口径</strong>
+                <small>只保存能从 App 或产品说明书确认的事实；估算值执行前仍需逐项核验。</small>
+              </div>
+              <span
+                class="hr-settings-state"
+                :class="review.review_setting.complete ? 'is-verified' : 'is-estimated'"
+              >
+                {{ review.review_setting.complete ? 'T+N 已核验' : 'T+N 为估算' }}
+              </span>
             </div>
             <div class="hr-settings-grid">
               <label class="rw-field">
@@ -786,24 +839,6 @@ function clearReviewFilters(): void {
                 <input v-model="draftFor(review).purchase_fee_bps" type="number" min="0" max="500" step="1" />
               </label>
               <label class="rw-field">
-                <span>空档天数（留空自动）</span>
-                <input v-model="draftFor(review).idle_days" type="number" min="0" max="60" step="1" :placeholder="`${review.review_setting.idle_effective_days}`" />
-              </label>
-              <label class="rw-field">
-                <span>日开比较期限（天）</span>
-                <input v-model="draftFor(review).compare_horizon_days" type="number" min="1" max="365" step="1" />
-              </label>
-              <div class="rw-field hr-dynamic-threshold">
-                <span>动态最低多赚门槛</span>
-                <strong>¥{{ formatMoney(review.thresholds.min_gain_amount, 2) }}</strong>
-                <small>
-                  按未赎回本金 ¥{{ formatMoney(review.amount, 0) }} ×
-                  {{ review.thresholds.min_gain_rule_pct }}% ×
-                  {{ review.horizon_days }}/{{ review.thresholds.min_gain_base_days }} 天计算，
-                  最低 ¥{{ review.thresholds.min_gain_floor }}
-                </small>
-              </div>
-              <label class="rw-field">
                 <span>口径核验日期</span>
                 <input v-model="draftFor(review).verified_at" type="date" />
               </label>
@@ -811,15 +846,31 @@ function clearReviewFilters(): void {
                 <span>下一赎回开放日</span>
                 <input v-model="draftFor(review).next_redeem_open_date" type="date" />
               </label>
+              <div class="hr-dynamic-threshold is-threshold">
+                <div>
+                  <span>动态最低多赚门槛</span>
+                  <strong>¥{{ formatMoney(review.thresholds.min_gain_amount, 2) }}</strong>
+                </div>
+                <small>
+                  本金 ¥{{ formatMoney(review.amount, 0) }} ×
+                  {{ review.thresholds.min_gain_rule_pct }}% ×
+                  {{ review.horizon_days }}/{{ review.thresholds.min_gain_base_days }} 天，最低 ¥{{ review.thresholds.min_gain_floor }}
+                </small>
+              </div>
               <label class="rw-field is-wide">
                 <span>赎回规则备注</span>
-                <input v-model="draftFor(review).notes" type="text" maxlength="1000" placeholder="例：最短持有 14 天，赎回 T+1 确认、T+1 到账，赎回费 0" />
+                <textarea v-model="draftFor(review).notes" rows="3" maxlength="1000" placeholder="例：最短持有 14 天，赎回 T+1 确认、T+1 到账，赎回费 0"></textarea>
               </label>
             </div>
             <div class="hr-settings-foot">
-              <span>
-                当前空档：{{ review.review_setting.idle_effective_days }} 天（{{ review.review_setting.idle_source }}）
-              </span>
+              <div class="hr-settings-summary">
+                <span><small>统一比较</small><strong>{{ review.horizon_days }} 天</strong></span>
+                <span>
+                  <small>当前 T+N</small>
+                  <strong>{{ review.review_setting.complete ? '已核验' : '估算' }}</strong>
+                </span>
+                <span><small>续作空档</small><strong>{{ review.review_setting.rollover_gap_days }} 天</strong></span>
+              </div>
               <button type="submit" class="rw-button" :disabled="savingProduct === review.product_code">
                 {{ savingProduct === review.product_code ? '保存中…' : '保存并重算' }}
               </button>
@@ -832,7 +883,7 @@ function clearReviewFilters(): void {
           <div v-else class="hr-candidate-list">
             <div class="hr-candidate-list-head">
               <strong>{{ candidateScopeLabel(review) }}候选</strong>
-              <span>首选置顶，其余按预计差额排序；默认显示前 3 个</span>
+              <span>同桶统一比较期限；首选置顶，其余按结论和参考年化排序；默认显示前 3 个</span>
             </div>
             <article
               v-for="candidate in visibleCandidates(review)"
@@ -842,40 +893,115 @@ function clearReviewFilters(): void {
             >
               <div class="hr-candidate-head">
                 <div class="hr-candidate-title">
-                  <span
-                    v-if="candidate.code === topCandidateMap[review.lot_id]?.code"
-                    class="hr-top-tag"
-                  >
-                    首选
-                  </span>
-                  <button
-                    type="button"
-                    class="hr-product-link"
-                    @click="openDetail(candidate.product)"
-                  >
-                    {{ candidate.name }}
-                  </button>
+                  <div class="hr-candidate-title-line">
+                    <span
+                      v-if="candidate.code === topCandidateMap[review.lot_id]?.code"
+                      class="hr-top-tag"
+                    >
+                      首选
+                    </span>
+                    <button
+                      type="button"
+                      class="hr-product-link"
+                      @click="openDetail(candidate.product)"
+                    >
+                      {{ candidate.name }}
+                    </button>
+                  </div>
                   <small>
-                    {{ candidate.code }} · {{ candidate.issuer }} · 数据日
-                    {{ candidate.data_date || '未获取到' }}
+                    <span>{{ candidate.code }}</span>
+                    <span>{{ candidate.issuer }}</span>
+                    <span>数据 {{ candidate.data_date || '未获取到' }}</span>
                   </small>
                 </div>
-                <span class="hr-candidate-verdict" :class="candidateClass(candidate)">
+                <span
+                  class="hr-candidate-verdict"
+                  :class="review.redemption.redeemable_now ? candidateClass(candidate) : 'is-locked'"
+                >
                   {{ candidate.verdict_label }}
                 </span>
               </div>
 
-              <div class="hr-candidate-grid">
+              <div class="hr-candidate-scoreboard">
+                <div class="hr-candidate-kpi is-yield">
+                  <span>参考年化</span>
+                  <div>
+                    <strong>{{ formatPct(candidate.yield_pct, 2) }}</strong>
+                    <em :class="{ 'is-positive': (candidate.yield_gap_pp ?? 0) > 0 }">
+                      {{ formatPp(candidate.yield_gap_pp, 2, true) }}
+                    </em>
+                  </div>
+                </div>
+                <div class="hr-candidate-kpi is-gain">
+                  <span>切换后预计多赚</span>
+                  <div>
+                    <strong>
+                      {{ candidate.switch ? `¥${formatMoney(candidate.switch.difference, 2)}` : '—' }}
+                    </strong>
+                    <small>门槛 ¥{{ formatMoney(candidate.min_gain_amount, 2) }}</small>
+                  </div>
+                </div>
+                <div class="hr-candidate-kpi is-break-even">
+                  <span>盈亏平衡</span>
+                  <strong>{{ formatPct(candidate.switch?.break_even_yield_pct, 2) }}</strong>
+                </div>
+                <div class="hr-candidate-kpi is-effective">
+                  <span>有效计息</span>
+                  <div>
+                    <strong>{{ candidate.effective_days ?? '待核' }} 天</strong>
+                    <small>统一比较 {{ candidate.comparison_days }} 天</small>
+                  </div>
+                </div>
+              </div>
+
+              <label
+                class="hr-candidate-rule"
+                :class="{
+                  'is-estimated': candidate.switch_wait_status === 'estimated',
+                  'is-verified': candidate.switch_wait_status === 'verified',
+                }"
+              >
+                <span class="hr-candidate-rule-label">申购确认 T+N</span>
+                <div class="hr-candidate-rule-controls">
+                  <select
+                    :value="candidate.purchase_confirm_days ?? 1"
+                    :disabled="savingProduct === candidate.code"
+                    aria-label="申购确认 T+N"
+                    @change="saveCandidatePurchaseConfirm(candidate, candidatePurchaseConfirmValue($event))"
+                  >
+                    <option value="0">T+0</option>
+                    <option value="1">T+1</option>
+                    <option value="2">T+2</option>
+                    <option value="3">T+3</option>
+                  </select>
+                  <span
+                    class="hr-wait-badge"
+                    :class="`is-${candidate.switch_wait_status}`"
+                    :title="candidate.switch_wait_source"
+                  >
+                    {{ switchWaitLabel(candidate) }}
+                  </span>
+                  <button
+                    type="button"
+                    class="rw-link-button hr-rule-verify"
+                    :disabled="savingProduct === candidate.code"
+                    @click="saveCandidatePurchaseConfirm(candidate, candidate.purchase_confirm_days ?? 1)"
+                  >
+                    核验 T+{{ candidate.purchase_confirm_days ?? 1 }}
+                  </button>
+                </div>
+                <small :title="candidate.switch_wait_source">
+                  {{ candidate.switch_wait_source }}
+                </small>
+              </label>
+
+              <div class="hr-candidate-facts">
                 <span>
-                  期限
-                  <strong>
-                    {{ formatTerm(candidate.term_days, candidate.bucket) }} · 比较
-                    {{ candidate.comparison_days }} 天
-                  </strong>
+                  <small>期限</small>
+                  <strong>{{ formatTerm(candidate.term_days, candidate.bucket) }}</strong>
                 </span>
-                <span>参考年化 <strong>{{ formatPct(candidate.yield_pct, 2) }}</strong></span>
                 <span>
-                  3M / 6M / 1Y
+                  <small>3M / 6M / 1Y</small>
                   <strong>
                     {{ formatPct(candidate.return_3m, 2) }} /
                     {{ formatPct(candidate.return_6m, 2) }} /
@@ -883,31 +1009,22 @@ function clearReviewFilters(): void {
                   </strong>
                 </span>
                 <span>
-                  年化差
-                  <strong :class="{ 'rw-gain-text': (candidate.yield_gap_pp ?? 0) > 0 }">
-                    {{ formatPp(candidate.yield_gap_pp, 2, true) }}
-                  </strong>
-                </span>
-                <span>
-                  综合年费
+                  <small>综合年费</small>
                   <strong>{{ candidate.fee_bps === null ? '—' : `${candidate.fee_bps}bp` }}</strong>
                 </span>
-                <span>额度 <strong>{{ quotaLabel(candidate) }}</strong></span>
                 <span>
-                  切换差额
-                  <strong :class="{ 'rw-gain-text': (candidate.switch?.difference ?? 0) > 0 }">
-                    ¥{{ formatMoney(candidate.switch?.difference ?? 0, 2) }}
+                  <small>额度</small>
+                  <strong :class="{ 'is-warning': candidate.quota_available === null || candidate.quota_available <= 0 }">
+                    {{ quotaLabel(candidate) }}
                   </strong>
-                  <small>门槛 ¥{{ formatMoney(candidate.min_gain_amount, 2) }}</small>
-                </span>
-                <span>
-                  盈亏平衡
-                  <strong>{{ formatPct(candidate.switch?.break_even_yield_pct, 2) }}</strong>
                 </span>
               </div>
 
               <div class="hr-mini-compare">
-                <span>当前 {{ formatPct(review.current.yield_pct, 2) }}</span>
+                <div class="hr-mini-label is-current">
+                  <span>当前参考年化</span>
+                  <strong>{{ formatPct(review.current.yield_pct, 2) }}</strong>
+                </div>
                 <div class="hr-mini-track">
                   <span
                     class="hr-mini-current"
@@ -919,21 +1036,34 @@ function clearReviewFilters(): void {
                     :style="{ width: yieldBarWidth(candidate.yield_pct) }"
                   ></span>
                 </div>
-                <span>候选 {{ formatPct(candidate.yield_pct, 2) }}</span>
+                <div class="hr-mini-label is-candidate">
+                  <span>候选参考年化</span>
+                  <strong>{{ formatPct(candidate.yield_pct, 2) }}</strong>
+                </div>
               </div>
 
-              <p class="hr-candidate-reasons">{{ candidate.reasons.join('；') }}</p>
-              <div v-if="candidate.data_gaps.length" class="hr-gaps">
-                <span v-for="gap in candidate.data_gaps" :key="gap">{{ gap }}</span>
+              <div class="hr-candidate-insights">
+                <span class="hr-candidate-insights-title">判断依据</span>
+                <ul>
+                  <li v-for="reason in candidateReasonItems(candidate)" :key="reason">{{ reason }}</li>
+                </ul>
               </div>
+
+              <div v-if="candidate.data_gaps.length" class="hr-candidate-gaps">
+                <span class="hr-candidate-insights-title">待核项</span>
+                <div class="hr-gaps">
+                  <span v-for="gap in candidate.data_gaps" :key="gap">{{ gap }}</span>
+                </div>
+              </div>
+
               <div class="hr-row-actions">
                 <button type="button" class="rw-link-button" @click="openDetail(candidate.product)">
-                  查看详情
+                  查看产品详情
                 </button>
                 <button
                   v-if="candidate.verdict === 'replace'"
                   type="button"
-                  class="rw-link-button"
+                  class="rw-button is-secondary hr-plan-action"
                   @click="startDecision(review, candidate)"
                 >
                   {{ review.redemption.redeemable_now ? '记录替换决策' : '记录到期计划' }}

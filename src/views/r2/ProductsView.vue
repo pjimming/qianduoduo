@@ -41,7 +41,7 @@ const sections = computed(() => [
     <R2PageHeader
       kicker="PRODUCTS &amp; ALLOCATION"
       title="持仓复核、目标配置与产品事件"
-      description="先核对当前持仓与同期限候选，日开持仓改看短期限（7–30 天）候选，再查看新增资金如何分配；公开数据只提供研究排序和分配上限，买入前仍需在招行 App 核对额度、费率和赎回规则。"
+      description="先核对当前持仓与同桶候选；短、中、长期限桶统一按 30、100、360 天比较，本次切换等待期不计收益，到期自动续作不重复扣空档。日开持仓改看短期限候选，再查看新增资金如何分配；买入前仍需在招行 App 核对额度、费率和交易规则。"
     >
       <template #actions>
         <RouterLink
