@@ -164,3 +164,25 @@ test('product valuations dedupe, reconcile, preserve history and audit correctio
     1,
   );
 });
+
+test('product holding days start on the trade confirmation date', (t) => {
+  const { repository } = openTemp(t);
+  createBuy(repository, {
+    trade_date: '2026-10-19',
+    confirm_date: '2026-10-20',
+  });
+  repository.productValuationStore.upsertValuation({
+    yield_date: '2026-10-20',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    holding_amount: 6000,
+    daily_pnl: 1.44,
+  });
+
+  const summary = repository.productValuationStore
+    .getSummaries('2026-10-22', repository.tradeStore.getPortfolio())
+    .find((item) => item.product_code === '120056A');
+  assert.equal(summary.holding_start, '2026-10-20');
+  assert.equal(summary.holding_end, '2026-10-22');
+  assert.equal(summary.holding_days, 3);
+});

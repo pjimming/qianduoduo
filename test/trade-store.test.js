@@ -90,6 +90,7 @@ test('confirmation recalibrates maturity from the confirmation date', (t) => {
   assert.equal(confirmed.confirm_date, '2026-10-19');
   assert.equal(confirmed.maturity_date, '2026-11-02');
   assert.equal(store.getPortfolio()[0].maturity_date, '2026-11-02');
+  assert.equal(store.getPortfolio()[0].purchase_date, '2026-10-19');
 });
 
 test('partial redemption matches FIFO lots and computes realized pnl', (t) => {

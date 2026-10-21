@@ -1060,7 +1060,7 @@ function buildMonthlyReviewMarkdown({
   if (!holdings.length) {
     lines.push('尚未录入持仓。');
   } else {
-    lines.push('| 产品 | 金额 | 买入日 | 期限 | 到期日 | 发行方 | 风险 |');
+    lines.push('| 产品 | 金额 | 确认起持日 | 期限 | 到期日 | 发行方 | 风险 |');
     lines.push('| --- | ---: | --- | ---: | --- | --- | --- |');
     for (const item of holdings) {
       lines.push(

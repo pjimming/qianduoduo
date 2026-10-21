@@ -194,7 +194,7 @@ function barWidth(value: number | null): string {
           <tr>
             <th>产品 / 批次</th>
             <th class="is-number">未赎回成本本金</th>
-            <th>买入日</th>
+            <th>确认起持日</th>
             <th>产品期限</th>
             <th>到期日</th>
             <th class="is-number">累计已赎回成本</th>

@@ -98,6 +98,66 @@ test('buy-day evaluation checks strategy and updates the decision text', (t) => 
   assert.equal(updated.rating, '待评估');
 });
 
+test('correcting a decision date supersedes the stale buy-day evaluation', (t) => {
+  const { repository, automation } = openTemp(t);
+  const decision = repository.createDecision(decisionInput());
+
+  automation.runCycle({ today: '2026-10-02', trigger: 'first' });
+  const firstPending = automation
+    .listPendingRuns()
+    .find(
+      (item) =>
+        item.scope === 'decision' &&
+        item.stage === 'buy_day' &&
+        item.decision_id === decision.id,
+    );
+  assert.ok(firstPending);
+  assert.equal(firstPending.period, '2026-10-01');
+
+  repository.updateDecision(decision.id, {
+    ...decision,
+    date: '2026-10-02',
+  });
+  automation.runCycle({ today: '2026-10-02', trigger: 'date-corrected' });
+
+  const buyDayRuns = automation
+    .listRuns()
+    .filter(
+      (item) =>
+        item.scope === 'decision' &&
+        item.stage === 'buy_day' &&
+        item.decision_id === decision.id,
+    );
+  assert.equal(buyDayRuns.filter((item) => item.status === 'pending').length, 1);
+  assert.equal(
+    buyDayRuns.find((item) => item.status === 'pending').period,
+    '2026-10-02',
+  );
+  assert.equal(
+    buyDayRuns.find((item) => item.id === firstPending.id).status,
+    'undone',
+  );
+  assert.equal(
+    automation
+      .listJobs({ status: 'pending' })
+      .filter(
+        (job) =>
+          job.job_type === 'evaluation_review' &&
+          Number(job.payload.decision_id) === decision.id,
+      ).length,
+    1,
+  );
+  assert.ok(
+    automation
+      .listJobs({ status: 'skipped' })
+      .some(
+        (job) =>
+          job.job_type === 'evaluation_review' &&
+          Number(job.payload.evaluation_id) === firstPending.id,
+      ),
+  );
+});
+
 test('maturity evaluation writes a four-quadrant rating and can be undone', (t) => {
   const { repository, automation } = openTemp(t);
   automation.updateSettings({ liquidity_floor_pct: 0 });
