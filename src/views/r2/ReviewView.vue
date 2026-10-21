@@ -19,14 +19,14 @@ const latestQuarter = computed(() => workspace.value.quarterly[0]?.quarter ?? '�
 
 const sections = computed(() => [
   {
-    id: 'rhythm',
-    label: '复盘节奏',
-    meta: `${workspace.value.timeline.nodes.length} 个节点`,
-  },
-  {
     id: 'score',
     label: '日周月评分',
     meta: `${props.dashboard.review.monthly.length} 个月`,
+  },
+  {
+    id: 'rhythm',
+    label: '复盘节奏',
+    meta: `${workspace.value.timeline.nodes.length} 个节点`,
   },
   {
     id: 'monthly-notes',
@@ -62,6 +62,16 @@ function handleRecord(date: string): void {
     <R2SectionIndex :items="sections" />
 
     <div class="r2-stack">
+      <section id="score" class="review-module-card r2-anchor" aria-label="自动复盘评分">
+        <ReviewSection
+          :review="dashboard.review"
+          :notes="workspace.notes"
+          :today="dashboard.meta.today"
+          :reporting-date="dashboard.meta.reporting_date"
+          @record="handleRecord"
+        />
+      </section>
+
       <section id="rhythm" class="review-module-card r2-anchor" aria-label="复盘节奏">
         <header class="review-module-head">
           <div class="rw-card-heading">
@@ -73,16 +83,6 @@ function handleRecord(date: string): void {
           </div>
         </header>
         <ReviewTimeline :timeline="workspace.timeline" />
-      </section>
-
-      <section id="score" class="review-module-card r2-anchor" aria-label="自动复盘评分">
-        <ReviewSection
-          :review="dashboard.review"
-          :notes="workspace.notes"
-          :today="dashboard.meta.today"
-          :reporting-date="dashboard.meta.reporting_date"
-          @record="handleRecord"
-        />
       </section>
 
       <details id="monthly-notes" class="rw-panel r2-fold r2-anchor">

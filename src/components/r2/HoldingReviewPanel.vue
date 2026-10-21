@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import {
@@ -35,14 +35,21 @@ interface SettingDraft {
   purchase_fee_bps: string | number
   idle_days: string | number
   compare_horizon_days: string | number
-  min_gain_amount: string | number
   next_redeem_open_date: string
   notes: string
   verified_at: string
 }
 
+type HoldingReviewFilter = 'all' | 'replace' | 'watch' | 'hold' | 'window'
+
 const expanded = ref<string | null>(null)
 const expandedCandidates = reactive<Record<string, boolean>>({})
+const searchQuery = ref('')
+const searchOpen = ref(false)
+const searchMenuOpensUp = ref(false)
+const activeSearchOption = ref(-1)
+const searchRoot = ref<HTMLElement | null>(null)
+const reviewFilter = ref<HoldingReviewFilter>('all')
 const savingProduct = ref('')
 const detailOpen = ref(false)
 const detailProduct = ref<Product | null>(null)
@@ -67,6 +74,34 @@ const summary = computed(() => {
   }
 })
 
+const reviewFilters = computed(() => [
+  { key: 'all' as const, label: '全部', count: summary.value.total },
+  { key: 'replace' as const, label: '建议替换', count: summary.value.replace },
+  { key: 'watch' as const, label: '观察', count: summary.value.watch },
+  { key: 'hold' as const, label: '继续持有', count: summary.value.hold },
+  { key: 'window' as const, label: '到期/开放窗口', count: summary.value.window },
+])
+
+const filteredReviews = computed(() => {
+  const query = searchQuery.value.trim().toLocaleLowerCase('zh-CN')
+  return props.reviews.filter((review) => {
+    const matchesFilter =
+      reviewFilter.value === 'all' ||
+      (reviewFilter.value === 'window'
+        ? review.reminder.level !== 'none'
+        : review.verdict === reviewFilter.value)
+    if (!matchesFilter) return false
+    if (!query) return true
+    return reviewMatchesQuery(review, query)
+  })
+})
+
+const searchSuggestions = computed(() => filteredReviews.value.slice(0, 8))
+
+const hasActiveReviewFilters = computed(
+  () => Boolean(searchQuery.value.trim()) || reviewFilter.value !== 'all',
+)
+
 const topCandidateMap = computed<Record<string, HoldingReviewCandidate | null>>(() =>
   Object.fromEntries(
     props.reviews.map((review) => [
@@ -88,6 +123,89 @@ watch(
   { immediate: true },
 )
 
+watch(searchSuggestions, (items) => {
+  if (activeSearchOption.value >= items.length) activeSearchOption.value = -1
+})
+
+onMounted(() => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
+})
+
+function reviewMatchesQuery(review: HoldingReview, query: string): boolean {
+  return [
+    review.product_name,
+    review.product_code,
+    review.issuer,
+    review.risk_level,
+    formatTerm(review.term_days, review.bucket),
+    review.lot_id,
+    review.verdict_label,
+    review.reminder.text,
+  ].some((value) => String(value ?? '').toLocaleLowerCase('zh-CN').includes(query))
+}
+
+function handleDocumentPointerDown(event: PointerEvent): void {
+  if (!searchRoot.value?.contains(event.target as Node)) {
+    searchOpen.value = false
+    activeSearchOption.value = -1
+  }
+}
+
+function openSearchMenu(): void {
+  const anchor = searchRoot.value?.getBoundingClientRect()
+  if (anchor) {
+    const availableBelow = window.innerHeight - anchor.bottom
+    const availableAbove = anchor.top
+    searchMenuOpensUp.value =
+      availableBelow < Math.min(340, window.innerHeight * 0.52) &&
+      availableAbove > availableBelow
+  }
+  searchOpen.value = true
+}
+
+function selectSearchSuggestion(review: HoldingReview): void {
+  searchQuery.value = review.product_code
+  searchOpen.value = false
+  activeSearchOption.value = -1
+}
+
+function handleSearchKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    searchOpen.value = false
+    activeSearchOption.value = -1
+    return
+  }
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter') {
+    return
+  }
+  if (!searchOpen.value) openSearchMenu()
+  const options = searchSuggestions.value
+  if (!options.length) return
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeSearchOption.value = (activeSearchOption.value + 1) % options.length
+    return
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeSearchOption.value =
+      activeSearchOption.value <= 0
+        ? options.length - 1
+        : activeSearchOption.value - 1
+    return
+  }
+  if (event.key === 'Enter' && activeSearchOption.value >= 0) {
+    event.preventDefault()
+    const option = options[activeSearchOption.value]
+    if (option) selectSearchSuggestion(option)
+  }
+}
+
 function ensureDraft(review: HoldingReview): void {
   const setting = review.review_setting
   drafts[review.lot_id] = {
@@ -97,7 +215,6 @@ function ensureDraft(review: HoldingReview): void {
     purchase_fee_bps: setting.purchase_fee_bps,
     idle_days: setting.idle_days ?? '',
     compare_horizon_days: setting.compare_horizon_days,
-    min_gain_amount: setting.min_gain_amount,
     next_redeem_open_date: setting.next_redeem_open_date,
     notes: setting.notes,
     verified_at: setting.verified_at,
@@ -132,7 +249,6 @@ async function saveSetting(review: HoldingReview): Promise<void> {
     purchase_fee_bps: Number(draft.purchase_fee_bps) || 0,
     idle_days: optionalNumber(draft.idle_days),
     compare_horizon_days: Number(draft.compare_horizon_days) || 30,
-    min_gain_amount: Number(draft.min_gain_amount) || 10,
     next_redeem_open_date: draft.next_redeem_open_date,
     notes: draft.notes,
     verified_at: draft.verified_at,
@@ -153,6 +269,10 @@ function openDetail(product: Product): void {
   detailOpen.value = true
 }
 
+function candidateScopeLabel(review: HoldingReview): string {
+  return review.term_days === 0 ? '短期限' : '同期限'
+}
+
 function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate): void {
   detailOpen.value = false
   decisionLot.value = review.lot_id
@@ -163,8 +283,8 @@ function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate)
   decisionForm.reason =
     `${actionableNow ? '持仓复核' : '到期后计划（锁定期内不可赎回）'} ` +
     `${review.evidence_date || props.today}：${review.product_name}（${review.product_code}）` +
-    `同期限候选 ${candidate.name}（${candidate.code}）参考年化 ${formatPct(candidate.yield_pct, 2)}，` +
-    `当前 ${formatPct(currentYield, 2)}；比较 ${review.horizon_days} 天、空档 ${review.thresholds.idle_days} 天，` +
+    `${candidateScopeLabel(review)}候选 ${candidate.name}（${candidate.code}）参考年化 ${formatPct(candidate.yield_pct, 2)}，` +
+    `当前 ${formatPct(currentYield, 2)}；比较 ${candidate.comparison_days} 天、空档 ${review.thresholds.idle_days} 天，` +
     `费用 ¥${formatMoney(switchResult?.fee_drag ?? 0, 2)}，切换后预计多赚 ` +
     `¥${formatMoney(switchResult?.difference ?? 0, 2)}，盈亏平衡 ${formatPct(
       switchResult?.break_even_yield_pct,
@@ -172,7 +292,7 @@ function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate)
     )}。${actionableNow ? '' : `当前${review.redemption.reason}，到期前不执行替换。`}`
   decisionForm.expectation =
     actionableNow
-      ? `按 ${review.horizon_days} 天比较期执行替换，先确认赎回 T+${review.review_setting.redemption_days ?? 'N'}、` +
+      ? `按 ${candidate.comparison_days} 天比较期执行替换，先确认赎回 T+${review.review_setting.redemption_days ?? 'N'}、` +
         `到账 T+${review.review_setting.arrival_days ?? 'N'} 与新产品额度；到验证日核对实际到账、起息和收益是否达到测算。`
       : `锁定期内不操作；最早 ${review.redemption.available_date || '到期日'} 处理。到期前重新核验候选、额度、赎回 T+N 与费用，确认仍达到门槛后再写实际替换交易。`
   decisionForm.verify_date = review.verify_date
@@ -195,10 +315,14 @@ function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): R
     snapshot_date: review.evidence_date,
     evidence_date: review.evidence_date,
     verify_date: decisionForm.verify_date,
-    horizon_days: review.horizon_days,
+    horizon_days: candidate.comparison_days,
+    holding_horizon_days: review.horizon_days,
     idle_days: review.thresholds.idle_days,
     min_yield_edge_pp: review.thresholds.min_yield_edge_pp,
-    min_gain_amount: review.thresholds.min_gain_amount,
+    min_gain_amount: candidate.min_gain_amount,
+    min_gain_rule_pct: candidate.min_gain_rule_pct,
+    min_gain_base_days: candidate.min_gain_base_days,
+    min_gain_floor: candidate.min_gain_floor,
     current_yield_pct: review.current.yield_pct,
     candidate_yield_pct: candidate.yield_pct,
     yield_gap_pp: candidate.yield_gap_pp,
@@ -318,6 +442,13 @@ function decisionSummary(item: DecisionEntry | null): string {
   if (!item) return ''
   return `#${item.id} ${item.date} ${item.action} · 验证日 ${item.verify_date || '未填'}`
 }
+
+function clearReviewFilters(): void {
+  searchQuery.value = ''
+  reviewFilter.value = 'all'
+  searchOpen.value = false
+  activeSearchOption.value = -1
+}
 </script>
 
 <template>
@@ -327,7 +458,7 @@ function decisionSummary(item: DecisionEntry | null): string {
         <p class="kicker">HOLDING REVIEW</p>
         <strong class="rw-panel-title">当前持仓 vs 同期限候选</strong>
         <p class="rw-panel-sub">
-          用最新产品快照逐只复核，先算赎回、空档和费用后的盈亏平衡，再给出继续持有、观察或建议替换。研究排序不等于买入指令。
+          用最新产品快照逐只复核，先算赎回、空档和费用后的盈亏平衡，再给出继续持有、观察或建议替换。日开持仓改看短期限（7–30 天）候选；研究排序不等于买入指令。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -335,26 +466,123 @@ function decisionSummary(item: DecisionEntry | null): string {
       </div>
     </div>
 
-    <div class="rw-stat-row rw-stat-row-spaced">
-      <span class="rw-stat-chip">在持 <strong>{{ summary.total }}</strong></span>
-      <span class="rw-stat-chip" :class="{ 'is-warn': summary.replace > 0 }">
-        建议替换 <strong>{{ summary.replace }}</strong>
-      </span>
-      <span class="rw-stat-chip" :class="{ 'is-warn': summary.watch > 0 }">
-        观察 <strong>{{ summary.watch }}</strong>
-      </span>
-      <span class="rw-stat-chip">继续持有 <strong>{{ summary.hold }}</strong></span>
-      <span class="rw-stat-chip" :class="{ 'is-warn': summary.window > 0 }">
-        到期/开放窗口 <strong>{{ summary.window }}</strong>
-      </span>
+    <div class="rw-stat-row rw-stat-row-spaced hr-filter-row" role="group" aria-label="按复核结论筛选">
+      <button
+        v-for="filter in reviewFilters"
+        :key="filter.key"
+        type="button"
+        class="rw-stat-chip hr-filter-chip"
+        :class="{ 'is-active': reviewFilter === filter.key }"
+        :data-filter="filter.key"
+        :aria-pressed="reviewFilter === filter.key"
+        @click="reviewFilter = filter.key"
+      >
+        {{ filter.label }} <strong>{{ filter.count }}</strong>
+      </button>
     </div>
 
     <div v-if="reviews.length === 0" class="rw-empty">
       还没有已确认持仓。先在「交易与持仓」中登记买入并确认，这里才会生成逐只复核。
     </div>
 
-    <div v-else class="hr-list">
-      <article v-for="review in reviews" :key="review.lot_id" class="hr-card">
+    <template v-else>
+      <section class="hr-review-controls" aria-label="持仓复核筛选">
+        <div ref="searchRoot" class="hr-search-shell">
+          <label class="hr-search">
+            <span class="hr-search-icon" aria-hidden="true">⌕</span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              autocomplete="off"
+              role="combobox"
+              aria-label="搜索持仓"
+              aria-autocomplete="list"
+              aria-controls="holding-review-search-options"
+              :aria-expanded="searchOpen"
+              placeholder="搜索持仓名称、代码、发行方或批次"
+              @click="openSearchMenu"
+              @focus="openSearchMenu"
+              @input="openSearchMenu"
+              @keydown="handleSearchKeydown"
+            />
+            <span class="hr-search-caret" aria-hidden="true">⌄</span>
+          </label>
+
+          <div
+            v-if="searchOpen"
+            id="holding-review-search-options"
+            class="hr-search-menu"
+            :class="{ 'opens-up': searchMenuOpensUp }"
+            role="listbox"
+            aria-label="持仓搜索建议"
+          >
+            <div class="hr-search-menu-head">
+              <span>{{ searchQuery.trim() ? '匹配持仓' : '当前持仓' }}</span>
+              <span>{{ searchSuggestions.length }} 只</span>
+            </div>
+            <button
+              v-for="(review, index) in searchSuggestions"
+              :key="review.lot_id"
+              type="button"
+              class="hr-search-option"
+              :class="{ 'is-active': activeSearchOption === index }"
+              role="option"
+              :aria-selected="activeSearchOption === index"
+              :data-review-code="review.product_code"
+              @mouseenter="activeSearchOption = index"
+              @focus="activeSearchOption = index"
+              @click="selectSearchSuggestion(review)"
+            >
+              <span class="hr-search-option-copy">
+                <strong>{{ review.product_name }}</strong>
+                <small>
+                  {{ review.product_code }} · {{ formatTerm(review.term_days, review.bucket) }}
+                  · 批次 {{ review.lot_id }}
+                </small>
+              </span>
+              <span class="hr-search-option-meta">
+                <span class="hr-verdict" :class="verdictClass(review)">
+                  {{ review.verdict_label }}
+                </span>
+                <small v-if="review.reminder.level !== 'none'">
+                  {{ review.reminder.text }}
+                </small>
+              </span>
+            </button>
+            <div v-if="searchSuggestions.length === 0" class="hr-search-menu-empty">
+              没有匹配的持仓，试试产品代码或发行方名称。
+            </div>
+          </div>
+        </div>
+
+        <div class="hr-filter-meta" aria-live="polite">
+          <span>显示 {{ filteredReviews.length }} / {{ reviews.length }} 只</span>
+          <button
+            v-if="hasActiveReviewFilters"
+            type="button"
+            class="hr-filter-clear"
+            @click="clearReviewFilters"
+          >
+            清除筛选
+          </button>
+        </div>
+      </section>
+
+      <div v-if="filteredReviews.length === 0" class="rw-empty hr-filter-empty">
+        <p>没有符合当前搜索与筛选条件的持仓。</p>
+        <button type="button" class="rw-button is-secondary" @click="clearReviewFilters">
+          清除筛选
+        </button>
+      </div>
+
+      <div v-else class="hr-list">
+      <article
+        v-for="review in filteredReviews"
+        :key="review.lot_id"
+        class="hr-card"
+        :data-verdict="review.verdict"
+        :data-reminder="review.reminder.level"
+      >
         <header class="hr-card-head">
           <div class="hr-card-title">
             <strong>{{ review.product_name }}</strong>
@@ -442,7 +670,9 @@ function decisionSummary(item: DecisionEntry | null): string {
             <div class="hr-compare-head">
               <div>
                 <p class="kicker">BEST MATCH</p>
-                <strong class="rw-panel-title">首选同期限候选</strong>
+                <strong class="rw-panel-title">
+                  首选{{ candidateScopeLabel(review) }}候选
+                </strong>
               </div>
               <span class="hr-compare-tag" :class="compareTagClass(review, top)">
                 {{ compareTitle(review) }}
@@ -512,7 +742,7 @@ function decisionSummary(item: DecisionEntry | null): string {
               </div>
               <div>
                 <span>门槛</span>
-                <strong>¥{{ formatMoney(review.thresholds.min_gain_amount, 2) }}</strong>
+                <strong>¥{{ formatMoney(top.min_gain_amount, 2) }}</strong>
               </div>
               <div>
                 <span>空档</span>
@@ -527,8 +757,8 @@ function decisionSummary(item: DecisionEntry | null): string {
             {{ expanded === review.lot_id ? '收起候选' : `展开候选（${review.candidates.length}）` }}
           </button>
           <span class="rw-muted">
-            门槛：年化差 ≥ {{ review.thresholds.min_yield_edge_pp }}pp，切换后至少多赚
-            ¥{{ formatMoney(review.thresholds.min_gain_amount, 2) }}
+            门槛：年化差 ≥ {{ review.thresholds.min_yield_edge_pp }}pp；净多赚按本金和候选比较期计算
+            （90 天基准 {{ review.thresholds.min_gain_rule_pct }}%，最低 ¥{{ review.thresholds.min_gain_floor }}）
           </span>
         </div>
 
@@ -563,10 +793,16 @@ function decisionSummary(item: DecisionEntry | null): string {
                 <span>日开比较期限（天）</span>
                 <input v-model="draftFor(review).compare_horizon_days" type="number" min="1" max="365" step="1" />
               </label>
-              <label class="rw-field">
-                <span>最低多赚门槛（元）</span>
-                <input v-model="draftFor(review).min_gain_amount" type="number" min="0" max="100000" step="1" />
-              </label>
+              <div class="rw-field hr-dynamic-threshold">
+                <span>动态最低多赚门槛</span>
+                <strong>¥{{ formatMoney(review.thresholds.min_gain_amount, 2) }}</strong>
+                <small>
+                  按未赎回本金 ¥{{ formatMoney(review.amount, 0) }} ×
+                  {{ review.thresholds.min_gain_rule_pct }}% ×
+                  {{ review.horizon_days }}/{{ review.thresholds.min_gain_base_days }} 天计算，
+                  最低 ¥{{ review.thresholds.min_gain_floor }}
+                </small>
+              </div>
               <label class="rw-field">
                 <span>口径核验日期</span>
                 <input v-model="draftFor(review).verified_at" type="date" />
@@ -591,11 +827,11 @@ function decisionSummary(item: DecisionEntry | null): string {
           </form>
 
           <div v-if="review.candidates.length === 0" class="rw-empty is-compact">
-            同期限、同风险档暂无满足起购金额的候选；继续持有并等待下一期快照。
+            {{ candidateScopeLabel(review) }}、同风险档暂无满足起购金额的候选；继续持有并等待下一期快照。
           </div>
           <div v-else class="hr-candidate-list">
             <div class="hr-candidate-list-head">
-              <strong>同期限候选</strong>
+              <strong>{{ candidateScopeLabel(review) }}候选</strong>
               <span>首选置顶，其余按预计差额排序；默认显示前 3 个</span>
             </div>
             <article
@@ -662,6 +898,7 @@ function decisionSummary(item: DecisionEntry | null): string {
                   <strong :class="{ 'rw-gain-text': (candidate.switch?.difference ?? 0) > 0 }">
                     ¥{{ formatMoney(candidate.switch?.difference ?? 0, 2) }}
                   </strong>
+                  <small>门槛 ¥{{ formatMoney(candidate.min_gain_amount, 2) }}</small>
                 </span>
                 <span>
                   盈亏平衡
@@ -759,7 +996,8 @@ function decisionSummary(item: DecisionEntry | null): string {
           </form>
         </section>
       </article>
-    </div>
+      </div>
+    </template>
 
     <ProductDetailDialog
       v-model:open="detailOpen"

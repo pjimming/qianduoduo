@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const {
   buildHoldingReview,
   calculateSwitch,
+  dynamicMinGainAmount,
   referenceYield,
 } = require('../lib/holdings-review');
 
@@ -99,6 +100,33 @@ test('switch calculation matches the documented break-even example', () => {
   assert.ok(Math.abs(result.break_even_yield_pct - 3.1034) < 0.01);
 });
 
+test('minimum gain threshold scales with holding principal instead of using a fixed 10 yuan', () => {
+  assert.equal(dynamicMinGainAmount(3000), 3);
+  assert.equal(dynamicMinGainAmount(7500), 7.5);
+  assert.equal(dynamicMinGainAmount(100000), 100);
+  assert.equal(dynamicMinGainAmount(6000, 13), 1);
+  assert.equal(dynamicMinGainAmount(6000, 30), 2);
+  assert.equal(dynamicMinGainAmount(6000, 90), 6);
+  assert.equal(dynamicMinGainAmount(6000, 180), 12);
+  assert.equal(dynamicMinGainAmount(0), 1);
+
+  const review = buildHoldingReview({
+    holding: holding({ amount: 7500 }),
+    products: [],
+    universe: [current()],
+    setting: { min_gain_amount: 10 },
+    today: '2026-10-20',
+  });
+  assert.equal(
+    review.thresholds.min_gain_amount,
+    dynamicMinGainAmount(7500, review.horizon_days),
+  );
+  assert.equal(review.thresholds.min_gain_rule_pct, 0.1);
+  assert.equal(review.thresholds.min_gain_base_days, 90);
+  assert.equal(review.thresholds.min_gain_floor, 1);
+  assert.equal(review.summary.includes('门槛 ¥10.00'), false);
+});
+
 test('same-term candidate above the net gain threshold is a replace candidate', () => {
   const candidate = product({
     code: 'NEW90',
@@ -127,6 +155,10 @@ test('same-term candidate above the net gain threshold is a replace candidate', 
   assert.equal(review.verdict, 'replace');
   assert.equal(review.candidates[0].verdict, 'replace');
   assert.equal(review.candidates[0].execution_ready, true);
+  assert.equal(
+    review.candidates[0].min_gain_amount,
+    dynamicMinGainAmount(100000, review.candidates[0].comparison_days),
+  );
   assert.ok(review.candidates[0].switch.difference > review.thresholds.min_gain_amount);
   assert.equal(review.horizon_days, 42);
 });
@@ -248,6 +280,72 @@ test('daily-open holding uses the configured comparison horizon and open-day rem
   assert.equal(review.horizon_days, 45);
   assert.equal(review.reminder.level, 'window');
   assert.match(review.reminder.text, /赎回开放日/);
+});
+
+test('daily-open holding compares with the short bucket instead of other daily-open products', () => {
+  const cashPeer = product({
+    code: 'DAILY-PEER',
+    name: '另一个日开产品',
+    term_days: 0,
+    bucket: 'cash',
+    return_3m: 9,
+    return_6m: 9,
+    return_1y: 9,
+  });
+  const short7 = product({
+    code: 'SHORT7',
+    name: '短期限7天产品',
+    term_days: 7,
+    bucket: 'short',
+    return_3m: 3,
+    return_6m: 3,
+    return_1y: 3,
+  });
+  const short30 = product({
+    code: 'SHORT30',
+    name: '短期限30天产品',
+    term_days: 30,
+    bucket: 'short',
+    return_3m: 2.8,
+    return_6m: 2.8,
+    return_1y: 2.8,
+  });
+  const review = buildHoldingReview({
+    holding: holding({
+      product_code: 'DAILY',
+      product_name: '日开产品',
+      term_days: 0,
+      maturity_date: null,
+    }),
+    products: [cashPeer, short7, short30],
+    universe: [
+      product({
+        code: 'DAILY',
+        name: '日开产品',
+        term_days: 0,
+        bucket: 'cash',
+        return_3m: 1.5,
+        return_6m: 1.5,
+        return_1y: 1.5,
+      }),
+    ],
+    setting: { compare_horizon_days: 30 },
+    today: '2026-10-20',
+  });
+  assert.equal(review.horizon_days, 30);
+  assert.deepEqual(
+    review.candidates.map((item) => item.code).sort(),
+    ['SHORT30', 'SHORT7'],
+  );
+  assert.ok(review.candidates.every((item) => item.bucket === 'short'));
+  assert.ok(
+    review.candidates.every((item) =>
+      item.reasons.includes('日开持仓按短期限（7–30 天）候选比较'),
+    ),
+  );
+  assert.ok(
+    review.candidates.every((item) => item.term_days > 0 && item.term_days <= 30),
+  );
 });
 
 test('maturity inside 14 days creates a replacement window reminder', () => {

@@ -2,12 +2,14 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AppSidebar from '@/components/AppSidebar.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import ToastBanner from '@/components/ToastBanner.vue'
 
 const route = useRoute()
 const isInvestment = computed(
   () => route.meta.module === 'investment' || route.name === 'investment-tech-map',
 )
+const showBackToTop = computed(() => route.meta.hideBackToTop !== true)
 const sidebarOpen = ref(false)
 
 watch(
@@ -64,6 +66,7 @@ watch(
     </div>
   </div>
   <ToastBanner />
+  <BackToTop v-if="showBackToTop" />
 </template>
 
 <style scoped>

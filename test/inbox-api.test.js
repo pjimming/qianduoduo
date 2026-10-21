@@ -8,6 +8,7 @@ const path = require('node:path');
 const { openDatabase } = require('../lib/db');
 const { createServer } = require('../server');
 const { shiftDate, todayShanghai } = require('../lib/metrics');
+const { makeSourceItems } = require('../lib/inbox-center');
 
 const ONE_PIXEL_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII=';
@@ -141,6 +142,58 @@ test('confirmation API publishes deduplicated action items to the message center
   );
   assert.equal(matches.length, 1);
   assert.match(matches[0].summary, /已核对赎回规则/);
+});
+
+test('holding review message explains candidate, comparison period, gain and threshold', () => {
+  const items = makeSourceItems({
+    meta: { today: '2026-10-21' },
+    workspace: {
+      holding_reviews: [
+        {
+          lot_id: '6:107320A',
+          product_name: '招银理财招睿添利日开1号A',
+          product_code: '107320A',
+          verdict: 'replace',
+          verdict_label: '建议替换',
+          reminder: {
+            level: 'none',
+            text: '日开产品无固定到期日，按月复核即可',
+          },
+          horizon_days: 30,
+          top_candidate_code: 'JX040213',
+          candidates: [
+            {
+              code: 'JX040213',
+              name: '建信理财嘉鑫固收类最低持有30天产品第9期',
+              comparison_days: 30,
+              min_gain_amount: 1,
+              execution_ready: false,
+              switch: { difference: 6.85 },
+            },
+          ],
+          thresholds: { min_gain_amount: 1 },
+          redemption: { redeemable_now: true },
+          verify_date: '2026-11-05',
+        },
+      ],
+    },
+    automation: {},
+  });
+  const item = items.find((entry) => entry.source_type === 'holding_review');
+  assert.ok(item);
+  assert.equal(item.title, '持仓出现替换候选');
+  assert.match(item.summary, /招银理财招睿添利日开1号A → 建信理财/);
+  assert.match(item.summary, /比较 30 天/);
+  assert.match(item.summary, /预计多赚 ¥6\.85/);
+  assert.match(item.summary, /门槛 ¥1\.00/);
+  assert.match(item.summary, /当前可赎回/);
+  assert.doesNotMatch(item.summary, /日开产品无固定到期日/);
+  assert.equal(item.action_label, '查看替换测算');
+  assert.equal(item.metadata.candidate_code, 'JX040213');
+  assert.equal(item.metadata.comparison_days, 30);
+  assert.equal(item.metadata.expected_difference, 6.85);
+  assert.equal(item.metadata.min_gain_amount, 1);
+  assert.equal(item.due_at, '2026-11-05');
 });
 
 test('income screenshot API accepts a queued capture and records the P&L', async (t) => {

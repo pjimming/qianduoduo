@@ -47,6 +47,14 @@ const sections = computed(() => [
       description="先写下当时的理由、预期和失效条件，再由自动评估补证据。自动评估只把结果送进待确认队列，不代替人工判断。"
     >
       <template #actions>
+        <RouterLink
+          v-if="pendingEvaluations > 0"
+          class="r2-head-chip is-warn"
+          :to="{ name: 'r2-evaluation', hash: '#automation' }"
+          title="自动评估只进入待确认队列，不代替人工判断"
+        >
+          待确认评估 · {{ pendingEvaluations }}
+        </RouterLink>
         <span
           v-if="wrongGood > 0"
           class="r2-head-chip is-warn"

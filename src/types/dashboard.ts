@@ -386,6 +386,10 @@ export interface HoldingReviewCandidate {
   yield_gap_pp: number | null
   term_gap_days: number | null
   comparison_days: number
+  min_gain_amount: number
+  min_gain_rule_pct: number
+  min_gain_base_days: number
+  min_gain_floor: number
   term_warning: string
   quota_available: number | null
   quota_max_order: number | null
@@ -455,6 +459,9 @@ export interface HoldingReview {
     idle_source: string
     compare_horizon_days: number
     min_gain_amount: number
+    min_gain_rule_pct: number
+    min_gain_base_days: number
+    min_gain_floor: number
     next_redeem_open_date: string
     notes: string
     verified_at: string
@@ -464,6 +471,9 @@ export interface HoldingReview {
     min_yield_edge_pp: number
     break_even_margin_pp: number
     min_gain_amount: number
+    min_gain_rule_pct: number
+    min_gain_base_days: number
+    min_gain_floor: number
     horizon_days: number
     idle_days: number
   }
@@ -1305,7 +1315,7 @@ export interface HoldingReviewSettingInput {
   purchase_fee_bps: number
   idle_days: number | null
   compare_horizon_days: number
-  min_gain_amount: number
+  min_gain_amount?: number
   next_redeem_open_date: string
   notes: string
   verified_at: string

@@ -110,6 +110,10 @@ async function main() {
 
     await page.locator('.body-hit').first().click()
     await page.waitForSelector('.rp-doc')
+    assert(
+      (await page.locator('.back-to-top').count()) === 0,
+      '报告阅读页不应显示全局回到顶部悬浮球',
+    )
     assert(new URL(page.url()).hash.length > 1, '正文命中没有跳到章节锚点')
     assert(
       (await page.locator('iframe').count()) === 0,
@@ -282,6 +286,13 @@ async function main() {
 
     await page.goto(`${base}/ledger/review`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.monthly-record-panel')
+    const reviewSectionOrder = await page
+      .locator('.r2-stack > [id]')
+      .evaluateAll((sections) => sections.map((section) => section.id))
+    assert(
+      reviewSectionOrder.join(',') === 'score,rhythm,monthly-notes,quarterly-notes',
+      `复盘页模块顺序不正确：${reviewSectionOrder.join(',')}`,
+    )
     assert(
       (await page.locator('.review-module-card').count()) === 2,
       '复盘页应有复盘节奏和自动复盘两张模块卡',
@@ -324,6 +335,21 @@ async function main() {
 
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#inbox .rw-dropzone')
+    const tradesSectionOrder = await page
+      .locator('.r2-stack > section')
+      .evaluateAll((sections) => sections.map((section) => section.id))
+    assert(
+      tradesSectionOrder.join(',') === 'holdings,valuations,trades,inbox',
+      `交易与持仓页模块顺序不正确：${tradesSectionOrder.join(',')}`,
+    )
+    assert(
+      (await page.locator('.back-to-top').count()) === 0,
+      '页面顶部不应提前显示回到顶部悬浮球',
+    )
+    await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'instant' }))
+    await page.waitForSelector('.back-to-top')
+    await page.locator('.back-to-top').click()
+    await page.waitForFunction(() => window.scrollY < 2)
     assert(
       (await page.locator('#inbox .rw-dropzone').count()) === 1,
       '交易收件箱拖拽区没有渲染',
@@ -438,6 +464,16 @@ async function main() {
     await assertFontFloor(page, '.inbox-page', '消息中心移动端')
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.product-valuation-panel .pv-card')
+    await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'instant' }))
+    await page.waitForSelector('.back-to-top')
+    const mobileBackToTop = await page.locator('.back-to-top').evaluate((element) => {
+      const rect = element.getBoundingClientRect()
+      return { width: rect.width, height: rect.height }
+    })
+    assert(
+      mobileBackToTop.width >= 40 && mobileBackToTop.height >= 40,
+      '移动端回到顶部悬浮球触控区域过小',
+    )
     assert(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
@@ -449,6 +485,13 @@ async function main() {
 
     await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.allocation-bucket')
+    const productSectionOrder = await page
+      .locator('.r2-stack > section')
+      .evaluateAll((sections) => sections.map((section) => section.id))
+    assert(
+      productSectionOrder.join(',') === 'holding-reviews,products,events',
+      `产品与配置页模块顺序不正确：${productSectionOrder.join(',')}`,
+    )
     assert(
       (await page.locator('.allocation-bucket').count()) === 3,
       '产品区没有渲染三个期限桶的分配结果',
@@ -461,6 +504,107 @@ async function main() {
       (await page.locator('.product-module-card').count()) >= 4,
       '产品页应有配置、目标产品、观察名单和风险边界模块卡',
     )
+    await page.waitForSelector('#holding-reviews .hr-card')
+    const holdingReviewCards = page.locator('#holding-reviews .hr-card')
+    const holdingReviewCount = await holdingReviewCards.count()
+    const holdingSearch = page.getByLabel('搜索持仓')
+    await holdingSearch.click()
+    await page.waitForSelector('#holding-review-search-options')
+    const searchOptions = page.locator('#holding-review-search-options .hr-search-option')
+    assert((await searchOptions.count()) > 0, '点击持仓搜索框没有展开持仓下拉')
+    const suggestedCode = await searchOptions.first().getAttribute('data-review-code')
+    assert(suggestedCode, '持仓搜索下拉缺少产品代码')
+    await searchOptions.first().click()
+    assert(
+      (await holdingSearch.inputValue()) === suggestedCode,
+      '点击持仓搜索下拉后没有带入产品代码',
+    )
+    assert(
+      (await page.locator('#holding-review-search-options').count()) === 0,
+      '选择持仓下拉项后没有收起下拉',
+    )
+    await holdingSearch.fill('')
+    const firstHoldingCode = (
+      (await holdingReviewCards.first().locator('.hr-card-title small').textContent()) ?? ''
+    )
+      .split('·')[0]
+      .trim()
+    assert(firstHoldingCode, '持仓复核卡片没有产品代码')
+    await holdingSearch.fill(firstHoldingCode)
+    await holdingSearch.press('Escape')
+    await page.waitForFunction(
+      (code) =>
+        Array.from(document.querySelectorAll('#holding-reviews .hr-card')).every(
+          (card) => card.textContent?.includes(code),
+        ),
+      firstHoldingCode,
+    )
+    assert(
+      (await holdingReviewCards.count()) > 0,
+      '按产品代码搜索持仓没有结果',
+    )
+    await holdingSearch.fill('不存在的持仓代码')
+    await page.waitForSelector('#holding-review-search-options')
+    assert(
+      (
+        await page
+          .locator('#holding-review-search-options .hr-search-menu-empty')
+          .textContent()
+      )?.includes('没有匹配的持仓'),
+      '持仓搜索下拉没有显示无结果状态',
+    )
+    await holdingSearch.press('Escape')
+    await page.waitForSelector('#holding-reviews .hr-filter-empty')
+    await page
+      .locator('#holding-reviews .hr-filter-empty')
+      .getByRole('button', { name: '清除筛选' })
+      .click()
+    assert(
+      (await holdingReviewCards.count()) === holdingReviewCount,
+      '清除搜索后没有恢复全部持仓',
+    )
+    const firstVerdict = await holdingReviewCards.first().getAttribute('data-verdict')
+    assert(firstVerdict, '持仓复核卡片缺少复核结论')
+    await page
+      .locator(`#holding-reviews [data-filter="${firstVerdict}"]`)
+      .click()
+    await page.waitForFunction(
+      (verdict) => {
+        const cards = Array.from(
+          document.querySelectorAll('#holding-reviews .hr-card'),
+        )
+        return (
+          cards.length > 0 &&
+          cards.every((card) => card.getAttribute('data-verdict') === verdict)
+        )
+      },
+      firstVerdict,
+    )
+    await page
+      .locator('#holding-reviews .hr-filter-meta')
+      .getByRole('button', { name: '清除筛选' })
+      .click()
+    assert(
+      (await holdingReviewCards.count()) === holdingReviewCount,
+      '清除结论筛选后没有恢复全部持仓',
+    )
+    await assertFontFloor(page, '#holding-reviews', '当前持仓与同期限候选桌面端')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await holdingSearch.scrollIntoViewIfNeeded()
+    await holdingSearch.click()
+    await page.waitForSelector('#holding-review-search-options')
+    const mobileSearchMenuVisible = await page
+      .locator('#holding-review-search-options')
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        return rect.top >= 0 && rect.bottom <= window.innerHeight
+      })
+    assert(
+      mobileSearchMenuVisible,
+      '移动端持仓搜索下拉超出可视区域',
+    )
+    await holdingSearch.press('Escape')
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.getByRole('button', { name: '查看全部产品' }).click()
     const poolDialog = page.locator(
@@ -666,6 +810,13 @@ async function main() {
 
     await page.goto(`${base}/ledger/evaluation`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#automation .rw-automation-grid')
+    const evaluationSectionOrder = await page
+      .locator('.r2-stack > section')
+      .evaluateAll((sections) => sections.map((section) => section.id))
+    assert(
+      evaluationSectionOrder.join(',') === 'decisions,automation',
+      `决策与评估页模块顺序不正确：${evaluationSectionOrder.join(',')}`,
+    )
     assert(
       (await page.getByRole('button', { name: '立即运行自动化' }).count()) === 1,
       '自动评估面板没有运行入口',

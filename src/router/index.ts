@@ -106,6 +106,7 @@ const router = createRouter({
       meta: {
         module: 'investment',
         title: '投资 · 股票调研报告 · 钱多多',
+        hideBackToTop: true,
       },
     },
     {

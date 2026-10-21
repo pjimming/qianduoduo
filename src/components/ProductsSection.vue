@@ -289,7 +289,7 @@ async function saveQuotas(): Promise<void> {
           <span>固定为 0%；短桶承担流动性。target3 固定为短期 30% / 中期 35% / 长期 35%。</span>
           <span v-if="allocation.daily_open.migration_required">
             现有日开 ¥{{ formatMoney(allocation.daily_open.existing_amount, 0) }} 保留为真实持仓，
-            按到期、赎回空档和同期限候选迁移。
+            按到期、赎回空档和短期限（7–30 天）候选迁移。
           </span>
         </div>
 

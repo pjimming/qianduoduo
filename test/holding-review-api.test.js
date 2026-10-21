@@ -87,7 +87,6 @@ test('holding review API builds candidates, stores redemption rules and links a 
       purchase_fee_bps: 0,
       idle_days: null,
       compare_horizon_days: 30,
-      min_gain_amount: 20,
       next_redeem_open_date: '2027-01-18',
       notes: '产品说明书：赎回 T+1 确认、T+1 到账，赎回费 0',
       verified_at: '2026-10-20',
@@ -99,7 +98,16 @@ test('holding review API builds candidates, stores redemption rules and links a 
   const updated = dashboard.workspace.holding_reviews[0];
   assert.equal(updated.review_setting.complete, true);
   assert.equal(updated.review_setting.idle_effective_days, 3);
-  assert.equal(updated.thresholds.min_gain_amount, 20);
+  assert.equal(
+    updated.thresholds.min_gain_amount,
+    Math.round(
+      Math.max(
+        1,
+        7500 * 0.001 * updated.horizon_days / 90,
+      ) * 100,
+    ) / 100,
+  );
+  assert.equal(updated.thresholds.min_gain_rule_pct, 0.1);
   assert.equal(updated.next_redeem_open_date, '2027-01-18');
 
   const decision = await postJson(`${base}/api/review/decisions`, {
