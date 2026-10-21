@@ -379,9 +379,9 @@ function decisionSummary(item: DecisionEntry | null): string {
         </header>
 
         <div class="hr-metrics">
-          <span>剩余本金 <strong>¥{{ formatMoney(review.amount, 0) }}</strong></span>
+          <span>未赎回成本本金 <strong>¥{{ formatMoney(review.amount, 0) }}</strong></span>
           <span>
-            到期
+            到期日
             <strong>{{ review.maturity_date ? formatDateShort(review.maturity_date) : '日开/无' }}</strong>
           </span>
           <span>

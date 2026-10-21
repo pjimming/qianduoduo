@@ -332,6 +332,19 @@ async function main() {
       (await page.locator('#holdings .rw-bucket').count()) >= 4,
       '持仓期限桶没有渲染',
     )
+    const holdingsTerminology =
+      (await page.locator('#holdings').textContent()) || ''
+    assert(
+      holdingsTerminology.includes('未赎回成本本金') &&
+        !holdingsTerminology.includes('剩余本金'),
+      '持仓页仍在使用有歧义的“剩余本金”名称',
+    )
+    const tradesTerminology = (await page.locator('#trades').textContent()) || ''
+    assert(
+      tradesTerminology.includes('累计已实现盈亏') &&
+        !tradesTerminology.includes('已实现收益'),
+      '交易流水仍在使用有歧义的“已实现收益”名称',
+    )
     assert(
       (await page.locator('.product-valuation-panel .pv-card').count()) === 2,
       '逐产品收益档案没有渲染两张产品卡',

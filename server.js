@@ -445,7 +445,7 @@ function validateHoldingPayload(payload) {
   if (!riskLevel) return { error: '风险等级只能是 R2 或 PR2' };
   const amount = Number(payload.amount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12) {
-    return { error: '持仓金额需要是大于 0 的数字' };
+    return { error: '买入金额需要是大于 0 的数字' };
   }
   const purchaseDate = String(payload.purchase_date || '').trim();
   if (!parseYmd(purchaseDate)) return { error: '买入日期格式应为 YYYY-MM-DD' };
@@ -1010,16 +1010,16 @@ function buildMonthlyReviewMarkdown({
   lines.push('');
   lines.push('> 这是导出时的当前持仓，不是月末持仓快照。');
   lines.push('');
-  lines.push(`- 总持仓金额：${moneyText(holdingsSummary.total_amount)}`);
+  lines.push(`- 未赎回成本本金：${moneyText(holdingsSummary.total_amount)}`);
   lines.push(
-    `- 单只最高占比：${
+    `- 最大单只成本占比：${
       holdingsSummary.max_product
         ? `${holdingsSummary.max_product.name} ${pctText(holdingsSummary.max_product.pct, 1)}`
         : '—'
     }`,
   );
   lines.push(
-    `- 日开 + 30 天内占比：${pctText(holdingsSummary.liquidity_ratio_pct, 1)}`,
+    `- 日开及 30 天内成本占比：${pctText(holdingsSummary.liquidity_ratio_pct, 1)}`,
   );
   lines.push(
     `- 已到期持仓：${holdingsSummary.overdue_count} 笔，${moneyText(

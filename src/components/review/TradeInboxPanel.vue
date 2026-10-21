@@ -287,7 +287,7 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
               </select>
             </label>
             <label class="rw-field">
-              <span>金额</span>
+              <span>交易金额</span>
               <input v-model.number="draftFor(item).amount" type="number" min="0" step="0.01" />
             </label>
             <label class="rw-field">
@@ -299,7 +299,7 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
               <input v-model="draftFor(item).product_name" type="text" maxlength="120" />
             </label>
             <label class="rw-field">
-              <span>期限（天）</span>
+              <span>产品期限（天）</span>
               <input v-model.number="draftFor(item).term_days" type="number" min="0" max="3650" />
             </label>
             <label v-if="draftFor(item).status === 'confirmed'" class="rw-field">
@@ -310,7 +310,7 @@ function draftFor(item: TradeInboxItem): TradeInboxParsed {
               v-if="draftFor(item).trade_type === 'redeem' || draftFor(item).trade_type === 'switch'"
               class="rw-field"
             >
-              <span>到账金额</span>
+              <span>实际到账金额</span>
               <input v-model.number="draftFor(item).settlement_amount" type="number" min="0" step="0.01" />
             </label>
           </div>

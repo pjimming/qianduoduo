@@ -568,7 +568,7 @@ defineExpose({
               <input v-model.trim="product.product_name" type="text" maxlength="100" />
             </label>
             <label>
-              <span>持仓金额</span>
+              <span>当日持仓金额</span>
               <input v-model.number="product.holding_amount" type="number" min="0" step="0.01" />
             </label>
             <label>

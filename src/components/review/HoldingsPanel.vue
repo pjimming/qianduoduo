@@ -73,19 +73,25 @@ function barWidth(value: number | null): string {
     </div>
 
     <div class="rw-stat-row rw-stat-row-spaced">
-      <span class="rw-stat-chip">剩余本金 <strong>¥{{ formatMoney(summary.total_amount, 0) }}</strong></span>
       <span class="rw-stat-chip">
-        单只最高
+        未赎回成本本金
+        <strong>¥{{ formatMoney(summary.total_amount, 0) }}</strong>
+      </span>
+      <span class="rw-stat-chip">
+        最大单只成本占比
         <strong>{{ formatPct(summary.max_product?.pct, 1) }}</strong>
       </span>
       <span class="rw-stat-chip">
-        日开+30天
+        日开及30天内占比
         <strong>{{ formatPct(summary.liquidity_ratio_pct, 1) }}</strong>
       </span>
       <span class="rw-stat-chip" :class="{ 'is-warn': summary.overdue_count > 0 }">
-        已到期 <strong>{{ summary.overdue_count }} 笔</strong>
+        到期未赎回 <strong>{{ summary.overdue_count }} 笔</strong>
       </span>
     </div>
+    <p class="rw-form-hint cost-basis-note">
+      未赎回成本本金 = 已确认买入金额 − 已匹配赎回本金；它不是账户余额，也不是产品当前市值。
+    </p>
 
     <div v-if="summary.alerts.length" class="rw-alerts">
       <span
@@ -101,8 +107,8 @@ function barWidth(value: number | null): string {
     <div class="rw-holdings-overview">
       <section class="rw-subpanel">
         <div class="rw-subhead">
-          <strong>单只集中度</strong>
-          <span>上限参考 30%</span>
+          <strong>单只成本占比</strong>
+          <span>未赎回成本上限参考 30%</span>
         </div>
         <div v-if="summary.by_product.length" class="rw-bars">
           <div v-for="item in summary.by_product.slice(0, 6)" :key="item.code || item.name" class="rw-bar-row">
@@ -122,8 +128,8 @@ function barWidth(value: number | null): string {
 
       <section class="rw-subpanel">
         <div class="rw-subhead">
-          <strong>发行方集中度</strong>
-          <span>多发行方时参考 50%</span>
+          <strong>发行方成本占比</strong>
+          <span>多发行方时参考上限 50%</span>
         </div>
         <div v-if="summary.by_issuer.length" class="rw-bars">
           <div v-for="item in summary.by_issuer.slice(0, 5)" :key="item.name" class="rw-bar-row">
@@ -144,8 +150,8 @@ function barWidth(value: number | null): string {
 
     <section class="rw-subpanel">
       <div class="rw-subhead">
-        <strong>期限桶</strong>
-        <span>日开 + 30 天内建议不低于 30%</span>
+        <strong>未赎回成本的产品期限分布</strong>
+        <span>日开及 30 天内建议不低于 30%</span>
       </div>
       <div class="rw-bucket-grid">
         <div v-for="bucket in bucketRows" :key="bucket.label" class="rw-bucket">
@@ -159,7 +165,7 @@ function barWidth(value: number | null): string {
     <section class="rw-subpanel">
       <div class="rw-subhead">
         <strong>未来 12 个月到期阶梯</strong>
-        <span>按已确认批次的剩余本金</span>
+        <span>按已确认批次的未赎回成本本金</span>
       </div>
       <div class="rw-ladder">
         <div v-for="item in summary.ladder" :key="item.month" class="rw-ladder-col">
@@ -171,7 +177,7 @@ function barWidth(value: number | null): string {
         </div>
       </div>
       <p v-if="summary.beyond_12m_amount > 0" class="rw-form-hint">
-        12 个月以上到期：¥{{ formatMoney(summary.beyond_12m_amount, 0) }}
+        到期日在 12 个月以上的未赎回成本：¥{{ formatMoney(summary.beyond_12m_amount, 0) }}
       </p>
     </section>
 
@@ -183,12 +189,12 @@ function barWidth(value: number | null): string {
         <thead>
           <tr>
             <th>产品 / 批次</th>
-            <th class="is-number">剩余本金</th>
-            <th>买入</th>
-            <th>期限</th>
-            <th>到期</th>
-            <th class="is-number">已赎回本金</th>
-            <th class="is-number">已实现收益</th>
+            <th class="is-number">未赎回成本本金</th>
+            <th>买入日</th>
+            <th>产品期限</th>
+            <th>到期日</th>
+            <th class="is-number">累计已赎回成本</th>
+            <th class="is-number">已实现盈亏</th>
             <th>风险</th>
           </tr>
         </thead>

@@ -34,7 +34,7 @@ const sections = computed(() => [
   {
     id: 'holdings',
     label: '持仓结构',
-    meta: `${props.dashboard.workspace.holdings.length} 个批次`,
+    meta: `${props.dashboard.workspace.holdings.length} 个未赎回批次`,
   },
 ])
 
@@ -48,7 +48,7 @@ function openTrades(): void {
     <R2PageHeader
       kicker="TRADES &amp; HOLDINGS"
       title="截图校正、交易流水与持仓结构"
-      description="交易流水是持仓的唯一事实源：待确认交易只占额度，不进入集中度、期限桶和流动性比例；确认后再生成批次。"
+      description="交易流水是持仓的唯一事实源：待确认买入只占额度，待确认赎回不改持仓；确认后才生成或扣减未赎回成本批次。"
     >
       <template #actions>
         <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-products' }">

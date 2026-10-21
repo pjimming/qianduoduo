@@ -268,13 +268,15 @@ function sourceLabel(source: string): string {
     <div class="rw-stat-row rw-stat-row-spaced">
       <span class="rw-stat-chip">
         待确认 <strong>{{ overview.summary.pending_count }} 笔</strong>
-        ¥{{ formatMoney(overview.summary.pending_buy_amount, 0) }}
+        · 买入占用 ¥{{ formatMoney(overview.summary.pending_buy_amount, 0) }}
       </span>
       <span class="rw-stat-chip">
-        已确认持仓 <strong>¥{{ formatMoney(overview.summary.open_principal, 0) }}</strong>
+        未赎回成本本金
+        <strong>¥{{ formatMoney(overview.summary.open_principal, 0) }}</strong>
       </span>
       <span class="rw-stat-chip">
-        已实现收益 <strong>¥{{ formatMoney(overview.summary.realized_pnl, 2) }}</strong>
+        累计已实现盈亏
+        <strong>¥{{ formatMoney(overview.summary.realized_pnl, 2) }}</strong>
       </span>
       <span
         class="rw-stat-chip"
@@ -351,11 +353,11 @@ function sourceLabel(source: string): string {
           </select>
         </label>
         <label class="rw-field">
-          <span>{{ form.trade_type === 'buy' ? '买入金额' : '赎回本金' }}</span>
+          <span>{{ form.trade_type === 'buy' ? '买入金额' : '赎回本金（成本口径）' }}</span>
           <input v-model.number="form.amount" type="number" min="0" step="0.01" required />
         </label>
         <label v-if="form.trade_type !== 'buy'" class="rw-field">
-          <span>到账金额（含收益）</span>
+          <span>实际到账金额（含损益）</span>
           <input v-model.number="form.settlement_amount" type="number" min="0" step="0.01" />
         </label>
         <label class="rw-field">
@@ -399,7 +401,7 @@ function sourceLabel(source: string): string {
         </label>
       </div>
       <p class="rw-form-hint">
-        赎回按买入批次先进先出匹配；待确认交易不会进入持仓和收益。到账金额留空时，已实现收益暂按 0 计。
+        赎回按买入批次先进先出匹配；待确认交易不会进入持仓。实际到账金额留空时，已实现盈亏暂按 0 计。
       </p>
       <div class="rw-form-actions">
         <button type="submit" class="rw-button" :disabled="saving">
@@ -431,10 +433,10 @@ function sourceLabel(source: string): string {
             <th>日期</th>
             <th>类型</th>
             <th>产品</th>
-            <th class="is-number">金额</th>
+            <th class="is-number">交易金额</th>
             <th>状态</th>
             <th>确认日</th>
-            <th>到期</th>
+            <th>到期日</th>
             <th>来源</th>
             <th></th>
           </tr>
@@ -461,7 +463,7 @@ function sourceLabel(source: string): string {
                 批次匹配：
                 <span v-for="allocation in trade.allocations" :key="allocation.id">
                   #{{ allocation.buy_trade_id }} ¥{{ formatMoney(allocation.principal, 0) }}
-                  / 收益 ¥{{ formatMoney(allocation.realized_pnl, 2) }}
+                  / 已实现盈亏 ¥{{ formatMoney(allocation.realized_pnl, 2) }}
                 </span>
               </small>
             </td>

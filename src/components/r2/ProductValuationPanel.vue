@@ -151,7 +151,7 @@ async function save(): Promise<void> {
         <p class="kicker">PRODUCT YIELD ARCHIVE</p>
         <strong class="rw-panel-title">逐产品每日收益档案</strong>
         <p class="rw-panel-sub">
-          产品收益只用于个人持有表现，不重复计入账户总收益；完全赎回后历史仍保留。
+          产品收益只汇总已成功记录的日期，不重复计入账户总收益；未记录日期不按 0 计，完全赎回后历史仍保留。
         </p>
       </div>
       <div class="rw-toolbar-actions pv-summary-chips">
@@ -198,13 +198,13 @@ async function save(): Promise<void> {
         <span class="pv-card-code">{{ item.product_code }}</span>
         <span class="pv-card-stats">
           <span>
-            <small>累计个人收益</small>
+            <small>累计已记录收益</small>
             <strong :class="{ 'is-negative': item.cumulative_pnl < 0 }">
               ¥{{ formatMoney(item.cumulative_pnl, 2) }}
             </strong>
           </span>
           <span>
-            <small>档案天数 / 持有天数</small>
+            <small>已记录日数 / 持有天数</small>
             <strong>{{ item.observed_days }} / {{ item.holding_days }} 天</strong>
           </span>
           <span>
@@ -219,7 +219,7 @@ async function save(): Promise<void> {
           </span>
         </span>
         <span class="pv-card-foot">
-          最近收益 {{ item.last_yield_date || '—' }} · 查看逐日记录 →
+          最近记录日 {{ item.last_yield_date || '—' }} · 查看逐日记录 →
         </span>
       </button>
     </div>
@@ -249,7 +249,7 @@ async function save(): Promise<void> {
           <input v-model="form.yield_date" type="date" :max="today" required />
         </label>
         <label>
-          <span>持仓金额</span>
+          <span>当日持仓金额</span>
           <input v-model.number="form.holding_amount" type="number" min="0" step="0.01" />
         </label>
         <label>
@@ -285,7 +285,7 @@ async function save(): Promise<void> {
           <thead>
             <tr>
               <th>收益日期</th>
-              <th class="is-number">持仓金额</th>
+              <th class="is-number">当日持仓金额</th>
               <th class="is-number">当日收益</th>
               <th>来源</th>
               <th>备注</th>
