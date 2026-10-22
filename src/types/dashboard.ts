@@ -1243,6 +1243,10 @@ export interface Product {
   target_amount: number
   target_pct: number
   allocation_bucket: ProductBucket | null
+  allocation_mode: 'top_up' | 'new' | null
+  minimum_order_amount: number
+  meaningful_target_amount: number
+  meaningful_min_amount: number
   existing_exposure: number
   issuer_exposure: number
   quota_status: 'unverified' | 'limited' | 'verified' | null
@@ -1262,7 +1266,10 @@ export interface ProductAllocationBucket {
   existing_amount: number
   budget_amount: number
   new_amount: number
+  top_up_amount: number
+  new_position_amount: number
   unallocated_amount: number
+  minimum_new_position_amount: number
   final_amount: number
   final_pct: number
   status: 'filled' | 'partial' | 'no_budget'
@@ -1305,8 +1312,17 @@ export interface ProductAllocation {
   committed_amount: number
   available_cash: number
   allocated_amount: number
+  top_up_amount: number
+  new_position_amount: number
   unallocated_amount: number
   overcommitted: boolean
+  allocation_policy: {
+    confirmed_holdings_first: true
+    meaningful_new_position_ratio_pct: number
+    target_slice_amount: number
+    max_single_amount: number
+    minimum_new_position_amount: number
+  }
   liquidity: {
     floor_pct: number
     target_amount: number

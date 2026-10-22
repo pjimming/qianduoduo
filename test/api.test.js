@@ -65,6 +65,18 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
     capitalInitialized.dashboard.products.allocation.allocated_amount <=
       capitalInitialized.dashboard.products.allocation.available_cash + 0.01,
   );
+  assert.ok(
+    capitalInitialized.dashboard.products.watchlist.every((item) =>
+      item.allocation_mode === 'top_up'
+        ? item.target_amount >= item.minimum_order_amount
+        : item.target_amount >= item.meaningful_min_amount,
+    ),
+  );
+  assert.equal(
+    capitalInitialized.dashboard.products.allocation.top_up_amount +
+      capitalInitialized.dashboard.products.allocation.new_position_amount,
+    capitalInitialized.dashboard.products.allocation.allocated_amount,
+  );
 
   const allocationCode = capitalInitialized.dashboard.products.watchlist[0].code;
   const allocationResponse = await fetch(`${base}/api/products/allocation`, {
@@ -75,7 +87,7 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
       max_issuer_pct: 40,
       bucket_targets: { short: 30, medium: 35, long: 35 },
       quota_by_code: {
-        [allocationCode]: { available: 1000, max_order: 800 },
+        [allocationCode]: { available: 40000, max_order: 30000 },
       },
     }),
   });
@@ -86,7 +98,8 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
     (item) => item.code === allocationCode,
   );
   assert.ok(quotaProduct);
-  assert.ok(quotaProduct.target_amount <= 800.01);
+  assert.ok(quotaProduct.target_amount <= 30000.01);
+  assert.ok(quotaProduct.target_amount >= quotaProduct.meaningful_min_amount);
   assert.equal(quotaProduct.quota_status, 'verified');
 
   const invalidAllocation = await fetch(`${base}/api/products/allocation`, {

@@ -114,6 +114,9 @@ const goalText = computed(() => {
   )} · 待确认买入 ¥${formatMoney(value.pending.amount, 0)} · 新增分配 ¥${formatMoney(
     value.allocated_amount,
     0,
+  )}（补仓 ¥${formatMoney(value.top_up_amount, 0)} / 新开 ¥${formatMoney(
+    value.new_position_amount,
+    0,
   )} · 未分配 ¥${formatMoney(value.unallocated_amount, 0)} · 候选池 ${stats.value.total} 只（短 ${
     counts.short
   } / 中 ${counts.medium} / 长 ${counts.long}）`
@@ -311,6 +314,12 @@ async function saveQuotas(): Promise<void> {
             <div class="allocation-bucket-meta">
               <span>已有 ¥{{ formatMoney(bucket.existing_amount, 0) }}</span>
               <span>待配 ¥{{ formatMoney(bucket.budget_amount, 0) }}</span>
+              <span v-if="bucket.top_up_amount > 0">
+                补仓 ¥{{ formatMoney(bucket.top_up_amount, 0) }}
+              </span>
+              <span v-if="bucket.new_position_amount > 0">
+                新开 ¥{{ formatMoney(bucket.new_position_amount, 0) }}
+              </span>
             </div>
             <p v-if="bucket.reasons.length">{{ bucket.reasons.join('；') }}</p>
           </article>
@@ -449,6 +458,13 @@ async function saveQuotas(): Promise<void> {
                 {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
               </span>
               <span class="product-code">{{ product.code }}</span>
+              <span
+                v-if="product.allocation_mode"
+                class="allocation-mode-badge"
+                :class="`is-${product.allocation_mode}`"
+              >
+                {{ product.allocation_mode === 'top_up' ? '优先补仓' : '首次建仓' }}
+              </span>
             </div>
             <h3 class="product-name">{{ product.name }}</h3>
             <div class="allocation-target">
@@ -604,6 +620,7 @@ async function saveQuotas(): Promise<void> {
         </svg>
         <span>
           目标金额由本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来现金流和集中度共同计算。
+          同桶残余资金优先补足仍可加仓的已确认持仓；首次建仓须同时达到起购金额和目标单只金额的一半，避免制造小额新仓。
           本项目日开新增额度固定为 0%，现有日开持仓只作为真实持仓保留并提示迁移；短桶承担流动性。
           公开额度缺失时只给分配上限，不假装可买；买入前必须在招行 App 核对额度、起购金额、赎回规则和产品说明书。
           未分配金额不会为了凑数强行买入，不构成推荐或买入建议。
@@ -858,6 +875,23 @@ async function saveQuotas(): Promise<void> {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 12px;
+}
+
+.allocation-mode-badge {
+  padding: 2px 7px;
+  border: 1px solid rgba(23, 100, 86, 0.22);
+  border-radius: 999px;
+  background: var(--green-wash);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.allocation-mode-badge.is-new {
+  border-color: rgba(185, 137, 58, 0.28);
+  background: #fbf7ed;
+  color: #7b6129;
 }
 
 .allocation-reason {

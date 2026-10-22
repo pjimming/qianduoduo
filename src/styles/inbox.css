@@ -262,6 +262,263 @@
   font: inherit;
 }
 
+.income-history {
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 254, 250, 0.84);
+}
+
+.income-history > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.income-history > summary::-webkit-details-marker {
+  display: none;
+}
+
+.income-history-summary {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.income-history-summary strong {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.income-history-summary > span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.income-history-count {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.income-history-count em {
+  color: var(--green);
+  font-style: normal;
+}
+
+.income-history-count em::after {
+  content: " →";
+}
+
+.income-history[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.income-history[open] .income-history-count em::after {
+  content: " ↑";
+}
+
+.income-history-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.income-history-card {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.income-history-card.is-conflict {
+  border-color: rgba(183, 124, 45, 0.38);
+  background: #fcf7ec;
+}
+
+.income-history-thumb {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.income-history-thumb > a:first-child {
+  display: grid;
+  min-height: 106px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f3f2ec;
+}
+
+.income-history-thumb img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.income-history-no-image {
+  display: grid;
+  min-height: 106px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  background: var(--card-soft);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.income-history-image-link {
+  color: var(--green);
+  font-size: 12px;
+  text-align: center;
+}
+
+.income-history-body {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 10px;
+}
+
+.income-history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.income-history-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.income-history-head strong {
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.income-history-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.income-history-status {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.income-history-card.is-ignored .income-history-status {
+  background: #f1efe8;
+  color: var(--muted);
+}
+
+.income-history-card.is-conflict .income-history-status {
+  background: #f8e9ce;
+  color: #8a5c1c;
+}
+
+.income-history-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.income-history-facts > div {
+  min-width: 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: var(--card-soft);
+}
+
+.income-history-facts dt {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.income-history-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.income-history-products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.income-history-products a {
+  padding: 2px 6px;
+  border: 1px solid rgba(23, 100, 86, 0.2);
+  border-radius: 5px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.income-history-notes {
+  margin: 0;
+  padding: 8px 9px;
+  border-left: 3px solid rgba(23, 100, 86, 0.35);
+  border-radius: 0 7px 7px 0;
+  background: var(--card-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.income-history-card.is-conflict .income-history-notes {
+  border-left-color: rgba(183, 124, 45, 0.55);
+  background: #fbf3e3;
+  color: #7c5b22;
+}
+
+.income-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.income-history-actions a {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .capture-manual {
   margin-top: 16px;
   border: 1px solid var(--line);
@@ -679,6 +936,28 @@
   .income-correction-form .rw-button,
   .income-correction-form .rw-link-button {
     justify-self: start;
+  }
+
+  .income-history > summary,
+  .income-history-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .income-history-count {
+    justify-content: space-between;
+  }
+
+  .income-history-card {
+    grid-template-columns: 1fr;
+  }
+
+  .income-history-thumb > a:first-child {
+    min-height: 180px;
+  }
+
+  .income-history-facts {
+    grid-template-columns: 1fr;
   }
 
   .inbox-hero {

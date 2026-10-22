@@ -271,3 +271,235 @@ test('existing daily-open holdings remain visible as migration facts without bec
   assert.equal(view.allocation.liquidity.existing_amount, 0);
   assert.ok(view.allocation.reasons.some((item) => item.includes('现有日开')));
 });
+
+test('a nearly filled bucket keeps small residual cash instead of opening a tiny new position', () => {
+  const pool = [
+    product({ code: 'SHORT-NEW-1', term_days: 14, return_1y: 3.1 }),
+    product({ code: 'SHORT-NEW-2', term_days: 21, return_1y: 3.0 }),
+  ];
+  const view = buildProductView(pool, {
+    principal: 100000,
+    holdings: [
+      {
+        product_code: 'SHORT-OLD-OUTSIDE-POOL',
+        product_name: '已确认短期持仓',
+        issuer: '其他发行方',
+        amount: 29000,
+        term_days: 14,
+      },
+      {
+        product_code: 'MEDIUM-HELD',
+        product_name: '已确认中期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 90,
+      },
+      {
+        product_code: 'LONG-HELD',
+        product_name: '已确认长期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 180,
+      },
+    ],
+  });
+  const short = view.allocation.buckets.find((item) => item.key === 'short');
+  assert.equal(view.allocation.available_cash, 1000);
+  assert.equal(view.watchlist.length, 0);
+  assert.equal(short.budget_amount, 1000);
+  assert.equal(short.unallocated_amount, 1000);
+  assert.equal(short.new_position_amount, 0);
+  assert.ok(
+    short.reasons.some((item) => item.includes('有意义最低仓位')),
+  );
+  assert.ok(
+    view.allocation.reasons.some((item) => item.includes('不会为分完残余资金新开小仓')),
+  );
+});
+
+test('same-bucket confirmed holdings receive residual cash before any new product', () => {
+  const pool = peers('short', 3).map((item, index) => ({
+    ...item,
+    code: `TOPUP-${index + 1}`,
+    min_amount: 100,
+  }));
+  const view = buildProductView(pool, {
+    principal: 100000,
+    holdings: [
+      {
+        product_code: 'TOPUP-1',
+        product_name: '已确认持仓产品1',
+        issuer: pool[0].issuer,
+        amount: 29000,
+        term_days: 14,
+      },
+      {
+        product_code: 'MEDIUM-HELD',
+        product_name: '已确认中期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 90,
+      },
+      {
+        product_code: 'LONG-HELD',
+        product_name: '已确认长期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 180,
+      },
+    ],
+  });
+  const productRow = view.watchlist.find((item) => item.code === 'TOPUP-1');
+  const short = view.allocation.buckets.find((item) => item.key === 'short');
+  assert.ok(productRow);
+  assert.equal(productRow.allocation_mode, 'top_up');
+  assert.equal(productRow.target_amount, 1000);
+  assert.equal(productRow.meaningful_min_amount, 100);
+  assert.equal(short.top_up_amount, 1000);
+  assert.equal(short.new_position_amount, 0);
+  assert.equal(view.allocation.top_up_amount, 1000);
+  assert.equal(view.allocation.new_position_amount, 0);
+  assert.equal(
+    view.watchlist.filter((item) => item.allocation_mode === 'new').length,
+    0,
+  );
+});
+
+test('new positions are opened only when the allocation reaches the meaningful minimum', () => {
+  const pool = peers('short', 3).map((item, index) => ({
+    ...item,
+    code: `MIN-NEW-${index + 1}`,
+    min_amount: 100,
+  }));
+  const view = buildProductView(pool, {
+    principal: 100000,
+    holdings: [
+      {
+        product_code: 'SHORT-HELD',
+        product_name: '已确认短期持仓',
+        issuer: '其他发行方',
+        amount: 25000,
+        term_days: 14,
+      },
+      {
+        product_code: 'MEDIUM-HELD',
+        product_name: '已确认中期持仓',
+        issuer: '其他发行方',
+        amount: 34000,
+        term_days: 90,
+      },
+      {
+        product_code: 'LONG-HELD',
+        product_name: '已确认长期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 180,
+      },
+    ],
+  });
+  const newPosition = view.watchlist.find((item) =>
+    item.code.startsWith('MIN-NEW-'),
+  );
+  assert.ok(newPosition);
+  assert.equal(newPosition.allocation_mode, 'new');
+  assert.equal(newPosition.meaningful_min_amount, 5000);
+  assert.ok(newPosition.target_amount >= newPosition.meaningful_min_amount);
+  assert.equal(view.allocation.top_up_amount, 0);
+  assert.ok(view.allocation.new_position_amount >= 5000);
+});
+
+test('exhausted quota or reached cap blocks top-up and leaves residual cash unallocated', () => {
+  const pool = peers('short', 3).map((item, index) => ({
+    ...item,
+    code: `BLOCKED-${index + 1}`,
+    min_amount: 100,
+  }));
+  const quotaView = buildProductView(pool, {
+    principal: 100000,
+    settings: {
+      quota_by_code: {
+        'BLOCKED-1': { available: 0 },
+      },
+    },
+    holdings: [
+      {
+        product_code: 'BLOCKED-1',
+        product_name: '额度耗尽持仓',
+        issuer: pool[0].issuer,
+        amount: 29000,
+        term_days: 14,
+      },
+      {
+        product_code: 'MEDIUM-HELD',
+        product_name: '已确认中期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 90,
+      },
+      {
+        product_code: 'LONG-HELD',
+        product_name: '已确认长期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 180,
+      },
+    ],
+  });
+  const quotaShort = quotaView.allocation.buckets.find(
+    (item) => item.key === 'short',
+  );
+  assert.equal(
+    quotaView.watchlist.some((item) => item.code === 'BLOCKED-1'),
+    false,
+  );
+  assert.equal(quotaShort.unallocated_amount, 1000);
+  assert.ok(quotaShort.reasons.some((item) => item.includes('额度不足')));
+
+  const capView = buildProductView(pool, {
+    principal: 100000,
+    settings: {
+      max_single_pct: 25,
+      bucket_targets: { short: 35, medium: 32.5, long: 32.5 },
+    },
+    holdings: [
+      {
+        product_code: 'BLOCKED-1',
+        product_name: '单只上限持仓',
+        issuer: pool[0].issuer,
+        amount: 25000,
+        term_days: 14,
+      },
+      {
+        product_code: 'SHORT-OTHER',
+        product_name: '其他短期持仓',
+        issuer: '其他发行方',
+        amount: 6500,
+        term_days: 14,
+      },
+      {
+        product_code: 'MEDIUM-HELD',
+        product_name: '已确认中期持仓',
+        issuer: '其他发行方',
+        amount: 32500,
+        term_days: 90,
+      },
+      {
+        product_code: 'LONG-HELD',
+        product_name: '已确认长期持仓',
+        issuer: '其他发行方',
+        amount: 32500,
+        term_days: 180,
+      },
+    ],
+  });
+  const capShort = capView.allocation.buckets.find(
+    (item) => item.key === 'short',
+  );
+  assert.equal(
+    capView.watchlist.some((item) => item.code === 'BLOCKED-1'),
+    false,
+  );
+  assert.equal(capShort.unallocated_amount, 3500);
+  assert.ok(capShort.reasons.some((item) => item.includes('上限')));
+  assert.ok(capShort.reasons.some((item) => item.includes('有意义最低仓位')));
+});

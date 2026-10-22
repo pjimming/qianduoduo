@@ -2,6 +2,7 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import EntryForm from '@/components/EntryForm.vue'
+import IncomeScreenshotHistory from '@/components/review/IncomeScreenshotHistory.vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort } from '@/composables/useFormatters'
@@ -668,6 +669,8 @@ defineExpose({
         </div>
       </article>
     </section>
+
+    <IncomeScreenshotHistory :items="incomeInbox" />
 
     <details ref="manualDetailsRef" class="capture-manual">
       <summary>例外情况下手工维护</summary>

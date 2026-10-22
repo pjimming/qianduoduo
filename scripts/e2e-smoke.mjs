@@ -10,7 +10,13 @@
 
 import { chromium } from 'playwright-core'
 import { createRequire } from 'node:module'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,6 +27,8 @@ const { openDatabase } = require('../lib/db.js')
 const { resolveProductCsv } = require('../server.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const ONE_PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII='
 const chromeCandidates = [
   process.env.CHROME_PATH,
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -232,6 +240,91 @@ async function main() {
       ],
       { source: 'income-screenshot', screenshotId: 99 },
     )
+    const addIncomeHistory = ({
+      key,
+      name,
+      status,
+      recordDate,
+      appliedAt,
+      productCode,
+      notes,
+      warning = '',
+    }) => {
+      const storedName = `e2e-income-${key}.png`
+      writeFileSync(
+        path.join(repository.incomeInboxDir, storedName),
+        Buffer.from(ONE_PIXEL_PNG, 'base64'),
+      )
+      const parsed = {
+        date: recordDate,
+        daily_pnl: 5,
+        products: [
+          {
+            product_code: productCode,
+            product_name: productCode === '120056A' ? '招银理财90天' : '招银理财14天',
+            yield_date: recordDate,
+            credit_date: recordDate,
+            daily_pnl: 1,
+          },
+        ],
+        warnings: warning ? [warning] : [],
+        notes,
+      }
+      const item = repository.incomeStore.addInbox({
+        original_name: name,
+        stored_name: storedName,
+        mime: 'image/png',
+        bytes: Buffer.from(ONE_PIXEL_PNG, 'base64').length,
+        sha256: `e2e-income-history-${key}`,
+        parsed,
+        parse_confidence: 95,
+        record_date: recordDate,
+      })
+      return repository.incomeStore.updateInbox(item.id, {
+        parsed,
+        status,
+        applied_at: appliedAt,
+        notes,
+      })
+    }
+    addIncomeHistory({
+      key: 'applied',
+      name: 'e2e-applied.png',
+      status: 'applied',
+      recordDate: '2026-10-18',
+      appliedAt: '2026-10-18T10:00:00.000Z',
+      productCode: '120056A',
+      notes: 'E2E 已入账截图',
+    })
+    addIncomeHistory({
+      key: 'ignored',
+      name: 'e2e-ignored.png',
+      status: 'ignored',
+      recordDate: '2026-10-18',
+      appliedAt: '2026-10-18T10:10:00.000Z',
+      productCode: '120026A',
+      notes: 'E2E 手工忽略截图',
+    })
+    addIncomeHistory({
+      key: 'same',
+      name: 'e2e-same-amount.png',
+      status: 'applied',
+      recordDate: '2026-10-18',
+      appliedAt: '2026-10-18T10:20:00.000Z',
+      productCode: '120056A',
+      notes: 'E2E 同金额忽略截图',
+      warning: '该日期收益已存在且金额一致，本次已忽略',
+    })
+    addIncomeHistory({
+      key: 'conflict',
+      name: 'e2e-conflict.png',
+      status: 'pending',
+      recordDate: '2026-10-18',
+      appliedAt: null,
+      productCode: '120056A',
+      notes: 'E2E 金额冲突截图',
+      warning: '该日期已有不同收益，平台未覆盖',
+    })
 
     await page.goto(`${base}/`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.stats-grid')
@@ -266,6 +359,71 @@ async function main() {
       (await page.locator('.ledger-table tbody tr').count()) === 1,
       '每日记账没有渲染历史记录',
     )
+    const incomeHistory = page.locator('.income-history')
+    await incomeHistory.waitFor()
+    const incomeHistorySummary =
+      (await incomeHistory.locator('summary').textContent()) ?? ''
+    assert(
+      incomeHistorySummary.includes('4 张'),
+      `收益截图历史数量不正确：${JSON.stringify(incomeHistorySummary)}`,
+    )
+    await incomeHistory.locator('summary').click()
+    await page.waitForFunction(
+      () => document.querySelectorAll('.income-history-card').length === 4,
+    )
+    const incomeHistoryText = (await incomeHistory.textContent()) ?? ''
+    for (const label of ['已入账', '已忽略', '同金额已忽略', '金额冲突']) {
+      assert(incomeHistoryText.includes(label), `收益截图历史缺少状态：${label}`)
+    }
+    assert(
+      incomeHistoryText.includes('2026-10-18') &&
+        incomeHistoryText.includes('120056A') &&
+        incomeHistoryText.includes('E2E 金额冲突截图'),
+      '收益截图历史缺少关联日期、产品代码或备注',
+    )
+    const originalHref = await incomeHistory
+      .locator('a[aria-label^="查看收益截图原图"]')
+      .first()
+      .getAttribute('href')
+    assert(originalHref, '收益截图历史没有原图入口')
+    const originalImage = await fetch(new URL(originalHref, base))
+    assert(originalImage.status === 200, '收益截图原图无法访问')
+    assert(
+      (originalImage.headers.get('content-type') || '').includes('image/png'),
+      '收益截图原图响应类型不正确',
+    )
+    const accountHistoryLink = incomeHistory
+      .getByRole('link', { name: '查看当日账户收益' })
+      .first()
+    assert(
+      (await accountHistoryLink.getAttribute('href'))?.includes(
+        '/ledger/daily?date=2026-10-18#records',
+      ),
+      '收益截图历史没有关联到账户收益记录',
+    )
+    await accountHistoryLink.click()
+    await page.waitForURL('**/ledger/daily?date=2026-10-18#records')
+    await page.waitForSelector('#recordDate')
+    assert(
+      (await page.locator('#recordDate').inputValue()) === '2026-10-18',
+      '收益截图历史没有打开对应账户收益记录',
+    )
+    await incomeHistory
+      .getByRole('link', { name: '查看逐产品收益档案' })
+      .first()
+      .click()
+    await page.waitForURL('**/ledger/trades?product=120056A#valuations')
+    await page.waitForSelector('.product-valuation-panel .pv-card.is-selected')
+    await page.waitForSelector('.product-valuation-panel .pv-detail-head')
+    assert(
+      ((await page.locator('.product-valuation-panel .pv-detail-head').textContent()) ?? '')
+        .includes('120056A'),
+      '收益截图历史没有打开对应产品收益档案',
+    )
+    await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.income-history')
+    await page.locator('.income-history > summary').click()
+    await assertFontFloor(page, '.income-history', '收益截图历史桌面端')
 
     await page.locator('.capture-manual > summary').click()
     await page.getByLabel('发生了什么').fill('E2E 特殊事项：额度临时关闭')
@@ -510,6 +668,10 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.income-capture-layout')
+    await page.locator('.income-history > summary').click()
+    await page.waitForFunction(
+      () => document.querySelectorAll('.income-history-card').length === 4,
+    )
     assert(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
@@ -517,6 +679,7 @@ async function main() {
       '移动端每日记账出现横向溢出',
     )
     await assertFontFloor(page, '.rw-quick', '每日记账移动端')
+    await assertFontFloor(page, '.income-history', '收益截图历史移动端')
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.inbox-page')
     assert(

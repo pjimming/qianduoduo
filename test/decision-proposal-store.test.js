@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { openDatabase } = require('../lib/db');
 const { makeSourceItems } = require('../lib/inbox-center');
+const { buildProductView } = require('../lib/products');
 
 function openTemp(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-proposals-'));
@@ -111,6 +112,138 @@ test('proposal engine creates holding-switch and cash-allocation proposals witho
         item.product_code === 'BUY001' &&
         item.amount === 5000,
     ),
+  );
+});
+
+test('cash proposals preserve top-up mode and reject undersized first positions', (t) => {
+  const repository = openTemp(t);
+  const dashboard = proposalDashboard();
+  dashboard.workspace.holding_reviews = [];
+  dashboard.products.allocation.available_cash = 5500;
+  dashboard.products.watchlist = [
+    {
+      ...allocationProduct(),
+      code: 'TOPUP001',
+      name: '已确认持仓补仓',
+      target_amount: 5000,
+      allocation_mode: 'top_up',
+      existing_exposure: 12000,
+      meaningful_target_amount: 10000,
+      meaningful_min_amount: 100,
+    },
+    {
+      ...allocationProduct(),
+      code: 'SMALLNEW',
+      name: '低于门槛的新仓',
+      target_amount: 500,
+      allocation_mode: 'new',
+      existing_exposure: 0,
+      meaningful_target_amount: 10000,
+      meaningful_min_amount: 5000,
+    },
+  ];
+  repository.decisionProposalStore.sync(dashboard);
+  const workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  const cashProposals = workspace.pending.filter(
+    (item) => item.proposal_type === 'cash_allocation',
+  );
+  assert.equal(cashProposals.length, 1);
+  assert.equal(cashProposals[0].product_code, 'TOPUP001');
+  assert.equal(cashProposals[0].amount, 5000);
+  assert.match(cashProposals[0].title, /持仓补仓/);
+  assert.equal(cashProposals[0].payload.review_meta.allocation_mode, 'top_up');
+  assert.equal(cashProposals[0].payload.review_meta.existing_exposure, 12000);
+  assert.equal(cashProposals[0].payload.review_meta.meaningful_min_amount, 100);
+  assert.equal(
+    workspace.pending.some((item) => item.product_code === 'SMALLNEW'),
+    false,
+  );
+});
+
+test('allocation UI result and generated top-up proposal use the same code and amount', (t) => {
+  const repository = openTemp(t);
+  const candidate = {
+    name: '真实配置补仓产品',
+    code: 'REAL-TOPUP',
+    short_name: '',
+    issuer: '真实发行方',
+    risk_level: 'R2',
+    currency_code: '10',
+    pub_prv: 'A',
+    soc_tag: 'C',
+    product_type: '代销理财',
+    term_days: 14,
+    score: null,
+    min_amount: 100,
+    annualized_yield: 3,
+    benchmark: '真实基准',
+    return_1m: 2.5,
+    return_3m: 2.7,
+    return_6m: 2.8,
+    return_1y: 3,
+    return_since_inception: 2.9,
+    status: '开放中',
+    source: 'test',
+    data_date: '2026-10-21',
+    notes: '',
+    capacity: null,
+    history_months: 24,
+    fee_bps: 10,
+    next_open_date: '2026-10-22',
+  };
+  const productView = buildProductView([candidate], {
+    principal: 100000,
+    holdings: [
+      {
+        product_code: 'REAL-TOPUP',
+        product_name: candidate.name,
+        issuer: candidate.issuer,
+        amount: 29000,
+        term_days: 14,
+      },
+      {
+        product_code: 'MEDIUM-HELD',
+        product_name: '已确认中期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 90,
+      },
+      {
+        product_code: 'LONG-HELD',
+        product_name: '已确认长期持仓',
+        issuer: '其他发行方',
+        amount: 35000,
+        term_days: 180,
+      },
+    ],
+  });
+  const allocatedProduct = productView.watchlist[0];
+  assert.equal(allocatedProduct.code, 'REAL-TOPUP');
+  assert.equal(allocatedProduct.allocation_mode, 'top_up');
+  assert.equal(allocatedProduct.target_amount, 1000);
+
+  repository.decisionProposalStore.sync({
+    meta: {
+      today: '2026-10-22',
+      product_snapshot_date: '2026-10-21',
+    },
+    workspace: { holding_reviews: [] },
+    products: productView,
+  });
+  const proposal = repository.decisionProposalStore
+    .getWorkspace('2026-10-22')
+    .pending.find((item) => item.proposal_type === 'cash_allocation');
+  assert.ok(proposal);
+  assert.equal(proposal.product_code, allocatedProduct.code);
+  assert.equal(proposal.amount, allocatedProduct.target_amount);
+  assert.equal(proposal.payload.review_meta.target_amount, allocatedProduct.target_amount);
+  assert.equal(
+    proposal.payload.review_meta.existing_exposure,
+    allocatedProduct.existing_exposure,
+  );
+  assert.equal(
+    proposal.payload.review_meta.meaningful_min_amount,
+    allocatedProduct.meaningful_min_amount,
   );
 });
 

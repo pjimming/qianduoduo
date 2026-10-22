@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import {
@@ -23,6 +24,7 @@ const props = defineProps<{
 
 const store = useDashboardStore()
 const { show } = useToast()
+const route = useRoute()
 const selectedCode = ref('')
 const detail = ref<ProductValuationDetail | null>(null)
 const loadingDetail = ref(false)
@@ -127,6 +129,18 @@ async function openProduct(code: string): Promise<void> {
     loadingDetail.value = false
   }
 }
+
+function openProductFromRoute(): void {
+  const code = String(route.query.product || '').trim().toUpperCase()
+  if (!code || !productCards.value.some((item) => item.product_code === code)) {
+    return
+  }
+  if (selectedCode.value === code && detail.value) return
+  void openProduct(code)
+}
+
+onMounted(openProductFromRoute)
+watch(() => route.query.product, openProductFromRoute)
 
 function startCorrection(
   valuation: ProductValuationDetail['valuations'][number],
