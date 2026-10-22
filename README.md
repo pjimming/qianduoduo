@@ -59,12 +59,13 @@
 - `server/http/`：Router、路由清单、响应、静态文件和 middleware。
 - `server/lifecycle.js`：数据库、HTTP Server、调度器与优雅关闭。
 - `server/modules/`：已迁移的业务域门面、路由与查询服务。
-- 当前已迁移：dashboard、operations、products、notifications、capital、ledger、product-valuations、trades、decisions、proposals、evaluations、reviews、research-static。
+- 当前已迁移：dashboard、operations、products、notifications、capital、ledger、product-valuations、trades、income、decisions、proposals、evaluations、reviews、research。
 - OCR 适配器位于 `server/infrastructure/ocr/`，`lib/ocr.js` 保留兼容导出。
 - 调度器支持失败重试与状态诊断；服务停止会取消重试并终止 OCR 子进程。
 - 数据库恢复使用 WAL 一致安全快照、`quick_check` 和临时文件验证。
 - 运行日志会对常见 token、password 和 API key 格式脱敏。
 - 后端 API 已全部由 `server/modules/` 的域路由接管，旧的 legacy handler 已删除。
+- 架构审计、测试与生产验收见 [后端重构最终报告](docs/refactor/final-report.md) 和 [生产重启验收](docs/refactor/14-production-acceptance.md)；尚未解决的事务、读路径和运维风险以 [TODO.md](TODO.md) 的 `TD-REF-*` 状态为准。
 
 前端目录：
 
@@ -98,7 +99,7 @@ npm install
 npm run dev:all
 ```
 
-开发模式页面为 <http://127.0.0.1:5173>。如果 `8765` 后端尚未运行，脚本会同时用 `node --watch` 启动后端；Vue/CSS 修改由 Vite HMR 即时更新，`server.js`、`lib/` 修改会自动重启后端。
+开发模式页面为 <http://127.0.0.1:5173>。如果 `8765` 后端尚未运行，脚本会同时用 `node --watch` 启动后端；Vue/CSS 修改由 Vite HMR 即时更新，`server.js`、`server/` 和 `lib/` 的后端依赖修改会自动重启后端。
 
 也可以手动分两个终端启动：
 
@@ -110,7 +111,7 @@ npm run server
 npm run dev
 ```
 
-打开 <http://127.0.0.1:5173>。Vite 会把 `/api` 代理到 `http://127.0.0.1:8765`。手动启动后端时，`server.js` 修改后需要重启后端。
+打开 <http://127.0.0.1:5173>。Vite 会把 `/api` 代理到 `http://127.0.0.1:8765`。手动启动后端时，`server.js`、`server/` 或 `lib/` 修改后需要重启后端。
 
 生产构建与启动：
 
@@ -239,7 +240,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 ### 股票调研报告库
 
 - 入口：`/investment/research`，是左侧“投资”的默认页面；`/investment` 也会跳转到这里。
-- 内容：18 篇股票、产业链与板块调研报告，按发布时间倒序排列；支持元数据筛选、正文全文检索（命中后跳到对应章节）、研究优先级标签。
+- 内容：19 篇股票、产业链与板块调研报告，按发布时间倒序排列；支持元数据筛选、正文全文检索（命中后跳到对应章节）、研究优先级标签。
 - 详情：`/investment/research/:slug`，报告由 Vue 直接渲染（无 iframe），打开即为报告正文；顶部提供返回报告库和可搜索的报告切换器，左侧目录可折叠并随滚动高亮当前章节，另支持阅读进度、`←/→` 切换报告、打印和打开独立 HTML。
 - 源文件：报告统一放在本工作区 `report/`；独立报告库归档页为 `research/index.html`。
 - 数据：`src/data/stockReports.json` 由同步脚本从 `report/` 生成，包含标题、日期、分类、摘要、关键词和研究优先级。
@@ -254,7 +255,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - 报告必须是静态 HTML：不能包含 `<script>`、内联事件（如 `onclick`）或 `javascript:` 链接，否则发布会在转换阶段报错。
 - 每篇需自带 `<style>`；图片会被抽取并转为 WebP（质量 88，`sharp` 不可用时保留原图）。
 - 科技图谱只识别 `keywords` 里的股票代码；只在正文出现的代码，用 `<!-- rpnav-keywords: 002414 -->` 补充。
-- 当前 18 篇：报告转换通常在 1 秒左右、完整发布约 10–20 秒；检索索引约 25–30 KB/篇（当前约 534 KB），报告数量到 50 篇以上时需要重新评估索引拆分。
+- 截至 2026-10-22 为 19 篇：报告转换通常在 1 秒左右、完整发布约 10–20 秒；检索索引约 25–30 KB/篇（当前约 558 KiB），报告数量到 50 篇以上时需要重新评估索引拆分。
 
 ### A股科技图谱
 
@@ -338,6 +339,8 @@ npm run prod:restart
 npm test
 npm run check
 npm run test:e2e
+node --experimental-test-coverage --test
+npm audit --omit=dev
 ```
 
-`npm test` 覆盖 API、SQLite、本金快照、指标计算、交易流水与批次匹配、交易/收益收件箱去重、两类 OCR 解析、多产品收益拆分、产品对账与修正审计、部分/完全赎回历史、消息中心状态与去重、决策提案生成/采纳/拒绝/过期、提案与截图交易匹配、执行偏差审计、自动评估、手工评价保护、撤销回滚、复盘草稿、通知去重、产品排序、静态资源响应和科技图谱快照完整性；`npm run check` 会执行 Vue TypeScript 检查和 Node.js 语法检查。`npm run test:e2e` 会用本机 Chrome/Edge 跑一遍报告检索、报告直达（无 iframe）、目录、键盘切换、侧边栏七个 R2 入口、双截图入口、消息中心、决策提案采纳、复盘跨页补记、逐产品收益档案与手工补录、交易流水、产品配置和自动评估，运行前会自动构建。
+`npm test` 覆盖 API 兼容、模块路由归属、应用启动/关闭、SQLite 迁移、WAL 备份与恢复、本金快照、交易幂等、部分赎回与持仓批次、交易/收益收件箱去重、OCR 生命周期、事务失败回滚、调度器失败重试、多产品收益对账、决策提案/评估/复盘、研究静态隔离、产品排序和科技图谱完整性。`npm run check` 执行 Vue TypeScript 检查与全部 Node.js 语法检查；`npm run test:e2e` 自动构建后用本机 Chrome/Edge 验证七个 R2 入口、双截图入口、消息中心、提案、复盘、产品收益、持仓复核、交易、收件箱、自动评估、报告阅读器和错误兜底。`node --experimental-test-coverage --test` 输出覆盖率；`npm audit --omit=dev` 检查生产依赖漏洞。
