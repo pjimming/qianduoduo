@@ -220,6 +220,49 @@ test('product lag remains informational and never blocks a user-provided income 
   assert.equal(acceptedRecord.status, 201);
 });
 
+test('product valuation API stores an explicitly confirmed zero yield', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  const today = todayShanghai();
+  await postJson(`${base}/api/capital/init`, {
+    initial_principal: 30000,
+    initial_date: shiftDate(today, -10),
+  });
+  repository.tradeStore.createTrade({
+    trade_date: shiftDate(today, -2),
+    confirm_date: shiftDate(today, -2),
+    trade_type: 'buy',
+    status: 'confirmed',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 7500,
+    term_days: 90,
+    source: 'manual',
+    notes: '',
+  });
+
+  const response = await postJson(`${base}/api/product-valuations`, {
+    yield_date: shiftDate(today, -1),
+    credit_date: today,
+    valuation_date: shiftDate(today, -1),
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    holding_amount: 7501.44,
+    daily_pnl: 0,
+    notes: '用户明确确认当日无收益',
+  });
+  assert.equal(response.status, 201);
+  const payload = await response.json();
+  assert.equal(payload.valuation.daily_pnl, 0);
+  const summary = payload.dashboard.workspace.product_valuation_summaries.find(
+    (item) => item.product_code === '120056A',
+  );
+  assert.equal(summary.observed_days, 1);
+  assert.equal(summary.cumulative_pnl, 0);
+  assert.equal(summary.latest_daily_pnl, 0);
+});
+
 test('non-replace holding review still creates a review-window reminder', () => {
   const items = makeSourceItems({
     meta: { today: '2026-10-21' },

@@ -35,14 +35,14 @@
 
 第 0 步：处理 Codex 判断队列
 1. screenshot_review：读取对应收件箱条目的 OCR 原文和已解析字段。若产品代码、金额、日期、状态能从原文明确确认，可用 PUT /api/trades/inbox/:id 保存校正，再 POST /api/automation/jobs/:id/resolve 标记 done；存在歧义时保留 pending，并列出需要人工确认的字段。
-2. income_screenshot_review：读取 dashboard.workspace.income_inbox 对应条目的 OCR 原文、日期、账户收益和 `parsed.products`。日期与账户收益能明确确认时，用 POST /api/income/inbox/:id/apply 入账并标记 job done；原图能确认的产品代码、持仓金额和当日收益随同提交，不能确认的产品行不要猜，也不要把缺失产品写成 0。无法确认账户收益时保留 pending，只要求用户补上传清晰收益截图。
+2. income_screenshot_review：读取 dashboard.workspace.income_inbox 对应条目的 OCR 原文、日期、账户收益和 `parsed.products`。日期与账户收益能明确确认时，用 POST /api/income/inbox/:id/apply 入账并标记 job done；原图能确认的产品代码、持仓金额和当日收益随同提交，不能确认的产品行不要猜，也不要把缺失产品推断为 0。用户或银行页面明确确认某产品收益为 0 元时，必须提交并记录为 0。无法确认账户收益时保留 pending，只要求用户补上传清晰收益截图。
 3. evaluation_review：读取评估证据。证据完整、结论明确且置信度达到 settings.auto_confidence_threshold（默认 75）时，可用 POST /api/evaluations/:id/apply 写入；证据不足、与手工评价冲突或金额不匹配时保留 pending，不要强行覆盖。
 4. monthly_summary / quarterly_summary：应用默认会在生成后自动归档复盘草稿。检查草稿内容、异常项和自动归档结果；只有平台无法从账本判断的事实缺口才写入消息中心，不要求用户逐期确认常规复盘。
 5. 队列为空就不做任何事。第 0 步出错不得中断后续巡检：记录失败原因，继续第 1–8 步，并在最终卡片中说明。
 
 第 1–8 步：每日巡检（只报告异常和待办，不重复播报没有变化的状态）
 1. 最近披露收益与逐产品档案：先读 dashboard.meta.reporting_date 和 dashboard.meta.has_reporting_record，并用 dashboard.records 找到该日期的记录。reporting_date 只作为日常提醒参考；用户可提供不晚于今天的实际收益日期，不得按产品 lag 拦截或改写。若本金已初始化且 reporting_date 不早于本金起始日，但 reporting_date 没有收益记录，只提示“上传 reporting_date 收益截图”，不要求手工填数字；连续 2 个已披露日缺记才升级为警告。对用户提供的其他日期，只核对是否已存在及金额是否一致：同金额视为已记录；无记录才新增；不同金额必须提示人工确认，不得覆盖。检查 reporting_date 记录的 action 与交易流水是否明显冲突，例如日报写买入但流水没有对应交易。接口缺少 meta.reporting_date 时，视为本地服务版本不匹配，只报告“服务需重启或升级”。
-   再看 `workspace.product_valuation_reconciliation.items` 中 reporting_date 的对账项：status=mismatch 时，卡片写产品合计、账户总收益和差额，提示核对漏拍、重复、尚未披露或代码错误，不修改账户或产品记录；status=missing-account-total 时只说明该日产品收益已归档但缺少账户总账。再看 reporting_date 已应用收益截图的 `parsed.missing_product_codes`：只列“本次未拍到：代码”，不得写 0、判定赎回或自行补录。若账户已有收益记录、当前有持仓，但 reporting_date 和上一已披露日都没有任何产品档案，才提示补传含产品明细的收益截图；单个日期缺失不升级。已赎回产品的历史继续保留，不要求删除。
+   再看 `workspace.product_valuation_reconciliation.items` 中 reporting_date 的对账项：status=mismatch 时，卡片写产品合计、账户总收益和差额，提示核对漏拍、重复、尚未披露或代码错误，不修改账户或产品记录；status=missing-account-total 时只说明该日产品收益已归档但缺少账户总账。再看 reporting_date 已应用收益截图的 `parsed.missing_product_codes`：只列“本次未拍到：代码”，不得自行推断为 0、判定赎回或自行补录；若用户或银行页面明确确认 0 元，则必须补录 0 元产品收益。若账户已有收益记录、当前有持仓，但 reporting_date 和上一已披露日都没有任何产品档案，才提示补传含产品明细的收益截图；单个日期缺失不升级。已赎回产品的历史继续保留，不要求删除。
 2. 待确认交易：统计笔数、金额、最早交易日期；今天新增的待确认交易提示核对；超过 3 天未确认提示，超过 7 天标为警告。
 3. 交易收件箱：未处理截图、OCR 置信度低于 50% 或 parsed.warnings 非空、等待超过 1 天、重复匹配。需要校正的只列出字段，不擅自生成交易。
 4. 对账：缺成交截图、截图金额与流水不一致、产品代码不一致、赎回到账金额缺失、赎回没有匹配到买入批次、待确认时间过长。给出对应交易 id 或产品名。
@@ -61,7 +61,7 @@
 - 不登录招行，不查实时额度，不下单、不赎回、不转账。
 - 不采纳、拒绝或取消用户的决策提案；这些是用户的明确决定。
 - 不把待确认交易改成已确认；必须有截图、回单或银行确认。
-- 不猜缺失的金额、日期、份额、确认日、到期日或产品收益；缺失就标“待补”。不自行填写每日收益数字；没有用户上传的收益截图或手工实际收益就只提醒上传，不估算。产品截图漏拍不写 0，不据此判定赎回；产品合计与账户总账冲突时不自动覆盖任何一侧。
+- 不猜缺失的金额、日期、份额、确认日、到期日或产品收益；缺失就标“待补”。不自行填写每日收益数字；没有用户上传的收益截图或手工实际收益就只提醒上传，不估算。产品截图漏拍不得自行推断为 0，也不据此判定赎回；用户或银行页面明确确认 0 元时必须记录 0。产品合计与账户总账冲突时不自动覆盖任何一侧。
 - 不覆盖用户手工评价，不删除交易、决策或事件；错误优先更正或撤销留痕，删除必须先问用户。
 - 不替用户确认月度或季度复盘结论，只生成、整理草稿并提示需要人工修改的部分。
 - 所有写操作先读当前状态；使用本地 API，不直接改 SQLite；失败时保留原状态并报告。不删除或撤销任何交易流水。

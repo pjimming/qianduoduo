@@ -205,6 +205,29 @@ test('product holding days start on the trade confirmation date', (t) => {
   assert.equal(summary.holding_days, 3);
 });
 
+test('explicit zero product yield is stored as a valid observation', (t) => {
+  const { repository } = openTemp(t);
+  createBuy(repository);
+  repository.productValuationStore.upsertValuation({
+    yield_date: '2026-10-21',
+    credit_date: '2026-10-22',
+    valuation_date: '2026-10-21',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    holding_amount: 7501.44,
+    daily_pnl: 0,
+    notes: '用户明确确认当日无收益',
+  });
+
+  const summary = repository.productValuationStore
+    .getSummaries('2026-10-22', repository.tradeStore.getPortfolio())
+    .find((item) => item.product_code === '120056A');
+  assert.equal(summary.observed_days, 1);
+  assert.equal(summary.cumulative_pnl, 0);
+  assert.equal(summary.latest_daily_pnl, 0);
+  assert.equal(summary.negative_days, 0);
+});
+
 test('product yield lag is stored as reference without changing the disclosure date', (t) => {
   const { repository } = openTemp(t);
   createBuy(repository, {

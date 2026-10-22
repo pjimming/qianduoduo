@@ -40,7 +40,7 @@
 - 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
 - 本金起始日口径：`capital_settings.initial_date` 之前的日期不属于收益账本，不计收益、不计缺记、不计记录完整度和目标进度，也不能补记。复盘日历显示“起始日前”并禁用点击；日/周/月统计和评级只从起始日起算；起始月可记录天数不足 28 天时不落最终评级；上月/上季若完全早于起始日，时间轴显示“未纳入复盘”，即使存在旧笔记也不标为待补或已完成。记账表单和接口均拒绝起始日前的收益记录。
 - 收益起算口径：买入/认购日不等于产品收益日。订单已提交但仍在确认中、尚未取得产品份额的日期，不写 0 元收益记录，不计入收益期、缺记、记录完整度或年化分母；交易流水和决策日志仍保留原买入日期。收益账本从账户首批产品份额确认并开始计息之日起算；多产品分批确认时不把后确认产品追溯计入更早日期。当前账户据此把 `capital_settings.initial_date` 设为 2026-10-20，2026-10-19 仅保留为交易事实。
-- 收益录入口径：收益日期由用户或截图提供，允许记录不晚于今天的日期；`reporting_date = today - 1` 只用于日常缺记提醒，不限制实际补记日期。产品收益 T+N 不参与账户收益日期判断。每日收益按“日期 + 金额”幂等处理：同日期同金额视为已记录并忽略；无记录才新增；同日期不同金额不得覆盖，必须写入消息中心等待人工确认。
+- 收益录入口径：收益日期由用户或截图提供，允许记录不晚于今天的日期；`reporting_date = today - 1` 只用于日常缺记提醒，不限制实际补记日期。产品收益 T+N 不参与账户收益日期判断。每日收益按“日期 + 金额”幂等处理：同日期同金额视为已记录并忽略；无记录才新增；同日期不同金额不得覆盖，必须写入消息中心等待人工确认。0 元是有效收益值，用户或银行页面明确确认无收益时必须写入 0 元记录。
 - `cash_balance` / “R2 流动性仓”输入字段已移除，数据库、API、页面和 CSV 不保存闲置现金余额。期限 0 天的日开产品仍是真实产品持仓，但本项目新增目标固定为 0%。
 - 产品池默认由 `npm run r2:refresh-all`（`scripts/fetch-cmb-r2-all.cjs`）刷新：拉取招行公开全量 R2 池，生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`（普通可买候选池）和 `cmb_r2_selected-*.csv`（当前精选池）；页面“刷新快照”会重新解析日期最新的 universe CSV。旧脚本 `fetch-cmb-r2-snapshot.cjs` 仅保留作兼容。
 - 快照选择：`R2_PRODUCT_CSV` 优先；否则扫描 `data/cmb_r2_universe*.csv`，找不到时回退 `data/cmb_r2_products*.csv`，均按文件名中的 `YYYY-MM-DD` 倒序、同日期按 `mtime` 倒序；刷新接口每次重新解析并整表替换 `products`。`product_snapshot_date` 是产品 `data_date` 的最大值，不是文件名日期。
@@ -87,7 +87,7 @@
 - 每日记账页的 `QuickEntryPanel` 只保留两个主入口（成交截图、收益截图），手工收益与特殊事项收进“例外情况”折叠区；下方是每日记录表和本金账户。交易收件箱、交易流水、持仓移到交易与持仓页；产品事件移到产品与配置页；决策日志移到决策与评估页；月度五问/季度复盘移到复盘页并默认折叠为摘要。决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
 - 消息中心由 `lib/inbox-center.js` 动态聚合并持久化状态，统一承接决策提案、交易/收益截图、待确认交易、对账、评估、产品事件、持仓复核、复盘草稿和平台提醒。消息只保存状态与深链，不复制交易或账本事实；源事项消失后自动归档。持仓复核的“建议替换”若已有活动决策提案，只展示提案消息，不重复生成普通替换提醒。
 - `r2-2` / `r2-3` 中需要用户补事实或最后确认、且平台不能自行处理的事项，必须通过 `POST /api/inbox/confirmations` 写入消息中心；请求使用确定性的 `dedupe_key`，支持 `action|reminder|system`、`info|warn|urgent`、站内 `action_url` 和可选 `due_at`。Codex 回复卡片只作摘要，不能替代消息中心持久化。
-- 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析账户合计与多产品明细；高置信度先按“日期 + 金额”核对，同金额忽略、新日期写入、不同金额保留原记录并生成消息中心提醒，不自动覆盖。产品级记录进入 `product_daily_valuations`，按 `(product_code, yield_date)` 去重；产品合计只与账户总账对账，不重复计入收益，差异进入消息中心。截图漏掉的持仓只标记“本次未拍到”，不得写 0 或视为赎回；人工修正写入 `product_daily_valuation_audit`。成交截图按 OCR 状态确认；交易落库后先匹配已采纳决策提案，只有无法匹配时才建立 `decision_status=incomplete`、`execution_status=unplanned` 的计划外决策。
+- 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析账户合计与多产品明细；高置信度先按“日期 + 金额”核对，同金额忽略、新日期写入、不同金额保留原记录并生成消息中心提醒，不自动覆盖。产品级记录进入 `product_daily_valuations`，按 `(product_code, yield_date)` 去重；产品合计只与账户总账对账，不重复计入收益，差异进入消息中心。截图漏掉的持仓只标记“本次未拍到”，不得自行推断为 0 或视为赎回；用户或银行页面明确确认 0 元时必须写入 0 元产品记录。人工修正写入 `product_daily_valuation_audit`。成交截图按 OCR 状态确认；交易落库后先匹配已采纳决策提案，只有无法匹配时才建立 `decision_status=incomplete`、`execution_status=unplanned` 的计划外决策。
 - `/api/dashboard` 的 `workspace.product_valuation_summary` 提供产品数、持有/已赎回数、最新档案日；`product_valuation_summaries` 提供每只产品的累计个人收益、档案/持有天数、负收益天数、最差单日与状态；`product_valuation_reconciliation` 提供产品合计和账户总账的匹配/差异。完整逐日历史通过 `/api/product-valuations?product_code=...` 按需读取，避免 dashboard 随时间无限膨胀。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现盈亏。页面中的“未赎回成本本金”= 已确认买入金额 − 已匹配赎回本金，不是余额或当前市值。待确认买入只占额度，待确认赎回不改持仓，均不进入未赎回成本、期限桶和流动性比例。
