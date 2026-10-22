@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const overview = computed(() => props.dashboard.workspace.trades)
+const reportingDate = computed(() => props.dashboard.meta.reporting_date)
 const today = computed(() => props.dashboard.workspace.timeline.today)
 const pendingInbox = computed(
   () => props.dashboard.inbox_center.summary.by_source.trade_screenshot?.pending ?? 0,
@@ -86,6 +87,8 @@ function openTrades(): void {
           :summaries="dashboard.workspace.product_valuation_summaries"
           :reconciliation="dashboard.workspace.product_valuation_reconciliation"
           :today="today"
+          :reporting-date="reportingDate"
+          :holdings="dashboard.workspace.holdings"
         />
       </section>
 

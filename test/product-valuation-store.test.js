@@ -106,6 +106,19 @@ test('product valuations dedupe, reconcile, preserve history and audit correctio
   assert.equal(repeated.valuation.id, inserted.saved.find((item) => item.product_code === '120056A').id);
   assert.equal(repository.productValuationStore.listValuations().length, 2);
 
+  const conflicting = repository.productValuationStore.upsertValuation(
+    {
+      yield_date: '2026-10-20',
+      product_code: '120056A',
+      daily_pnl: 1.99,
+      holding_amount: 6000,
+    },
+    { source: 'income-screenshot', screenshotId: 8 },
+  );
+  assert.equal(conflicting.conflict, 'different-daily-pnl');
+  assert.equal(conflicting.valuation.daily_pnl, 1.44);
+  assert.equal(repository.productValuationStore.listValuations().length, 2);
+
   repository.createRecord({
     date: '2026-10-20',
     daily_pnl: 2.31,
@@ -119,9 +132,14 @@ test('product valuations dedupe, reconcile, preserve history and audit correctio
   assert.equal(reconciliation.difference, 0.29);
   assert.equal(reconciliation.status, 'mismatch');
 
-  const corrected = repository.productValuationStore.upsertValuation(
+  const firstId = inserted.saved.find(
+    (item) => item.product_code === '120056A',
+  ).id;
+  const corrected = repository.productValuationStore.updateValuationById(
+    firstId,
     {
       yield_date: '2026-10-20',
+      credit_date: '2026-10-20',
       product_code: '120056A',
       daily_pnl: 1.73,
       holding_amount: 6000,
@@ -185,4 +203,59 @@ test('product holding days start on the trade confirmation date', (t) => {
   assert.equal(summary.holding_start, '2026-10-20');
   assert.equal(summary.holding_end, '2026-10-22');
   assert.equal(summary.holding_days, 3);
+});
+
+test('product yield lag is stored as reference without changing the disclosure date', (t) => {
+  const { repository } = openTemp(t);
+  createBuy(repository, {
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    amount: 3000,
+    term_days: 14,
+  });
+
+  const initial = repository.productValuationStore.getDisclosurePolicy(
+    '2026-10-22',
+    repository.tradeStore.getPortfolio(),
+  );
+  assert.equal(initial.reporting_lag_days, 1);
+  assert.equal(initial.reporting_date, '2026-10-21');
+  assert.deepEqual(initial.unverified_product_codes, ['120026A']);
+
+  const setting = repository.productValuationStore.saveYieldSetting(
+    '120026A',
+    {
+      yield_lag_days: 2,
+      source: 'app-rule',
+      notes: '招行 App：收益 T+2 到账',
+      verified_at: '2026-10-22',
+    },
+  );
+  assert.equal(setting.yield_lag_days, 2);
+  assert.equal(setting.verified, true);
+
+  const updated = repository.productValuationStore.getDisclosurePolicy(
+    '2026-10-22',
+    repository.tradeStore.getPortfolio(),
+  );
+  assert.equal(updated.reporting_lag_days, 1);
+  assert.equal(updated.reporting_date, '2026-10-21');
+  assert.deepEqual(updated.unverified_product_codes, []);
+
+  repository.productValuationStore.upsertValuation({
+    valuation_date: '2026-10-20',
+    credit_date: '2026-10-20',
+    yield_date: '2026-10-20',
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    holding_amount: 3000,
+    daily_pnl: 0.6,
+  });
+  const detail = repository.productValuationStore.getProductDetail(
+    '120026A',
+    '2026-10-22',
+  );
+  assert.equal(detail.yield_setting.source, 'app-rule');
+  assert.equal(detail.summary.yield_lag_days, 2);
+  assert.equal(detail.summary.expected_latest_yield_date, '2026-10-20');
 });

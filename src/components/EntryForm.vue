@@ -22,6 +22,7 @@ const editingDate = ref<string | null>(null)
 const reportingDate = computed(
   () => props.dashboard.meta.reporting_date || props.dashboard.meta.today,
 )
+const today = computed(() => props.dashboard.meta.today)
 const recordDate = ref(reportingDate.value)
 const dailyPnl = ref<number | ''>('')
 const action = ref<LedgerAction>('无操作')
@@ -37,7 +38,7 @@ const accountStartDate = computed(() => props.dashboard.capital.initial_date ?? 
 const hasReportableDay = computed(
   () =>
     !accountStartDate.value ||
-    reportingDate.value >= (accountStartDate.value as string),
+    today.value >= (accountStartDate.value as string),
 )
 const isBeforeAccountStart = computed(
   () =>
@@ -50,7 +51,9 @@ const showTodayNotice = computed(
     editingDate.value !== reportingDate.value,
 )
 const reportingDayLabel = computed(() =>
-  reportingDate.value === props.dashboard.meta.today ? '今日' : '昨日',
+  reportingDate.value === props.dashboard.meta.today
+    ? '今日'
+    : '昨日',
 )
 const entryDateChip = computed(() =>
   recordDate.value === reportingDate.value
@@ -206,7 +209,20 @@ async function handleSubmit(): Promise<void> {
       : await dashboardStore.createRecord(input)
     applyRecord(response.record)
     emit('saved', response.record.date)
-    show(isEdit ? '记录已更新' : '收益已记入账本')
+    show(
+      isEdit
+        ? '记录已更新'
+        : response.conflict
+          ? `${response.conflict.date} 已有收益 ¥${response.conflict.existing_daily_pnl.toFixed(
+              2,
+            )}，本次 ¥${response.conflict.incoming_daily_pnl.toFixed(
+              2,
+            )}；未覆盖，已生成人工确认提醒`
+          : response.duplicate
+            ? '该日期收益已存在且金额一致，本次已忽略'
+            : '收益已记入账本',
+      response.conflict ? { error: true, duration: 8000 } : undefined,
+    )
   } catch (error) {
     show(error instanceof Error ? error.message : '保存失败', {
       error: true,
@@ -268,13 +284,13 @@ defineExpose({
           name="date"
           type="date"
           :min="accountStartDate || ''"
-          :max="reportingDate"
+          :max="today"
           :disabled="!hasReportableDay"
           :readonly="isEditing"
           required
         />
         <p class="date-window-note is-reporting">
-          招行收益按 T+1 展示：今天记录 {{ reportingDate }} 及之前的收益，今天不记为缺记。
+          收益日期由你提供。平台只校验该日期是否已有记录、金额是否一致；未来日期不能记录。
         </p>
         <p v-if="isBeforeAccountStart" class="date-window-note">
           该日期早于本金起始日 {{ accountStartDate }}，起始日前没有收益属于正常状态，无需补记。

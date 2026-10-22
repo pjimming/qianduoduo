@@ -7,6 +7,7 @@ import {
   formatMoney,
 } from '@/composables/useFormatters'
 import type {
+  Holding,
   ProductValuationDetail,
   ProductValuationReconciliation,
   ProductValuationSummary,
@@ -16,6 +17,8 @@ const props = defineProps<{
   summaries: ProductValuationSummary[]
   reconciliation: ProductValuationReconciliation
   today: string
+  reportingDate: string
+  holdings: Holding[]
 }>()
 
 const store = useDashboardStore()
@@ -28,23 +31,61 @@ const editingId = ref<number | null>(null)
 const formOpen = ref(false)
 
 const form = reactive({
-  yield_date: props.today,
+  yield_date: props.reportingDate,
+  credit_date: props.reportingDate,
   holding_amount: null as number | null,
   daily_pnl: null as number | null,
   notes: '',
   correction_note: '',
 })
 
+const productCards = computed<ProductValuationSummary[]>(() => {
+  const cards = props.summaries.slice()
+  const known = new Set(cards.map((item) => item.product_code))
+  for (const holding of props.holdings) {
+    const code = String(holding.product_code || '').toUpperCase()
+    if (!code || known.has(code)) continue
+    cards.push({
+      product_code: code,
+      product_name: holding.product_name,
+      status: 'active',
+      active_amount: holding.amount,
+      latest_holding_amount: holding.amount,
+      first_yield_date: '',
+      last_yield_date: '',
+      holding_start: holding.purchase_date,
+      holding_end: props.today,
+      holding_days: 0,
+      observed_days: 0,
+      cumulative_pnl: 0,
+      negative_days: 0,
+      latest_daily_pnl: null,
+      yield_lag_days: 1,
+      yield_lag_source: 'default',
+      yield_lag_verified: false,
+      yield_lag_label: 'T+1（参考）',
+      yield_lag_notes: '',
+      yield_lag_updated_at: '',
+      expected_latest_yield_date: props.reportingDate,
+      todays_yield_visible_date: props.reportingDate,
+      worst_day: null,
+      best_day: null,
+    })
+    known.add(code)
+  }
+  return cards
+})
 const selectedSummary = computed(
   () =>
-    props.summaries.find((item) => item.product_code === selectedCode.value) ??
-    null,
+    productCards.value.find(
+      (item) => item.product_code === selectedCode.value,
+    ) ?? null,
 )
 const activeCount = computed(
-  () => props.summaries.filter((item) => item.status === 'active').length,
+  () => productCards.value.filter((item) => item.status === 'active').length,
 )
 const redeemedCount = computed(
-  () => props.summaries.filter((item) => item.status === 'redeemed').length,
+  () => productCards.value.filter((item) => item.status === 'redeemed').length,
 )
 const reconciliationIssues = computed(() =>
   props.reconciliation.items.filter((item) => item.status !== 'matched'),
@@ -61,7 +102,8 @@ function sourceLabel(source: string): string {
 
 function resetForm(): void {
   editingId.value = null
-  form.yield_date = props.today
+  form.yield_date = props.reportingDate
+  form.credit_date = props.reportingDate
   form.holding_amount = selectedSummary.value?.active_amount ||
     selectedSummary.value?.latest_holding_amount ||
     null
@@ -92,6 +134,7 @@ function startCorrection(
   formOpen.value = true
   editingId.value = valuation.id
   form.yield_date = valuation.yield_date
+  form.credit_date = valuation.credit_date
   form.holding_amount = valuation.holding_amount
   form.daily_pnl = valuation.daily_pnl
   form.notes = valuation.notes
@@ -117,7 +160,8 @@ async function save(): Promise<void> {
   try {
     const payload = {
       yield_date: form.yield_date,
-      valuation_date: form.yield_date,
+      credit_date: form.credit_date,
+      valuation_date: form.credit_date,
       product_code: selectedSummary.value.product_code,
       product_name: selectedSummary.value.product_name,
       holding_amount: form.holding_amount,
@@ -125,23 +169,30 @@ async function save(): Promise<void> {
       notes: form.notes.trim(),
       correction_note: form.correction_note.trim() || '持仓页手工修正',
     }
-    if (editingId.value !== null) {
-      await store.updateProductValuation(editingId.value, payload)
-    } else {
-      await store.saveProductValuation(payload)
-    }
+    const response =
+      editingId.value !== null
+        ? await store.updateProductValuation(editingId.value, payload)
+        : await store.saveProductValuation(payload)
     detail.value = await store.loadProductValuationDetail(
       selectedSummary.value.product_code,
     )
     resetForm()
     formOpen.value = false
-    show('产品收益已修正并保留审计记录')
+    show(
+      response.conflict
+        ? '该产品日期已有不同收益，平台未覆盖；已生成人工确认提醒'
+        : editingId.value !== null
+          ? '产品收益已修正并保留审计记录'
+          : '产品收益已记录；如日期和金额已存在则自动忽略',
+      response.conflict ? { error: true, duration: 7000 } : undefined,
+    )
   } catch (error) {
     show(error instanceof Error ? error.message : '保存失败', { error: true })
   } finally {
     saving.value = false
   }
 }
+
 </script>
 
 <template>
@@ -151,7 +202,8 @@ async function save(): Promise<void> {
         <p class="kicker">PRODUCT YIELD ARCHIVE</p>
         <strong class="rw-panel-title">逐产品每日收益档案</strong>
         <p class="rw-panel-sub">
-          产品收益只汇总已成功记录的日期，不重复计入账户总收益；未记录日期不按 0 计，完全赎回后历史仍保留。
+          产品收益按你提供的收益归属日归档，并另行保存到账/可见日；同日期同金额视为已记录，
+          不同金额只提醒、不覆盖。产品收益不重复计入账户总收益。
         </p>
       </div>
       <div class="rw-toolbar-actions pv-summary-chips">
@@ -169,20 +221,20 @@ async function save(): Promise<void> {
     <div v-if="reconciliationIssues.length" class="pv-issues">
       <button
         v-for="item in reconciliationIssues.slice(0, 4)"
-        :key="`${item.yield_date}-${item.status}`"
+        :key="`${item.account_date}-${item.status}`"
         type="button"
         class="pv-issue"
         :class="{ 'is-warn': item.status === 'mismatch' }"
-        @click="summaries[0] && openProduct(summaries[0].product_code)"
+        @click="productCards[0] && openProduct(productCards[0].product_code)"
       >
-        <strong>{{ item.yield_date }} · 产品 ¥{{ formatMoney(item.product_pnl, 2) }}</strong>
+        <strong>{{ item.account_date }} · 产品 ¥{{ formatMoney(item.product_pnl, 2) }}</strong>
         <span>{{ item.message }}</span>
       </button>
     </div>
 
-    <div v-if="summaries.length" class="pv-grid">
+    <div v-if="productCards.length" class="pv-grid">
       <button
-        v-for="item in summaries"
+        v-for="item in productCards"
         :key="item.product_code"
         type="button"
         class="pv-card"
@@ -219,7 +271,7 @@ async function save(): Promise<void> {
           </span>
         </span>
         <span class="pv-card-foot">
-          最近记录日 {{ item.last_yield_date || '—' }} · 查看逐日记录 →
+          最近归属日 {{ item.last_yield_date || '—' }} · 查看逐日记录 →
         </span>
       </button>
     </div>
@@ -231,7 +283,9 @@ async function save(): Promise<void> {
       <div class="pv-detail-head">
         <div>
           <strong>{{ selectedSummary?.product_name || selectedCode }}</strong>
-          <span>{{ selectedCode }} · 最后观察 {{ selectedSummary?.last_yield_date || '—' }}</span>
+          <span>
+            {{ selectedCode }} · 最后归属日 {{ selectedSummary?.last_yield_date || '—' }}
+          </span>
         </div>
         <div class="pv-detail-actions">
           <button type="button" class="rw-button is-secondary" @click="startCreate">
@@ -245,8 +299,17 @@ async function save(): Promise<void> {
 
       <form v-if="formOpen" class="pv-form" @submit.prevent="save">
         <label>
-          <span>收益日期</span>
-          <input v-model="form.yield_date" type="date" :max="today" required />
+          <span>收益归属日</span>
+          <input
+            v-model="form.yield_date"
+            type="date"
+            :max="today"
+            required
+          />
+        </label>
+        <label>
+          <span>到账/可见日</span>
+          <input v-model="form.credit_date" type="date" :max="today" required />
         </label>
         <label>
           <span>当日持仓金额</span>
@@ -285,6 +348,7 @@ async function save(): Promise<void> {
           <thead>
             <tr>
               <th>收益日期</th>
+              <th>到账/可见日</th>
               <th class="is-number">当日持仓金额</th>
               <th class="is-number">当日收益</th>
               <th>来源</th>
@@ -295,6 +359,7 @@ async function save(): Promise<void> {
           <tbody>
             <tr v-for="valuation in detail.valuations.slice().reverse()" :key="valuation.id">
               <td>{{ valuation.yield_date }}</td>
+              <td>{{ valuation.credit_date }}</td>
               <td class="is-number">
                 {{ valuation.holding_amount === null ? '—' : `¥${formatMoney(valuation.holding_amount, 2)}` }}
               </td>

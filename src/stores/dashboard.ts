@@ -29,6 +29,8 @@ import type {
   ProductValuationDetail,
   ProductValuationInput,
   ProductValuationMutationResponse,
+  ProductYieldSettingInput,
+  ProductYieldSettingMutationResponse,
   RecordInput,
   RecordMutationResponse,
   ReviewNoteInput,
@@ -529,6 +531,21 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return response
   }
 
+  async function saveProductYieldSetting(
+    productCode: string,
+    input: ProductYieldSettingInput,
+  ): Promise<ProductYieldSettingMutationResponse> {
+    const response = await apiRequest<ProductYieldSettingMutationResponse>(
+      `/api/product-yield-settings/${encodeURIComponent(productCode)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      },
+    )
+    dashboard.value = response.dashboard
+    return response
+  }
+
   async function updateTradeInbox(
     id: number,
     parsed: TradeInboxParsed,
@@ -761,6 +778,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadProductValuationDetail,
     saveProductValuation,
     updateProductValuation,
+    saveProductYieldSetting,
     updateTradeInbox,
     applyTradeInbox,
     ignoreTradeInbox,

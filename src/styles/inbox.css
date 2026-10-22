@@ -177,10 +177,12 @@
     minmax(170px, 1.3fr)
     minmax(110px, 0.8fr)
     minmax(110px, 0.8fr)
+    minmax(130px, 0.8fr)
+    minmax(130px, 0.8fr)
     auto;
   gap: 8px;
   align-items: end;
-  min-width: 650px;
+  min-width: 970px;
   padding: 9px 10px;
 }
 

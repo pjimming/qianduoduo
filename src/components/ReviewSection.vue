@@ -39,7 +39,9 @@ const weekly = computed(() => props.review.weekly)
 const alerts = computed(() => props.review.alerts ?? [])
 const accountStartDate = computed(() => props.review.account_start_date ?? null)
 const reportingLabel = computed(() =>
-  props.reportingDate === props.today ? '今日' : '昨日',
+  props.reportingDate === props.today
+    ? '今日'
+    : '昨日',
 )
 const monthly = computed<MonthlyReview | null>(() => {
   if (selectedMonth.value) {

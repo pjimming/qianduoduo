@@ -144,6 +144,82 @@ test('confirmation API publishes deduplicated action items to the message center
   assert.match(matches[0].summary, /已核对赎回规则/);
 });
 
+test('product lag remains informational and never blocks a user-provided income date', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  const today = todayShanghai();
+  const yesterday = shiftDate(today, -1);
+  const latestComplete = shiftDate(today, -2);
+  await postJson(`${base}/api/capital/init`, {
+    initial_principal: 30000,
+    initial_date: shiftDate(today, -10),
+  });
+  repository.tradeStore.createTrade({
+    trade_date: shiftDate(today, -10),
+    confirm_date: shiftDate(today, -10),
+    trade_type: 'buy',
+    status: 'confirmed',
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 3000,
+    term_days: 14,
+    source: 'manual',
+    notes: '',
+  });
+
+  const settingResponse = await postJson(
+    `${base}/api/product-yield-settings/120026A`,
+    {
+      yield_lag_days: 2,
+      source: 'user-confirmed',
+      notes: '用户确认收益 T+2 到账',
+      verified_at: today,
+    },
+    'PUT',
+  );
+  assert.equal(settingResponse.status, 200);
+  const settingPayload = await settingResponse.json();
+  assert.equal(settingPayload.setting.yield_lag_days, 2);
+  assert.equal(settingPayload.dashboard.meta.reporting_date, yesterday);
+  assert.equal(settingPayload.dashboard.meta.reporting_lag_days, 1);
+  assert.deepEqual(
+    settingPayload.dashboard.meta.income_disclosure_policy.unverified_product_codes,
+    [],
+  );
+
+  const dashboard = await fetch(`${base}/api/dashboard`).then((response) =>
+    response.json(),
+  );
+  assert.equal(dashboard.meta.recording_date_source, 'user-provided');
+
+  const userProvidedRecord = await postJson(`${base}/api/records`, {
+    date: yesterday,
+    daily_pnl: 1.2,
+    action: '无操作',
+    notes: '',
+  });
+  assert.equal(userProvidedRecord.status, 201);
+
+  const userProvidedProduct = await postJson(`${base}/api/product-valuations`, {
+    yield_date: yesterday,
+    credit_date: yesterday,
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    holding_amount: 3000,
+    daily_pnl: 0.6,
+  });
+  assert.equal(userProvidedProduct.status, 201);
+
+  const acceptedRecord = await postJson(`${base}/api/records`, {
+    date: latestComplete,
+    daily_pnl: 1.2,
+    action: '无操作',
+    notes: '',
+  });
+  assert.equal(acceptedRecord.status, 201);
+});
+
 test('non-replace holding review still creates a review-window reminder', () => {
   const items = makeSourceItems({
     meta: { today: '2026-10-21' },
@@ -234,6 +310,76 @@ test('income screenshot API accepts a queued capture and records the P&L', async
     payload.dashboard.workspace.income_inbox.some(
       (item) => item.id === captured.inbox.id && item.status === 'applied',
     ),
+  );
+});
+
+test('income screenshot apply ignores matching dates and flags conflicting amounts without overwriting', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  const date = shiftDate(todayShanghai(), -1);
+  await postJson(`${base}/api/capital/init`, {
+    initial_principal: 30000,
+    initial_date: shiftDate(todayShanghai(), -10),
+  });
+  const created = await postJson(`${base}/api/records`, {
+    date,
+    daily_pnl: 1.23,
+    action: '无操作',
+    notes: '',
+  });
+  assert.equal(created.status, 201);
+
+  const matching = repository.incomeStore.addInbox({
+    original_name: 'matching.png',
+    stored_name: '',
+    mime: 'image/png',
+    bytes: 1,
+    sha256: 'income-idempotent-matching',
+    parsed: { date, daily_pnl: 1.23, products: [] },
+    parse_confidence: 95,
+  });
+  const matchingApply = await postJson(
+    `${base}/api/income/inbox/${matching.id}/apply`,
+    { date, daily_pnl: 1.23, products: [] },
+  );
+  assert.equal(matchingApply.status, 200);
+  const matchingPayload = await matchingApply.json();
+  assert.equal(matchingPayload.duplicate, true);
+  assert.equal(matchingPayload.ignored, true);
+  assert.equal(matchingPayload.record.daily_pnl, 1.23);
+  assert.equal(matchingPayload.inbox.status, 'applied');
+
+  const conflicting = repository.incomeStore.addInbox({
+    original_name: 'conflicting.png',
+    stored_name: '',
+    mime: 'image/png',
+    bytes: 1,
+    sha256: 'income-idempotent-conflicting',
+    parsed: { date, daily_pnl: 9.99, products: [] },
+    parse_confidence: 95,
+  });
+  const conflictApply = await postJson(
+    `${base}/api/income/inbox/${conflicting.id}/apply`,
+    { date, daily_pnl: 9.99, products: [] },
+  );
+  assert.equal(conflictApply.status, 200);
+  const conflictPayload = await conflictApply.json();
+  assert.equal(conflictPayload.duplicate, false);
+  assert.equal(conflictPayload.overwritten, false);
+  assert.equal(conflictPayload.record.daily_pnl, 1.23);
+  assert.equal(conflictPayload.inbox.status, 'pending');
+  assert.equal(conflictPayload.conflict.existing_daily_pnl, 1.23);
+  assert.equal(conflictPayload.conflict.incoming_daily_pnl, 9.99);
+  assert.ok(
+    conflictPayload.dashboard.inbox_center.pending.some(
+      (item) =>
+        item.source_type === 'system_notification' &&
+        item.title.includes('收益金额不一致'),
+    ),
+  );
+  assert.equal(
+    conflictPayload.dashboard.records.find((item) => item.date === date)
+      .daily_pnl,
+    1.23,
   );
 });
 

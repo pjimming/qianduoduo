@@ -43,6 +43,8 @@ interface IncomeDraft {
     product_code: string
     product_name: string
     holding_amount: number | null
+    yield_date: string
+    credit_date: string
     daily_pnl: number | null
     confidence: number
     notes: string
@@ -122,6 +124,13 @@ watch(
               product.holding_amount === undefined
                 ? null
                 : Number(product.holding_amount),
+            yield_date: product.yield_date || item.parsed.date || item.record_date || reportingDate.value,
+            credit_date:
+              product.credit_date ||
+              item.parsed.credit_date ||
+              item.parsed.date ||
+              item.record_date ||
+              reportingDate.value,
             daily_pnl:
               product.daily_pnl === null || product.daily_pnl === undefined
                 ? null
@@ -242,6 +251,15 @@ async function uploadIncomeFiles(files: FileList | File[]): Promise<void> {
       })
       if (response.duplicate) {
         show(`${file.name} 已处理过，平台不会重复记账`)
+      } else if (response.income_conflict) {
+        show(
+          `${file.name} 与 ${response.income_conflict.date} 已有收益 ¥${Number(
+            response.income_conflict.existing_daily_pnl,
+          ).toFixed(2)} 不一致；未覆盖，已转消息中心人工确认`,
+          { error: true, duration: 8000 },
+        )
+      } else if (response.income_ignored) {
+        show(`${file.name} 对应日期已有相同收益，本次已忽略`)
       } else if (response.auto_applied) {
         const savedCount = response.saved_valuations?.length ?? 0
         const mismatch = response.reconciliation?.status === 'mismatch'
@@ -288,10 +306,16 @@ async function applyIncome(item: IncomeInboxItem): Promise<void> {
     return
   }
   const incompleteProduct = draft.products.find(
-    (product) => !product.product_code.trim() || product.daily_pnl === null,
+    (product) =>
+      !product.product_code.trim() ||
+      product.daily_pnl === null ||
+      !product.yield_date ||
+      !product.credit_date,
   )
   if (incompleteProduct) {
-    show('产品明细需要产品代码和当日收益；无法确认的行可先移除', { error: true })
+    show('产品明细需要代码、收益归属日、到账/可见日和收益；无法确认的行可先移除', {
+      error: true,
+    })
     return
   }
   applyingIncomeId.value = item.id
@@ -300,7 +324,15 @@ async function applyIncome(item: IncomeInboxItem): Promise<void> {
     const savedCount = response.saved_valuations?.length ?? 0
     const mismatch = response.reconciliation?.status === 'mismatch'
     show(
-      mismatch
+      response.conflict
+        ? `${response.conflict.date} 已有收益 ¥${Number(
+            response.conflict.existing_daily_pnl,
+          ).toFixed(2)}，本次 ¥${Number(
+            response.conflict.incoming_daily_pnl,
+          ).toFixed(2)}；未覆盖，已生成人工确认提醒`
+        : response.ignored
+        ? '该日期收益已存在且金额一致，本次已忽略'
+        : mismatch
         ? `截图已入账；${savedCount} 只产品收益合计与账户总账不一致，已进入对账提醒`
         : response.overwritten
         ? '已用收益截图更新这笔记录'
@@ -457,7 +489,7 @@ defineExpose({
           <div>
             <strong>收益截图</strong>
             <p>
-              上传招行收益页截图。平台识别日期与昨日收益，自动记录并更新收益曲线。
+              上传招行收益页截图。平台按识别到的收益日期先核对是否已有记录和金额，再决定记录、忽略或提醒。
             </p>
           </div>
         </div>
@@ -474,7 +506,7 @@ defineExpose({
           @drop.prevent="onIncomeDrop"
         >
           <strong>{{ uploadingIncome ? '平台正在识别…' : '拖入收益截图' }}</strong>
-          <span>平台会识别“昨日收益”和截图日期</span>
+          <span>平台会识别收益、截图日期和逐产品归属日</span>
         </div>
         <input
           ref="incomeFileInput"
@@ -486,7 +518,7 @@ defineExpose({
         />
         <div class="rw-quick-meta">
           <span>
-            {{ reportingDate }} 收益
+            {{ reportingDate }} 最近披露提醒 · 收益日期以你确认为准
             {{ dashboard.meta.has_reporting_record ? '已自动记录' : '等待截图' }}
             · 待核 {{ pendingIncomeScreenshots.length }} 张
           </span>
@@ -584,6 +616,14 @@ defineExpose({
               <span>当日收益</span>
               <input v-model.number="product.daily_pnl" type="number" step="0.01" />
             </label>
+            <label>
+              <span>收益归属日</span>
+              <input v-model="product.yield_date" type="date" :max="today" />
+            </label>
+            <label>
+              <span>到账/可见日</span>
+              <input v-model="product.credit_date" type="date" :max="today" />
+            </label>
             <button
               type="button"
               class="rw-link-button is-danger"
@@ -598,11 +638,11 @@ defineExpose({
         </p>
         <div class="income-correction-form">
           <label>
-            <span>日期</span>
-            <input v-model="incomeDrafts[item.id].date" type="date" />
+            <span>截图披露日</span>
+            <input v-model="incomeDrafts[item.id].date" type="date" :max="today" />
           </label>
           <label>
-            <span>昨日收益</span>
+            <span>账户披露收益</span>
             <input
               v-model.number="incomeDrafts[item.id].daily_pnl"
               type="number"

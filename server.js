@@ -210,18 +210,12 @@ function validateRecordPayload(payload, options = {}) {
     return { error: '记录格式不正确' };
   }
   const today = options.today || todayShanghai();
-  const reportingDate = options.reportingDate || shiftDate(today, -1);
   const date = String(payload.date ?? options.date ?? '').trim();
   if (!parseYmd(date)) {
     return { error: '日期格式应为 YYYY-MM-DD' };
   }
   if (date > today) {
     return { error: '不能记录未来日期' };
-  }
-  if (date > reportingDate) {
-    return {
-      error: `招行收益按 T+1 展示，收益只能记到最近已披露日 ${reportingDate}`,
-    };
   }
   if (date < '2000-01-01') {
     return { error: '日期过早，请检查是否填写正确' };
@@ -1131,12 +1125,17 @@ function dashboardPayload(repository) {
   const rawRecords = repository.listRecords();
   const records = enrichRecords(rawRecords);
   const today = todayShanghai();
+  const tradeOverview = repository.tradeStore.getOverview(today);
+  const incomeDisclosurePolicy =
+    repository.productValuationStore.getDisclosurePolicy(
+      today,
+      tradeOverview.holdings,
+    );
   const reportingDate = shiftDate(today, -1);
   const todayRecord = rawRecords.find((record) => record.date === today) || null;
   const reportingRecord =
     rawRecords.find((record) => record.date === reportingDate) || null;
   const capital = repository.getCapitalState(today);
-  const tradeOverview = repository.tradeStore.getOverview(today);
   const allocationSettings = repository.getAllocationSettings();
   const principal =
     allocationSettings.principal_override ??
@@ -1166,6 +1165,7 @@ function dashboardPayload(repository) {
   const review = buildReview(records, today, {
     initialDate: capital.initial_date,
     reportingDate,
+    reportingLagDays: 1,
   });
   const holdingReviewSettings = Object.fromEntries(
     repository
@@ -1229,6 +1229,8 @@ function dashboardPayload(repository) {
       today,
       reporting_date: reportingDate,
       reporting_lag_days: 1,
+      recording_date_source: 'user-provided',
+      income_disclosure_policy: incomeDisclosurePolicy,
       target_annualized: TARGET_ANNUALIZED,
       has_today_record: Boolean(todayRecord),
       today_record: todayRecord,
@@ -2146,10 +2148,11 @@ function createServer(options = {}) {
         );
         const ocr = await ocrImage(storedPath);
         const today = todayShanghai();
+        const holdings = repository.tradeStore.getPortfolio();
         const parsed = parseIncomeText(ocr.text, {
           today,
           reportingDate: shiftDate(today, -1),
-          products: repository.tradeStore.getPortfolio(),
+          products: holdings,
         });
         let item = repository.incomeStore.addInbox({
           original_name: saved.item.original_name,
@@ -2170,6 +2173,8 @@ function createServer(options = {}) {
         let valuationConflicts = [];
         let missingProductCodes = parsed.missing_product_codes || [];
         let reconciliation = null;
+        let incomeConflict = null;
+        let incomeIgnored = false;
         const threshold = Number(
           repository.automationStore.getSettings().auto_confidence_threshold,
         );
@@ -2179,14 +2184,21 @@ function createServer(options = {}) {
           parsed.confidence >= threshold
         ) {
           try {
-            const applied = repository.applyIncomeScreenshot(item.id, parsed);
+            const applied = repository.applyIncomeScreenshot(item.id, parsed, {
+              today,
+            });
             item = applied.inbox;
-            record = applied.record;
+            record = applied.conflict ? null : applied.record;
             savedValuations = applied.saved_valuations || [];
             valuationConflicts = applied.valuation_conflicts || [];
             missingProductCodes = applied.missing_product_codes || [];
             reconciliation = applied.reconciliation || null;
-            autoApplied = true;
+            incomeConflict = applied.conflict || null;
+            incomeIgnored = Boolean(applied.ignored);
+            autoApplied = !applied.conflict;
+            applyError = applied.conflict
+              ? '该日期已有不同收益，平台未覆盖；请在消息中心核对后人工修改。'
+              : '';
           } catch (error) {
             applyError =
               error instanceof Error ? error.message : String(error);
@@ -2206,6 +2218,8 @@ function createServer(options = {}) {
           valuation_conflicts: valuationConflicts,
           missing_product_codes: missingProductCodes,
           reconciliation,
+          income_conflict: incomeConflict,
+          income_ignored: incomeIgnored,
           ocr: {
             ok: ocr.ok,
             language: ocr.language,
@@ -2252,6 +2266,7 @@ function createServer(options = {}) {
       );
       if (incomeApplyMatch && request.method === 'POST') {
         const body = await readJsonBody(request);
+        const today = todayShanghai();
         let result;
         try {
           result = repository.applyIncomeScreenshot(
@@ -2285,6 +2300,7 @@ function createServer(options = {}) {
               action: body.action,
               notes: body.notes,
             },
+            { today },
           );
         } catch (error) {
           sendError(response, 400, error.message);
@@ -2343,8 +2359,59 @@ function createServer(options = {}) {
         return;
       }
 
+      if (
+        pathname === '/api/product-yield-settings' &&
+        request.method === 'GET'
+      ) {
+        sendJson(response, 200, {
+          settings: repository.productValuationStore.listYieldSettings(),
+        });
+        return;
+      }
+
+      const productYieldSettingMatch = pathname.match(
+        /^\/api\/product-yield-settings\/([A-Za-z0-9-]+)$/,
+      );
+      if (productYieldSettingMatch && request.method === 'PUT') {
+        const body = await readJsonBody(request);
+        let setting;
+        try {
+          setting = repository.productValuationStore.saveYieldSetting(
+            productYieldSettingMatch[1],
+            body,
+          );
+        } catch (error) {
+          sendError(response, 400, error.message);
+          return;
+        }
+        sendJson(response, 200, {
+          setting,
+          dashboard: dashboardPayload(repository),
+        });
+        return;
+      }
+
       if (pathname === '/api/product-valuations' && request.method === 'POST') {
         const body = await readJsonBody(request);
+        const today = todayShanghai();
+        const yieldDate = String(body.yield_date || body.date || '');
+        const creditDate = String(
+          body.credit_date || body.valuation_date || yieldDate,
+        );
+        if (body.product_code && yieldDate) {
+          if (yieldDate > today) {
+            sendError(
+              response,
+              400,
+              '产品收益归属日不能晚于今天',
+            );
+            return;
+          }
+          if (creditDate && creditDate < yieldDate) {
+            sendError(response, 400, '到账/可见日期不能早于收益归属日');
+            return;
+          }
+        }
         let result;
         try {
           result = repository.productValuationStore.upsertValuation(body, {
@@ -2355,9 +2422,19 @@ function createServer(options = {}) {
           sendError(response, 400, error.message);
           return;
         }
-        sendJson(response, 201, {
+        const notification = result.conflict
+          ? repository.flagProductIncomeConflict({
+              date: yieldDate || body.date,
+              productCode: body.product_code,
+              existing: result.valuation.daily_pnl,
+              incoming: body.daily_pnl,
+              source: 'manual-product',
+            })
+          : null;
+        sendJson(response, result.conflict ? 200 : 201, {
           valuation: result.valuation,
           conflict: result.conflict,
+          notification_id: notification?.id ?? null,
           dashboard: dashboardPayload(repository),
         });
         return;
@@ -2375,14 +2452,36 @@ function createServer(options = {}) {
           return;
         }
         const body = await readJsonBody(request);
+        const today = todayShanghai();
+        const yieldDate = String(body.yield_date || before.yield_date || '');
+        const creditDate = String(
+          body.credit_date ||
+            body.valuation_date ||
+            before.credit_date ||
+            yieldDate,
+        );
+        if (yieldDate > today) {
+          sendError(
+            response,
+            400,
+            '产品收益归属日不能晚于今天',
+          );
+          return;
+        }
+        if (creditDate < yieldDate) {
+          sendError(response, 400, '到账/可见日期不能早于收益归属日');
+          return;
+        }
         let result;
         try {
-          result = repository.productValuationStore.upsertValuation(
+          result = repository.productValuationStore.updateValuationById(
+            Number(productValuationMatch[1]),
             {
               ...before,
               ...body,
               product_code: before.product_code,
-              yield_date: before.yield_date,
+              yield_date: yieldDate,
+              credit_date: creditDate,
               source: 'manual-correction',
             },
             {
@@ -3202,18 +3301,60 @@ function createServer(options = {}) {
 
       if (pathname === '/api/records' && request.method === 'POST') {
         const body = await readJsonBody(request);
-        const capitalState = repository.getCapitalState(todayShanghai());
+        const today = todayShanghai();
+        const capitalState = repository.getCapitalState(today);
         if (!capitalState.initialized) {
           sendError(response, 400, '请先初始化本金账户，再记录收益');
           return;
         }
-        const basicValidation = validateRecordPayload(body);
+        const basicValidation = validateRecordPayload(body, {
+          today,
+        });
         if (basicValidation.error) {
           sendError(response, 400, basicValidation.error);
           return;
         }
-        if (repository.getRecord(basicValidation.value.date)) {
-          sendError(response, 409, '这个日期已经有记录，请直接修改');
+        const existing = repository.getRecord(basicValidation.value.date);
+        if (existing) {
+          const sameValue =
+            Math.abs(
+              Number(existing.daily_pnl) -
+                Number(basicValidation.value.daily_pnl),
+            ) <= 0.005;
+          if (sameValue) {
+            sendJson(response, 200, {
+              record: existing,
+              duplicate: true,
+              changed: false,
+              conflict: null,
+              dashboard: dashboardPayload(repository),
+            });
+            return;
+          }
+          const notification = repository.flagIncomeRecordConflict({
+            date: basicValidation.value.date,
+            existing,
+            incoming: basicValidation.value.daily_pnl,
+            source: 'manual',
+          });
+          sendJson(response, 200, {
+            record: existing,
+            duplicate: false,
+            changed: false,
+            conflict: {
+              date: basicValidation.value.date,
+              existing_daily_pnl: Number(existing.daily_pnl),
+              incoming_daily_pnl: basicValidation.value.daily_pnl,
+              difference:
+                Math.round(
+                  (basicValidation.value.daily_pnl -
+                    Number(existing.daily_pnl)) *
+                    100,
+                ) / 100,
+              notification_id: notification.id,
+            },
+            dashboard: dashboardPayload(repository),
+          });
           return;
         }
         let record;
@@ -3223,7 +3364,13 @@ function createServer(options = {}) {
           sendError(response, 400, error.message);
           return;
         }
-        sendJson(response, 201, { record, dashboard: dashboardPayload(repository) });
+        sendJson(response, 201, {
+          record,
+          duplicate: false,
+          changed: true,
+          conflict: null,
+          dashboard: dashboardPayload(repository),
+        });
         return;
       }
 
@@ -3239,7 +3386,14 @@ function createServer(options = {}) {
           sendError(response, 400, '修改记录时不能更改日期，请删除后重新记录');
           return;
         }
-        const validation = validateRecordPayload({ ...body, date }, { date });
+        const today = todayShanghai();
+        const validation = validateRecordPayload(
+          { ...body, date },
+          {
+            date,
+            today,
+          },
+        );
         if (validation.error) {
           sendError(response, 400, validation.error);
           return;

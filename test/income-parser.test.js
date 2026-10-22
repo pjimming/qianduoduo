@@ -146,3 +146,23 @@ test('account header total is compared with the product detail sum', () => {
     ),
   );
 });
+
+test('income parser keeps the user-provided disclosure date for every product without lag shifting', () => {
+  const parsed = parseIncomeText(
+    `
+    2026年10月21日
+    昨日收益 1.20
+    120056A
+    持仓金额 6,000.00
+    昨日收益 1.20
+    `,
+    {
+      today: '2026-10-22',
+      reportingDate: '2026-10-21',
+      products: [{ code: '120056A', name: '产品A' }],
+    },
+  );
+  assert.equal(parsed.date, '2026-10-21');
+  assert.equal(parsed.products[0].yield_date, '2026-10-21');
+  assert.equal(parsed.products[0].credit_date, '2026-10-21');
+});

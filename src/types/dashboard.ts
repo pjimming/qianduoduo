@@ -260,6 +260,7 @@ export interface Holding {
 export interface ProductDailyValuation {
   id: number
   valuation_date: string
+  credit_date: string
   yield_date: string
   product_code: string
   product_name: string
@@ -271,6 +272,35 @@ export interface ProductDailyValuation {
   notes: string
   created_at: string
   updated_at: string
+}
+
+export type ProductYieldLagSource =
+  | 'default'
+  | 'product-document'
+  | 'app-rule'
+  | 'user-confirmed'
+
+export interface ProductYieldSetting {
+  product_code: string
+  yield_lag_days: number
+  source: ProductYieldLagSource
+  verified: boolean
+  label: string
+  notes: string
+  verified_at: string
+  updated_at: string
+  expected_latest_yield_date?: string
+  todays_yield_visible_date?: string
+}
+
+export interface ProductIncomeDisclosurePolicy {
+  basis: string
+  default_yield_lag_days: number
+  reporting_lag_days: number
+  reporting_date: string
+  active_product_count: number
+  unverified_product_codes: string[]
+  products: ProductYieldSetting[]
 }
 
 export interface ProductValuationDay {
@@ -293,12 +323,21 @@ export interface ProductValuationSummary {
   cumulative_pnl: number
   negative_days: number
   latest_daily_pnl: number | null
+  yield_lag_days: number
+  yield_lag_source: ProductYieldLagSource
+  yield_lag_verified: boolean
+  yield_lag_label: string
+  yield_lag_notes: string
+  yield_lag_updated_at: string
+  expected_latest_yield_date: string
+  todays_yield_visible_date: string
   worst_day: ProductValuationDay | null
   best_day: ProductValuationDay | null
 }
 
 export interface ProductValuationReconciliationItem {
-  yield_date: string
+  account_date: string
+  yield_dates: string[]
   product_pnl: number
   product_count: number
   account_pnl: number | null
@@ -330,6 +369,7 @@ export interface ProductValuationAudit {
 
 export interface ProductValuationDetail {
   summary: ProductValuationSummary | null
+  yield_setting: ProductYieldSetting
   valuations: ProductDailyValuation[]
   audit: ProductValuationAudit[]
 }
@@ -729,12 +769,15 @@ export interface ReviewWorkspace {
   }
   product_valuation_summaries: ProductValuationSummary[]
   product_valuation_reconciliation: ProductValuationReconciliation
+  product_valuation_disclosure_policy: ProductIncomeDisclosurePolicy
   product_valuation_summary: {
     products: number
     active: number
     redeemed: number
     valuation_days: number
     latest_date: string | null
+    max_yield_lag_days: number
+    unverified_product_codes: string[]
   }
   timeline: {
     today: string
@@ -971,6 +1014,7 @@ export interface AutomationWorkspace {
 export interface IncomeInboxParsed {
   date?: string
   valuation_date?: string
+  credit_date?: string
   daily_pnl?: number | null
   product_daily_total?: number | null
   principal?: number | null
@@ -980,6 +1024,7 @@ export interface IncomeInboxParsed {
   action?: LedgerAction
   notes?: string
   products?: ProductValuationInput[]
+  needs_product_date_review?: boolean
   missing_product_codes?: string[]
   reconciliation?: ProductValuationReconciliationItem | null
 }
@@ -1067,6 +1112,8 @@ export interface IncomeCaptureResponse {
   }>
   missing_product_codes: string[]
   reconciliation: ProductValuationReconciliationItem | null
+  income_conflict: IncomeRecordConflict | null
+  income_ignored: boolean
   ocr: {
     ok: boolean
     language: string | null
@@ -1080,7 +1127,9 @@ export interface IncomeApplyResponse {
   record: RawLedgerRecord | null
   duplicate: boolean
   matched_existing: boolean
+  ignored: boolean
   overwritten: boolean
+  conflict: IncomeRecordConflict | null
   saved_valuations: ProductDailyValuation[]
   valuation_conflicts: Array<{
     product_code: string
@@ -1095,6 +1144,7 @@ export interface IncomeApplyResponse {
 
 export interface ProductValuationInput {
   valuation_date?: string
+  credit_date?: string
   yield_date?: string
   date?: string
   product_code: string
@@ -1108,9 +1158,29 @@ export interface ProductValuationInput {
   correction_note?: string
 }
 
+export interface IncomeRecordConflict {
+  date: string
+  existing_daily_pnl: number
+  incoming_daily_pnl: number
+  difference: number
+  notification_id: number | null
+}
+
 export interface ProductValuationMutationResponse {
   valuation: ProductDailyValuation
   conflict: string | null
+  dashboard: DashboardPayload
+}
+
+export interface ProductYieldSettingInput {
+  yield_lag_days: number
+  source: Exclude<ProductYieldLagSource, 'default'>
+  notes?: string
+  verified_at?: string
+}
+
+export interface ProductYieldSettingMutationResponse {
+  setting: ProductYieldSetting
   dashboard: DashboardPayload
 }
 
@@ -1319,6 +1389,8 @@ export interface DashboardMeta {
   today: string
   reporting_date: string
   reporting_lag_days: number
+  recording_date_source: 'user-provided'
+  income_disclosure_policy: ProductIncomeDisclosurePolicy
   target_annualized: number
   has_today_record: boolean
   today_record: RawLedgerRecord | null
@@ -1366,6 +1438,9 @@ export interface CapitalEventInput {
 
 export interface RecordMutationResponse {
   record: LedgerRecord
+  duplicate: boolean
+  changed: boolean
+  conflict: IncomeRecordConflict | null
   dashboard: DashboardPayload
 }
 

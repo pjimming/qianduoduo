@@ -163,7 +163,19 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
       daily_pnl: 50,
     }),
   });
-  assert.equal(duplicateResponse.status, 409);
+  assert.equal(duplicateResponse.status, 200);
+  const duplicate = await duplicateResponse.json();
+  assert.equal(duplicate.record.daily_pnl, 54);
+  assert.equal(duplicate.conflict.existing_daily_pnl, 54);
+  assert.equal(duplicate.conflict.incoming_daily_pnl, 50);
+  assert.equal(duplicate.dashboard.records.length, 1);
+  assert.ok(
+    duplicate.dashboard.inbox_center.pending.some(
+      (item) =>
+        item.source_type === 'system_notification' &&
+        item.title.includes('收益金额不一致'),
+    ),
+  );
 
   const updateResponse = await fetch(`${base}/api/records/2026-10-18`, {
     method: 'PUT',
@@ -224,7 +236,7 @@ test('API rejects future dates and records before capital initialization', async
   assert.match(uninitializedBody.error, /本金账户/);
 });
 
-test('API rejects the current day because CMB returns are published T+1', async (t) => {
+test('API accepts user-provided dates through today and validates duplicates idempotently', async (t) => {
   const base = await startTestServer(t);
   const today = todayShanghai();
   const reportingDate = shiftDate(today, -1);
@@ -243,8 +255,21 @@ test('API rejects the current day because CMB returns are published T+1', async 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ date: today, daily_pnl: 1 }),
   });
-  assert.equal(currentDay.status, 400);
-  assert.match((await currentDay.json()).error, /T\+1|已披露日/);
+  assert.equal(currentDay.status, 201);
+  const currentPayload = await currentDay.json();
+  assert.equal(currentPayload.record.daily_pnl, 1);
+
+  const sameCurrentDay = await fetch(`${base}/api/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: today, daily_pnl: 1 }),
+  });
+  assert.equal(sameCurrentDay.status, 200);
+  const sameCurrentPayload = await sameCurrentDay.json();
+  assert.equal(sameCurrentPayload.duplicate, true);
+  assert.equal(sameCurrentPayload.changed, false);
+  assert.equal(sameCurrentPayload.conflict, null);
+  assert.equal(sameCurrentPayload.dashboard.records.length, 1);
 
   const previousDay = await fetch(`${base}/api/records`, {
     method: 'POST',
