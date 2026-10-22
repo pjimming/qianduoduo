@@ -52,6 +52,20 @@
 - Vue Router
 - Node.js 24+、内置 `node:sqlite`
 
+后端入口与基础设施：
+
+- `server.js`：启动入口和兼容导出。
+- `server/app.js`：应用工厂。
+- `server/http/`：Router、路由清单、响应、静态文件和 middleware。
+- `server/lifecycle.js`：数据库、HTTP Server、调度器与优雅关闭。
+- `server/modules/`：已迁移的业务域门面、路由与查询服务。
+- 当前已迁移：dashboard、operations、products、notifications、capital、ledger、product-valuations、trades、decisions、proposals、evaluations、reviews、research-static。
+- OCR 适配器位于 `server/infrastructure/ocr/`，`lib/ocr.js` 保留兼容导出。
+- 调度器支持失败重试与状态诊断；服务停止会取消重试并终止 OCR 子进程。
+- 数据库恢复使用 WAL 一致安全快照、`quick_check` 和临时文件验证。
+- 运行日志会对常见 token、password 和 API key 格式脱敏。
+- 后端 API 已全部由 `server/modules/` 的域路由接管，旧的 legacy handler 已删除。
+
 前端目录：
 
 ```text

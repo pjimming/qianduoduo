@@ -9,12 +9,18 @@
  * 服务运行时拒绝恢复，请先执行 npm run prod:stop。
  */
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { DatabaseSync } from 'node:sqlite'
+import { createRequire } from 'node:module'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const require = createRequire(import.meta.url)
+const {
+  createConsistentSnapshot,
+  restoreDatabase,
+  validateDatabase,
+} = require('../server/infrastructure/backup/sqlite-backup')
 const dbPath = path.resolve(
   process.env.R2_DB_PATH || path.join(root, 'data', 'r2_ledger.sqlite'),
 )
@@ -75,12 +81,8 @@ function commandBackup() {
     console.log(`今天的备份已存在：${target}`)
     return
   }
-  const db = new DatabaseSync(dbPath)
-  try {
-    db.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`)
-  } finally {
-    db.close()
-  }
+  createConsistentSnapshot(dbPath, target)
+  validateDatabase(target)
   console.log(`已备份：${target}`)
 }
 
@@ -99,16 +101,13 @@ async function commandRestore(requested) {
     throw new Error(`没有找到备份：${requested}（先运行 node scripts/db.mjs list）`)
   }
 
-  mkdirSync(backupDir, { recursive: true })
-  if (existsSync(dbPath)) {
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const safety = path.join(backupDir, `pre-restore-${stamp}.sqlite`)
-    copyFileSync(dbPath, safety)
-    console.log(`已保留恢复前快照：${safety}`)
-  }
-  copyFileSync(match.file, dbPath)
-  for (const suffix of ['-wal', '-shm']) {
-    rmSync(`${dbPath}${suffix}`, { force: true })
+  const { safetyPath } = restoreDatabase({
+    backupPath: match.file,
+    dbPath,
+    safetyDir: backupDir,
+  })
+  if (safetyPath) {
+    console.log(`已保留恢复前快照：${safetyPath}`)
   }
   console.log(`已恢复 ${match.name} -> ${dbPath}`)
   console.log('现在可以执行 npm run prod:restart 启动服务。')

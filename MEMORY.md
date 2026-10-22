@@ -24,6 +24,10 @@
 - 钱多多是本地个人财富工作台，左侧导航分为“理财”和“投资”两组，均可折叠；理财下按“收益概览、消息中心、每日记账、交易与持仓、产品与配置、复盘、决策与评估”排列，投资下为“科技全景图”和“调研报告”。分组折叠状态保存在浏览器 localStorage。
 - 本地生产页：`http://127.0.0.1:8765`；开发页：`http://127.0.0.1:5173`。
 - 前端：Vue 3 + Vite + TypeScript + Pinia + Vue Router；后端：Node.js 24+、内置 `node:sqlite`。
+- 截至 2026-10-22（来源：`docs/refactor/final-report.md`）：后端已完成为模块化单体。`server.js` 只负责应用工厂和生命周期入口；`server/app.js` 装配 HTTP 应用，`server/lifecycle.js` 管理启动、维护任务、调度器、优雅关闭和数据库关闭；HTTP、域用例和基础设施分别位于 `server/http/`、`server/modules/`、`server/infrastructure/`。69 个旧 API pattern 均在启动时强制校验已注册且无重复，未知 API 继续返回 404 `{"error":"接口不存在"}`。
+- 后端模块按域拆为 capital、dashboard、decisions、evaluations、income、ledger、notifications、operations、product-valuations、products、proposals、research、reviews、trades；`server/modules/` 和 `server/infrastructure/` 不直接写 SQL，仍通过 repository adapter 调用现有 `lib/*-store.js`。旧 `server/http/legacy-app.js` 已删除，不再保留两套 HTTP 业务实现。
+- 2026-10-22 的后端重构未改变 SQLite schema、配置项、业务算法或 API 契约；现有 SQLite 文件继续原地使用，未对真实业务数据执行迁移、修复或批量重算。重构后的生产重启和只读完整性验收见 `docs/refactor/14-production-acceptance.md`。
+- 重构后尚未关闭的财务和运维风险统一登记在工作区根目录 `TODO.md`，以 `TD-REF-*` 编号跟踪；其中 `TD-REF-001`（收益截图跨产品收益、账户收益和收件箱状态尚未单一事务化）是当前优先级最高的保留项。`TODO.md` 是这些未完成事项的状态源，不应把架构重构完成误写成全部财务风险已解决。
 - R2 页面在 `src/views/r2/`：`R2LayoutView` 统一加载数据，`InboxView`、`OverviewView`、`DailyEntryView`、`TradesView`、`ProductsView`、`ReviewView`、`EvaluationView` 七个子页；页面外壳在 `src/components/r2/`，样式在 `src/styles/r2-pages.css` 与 `src/styles/inbox.css`。`/` 和 `/ledger` 都重定向到 `/ledger/overview`。
 - R2 路由：`/ledger/overview` 收益概览、`/ledger/inbox` 消息中心、`/ledger/daily` 每日记账、`/ledger/trades` 交易与持仓、`/ledger/products` 产品与配置、`/ledger/review` 复盘、`/ledger/evaluation` 决策与评估。七个页面共享同一个 `dashboard`，切换页面不重复请求 `/api/dashboard`。
 - R2 顶部悬浮分区导航已移除；左侧 sidebar 是唯一的跨页分区入口。页面内的 `R2SectionIndex` 只做当前页锚点（如复盘页的日周月评分 / 复盘节奏 / 月度五问 / 季度复盘），不重复承载跨页导航。
@@ -92,7 +96,7 @@
 - `/api/dashboard` 的 `workspace.product_valuation_summary` 提供产品数、持有/已赎回数、最新档案日；`product_valuation_summaries` 提供每只产品的累计个人收益、档案/持有天数、负收益天数、最差单日与状态；`product_valuation_reconciliation` 提供产品合计和账户总账的匹配/差异。完整逐日历史通过 `/api/product-valuations?product_code=...` 按需读取，避免 dashboard 随时间无限膨胀。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现盈亏。页面中的“未赎回成本本金”= 已确认买入金额 − 已匹配赎回本金，不是余额或当前市值。待确认买入只占额度，待确认赎回不改持仓，均不进入未赎回成本、期限桶和流动性比例。
-- 交易收件箱支持本地拖入 PNG/JPEG/WebP；每日巡检以视觉识别原图为准，`scripts/split-trade-rows.mjs` 负责把多笔总览按行切分；`lib/ocr.js` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），只用于金额与代码的交叉校验，`POST /api/trades/inbox/:id/vision-apply` 在冲突时返回 409 拒绝写入。`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`，已处理/已忽略的 180 天后自动清理。
+- 交易收件箱支持本地拖入 PNG/JPEG/WebP；每日巡检以视觉识别原图为准，`scripts/split-trade-rows.mjs` 负责把多笔总览按行切分；`server/infrastructure/ocr/` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），只用于金额与代码的交叉校验，`lib/ocr.js` 仅保留兼容导出，OCR 子进程纳入服务关闭生命周期。`POST /api/trades/inbox/:id/vision-apply` 在冲突时返回 409 拒绝写入。`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`，已处理/已忽略的 180 天后自动清理。
 - 决策提案由 `lib/decision-proposal-store.js` 管理 `decision_proposals`。可分配资金大于 0 时按目标产品生成买入提案；持仓复核达到 `replace` 时生成换仓提案。待采纳提案有证据日、有效期、置信度和预期交易腿；采纳才生成正式决策并标记 `lifecycle_status=accepted`、`execution_status=pending`，拒绝或过期不生成决策。已采纳但无交易时可取消，已有交易关联时不能直接取消。
 - 截图/手工交易落库后会先按已采纳提案的交易方向、产品代码、金额容差和有效期匹配：完全匹配时自动关联原决策；金额差异在最大 20%（至少 1 元）内视为调整并记录；方向/产品不匹配或金额超差则不绑定，自动转成 `execution_status=unplanned` 的计划外决策。执行审计同时检查交易腿、金额、成交截图和 R2/PR2 风险等级，交易确认后把决策更新为 `execution_status=confirmed`。
 - 2026-10-19 决策：截图识别采用方案 A（视觉优先、OCR 交叉校验），不做纯视觉，也不默认接入云端 OCR；理由是本机 OCR 布局丢失导致金额误读，而视觉能按行列正确还原。代价是截图会进入模型推理，OCR 本身仍留在本机。
@@ -105,7 +109,7 @@
 - 自动评估去重：同一决策、同一 `buy_day` 阶段、同一规则版本只保留最新一条待确认评估。交易或决策日期校正后，旧待确认评估自动标记为 `undone`，对应任务以 `skipped` 关闭、提醒标记已处理；历史记录保留，不物理删除。
 - 评估置信度默认 75% 才自动写入；低置信度、金额缺失、决策证据不完整或与手工评价冲突时进入 pending 队列，并存 `automation_jobs`。结果未知或建议评价仍为“待评估”时，`forceApplyRun` 拒绝人工空确认。写入记录 `evaluation_runs.previous_*`/`applied_*` 快照，可撤销；单产品评估与组合决策评估分 scope 保存。
 - 自动评估界面默认按“决策/交易 + 阶段”只展示最新有效结论，排除 `undone` 和旧规则版本重复项；完整审计历史需主动展开。买入日只显示流程检查结论，持有期和到期/赎回才显示结果结论；每条当前结论带 `evidence.next_update` 说明下一次自动更新时间。
-- 本地自动化在 `startServer` 启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。
+- 本地自动化由 `server/jobs/automation-scheduler.js` 在服务启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。调度器提供失败重试、指数退避、停止清理和执行状态；启动时会把中断的自动任务标记为失败。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。`timeout` 当前只能诊断，不能硬中断同步 cycle，跟踪项为 `TD-REF-003`。
 - 月度/季度草稿自动汇总收益、目标差距、流程正确/错误数、评估 pending、产品事件、持仓和异常；草稿不会自动写成正式复盘，需在“月度五问/季度复盘”采用并确认。
 - Codex 定时任务“钱多多R2每日巡检（含AI队列与消息中心）”每日 21:00 运行，先处理 `screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再读取 `decision_proposals` 并按 `meta.reporting_date`（通常为昨日）巡检最近已披露收益、逐产品收益档案与账户/产品对账；今日未披露不算缺记，产品缺失不写 0，差异不覆盖总账。任务只能提醒用户采纳/拒绝提案，不得代替用户决定、创建交易或下单。
 - 导出 CSV：`date,principal,daily_pnl,action,notes`。
@@ -122,11 +126,13 @@
 ## 4. 运行与测试
 
 - 生产守护：`npm run prod:deploy`；日常使用 `prod:status`、`prod:start`、`prod:stop`、`prod:restart`。
+- 守护脚本通过 `run/server.stop` 请求 Node 优雅关闭，超时才强杀；关闭流程会停止调度器、终止活动 OCR 子进程、关闭 HTTP Server 和数据库。2026-10-22 已实际重启验证 graceful path。截至同日 `prod:status` 显示本机 Watchdog 计划任务尚未安装，跟踪项为 `TD-REF-004`；进程和健康状态以实时 `prod:status` 为准，不写入固定 PID。
 - 手动前台：双击 `start.bat`，执行构建后启动 `8765` 服务。
 - 开发模式：双击 `start-dev.bat` 或运行 `npm run dev:all`；Vite 页面为 `5173`。
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
+- 2026-10-22 后端重构最终验证（提交前复跑）：`node --test` 193/193 通过，行覆盖率 88.16%、分支覆盖率 73.09%、函数覆盖率 86.77%；`npm run check`、`npm run build`、`npm run test:e2e` 和 `npm audit --omit=dev` 均通过，生产依赖漏洞为 0。后续仍须以当次实际运行结果为准。
 - `npm run test:e2e` 会检查侧边栏七个 R2 入口、消息中心分组与全部已读、每日记账两个主入口、复盘时间轴与记录日历、复盘模块白卡、跨页补记、逐产品收益档案与手工补录、产品分配桶、观察名单产品详情、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板；只有最近一次实际运行结果才能表述为“测试通过”。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 

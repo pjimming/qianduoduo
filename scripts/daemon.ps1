@@ -18,6 +18,7 @@ $LogDir = Join-Path $Root 'logs'
 $DaemonPidFile = Join-Path $RunDir 'daemon.pid'
 $ServerPidFile = Join-Path $RunDir 'server.pid'
 $StopFile = Join-Path $RunDir 'daemon.stop'
+$ServerStopFile = Join-Path $RunDir 'server.stop'
 $DaemonLog = Join-Path $LogDir 'daemon.log'
 $HealthUrl = "http://127.0.0.1:$Port/api/health"
 
@@ -176,11 +177,24 @@ function Stop-Supervisor {
 
   Ensure-Directories
   New-Item -ItemType File -Force -Path $StopFile | Out-Null
+  New-Item -ItemType File -Force -Path $ServerStopFile | Out-Null
 
   $server = Get-LiveProcess -PidFile $ServerPidFile
   if ($server) {
-    Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-    Write-DaemonLog "server stopped pid=$($server.Id)"
+    $serverId = $server.Id
+    for ($attempt = 0; $attempt -lt 40; $attempt++) {
+      if (-not (Get-Process -Id $serverId -ErrorAction SilentlyContinue)) {
+        break
+      }
+      Start-Sleep -Milliseconds 250
+    }
+    $server = Get-Process -Id $serverId -ErrorAction SilentlyContinue
+    if ($server) {
+      Stop-Process -Id $serverId -Force -ErrorAction SilentlyContinue
+      Write-DaemonLog "server forced to stop pid=$serverId"
+    } else {
+      Write-DaemonLog "server stopped gracefully pid=$serverId"
+    }
   }
 
   $supervisor = Get-LiveProcess -PidFile $DaemonPidFile
@@ -190,7 +204,7 @@ function Stop-Supervisor {
   }
 
   Start-Sleep -Milliseconds 500
-  Remove-Item -LiteralPath $ServerPidFile, $DaemonPidFile, $StopFile -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $ServerPidFile, $DaemonPidFile, $StopFile, $ServerStopFile -Force -ErrorAction SilentlyContinue
   Write-Host 'QianDuoDuo production supervisor stopped.'
 }
 
@@ -240,6 +254,7 @@ function Run-Supervisor {
   $env:PORT = [string]$Port
   $env:HOST = '127.0.0.1'
   $env:NODE_NO_WARNINGS = '1'
+  $env:R2_STOP_FILE = $ServerStopFile
   Write-DaemonLog "supervisor started pid=$PID port=$Port root=$Root"
 
   $restartDelay = 2
