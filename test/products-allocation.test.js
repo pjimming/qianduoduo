@@ -159,27 +159,32 @@ test('existing holdings remove the matching bucket deficit', () => {
   assert.ok(view.watchlist.some((item) => item.bucket === 'long'));
 });
 
-test('issuer cap includes pending exposure and blocks duplicate concentration', () => {
-  const view = buildProductView(basePool(), {
+test('issuer exposure is display-only and never caps allocation', () => {
+  const pool = Array.from({ length: 10 }, (_, index) =>
+    product({
+      code: `SAME-ISSUER-${index + 1}`,
+      issuer: '同一发行方',
+      benchmark: `唯一底层${index + 1}`,
+      term_days: 14,
+    }),
+  );
+  const view = buildProductView(pool, {
     principal: 100000,
-    settings: { max_issuer_pct: 40 },
-    pending_trades: [
-      {
-        status: 'pending',
-        trade_type: 'buy',
-        product_code: 'PENDING',
-        product_name: '待确认A',
-        issuer: 'A0',
-        amount: 35000,
-        term_days: 14,
-      },
-    ],
+    settings: { bucket_targets: { short: 100, medium: 0, long: 0 } },
   });
-  const byIssuer = view.watchlist.reduce((counts, item) => {
-    counts[item.issuer] = (counts[item.issuer] || 0) + item.target_amount;
-    return counts;
-  }, {});
-  assert.ok((byIssuer.A0 || 0) + 35000 <= 40000.01);
+  assert.equal(view.allocation.allocated_amount, 100000);
+  assert.equal(
+    view.watchlist.reduce((sum, item) => sum + item.target_amount, 0),
+    100000,
+  );
+  assert.equal(
+    view.watchlist.reduce(
+      (sum, item) => sum + (item.issuer === '同一发行方' ? item.target_amount : 0),
+      0,
+    ),
+    100000,
+  );
+  assert.equal(view.allocation.allocation_policy.issuer_display_only, true);
 });
 
 test('liquidity floor and near-term cash flow force enough short allocation', () => {
@@ -218,7 +223,7 @@ test('allocation settings normalize unsafe inputs and default to 30/35/35', () =
     bucket_targets: { short: 20, medium: 40, long: 40 },
   });
   assert.equal(settings.max_single_pct, 30);
-  assert.equal(settings.max_issuer_pct, 40);
+  assert.equal(Object.hasOwn(settings, 'max_issuer_pct'), false);
   assert.equal(settings.daily_open_target_pct, 0);
   assert.deepEqual(settings.bucket_targets, { short: 20, medium: 40, long: 40 });
 });

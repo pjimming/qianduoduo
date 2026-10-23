@@ -62,7 +62,7 @@ function barWidth(value: number | null): string {
         <p class="kicker">HOLDINGS</p>
         <strong class="rw-panel-title">持仓由交易流水自动推导</strong>
         <p class="rw-panel-sub">
-          只统计已确认买入批次；待确认交易在「交易流水」中单独显示，不会提前进入集中度和期限阶梯。
+          只统计已确认买入批次；待确认交易在「交易流水」中单独显示，不会提前进入单只占比和期限阶梯。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -133,7 +133,7 @@ function barWidth(value: number | null): string {
       <section class="rw-subpanel">
         <div class="rw-subhead">
           <strong>发行方成本占比</strong>
-          <span>多发行方时参考上限 50%</span>
+          <span>仅展示当前持仓状态</span>
         </div>
         <div v-if="summary.by_issuer.length" class="rw-bars">
           <div v-for="item in summary.by_issuer.slice(0, 5)" :key="item.name" class="rw-bar-row">
@@ -141,7 +141,6 @@ function barWidth(value: number | null): string {
             <div class="rw-bar-track">
               <span
                 class="rw-bar-fill"
-                :class="{ 'is-warn': (item.pct ?? 0) > 50 && summary.by_issuer.length > 1 }"
                 :style="{ width: barWidth(item.pct) }"
               ></span>
             </div>

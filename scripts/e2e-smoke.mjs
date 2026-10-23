@@ -523,6 +523,19 @@ async function main() {
         !holdingsTerminology.includes('剩余本金'),
       '持仓页仍在使用有歧义的“剩余本金”名称',
     )
+    assert(
+      holdingsTerminology.includes('仅展示当前持仓状态') &&
+        !holdingsTerminology.includes('参考上限 50%'),
+      '发行方占比仍在持仓页显示限制或警示口径',
+    )
+    assert(
+      (await page
+        .locator('#holdings .rw-subpanel')
+        .filter({ hasText: '发行方成本占比' })
+        .locator('.rw-bar-fill.is-warn')
+        .count()) === 0,
+      '发行方占比仍被标记为警告色',
+    )
     const tradesTerminology = (await page.locator('#trades').textContent()) || ''
     assert(
       tradesTerminology.includes('累计已实现盈亏') &&
@@ -767,6 +780,17 @@ async function main() {
       (await page.locator('.product-module-card').count()) >= 4,
       '产品页应有配置、目标产品、观察名单和风险边界模块卡',
     )
+    await page.getByRole('button', { name: '调整假设', exact: true }).click()
+    await page.waitForSelector('#assumptionsCardTitle')
+    const assumptionsText =
+      (await page
+        .locator('section[aria-labelledby="assumptionsCardTitle"]')
+        .textContent()) || ''
+    assert(
+      !assumptionsText.includes('单发行方上限'),
+      '产品配置仍在显示单发行方上限设置',
+    )
+    await page.getByRole('button', { name: '收起', exact: true }).click()
     await page.waitForSelector('#holding-reviews .hr-card')
     const holdingReviewCards = page.locator('#holding-reviews .hr-card')
     const holdingReviewCount = await holdingReviewCards.count()

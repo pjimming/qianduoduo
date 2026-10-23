@@ -37,7 +37,6 @@ const settingsForm = reactive({
   principal_override: '' as string | number,
   liquidity_floor_pct: 30,
   max_single_pct: 30,
-  max_issuer_pct: 50,
   cashflow_0_3: 0,
   cashflow_3_6: 0,
   cashflow_6_12: 0,
@@ -59,7 +58,6 @@ watch(
     settingsForm.principal_override = value.principal_override ?? ''
     settingsForm.liquidity_floor_pct = value.liquidity_floor_pct
     settingsForm.max_single_pct = value.max_single_pct
-    settingsForm.max_issuer_pct = value.max_issuer_pct
     settingsForm.cashflow_0_3 = value.cashflow_0_3
     settingsForm.cashflow_3_6 = value.cashflow_3_6
     settingsForm.cashflow_6_12 = value.cashflow_6_12
@@ -184,7 +182,6 @@ async function saveSettings(): Promise<void> {
         settingsForm.principal_override === '' ? null : Number(settingsForm.principal_override),
       liquidity_floor_pct: Number(settingsForm.liquidity_floor_pct),
       max_single_pct: Number(settingsForm.max_single_pct),
-      max_issuer_pct: Number(settingsForm.max_issuer_pct),
       cashflow_0_3: Number(settingsForm.cashflow_0_3),
       cashflow_3_6: Number(settingsForm.cashflow_3_6),
       cashflow_6_12: Number(settingsForm.cashflow_6_12),
@@ -341,7 +338,7 @@ async function saveQuotas(): Promise<void> {
           <p class="kicker">ASSUMPTIONS</p>
           <h3 id="assumptionsCardTitle" class="rw-panel-title">分配假设</h3>
           <p class="rw-panel-sub">
-            调整本金、期限桶、短期下限、现金流和集中度上限；日开新增额度固定为 0%。
+            调整本金、期限桶、短期下限和现金流；单只上限固定约束，日开新增额度固定为 0%。
           </p>
         </div>
         <div class="rw-toolbar-actions">
@@ -398,16 +395,6 @@ async function saveQuotas(): Promise<void> {
           />
         </label>
         <label>
-          <span>单发行方上限 %</span>
-          <input
-            v-model.number="settingsForm.max_issuer_pct"
-            type="number"
-            min="40"
-            max="100"
-            step="1"
-          />
-        </label>
-        <label>
           <span>0–3 月支出</span>
           <input v-model.number="settingsForm.cashflow_0_3" type="number" min="0" step="100" />
         </label>
@@ -441,7 +428,7 @@ async function saveQuotas(): Promise<void> {
           <p class="kicker">TARGET PRODUCTS</p>
           <h3 id="targetProductsCardTitle" class="rw-panel-title">目标产品</h3>
           <p class="rw-panel-sub">
-            按期限桶、流动性和集中度生成的目标金额；仅作分配上限，买入前需在招行 App 核验。
+            按期限桶、流动性、单只与底层策略上限生成目标金额；发行方仅展示，买入前需在招行 App 核验。
           </p>
         </div>
       </header>
@@ -507,7 +494,7 @@ async function saveQuotas(): Promise<void> {
             {{
               allocation.principal > 0
                 ? '当前本金已被已确认持仓和待确认买入占用。下面保留观察名单，等资金释放或本金转入后再生成金额。'
-                : '先在“本金管理”中初始化本金，系统会按期限桶、流动性和集中度生成配置。'
+                : '先在“本金管理”中初始化本金，系统会按期限桶、流动性、单只和底层策略上限生成配置。'
             }}
           </p>
         </div>
@@ -619,7 +606,8 @@ async function saveQuotas(): Promise<void> {
           <path d="M7.5 10.2 9.2 12l3.5-4" />
         </svg>
         <span>
-          目标金额由本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来现金流和集中度共同计算。
+          目标金额由本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来现金流、单只与底层策略上限共同计算。
+          发行方名称和当前持仓占比只作展示，不参与产品筛选、金额分配、买入门槛、提案或自动评估。
           同桶残余资金优先补足仍可加仓的已确认持仓；首次建仓须同时达到起购金额和目标单只金额的一半，避免制造小额新仓。
           本项目日开新增额度固定为 0%，现有日开持仓只作为真实持仓保留并提示迁移；短桶承担流动性。
           公开额度缺失时只给分配上限，不假装可买；买入前必须在招行 App 核对额度、起购金额、赎回规则和产品说明书。

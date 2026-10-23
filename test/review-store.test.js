@@ -67,7 +67,7 @@ test('holdings compute maturity, buckets and ladder', (t) => {
   const daily = repository.createHolding({
     product_name: '某日开',
     product_code: 'CMB002',
-    issuer: '招银理财',
+    issuer: '另一家理财公司',
     risk_level: 'R2',
     amount: 50000,
     purchase_date: '2026-10-01',
@@ -86,10 +86,16 @@ test('holdings compute maturity, buckets and ladder', (t) => {
   assert.equal(summary.daily_open_ratio_pct, 33.33);
   assert.equal(summary.max_product.amount, 100000);
   assert.equal(summary.max_product.pct, 66.67);
+  assert.equal(summary.by_issuer.length, 2);
+  assert.equal(summary.max_issuer.pct, 66.67);
   assert.equal(summary.ladder[3].month, '2027-01');
   assert.equal(summary.ladder[3].amount, 100000);
   assert.ok(summary.alerts.some((alert) => alert.code === 'single-product'));
   assert.ok(summary.alerts.some((alert) => alert.code === 'daily-open-migration'));
+  assert.equal(
+    summary.alerts.some((alert) => alert.code === 'issuer-concentration'),
+    false,
+  );
 });
 
 test('legacy holding review settings rebuild without losing verified facts', (t) => {

@@ -1521,7 +1521,6 @@ export interface ProductAllocationSettings {
   liquidity_floor_pct: number
   daily_open_target_pct: number
   max_single_pct: number
-  max_issuer_pct: number
   target_slice_pct: number
   cashflow_0_3: number
   cashflow_3_6: number
@@ -1558,6 +1557,7 @@ export interface ProductAllocation {
   overcommitted: boolean
   allocation_policy: {
     confirmed_holdings_first: true
+    issuer_display_only: true
     meaningful_new_position_ratio_pct: number
     target_slice_amount: number
     max_single_amount: number
@@ -1601,7 +1601,6 @@ export interface ProductAllocation {
   }
   holdings: { count: number; amount: number }
   settings: ProductAllocationSettings
-  effective_issuer_cap_pct: number
   buckets: ProductAllocationBucket[]
   reasons: string[]
   quota_unverified_count: number
@@ -1632,7 +1631,6 @@ export interface ProductView {
   selection: {
     version: string
     per_bucket: number | null
-    max_per_issuer: number
     max_single_pct: number
     min_history_months: number
     selected_count: number

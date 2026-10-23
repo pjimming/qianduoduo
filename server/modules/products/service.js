@@ -44,7 +44,6 @@ function createProductsService(repository, options = {}) {
     const ranges = {
       liquidity_floor_pct: [0, 100],
       max_single_pct: [25, 30],
-      max_issuer_pct: [40, 100],
       target_slice_pct: [5, 25],
       cashflow_0_3: [0, 1e12],
       cashflow_3_6: [0, 1e12],

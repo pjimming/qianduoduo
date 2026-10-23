@@ -94,6 +94,7 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   assert.equal(allocationResponse.status, 200);
   const allocationResult = await allocationResponse.json();
   assert.equal(allocationResult.settings.max_single_pct, 25);
+  assert.equal(Object.hasOwn(allocationResult.settings, 'max_issuer_pct'), false);
   const quotaProduct = allocationResult.dashboard.products.watchlist.find(
     (item) => item.code === allocationCode,
   );

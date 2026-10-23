@@ -185,6 +185,16 @@ function buildMonthlyReviewMarkdown({
     }`,
   );
   lines.push(
+    `- 最大发行方成本占比（仅展示）：${
+      holdingsSummary.max_issuer
+        ? `${holdingsSummary.max_issuer.name} ${pctText(
+            holdingsSummary.max_issuer.pct,
+            1,
+          )}`
+        : '—'
+    }`,
+  );
+  lines.push(
     `- 短期 7–30 天成本占比：${pctText(holdingsSummary.short_ratio_pct, 1)}`,
   );
   lines.push(

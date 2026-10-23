@@ -193,7 +193,7 @@ watch(
             </span>
             <span class="sidebar-link-copy">
               <strong>交易与持仓</strong>
-              <small>截图 · 流水 · 集中度</small>
+              <small>截图 · 流水 · 单只占比</small>
             </span>
           </RouterLink>
           <RouterLink
