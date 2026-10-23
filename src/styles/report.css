@@ -584,7 +584,7 @@
   min-width: 34px;
   color: var(--muted-light);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -600,7 +600,7 @@
   color: var(--ink-soft);
   cursor: pointer;
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -637,7 +637,7 @@
   border-bottom: 1px solid var(--line);
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -649,7 +649,7 @@
   color: var(--muted);
   cursor: pointer;
   font-family: var(--sans);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .reader-outline-head button:hover {
@@ -669,7 +669,7 @@
   border-left: 2px solid transparent;
   border-radius: 7px;
   color: var(--ink-soft);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.5;
   text-decoration: none;
 }
@@ -682,7 +682,7 @@
 .reader-outline-list a.is-level-3 {
   padding-left: 20px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .reader-outline-list a.is-active {

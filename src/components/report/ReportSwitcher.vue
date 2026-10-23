@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
 .report-switcher-current small {
   color: var(--muted-light);
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   line-height: 1.2;
 }
@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
 .report-switcher-current strong {
   overflow: hidden;
   color: var(--ink);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -350,7 +350,7 @@ onBeforeUnmount(() => {
 .report-switcher-meta {
   color: var(--muted-light);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .report-switcher-meta b {
@@ -360,7 +360,7 @@ onBeforeUnmount(() => {
   background: var(--green-soft);
   color: var(--green-deep);
   font-family: var(--sans);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -380,7 +380,7 @@ onBeforeUnmount(() => {
 .report-switcher-empty {
   margin: 12px 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
 }
 

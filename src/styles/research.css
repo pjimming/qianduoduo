@@ -37,7 +37,7 @@
   margin: 0 0 2px;
   color: var(--green);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.16em;
 }
 
@@ -63,7 +63,7 @@
   max-width: 680px;
   margin: 3px 0 0;
   color: var(--ink-soft);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -73,7 +73,7 @@
 .research-summary {
   color: var(--muted-light);
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 12px;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -96,7 +96,7 @@
   border-radius: 999px;
   background: rgba(255, 254, 250, 0.68);
   color: var(--muted);
-  font-size: 9.5px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -110,7 +110,7 @@
 .research-meta .research-date b {
   color: var(--green);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .research-toolbar {
