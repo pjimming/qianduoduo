@@ -6,6 +6,7 @@ import type {
   SortDirection,
 } from '@/types/dashboard'
 import { formatMoney, formatPct, formatSignedMoney } from '@/composables/useFormatters'
+import DataTrustTraceDialog from '@/components/DataTrustTraceDialog.vue'
 
 const props = defineProps<{
   records: LedgerRecord[]
@@ -21,6 +22,9 @@ const sortDirection = ref<SortDirection>('desc')
 const pageSize = ref<number | 'all'>(10)
 const page = ref(1)
 const jumpPage = ref<number>(1)
+const traceOpen = ref(false)
+const traceFactKey = ref('')
+const traceTitle = ref('')
 
 const sortableColumns: Array<{ key: LedgerSortKey; label: string; numeric: boolean }> = [
   { key: 'date', label: '日期', numeric: false },
@@ -125,6 +129,13 @@ function resetPage(): void {
   page.value = 1
 }
 
+function openTrace(record: LedgerRecord): void {
+  if (!record.id) return
+  traceFactKey.value = `account_income:${record.id}`
+  traceTitle.value = `${record.date} 账户收益`
+  traceOpen.value = true
+}
+
 defineExpose({
   resetPage,
 })
@@ -202,6 +213,19 @@ defineExpose({
             </td>
             <td class="align-right">
               <span class="row-actions">
+                <button
+                  class="icon-button"
+                  type="button"
+                  :aria-label="`查看 ${record.date} 的来源与修订`"
+                  title="来源与修订"
+                  :disabled="!record.id"
+                  @click="openTrace(record)"
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M2.8 10s2.7-5 7.2-5 7.2 5 7.2 5-2.7 5-7.2 5-7.2-5-7.2-5Z" />
+                    <circle cx="10" cy="10" r="2.2" />
+                  </svg>
+                </button>
                 <button
                   class="icon-button"
                   type="button"
@@ -291,6 +315,13 @@ defineExpose({
         跳转
       </button>
     </div>
+    <DataTrustTraceDialog
+      :open="traceOpen"
+      fact-type="account_income"
+      :fact-key="traceFactKey"
+      :title="traceTitle"
+      @close="traceOpen = false"
+    />
   </section>
 </template>
 

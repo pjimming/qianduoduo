@@ -11,11 +11,10 @@ const {
 } = require('./http/routes');
 const { sendError } = require('./http/response');
 const { createStaticService } = require('./http/static');
-const {
-  createTransactionManager,
-} = require('./infrastructure/database/transaction');
 const { createDashboardQueryService } = require('./modules/dashboard/service');
 const { createDashboardRoutes } = require('./modules/dashboard/routes');
+const { createDataTrustService } = require('./modules/data-trust/service');
+const { createDataTrustRoutes } = require('./modules/data-trust/routes');
 const { createCapitalRepository } = require('./modules/capital/repository');
 const { createCapitalRoutes } = require('./modules/capital/routes');
 const { createCapitalService } = require('./modules/capital/service');
@@ -88,6 +87,7 @@ function registerModuleRoutes(router, definitions, migrated) {
 
 function createRequestHandler(repository) {
   const dashboardQuery = createDashboardQueryService(repository);
+  const dataTrust = createDataTrustService({ repository });
   const operations = createOperationsService(repository);
   const products = createProductsService(repository);
   const notifications = createNotificationsService(repository);
@@ -104,7 +104,7 @@ function createRequestHandler(repository) {
       createProductValuationsRepository(repository),
     dashboardQuery,
   });
-  const transactionManager = createTransactionManager(repository.db);
+  const transactionManager = repository.transactionManager;
   const decisions = createDecisionsService({
     decisionsRepository: createDecisionsRepository(repository),
     dashboardQuery,
@@ -142,6 +142,7 @@ function createRequestHandler(repository) {
     router,
     [
       ...createOperationsRoutes(operations),
+      ...createDataTrustRoutes(dataTrust),
       ...createDashboardRoutes(dashboardQuery),
       ...createCapitalRoutes(capital),
       ...createLedgerRoutes(ledger),

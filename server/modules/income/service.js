@@ -102,17 +102,73 @@ function createIncomeService({
         : [],
     });
     const parsed = ocrResult.parsed;
-    let item = incomeRepository.addInbox({
-      original_name: saved.item.original_name,
-      stored_name: saved.item.stored_name,
-      mime: saved.item.mime,
-      bytes: saved.item.bytes,
-      sha256: saved.sha256,
-      ocr_text: ocrResult.text,
-      parsed,
-      parse_confidence: parsed.confidence,
-      record_date: parsed.date,
-      error: ocrResult.ok ? '' : ocrResult.error,
+    const threshold = incomeRepository.getAutoConfidenceThreshold();
+    const workflowState =
+      ocrResult.ok && parsed.daily_pnl !== null
+        ? parsed.confidence >= threshold
+          ? 'ready_to_post'
+          : 'needs_correction'
+        : 'needs_correction';
+    let item = incomeRepository.withDataTrustTransaction(() => {
+      const created = incomeRepository.addInbox({
+        original_name: saved.item.original_name,
+        stored_name: saved.item.stored_name,
+        mime: saved.item.mime,
+        bytes: saved.item.bytes,
+        sha256: saved.sha256,
+        ocr_text: ocrResult.text,
+        parsed,
+        parse_confidence: parsed.confidence,
+        record_date: parsed.date,
+        error: ocrResult.ok ? '' : ocrResult.error,
+      });
+      incomeRepository.registerInboxEvidence(created.id, {
+        workflowState,
+        actorType: 'ocr',
+        actorRef: ocrResult.language || 'windows-ocr',
+        requestId: `income-upload:${created.id}`,
+        events: [
+          {
+            event_type: 'ocr_completed',
+            actor_type: 'ocr',
+            actor_ref: ocrResult.language || 'windows-ocr',
+            payload: {
+              ok: ocrResult.ok,
+              text: ocrResult.text || '',
+              error: ocrResult.error || '',
+              language: ocrResult.language || null,
+            },
+            dedupe_key: `ocr:${saved.sha256}`,
+            created_at: new Date().toISOString(),
+          },
+          {
+            event_type: 'machine_parsed',
+            actor_type: 'ocr',
+            actor_ref: ocrResult.language || 'windows-ocr',
+            payload: parsed,
+            confidence: parsed.confidence,
+            dedupe_key: `machine-parsed:${saved.sha256}:v1`,
+            created_at: new Date().toISOString(),
+          },
+          ...(ocrResult.ok
+            ? []
+            : [
+                {
+                  event_type: 'failed',
+                  actor_type: 'ocr',
+                  actor_ref: ocrResult.language || 'windows-ocr',
+                  payload: {
+                    stage: 'ocr',
+                    error: ocrResult.error || 'OCR 识别失败',
+                    retryable: true,
+                  },
+                  dedupe_key: `ocr-failed:${saved.sha256}`,
+                  created_at: new Date().toISOString(),
+                },
+              ]),
+        ],
+      });
+      return incomeRepository.getInboxItem(created.id);
     });
     let record = null;
     let autoApplied = false;
@@ -123,11 +179,14 @@ function createIncomeService({
     let reconciliation = null;
     let incomeConflict = null;
     let incomeIgnored = false;
-    const threshold = incomeRepository.getAutoConfidenceThreshold();
     if (ocrResult.ok && parsed.daily_pnl !== null && parsed.confidence >= threshold) {
       try {
         const applied = incomeRepository.applyIncomeScreenshot(item.id, parsed, {
           today,
+          actorType: 'ocr',
+          actorRef: ocrResult.language || 'windows-ocr',
+          correction: false,
+          operationId: `income-auto:${item.id}:${item.selected_event_id}`,
         });
         item = applied.inbox;
         record = applied.conflict ? null : applied.record;
@@ -171,12 +230,21 @@ function createIncomeService({
   }
 
   function apply(id, body) {
+    const current = incomeRepository.getInboxItem(id);
     let result;
     try {
       result = incomeRepository.applyIncomeScreenshot(
         id,
         normalizeApplyInput(body),
-        { today: todayProvider() },
+        {
+          today: todayProvider(),
+          actorType: 'human',
+          actorRef: 'income-apply',
+          reason: '页面人工校正并确认收益截图',
+          operationId: current
+            ? `income-manual:${id}:${current.selected_event_id || 'legacy'}:${Date.now()}`
+            : `income-manual:${id}`,
+        },
       );
     } catch (error) {
       throw incomeError(400, error.message);

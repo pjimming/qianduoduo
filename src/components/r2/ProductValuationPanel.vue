@@ -9,10 +9,12 @@ import {
 } from '@/composables/useFormatters'
 import type {
   Holding,
+  ProductDailyValuation,
   ProductValuationDetail,
   ProductValuationReconciliation,
   ProductValuationSummary,
 } from '@/types/dashboard'
+import DataTrustTraceDialog from '@/components/DataTrustTraceDialog.vue'
 
 const props = defineProps<{
   summaries: ProductValuationSummary[]
@@ -31,6 +33,9 @@ const loadingDetail = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
 const formOpen = ref(false)
+const traceOpen = ref(false)
+const traceFactKey = ref('')
+const traceTitle = ref('')
 
 const form = reactive({
   yield_date: props.reportingDate,
@@ -158,6 +163,12 @@ function startCorrection(
 function startCreate(): void {
   resetForm()
   formOpen.value = true
+}
+
+function openTrace(valuation: ProductDailyValuation): void {
+  traceFactKey.value = `product_income:${valuation.id}`
+  traceTitle.value = `${valuation.product_name || valuation.product_code} · ${valuation.yield_date}`
+  traceOpen.value = true
 }
 
 async function save(): Promise<void> {
@@ -385,7 +396,10 @@ async function save(): Promise<void> {
               </td>
               <td>{{ sourceLabel(valuation.source) }}</td>
               <td>{{ valuation.notes || '—' }}</td>
-              <td>
+              <td class="pv-row-actions">
+                <button type="button" class="rw-link-button" @click="openTrace(valuation)">
+                  来源
+                </button>
                 <button type="button" class="rw-link-button" @click="startCorrection(valuation)">
                   修正
                 </button>
@@ -405,5 +419,21 @@ async function save(): Promise<void> {
         </span>
       </div>
     </section>
+
+    <DataTrustTraceDialog
+      :open="traceOpen"
+      fact-type="product_income"
+      :fact-key="traceFactKey"
+      :title="traceTitle"
+      @close="traceOpen = false"
+    />
   </div>
 </template>
+
+<style scoped>
+.pv-row-actions {
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+}
+</style>

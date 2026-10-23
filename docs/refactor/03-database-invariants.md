@@ -1,5 +1,10 @@
 # 数据库、事务与财务不变量
 
+> 2026-10-23：财富事实的权威载体、唯一写入用例、证据链接、修订和截图状态机设计见
+> `docs/refactor/15-data-trust-lineage-design.md`。该文件是 `TD-DATA-001` Step 1 的设计基线；
+> schema、迁移、兼容和回滚方案见 `docs/refactor/16-data-trust-schema-migration-plan.md`。
+> 本文继续作为当前实现的数据库和事务不变量快照。
+
 ## 1. 数据库基线
 
 **路径**：默认 `data/r2_ledger.sqlite`，可由 `R2_DB_PATH` 覆盖。  
@@ -12,7 +17,7 @@ PRAGMA foreign_keys = ON;
 PRAGMA busy_timeout = 5000;
 ```
 
-审计时以 `readOnly:true` 打开真实库，只执行元数据和完整性检查：
+2026-10-22 重构审计时以 `readOnly:true` 打开真实库，只执行元数据和完整性检查：
 
 - `PRAGMA quick_check`：`ok`
 - `PRAGMA foreign_key_check`：空
@@ -21,7 +26,15 @@ PRAGMA busy_timeout = 5000;
 - 0 个触发器
 - 0 个 `FOREIGN KEY` 定义
 
-`foreign_keys = ON` 当前只建立开关，不会产生约束效果，因为 schema 未声明任何外键。
+2026-10-23 数据可信度 v1 生产迁移后，当前基线为：
+
+- 33 张业务表
+- 0 个触发器
+- 9 个外键定义，集中在证据、事件、修订和链接表
+- `PRAGMA quick_check = ok`
+- `PRAGMA foreign_key_check` 为空
+
+旧业务表仍主要依赖应用层不变量；新增证据链表使用外键保护引用完整性。
 
 ## 2. 表清单与所有权
 
@@ -55,6 +68,11 @@ PRAGMA busy_timeout = 5000;
 | `automation_jobs` | `automation-store` | 待人工判断任务 | `dedupe_key UNIQUE`；状态检查 |
 | `automation_runs` | `automation-store` | 每次自动周期执行结果 | 无唯一键 |
 | `inbox_items` | `inbox-center` | 面向用户的消息中心 | `dedupe_key UNIQUE`；category/severity/status 检查 |
+| `schema_migrations` | `data-trust-migration` | 显式迁移生命周期 | `id PRIMARY KEY`；status 检查 |
+| `evidence_assets` | `data-trust-store` / migration | 不可变原始证据身份 | `(evidence_type,sha256) UNIQUE` |
+| `evidence_events` | `data-trust-store` / migration | OCR、解析、人工校正和状态事件 | 非空 `(evidence_id,dedupe_key)` 唯一 |
+| `fact_revisions` | 各域事务 / migration | 跨域事实修订历史 | `(fact_type,fact_key,revision_no)` 唯一 |
+| `fact_evidence_links` | 各域事务 / migration | 事实与具体解释版本的双向链接 | 修订、证据、事件和角色组合唯一 |
 
 ## 3. 初始化与迁移顺序
 
@@ -84,6 +102,7 @@ PRAGMA busy_timeout = 5000;
 14. `ensureProductColumns()`：补产品扩展列。
 15. `seedProducts()`：按产品文件指纹导入/替换产品快照。
 16. `createInboxCenter()`：创建消息中心表。
+17. `ensureDataTrustReady()`：生产要求迁移已完成；测试/临时库可自动执行 v1；随后创建数据可信度 store 并连接到交易、产品收益和决策 store。
 
 ### 3.1 迁移机制特征
 
@@ -208,7 +227,7 @@ PRAGMA busy_timeout = 5000;
 状态：`credit_date`、`yield_date`、`valuation_date` 分开保存；收益延迟规则在 `product_yield_settings`。
 
 **I-INC-06**：收益截图 apply 应原子地完成产品收益、账户收益和收件箱状态。  
-状态：**未满足**。三个写入点跨三个函数/事务。
+状态：**已满足**。共享 `BEGIN IMMEDIATE` 事务同时写产品收益、账户收益、事实修订、证据链接和收件箱状态；故障注入覆盖产品、账户和收件箱三处失败。
 
 ### 4.6 决策、提案和评估
 
@@ -236,6 +255,26 @@ PRAGMA busy_timeout = 5000;
 
 **I-EVAL-04**：评估写入/撤销与决策更新必须原子。  
 状态：**未满足**；决策和 run 是两次独立写。
+
+### 4.8 数据可信度与证据链
+
+**I-DATA-01**：每个新截图收件箱记录必须关联唯一 `evidence_id` 和采用的具体 `evidence_events` 版本。
+状态：数据库局部唯一索引、外键和应用注册事务共同保证。
+
+**I-DATA-02**：原始图片、机器解析和人工校正只追加，不覆盖旧事件。
+状态：`evidence_events` 追加式写入；`parsed_json` 仅保留当前兼容投影。
+
+**I-DATA-03**：事实修订永久保留前后值、原因、来源、操作者和幂等操作 ID。
+状态：`fact_revisions` 唯一约束 + 域事务同步写入。
+
+**I-DATA-04**：一项事实可关联多个证据，一项证据可关联多个事实；链接指到具体解释事件。
+状态：`fact_evidence_links` 多对多结构与外键校验。
+
+**I-DATA-05**：已被正式事实引用的截图不得进入普通自动清理。
+状态：交易和收益剪枝均检查活动 `fact_evidence_links`。
+
+**I-DATA-06**：不能追溯时接口必须返回 `incomplete` 或 `partial`，不得推断成完整证据。
+状态：事实追溯 API 和页面共同显示。
 
 ### 4.7 自动任务
 
@@ -271,14 +310,13 @@ PRAGMA busy_timeout = 5000;
 | 撤销交易 | `trade-store.js:cancelTrade` | trade + allocations + audit |
 | 收益延迟设置 | `product-valuation-store.js:saveYieldSetting` | upsert + audit |
 | 批量产品收益 | `product-valuation-store.js:upsertMany` | 多条 valuation + audit |
+| 收益截图入账 | `db.js:applyIncomeScreenshot` | 产品收益 + 账户收益 + 修订 + 证据链接 + 收件箱状态 |
+| 交易截图入账 | `trade-store.js:applyInbox` + trades repository | 交易/批次/审计 + 证据链接 + 收件箱状态 |
 
 ### 5.2 没有共享事务的高风险用例
 
 | 用例 | 写入序列 | 风险 |
 | --- | --- | --- |
-| 收益截图入账 | product valuations → daily record → income inbox | 产品收益/账户收益/状态不一致 |
-| 交易收件箱匹配 | confirm/update trade → trade audit → inbox status | 已确认但收件箱仍 pending，或匹配后状态未更新 |
-| 交易收件箱新建 | createTrade → updateInbox | 交易已建、截图未绑定或收件箱未 applied |
 | 采纳提案 | createDecision → proposal accepted | 孤立决策或提案重复采纳状态 |
 | 拒绝已采纳提案 | decision cancellation text → proposal rejected | 决策与提案状态不一致 |
 | 自动评估写入 | updateDecision → updateRunStatus | 决策已变、run 仍 pending |

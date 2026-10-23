@@ -10,8 +10,12 @@ const STATIC_DIR = fs.existsSync(path.join(DIST_DIR, 'index.html'))
   ? DIST_DIR
   : PUBLIC_DIR;
 const DEFAULT_DB = path.join(ROOT, 'data', 'r2_ledger.sqlite');
+const DATA_TRUST_MODE = String(
+  process.env.R2_DATA_TRUST_MODE || 'shadow',
+).toLowerCase();
 
 module.exports = {
+  DATA_TRUST_MODE,
   DEFAULT_DB,
   DIST_DIR,
   PUBLIC_DIR,

@@ -10,6 +10,7 @@ import type {
   DecisionRating,
   TradeTransaction,
 } from '@/types/dashboard'
+import DataTrustTraceDialog from '@/components/DataTrustTraceDialog.vue'
 
 const props = defineProps<{
   decisions: DecisionEntry[]
@@ -33,6 +34,9 @@ const ratings: DecisionRating[] = [
 const formOpen = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
+const traceOpen = ref(false)
+const traceFactKey = ref('')
+const traceTitle = ref('')
 const form = reactive<DecisionInput>(emptyForm())
 const target3Locked = computed(() => /r2-3pct|target3/i.test(form.strategy_version))
 
@@ -108,6 +112,12 @@ function openEdit(item: DecisionEntry): void {
     rating: item.rating,
   })
   formOpen.value = true
+}
+
+function openTrace(item: DecisionEntry): void {
+  traceFactKey.value = `decision:${item.id}`
+  traceTitle.value = `决策 · ${item.product_name} · ${item.date}`
+  traceOpen.value = true
 }
 
 async function save(): Promise<void> {
@@ -601,10 +611,18 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
           </small>
         </div>
         <div class="rw-row-actions">
+          <button type="button" class="rw-link-button" @click="openTrace(item)">来源与修订</button>
           <button type="button" class="rw-link-button" @click="openEdit(item)">编辑</button>
           <button type="button" class="rw-link-button is-danger" @click="remove(item)">删除</button>
         </div>
       </article>
     </div>
+    <DataTrustTraceDialog
+      :open="traceOpen"
+      fact-type="decision"
+      :fact-key="traceFactKey"
+      :title="traceTitle"
+      @close="traceOpen = false"
+    />
   </div>
 </template>

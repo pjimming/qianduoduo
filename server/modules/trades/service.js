@@ -176,16 +176,25 @@ function createTradesService({
     );
     let item;
     try {
-      item = tradesRepository.addInbox({
-        original_name: saved.item.original_name,
-        stored_name: saved.item.stored_name,
-        mime: saved.item.mime,
-        bytes: saved.item.bytes,
-        sha256: saved.sha256,
-        ocr_text: '',
-        parsed: {},
-        parse_confidence: 0,
-        error: '',
+      item = tradesRepository.withDataTrustTransaction(() => {
+        const created = tradesRepository.addInbox({
+          original_name: saved.item.original_name,
+          stored_name: saved.item.stored_name,
+          mime: saved.item.mime,
+          bytes: saved.item.bytes,
+          sha256: saved.sha256,
+          ocr_text: '',
+          parsed: {},
+          parse_confidence: 0,
+          error: '',
+        });
+        tradesRepository.registerInboxEvidence(created.id, {
+          workflowState: 'received',
+          actorType: 'human',
+          actorRef: 'trade-upload',
+          requestId: `trade-upload:${created.id}`,
+        });
+        return tradesRepository.getInboxItem(created.id);
       });
     } catch (error) {
       const existing = tradesRepository.getInboxByHash(saved.sha256);
@@ -226,12 +235,73 @@ function createTradesService({
         parsed: { confidence: 0 },
       };
     }
-    item = tradesRepository.updateInbox(item.id, {
-      parsed: ocrResult.parsed || {},
-      ocr_text: ocrResult.text || '',
-      parse_confidence: Number(ocrResult.parsed?.confidence || 0),
-      error: ocrResult.ok ? '' : ocrResult.error,
-      stored_name: saved.item.stored_name,
+    tradesRepository.withDataTrustTransaction(() => {
+      item = tradesRepository.updateInbox(item.id, {
+        parsed: ocrResult.parsed || {},
+        ocr_text: ocrResult.text || '',
+        parse_confidence: Number(ocrResult.parsed?.confidence || 0),
+        error: ocrResult.ok ? '' : ocrResult.error,
+        stored_name: saved.item.stored_name,
+      });
+      tradesRepository.appendInboxEvent(
+        item.id,
+        {
+          event_type: 'ocr_completed',
+          actor_type: 'ocr',
+          actor_ref: ocrResult.language || 'windows-ocr',
+          payload: {
+            ok: ocrResult.ok,
+            text: ocrResult.text || '',
+            error: ocrResult.error || '',
+            language: ocrResult.language || null,
+          },
+          dedupe_key: `ocr:${saved.sha256}`,
+          created_at: new Date().toISOString(),
+        },
+        `trade-upload:${item.id}`,
+      );
+      tradesRepository.appendInboxEvent(
+        item.id,
+        {
+          event_type: 'machine_parsed',
+          actor_type: 'ocr',
+          actor_ref: ocrResult.language || 'windows-ocr',
+          payload: ocrResult.parsed || {},
+          confidence: Number(ocrResult.parsed?.confidence || 0),
+          dedupe_key: `machine-parsed:${saved.sha256}:v1`,
+          created_at: new Date().toISOString(),
+        },
+        `trade-upload:${item.id}`,
+      );
+      if (!ocrResult.ok) {
+        tradesRepository.appendInboxEvent(
+          item.id,
+          {
+            event_type: 'failed',
+            actor_type: 'ocr',
+            actor_ref: ocrResult.language || 'windows-ocr',
+            payload: {
+              stage: 'ocr',
+              error: ocrResult.error || 'OCR 识别失败',
+              retryable: true,
+            },
+            dedupe_key: `ocr-failed:${saved.sha256}`,
+            created_at: new Date().toISOString(),
+          },
+          `trade-upload:${item.id}`,
+        );
+      }
+      tradesRepository.transitionInbox(item.id, {
+        toState: 'needs_correction',
+        actorType: 'ocr',
+        actorRef: ocrResult.language || 'windows-ocr',
+        reason: ocrResult.ok
+          ? 'OCR 已完成，等待人工核对'
+          : 'OCR 失败，等待人工校正',
+        requestId: `trade-upload:${item.id}`,
+        dedupeKey: `needs-correction:${item.id}`,
+      });
+      item = tradesRepository.getInboxItem(item.id);
     });
     return {
       statusCode: 201,
@@ -252,9 +322,37 @@ function createTradesService({
     const merged = { ...item.parsed, ...body };
     const fields = validationValue(validateTradePayload(merged));
     ensureDecision(fields);
+    const requestId = `trade-inbox-apply:${item.id}:${Date.now()}`;
     let result;
     try {
-      result = tradesRepository.applyInbox(item.id, fields);
+      result = tradesRepository.withDataTrustTransaction(() => {
+        if (Object.keys(body).length) {
+          const corrected = tradesRepository.appendInboxEvent(
+            item.id,
+            {
+              event_type: 'human_corrected',
+              actor_type: 'human',
+              actor_ref: 'trade-inbox-apply',
+              payload: {
+                before: item.parsed || {},
+                after: merged,
+                reason: String(body.note || '人工校正交易截图'),
+              },
+              dedupe_key: `human:${requestId}`,
+              created_at: new Date().toISOString(),
+            },
+            requestId,
+          );
+          if (corrected) {
+            tradesRepository.selectInboxEvent(item.id, corrected);
+          }
+        }
+        return tradesRepository.applyInbox(item.id, fields, {
+          requestId,
+          actorType: 'human',
+          actorRef: 'trade-inbox-apply',
+        });
+      });
     } catch (error) {
       storeError(error);
     }
@@ -368,22 +466,55 @@ function createTradesService({
       );
     }
     const confidence = Number(body.confidence);
-    const inbox = tradesRepository.updateInbox(item.id, {
-      parsed: {
-        ...parsed,
-        ...fields,
-        ocr_reference: {
-          amount: Number.isFinite(ocrAmount) ? ocrAmount : null,
-          product_code: ocrCode || '',
-        },
-        vision: { at: new Date().toISOString(), checks },
-      },
-      parse_confidence: Number.isFinite(confidence)
-        ? Math.max(0, Math.min(100, confidence))
-        : 95,
-      notes: String(body.note || '视觉识别写入').slice(0, 500),
-    });
-    const result = tradesRepository.applyInbox(item.id, fields);
+    const requestId = `trade-inbox-vision:${item.id}:${Date.now()}`;
+    let inbox;
+    let visionEvent;
+    let result;
+    try {
+      result = tradesRepository.withDataTrustTransaction(() => {
+        inbox = tradesRepository.updateInbox(item.id, {
+          parsed: {
+            ...parsed,
+            ...fields,
+            ocr_reference: {
+              amount: Number.isFinite(ocrAmount) ? ocrAmount : null,
+              product_code: ocrCode || '',
+            },
+            vision: { at: new Date().toISOString(), checks },
+          },
+          parse_confidence: Number.isFinite(confidence)
+            ? Math.max(0, Math.min(100, confidence))
+            : 95,
+          notes: String(body.note || '视觉识别写入').slice(0, 500),
+        });
+        visionEvent = tradesRepository.appendInboxEvent(
+          item.id,
+          {
+            event_type: 'vision_parsed',
+            actor_type: 'vision-model',
+            actor_ref: 'trade-vision-apply',
+            payload: {
+              fields,
+              checks,
+            },
+            confidence: Number.isFinite(confidence) ? confidence : 95,
+            dedupe_key: `vision:${requestId}`,
+            created_at: new Date().toISOString(),
+          },
+          requestId,
+        );
+        if (visionEvent) {
+          tradesRepository.selectInboxEvent(item.id, visionEvent);
+        }
+        return tradesRepository.applyInbox(item.id, fields, {
+          requestId,
+          actorType: 'vision-model',
+          actorRef: 'trade-vision-apply',
+        });
+      });
+    } catch (error) {
+      storeError(error);
+    }
     result.trade = syncDecisionAndEvaluate(
       result.trade,
       'trade-inbox-vision-apply',
@@ -409,11 +540,34 @@ function createTradesService({
 
   function updateInbox(id, item, body) {
     const value = validationValue(validateInboxOverridePayload(body));
-    const inbox = tradesRepository.updateInbox(id, {
-      parsed: { ...item.parsed, ...value },
-      parse_confidence:
-        value.confidence ?? item.parse_confidence,
-      notes: value.notes ?? item.notes,
+    const requestId = `trade-inbox-correct:${id}:${Date.now()}`;
+    const inbox = tradesRepository.withDataTrustTransaction(() => {
+      const updated = tradesRepository.updateInbox(id, {
+        parsed: { ...item.parsed, ...value },
+        parse_confidence:
+          value.confidence ?? item.parse_confidence,
+        notes: value.notes ?? item.notes,
+      });
+      const correction = tradesRepository.appendInboxEvent(
+        id,
+        {
+          event_type: 'human_corrected',
+          actor_type: 'human',
+          actor_ref: 'trade-inbox-correction',
+          payload: {
+            before: item.parsed || {},
+            after: updated.parsed || {},
+            reason: value.notes || '人工校正交易截图',
+          },
+          dedupe_key: `human:${requestId}`,
+          created_at: new Date().toISOString(),
+        },
+        requestId,
+      );
+      if (correction) {
+        tradesRepository.selectInboxEvent(id, correction);
+      }
+      return tradesRepository.getInboxItem(id);
     });
     return { inbox, overview: overview() };
   }

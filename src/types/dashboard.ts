@@ -8,6 +8,7 @@ export type ProductSortKey = 'term' | 'return_1m' | 'return_3m' | 'return_6m' | 
 export type RangeValue = 7 | 30 | 90 | 'all'
 
 export interface LedgerRecord {
+  id?: number
   date: string
   principal: number
   daily_pnl: number
@@ -21,6 +22,7 @@ export interface LedgerRecord {
 }
 
 export interface RawLedgerRecord {
+  id?: number
   date: string
   principal: number
   daily_pnl: number
@@ -28,6 +30,103 @@ export interface RawLedgerRecord {
   notes: string
   source?: 'manual' | 'income-screenshot' | string
   screenshot_id?: number | null
+}
+
+export interface DataTrustRevision {
+  id: number
+  fact_type: string
+  fact_key: string
+  revision_no: number
+  action: 'create' | 'update' | 'delete' | 'confirm' | 'cancel' | 'recalculate'
+  before: Record<string, unknown>
+  after: Record<string, unknown>
+  changed_fields: string[]
+  reason: string
+  source_class: string
+  actor_type: string
+  actor_ref: string
+  operation_id: string
+  request_id: string
+  related_fact_type: string
+  related_fact_key: string
+  created_at: string
+}
+
+export interface DataTrustEvidenceEvent {
+  id: number
+  evidence_id: number
+  event_type: string
+  actor_type: string
+  actor_ref: string
+  payload: Record<string, unknown>
+  confidence: number | null
+  dedupe_key: string
+  request_id: string
+  previous_event_id: number | null
+  created_at: string
+}
+
+export interface DataTrustEvidenceSource {
+  inbox_kind: 'income' | 'trade'
+  inbox_id: number
+  image_url: string
+}
+
+export interface DataTrustEvidenceTrace {
+  evidence: {
+    id: number
+    evidence_type: string
+    sha256: string
+    original_name: string
+    mime: string
+    bytes: number
+    available: boolean
+    status: string
+    received_at: string
+  }
+  source: DataTrustEvidenceSource | null
+  events: DataTrustEvidenceEvent[]
+  fact_links: DataTrustEvidenceLink[]
+}
+
+export interface DataTrustEvidenceLink {
+  id: number
+  fact_type: string
+  fact_key: string
+  fact_revision_id: number
+  evidence_id: number
+  evidence_event_id: number
+  role: string
+  field_paths: string[]
+  confidence: number | null
+  link_status: string
+  created_at: string
+  retired_at: string | null
+  retire_reason: string
+  evidence?: DataTrustEvidenceTrace['evidence'] & {
+    source?: DataTrustEvidenceSource | null
+  }
+  evidence_event?: {
+    event_type: string
+    actor_type: string
+    actor_ref: string
+    payload: Record<string, unknown>
+    confidence: number | null
+    created_at: string
+  }
+  evidence_trace?: DataTrustEvidenceTrace
+}
+
+export interface DataTrustFactTrace {
+  fact_type: string
+  fact_key: string
+  evidence_status: 'complete' | 'partial' | 'incomplete'
+  revisions: DataTrustRevision[]
+  evidence_links: DataTrustEvidenceLink[]
+}
+
+export interface DataTrustTraceResponse {
+  fact_trace: DataTrustFactTrace
 }
 
 export interface CapitalEvent {

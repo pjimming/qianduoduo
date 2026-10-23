@@ -9,6 +9,7 @@ import type {
   AutomationWorkspace,
   DashboardMutationResponse,
   DashboardPayload,
+  DataTrustTraceResponse,
   DecisionInput,
   DecisionProposalMutationResponse,
   DecisionMutationResponse,
@@ -502,6 +503,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return response.detail
   }
 
+  async function loadFactTrace(factType: string, factKey: string) {
+    const response = await apiRequest<DataTrustTraceResponse>(
+      `/api/facts/${encodeURIComponent(factType)}/${encodeURIComponent(factKey)}/trace`,
+    )
+    return response.fact_trace
+  }
+
   async function saveProductValuation(
     input: ProductValuationInput,
   ): Promise<ProductValuationMutationResponse> {
@@ -776,6 +784,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     applyIncomeScreenshot,
     ignoreIncomeScreenshot,
     loadProductValuationDetail,
+    loadFactTrace,
     saveProductValuation,
     updateProductValuation,
     saveProductYieldSetting,

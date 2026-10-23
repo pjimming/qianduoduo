@@ -10,5 +10,5 @@ module.exports = {
 };
 
 if (require.main === module) {
-  lifecycle.startServer();
+  lifecycle.startServer({ migrationPolicy: 'require' });
 }

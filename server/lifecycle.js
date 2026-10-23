@@ -11,7 +11,7 @@ const {
   DEFAULT_PRODUCT_CSV,
   createServer,
 } = require('./app');
-const { DEFAULT_DB } = require('./config');
+const { DATA_TRUST_MODE, DEFAULT_DB } = require('./config');
 const { createAutomationScheduler } = require('./jobs/automation-scheduler');
 const { createSafeLogger } = require('./infrastructure/logging/logger');
 const {
@@ -61,6 +61,8 @@ function startServer(options = {}) {
     productCsvPath: options.productCsvPath || DEFAULT_PRODUCT_CSV,
     tradeInboxDir:
       options.tradeInboxDir || process.env.R2_TRADE_INBOX_DIR || undefined,
+    dataTrustMode: options.dataTrustMode || DATA_TRUST_MODE,
+    migrationPolicy: options.migrationPolicy || 'auto',
     logger,
   });
   const recoveredRuns = repository.automationStore.recoverInterruptedRuns();

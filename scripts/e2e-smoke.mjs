@@ -563,6 +563,33 @@ async function main() {
       ),
       '产品收益手工补录没有显示审计留痕',
     )
+    await page
+      .locator('.product-valuation-panel .pv-table')
+      .getByRole('button', { name: '来源', exact: true })
+      .first()
+      .click()
+    await page.waitForSelector('.dt-dialog')
+    const traceDialogText = (await page.locator('.dt-dialog').textContent()) ?? ''
+    assert(
+      traceDialogText.includes('事实修订历史'),
+      '产品收益来源面板没有显示事实修订历史',
+    )
+    assert(
+      traceDialogText.includes('证据不完整'),
+      '无匹配原始截图的产品收益没有显示证据不完整',
+    )
+    await assertFontFloor(page, '.dt-dialog', '来源与修订桌面端')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(page, '.dt-dialog', '来源与修订移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '来源与修订移动端出现横向溢出',
+    )
+    await page.locator('.dt-dialog .dt-close').click()
+    await page.waitForSelector('.dt-dialog', { state: 'detached' })
+    await page.setViewportSize({ width: 1280, height: 900 })
     await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案桌面端')
     await page.getByRole('button', { name: '记一笔交易', exact: true }).click()
     await page.getByLabel('产品代码').fill('120026A')

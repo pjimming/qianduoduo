@@ -12,6 +12,7 @@ import type {
   TradeTransaction,
   TradeType,
 } from '@/types/dashboard'
+import DataTrustTraceDialog from '@/components/DataTrustTraceDialog.vue'
 
 const props = defineProps<{
   overview: TradeOverview
@@ -53,6 +54,9 @@ const formOpen = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
 const statusFilter = ref<'all' | TradeStatus>('all')
+const traceOpen = ref(false)
+const traceFactKey = ref('')
+const traceTitle = ref('')
 const form = reactive<TradeForm>(emptyForm())
 
 const filteredTrades = computed(() => {
@@ -309,6 +313,12 @@ function sourceLabel(source: string): string {
     manual: '手工录入',
     'holding-api': '兼容接口',
   }[source] || source
+}
+
+function openTrace(trade: TradeTransaction): void {
+  traceFactKey.value = `trade:${trade.id}`
+  traceTitle.value = `交易 #${trade.id} · ${trade.product_name} · ${trade.trade_date}`
+  traceOpen.value = true
 }
 
 function decisionAction(type: TradeType): DecisionAction {
@@ -601,6 +611,9 @@ function addDays(date: string, days: number): string {
             </td>
             <td>
               <div class="rw-row-actions">
+                <button type="button" class="rw-link-button" @click="openTrace(trade)">
+                  来源与修订
+                </button>
                 <button
                   v-if="trade.status === 'pending'"
                   type="button"
@@ -626,5 +639,12 @@ function addDays(date: string, days: number): string {
         </tbody>
       </table>
     </div>
+    <DataTrustTraceDialog
+      :open="traceOpen"
+      fact-type="trade"
+      :fact-key="traceFactKey"
+      :title="traceTitle"
+      @close="traceOpen = false"
+    />
   </div>
 </template>

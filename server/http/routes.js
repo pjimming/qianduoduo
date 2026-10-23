@@ -5,6 +5,9 @@ const API_ROUTE_PATTERNS = Object.freeze([
   ['GET', '/api/backups'],
   ['POST', '/api/backups'],
   ['GET', '/api/dashboard'],
+  ['GET', '/api/data-trust/status'],
+  ['GET', /^\/api\/evidence\/\d+\/trace$/],
+  ['GET', /^\/api\/facts\/[^/]+\/[^/]+\/trace$/],
 
   ['POST', '/api/capital/init'],
   ['PUT', '/api/capital/init'],

@@ -59,7 +59,7 @@
 - `server/http/`：Router、路由清单、响应、静态文件和 middleware。
 - `server/lifecycle.js`：数据库、HTTP Server、调度器与优雅关闭。
 - `server/modules/`：已迁移的业务域门面、路由与查询服务。
-- 当前已迁移：dashboard、operations、products、notifications、capital、ledger、product-valuations、trades、income、decisions、proposals、evaluations、reviews、research。
+- 当前已迁移：dashboard、data-trust、operations、products、notifications、capital、ledger、product-valuations、trades、income、decisions、proposals、evaluations、reviews、research。
 - OCR 适配器位于 `server/infrastructure/ocr/`，`lib/ocr.js` 保留兼容导出。
 - 调度器支持失败重试与状态诊断；服务停止会取消重试并终止 OCR 子进程。
 - 数据库恢复使用 WAL 一致安全快照、`quick_check` 和临时文件验证。
@@ -211,7 +211,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - **决策日志**：记录买入、赎回、切换或观察的理由、预期、证据日期、验证日期、失效条件、实际结果和事后评价。页面显示“证据完整/待补证据”；不完整决策不能通过买入日流程检查。事后评价分四类，其中“流程错误，结果好”会被单独标黄，因为它最容易让人误以为流程有效。
 - **决策提案**：`lib/decision-proposal-store.js` 管理 `decision_proposals`。待采纳提案有独立有效期和证据快照；采纳后生成正式决策并标记“已采纳，待执行”；拒绝不生成决策。已采纳但尚未交易时可取消，已有交易关联时不能直接取消。
 - **交易流水**：每笔未撤销交易都必须关联决策。手工交易和交易收件箱可以选用已有决策，也可以先填写本次决策；没有显式关联时，服务端会立即建立不完整临时决策并纳入通知，不会等到确认后再补。赎回支持部分赎回，并按买入批次先进先出匹配；实际到账金额与赎回成本的差额计入已实现盈亏。已撤销交易保留原始记录和修改留痕；已关联交易的决策不能直接删除。
-- **交易收件箱**：拖入 PNG/JPEG/WebP 成交截图后进入人工校正；一张图含多笔时可用 `node scripts/split-trade-rows.mjs <图片> <输出目录>` 自动按行切分。视觉写入走 `POST /api/trades/inbox/:id/vision-apply`，接口会用本地 OCR 的金额与代码做交叉校验，两者冲突、产品未收录或找不到匹配交易时一律 409 拒绝，转人工确认。同一图片按 SHA-256 去重，同一笔业务按交易日期、类型、产品、金额和状态去重；截图显示“已确认”时会把同字段的待确认交易直接匹配并确认，避免迁移记录重复入账。已处理或已忽略的原图默认在 180 天后清理，业务字段和流水保留。
+- **交易收件箱**：拖入 PNG/JPEG/WebP 成交截图后进入人工校正；一张图含多笔时可用 `node scripts/split-trade-rows.mjs <图片> <输出目录>` 自动按行切分。视觉写入走 `POST /api/trades/inbox/:id/vision-apply`，接口会用本地 OCR 的金额与代码做交叉校验，两者冲突、产品未收录或找不到匹配交易时一律 409 拒绝，转人工确认。同一图片按 SHA-256 去重，同一笔业务按交易日期、类型、产品、金额和状态去重；截图显示“已确认”时会把同字段的待确认交易直接匹配并确认，避免迁移记录重复入账。已处理或已忽略且未被正式事实引用的原图默认在 180 天后清理；已被事实引用的证据永久保留。
 - **持仓结构**：持仓由已确认买入批次自动推导，不再手工维护快照；自动计算最大单只/发行方成本占比、短期 7–30 天成本占比、现有日开金额与占比、未来 12 个月到期阶梯和到期未赎回提醒。本项目新增日开额度固定为 0%，现有日开只作为迁移事实，不抵作短桶流动性。“未赎回成本本金”不是账户余额或当前市值。期限 0 表示日开，不生成到期日。
 - **产品事件**：记录费率、经理、底层、赎回规则、额度等变化，可标记“待复核/已处理”；高影响且待复核的事件会单独提示。
 - **逐产品收益**：从一张收益截图中按已确认持仓代码拆分多只产品，持仓页可查看累计个人收益、档案/持有天数、负收益天数、最差单日和逐日记录；已赎回产品仍保留历史并单独标记。短样本不直接生成稳定年化，也不把产品记录当成账户收益的新增项。
@@ -326,12 +326,19 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 ```powershell
 npm run db:list
 npm run db:backup
+npm run db:preflight:data-trust
+npm run db:migrate:data-trust
+npm run db:verify:data-trust
 npm run prod:stop
 npm run db:restore -- 2026-10-18
 npm run prod:restart
 ```
 
 恢复前会自动保留一份 `pre-restore-*.sqlite`；服务运行中会拒绝恢复。
+
+财富数据可信度迁移必须在生产服务停止后显式执行；生产启动使用
+`migrationPolicy=require`，迁移未完成会拒绝启动。`npm run db:rollback:data-trust`
+可把数据库恢复到最近一次 `pre-data-trust-v1-*` 备份，并自动保留恢复前安全副本。
 
 ## 测试
 
@@ -343,4 +350,4 @@ node --experimental-test-coverage --test
 npm audit --omit=dev
 ```
 
-`npm test` 覆盖 API 兼容、模块路由归属、应用启动/关闭、SQLite 迁移、WAL 备份与恢复、本金快照、交易幂等、部分赎回与持仓批次、交易/收益收件箱去重、OCR 生命周期、事务失败回滚、调度器失败重试、多产品收益对账、决策提案/评估/复盘、研究静态隔离、产品排序和科技图谱完整性。`npm run check` 执行 Vue TypeScript 检查与全部 Node.js 语法检查；`npm run test:e2e` 自动构建后用本机 Chrome/Edge 验证七个 R2 入口、双截图入口、消息中心、提案、复盘、产品收益、持仓复核、交易、收件箱、自动评估、报告阅读器和错误兜底。`node --experimental-test-coverage --test` 输出覆盖率；`npm audit --omit=dev` 检查生产依赖漏洞。
+`npm test` 覆盖 API 兼容、模块路由归属、应用启动/关闭、SQLite 迁移、WAL 备份与恢复、本金快照、交易幂等、部分赎回与持仓批次、交易/收益收件箱去重、OCR 生命周期、事务失败回滚、证据来源链、人工校正版本、并发 apply、调度器失败重试、多产品收益对账、决策提案/评估/复盘、研究静态隔离、产品排序和科技图谱完整性。`npm run check` 执行 Vue TypeScript 检查与全部 Node.js 语法检查；`npm run test:e2e` 自动构建后用本机 Chrome/Edge 验证七个 R2 入口、双截图入口、来源与修订弹窗、消息中心、提案、复盘、产品收益、持仓复核、交易、收件箱、自动评估、报告阅读器和错误兜底。`node --experimental-test-coverage --test` 输出覆盖率；`npm audit --omit=dev` 检查生产依赖漏洞。

@@ -21,6 +21,8 @@ function createTestContext(t, options = {}) {
     productCsvPath: options.productCsvPath || productCsv,
     tradeInboxDir,
     incomeInboxDir,
+    migrationPolicy: options.migrationPolicy,
+    dataTrustMode: options.dataTrustMode,
     logger: options.logger || { warn() {}, info() {} },
   });
 
