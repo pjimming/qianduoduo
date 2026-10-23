@@ -44,7 +44,7 @@ function createProductValuationsService({
           productCode,
           body,
         ),
-        dashboard: dashboardQuery.getDashboard(),
+        dashboard: dashboardQuery.projectDashboard(),
       };
     } catch (error) {
       throw serviceError(400, error.message);
@@ -89,7 +89,7 @@ function createProductValuationsService({
         valuation: result.valuation,
         conflict: result.conflict,
         notification_id: notification?.id ?? null,
-        dashboard: dashboardQuery.getDashboard(),
+        dashboard: dashboardQuery.projectDashboard(),
       },
     };
   }
@@ -136,7 +136,7 @@ function createProductValuationsService({
     return {
       valuation: result.valuation,
       conflict: result.conflict,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 

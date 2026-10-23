@@ -130,7 +130,7 @@ npm run server
 npm run prod:deploy
 ```
 
-脚本会依次执行生产构建、回归测试、后台守护进程启动和健康检查，并尝试注册计划任务 `QianDuoDuo-Production`。该任务在用户登录后启动，并每 5 分钟检查一次守护进程是否存活。如果当前用户没有创建计划任务的权限，脚本会自动把启动快捷方式安装到当前用户的 Startup 目录。
+脚本会依次执行生产构建、回归测试、后台守护进程启动和健康检查，并通过 `scripts/install-watchdog.ps1` 注册计划任务 `QianDuoDuo-Production`。该任务在用户登录后启动，并每 5 分钟检查一次守护进程是否存活；首次注册需要 Windows 提权，安装器会授予当前登录用户后续启用/禁用该任务的控制权限。如果当前用户没有创建计划任务的权限，部署脚本会回退到 Startup 快捷方式，但 `prod:status` 会明确显示 Watchdog 未安装。
 
 日常运维命令：
 
@@ -144,9 +144,10 @@ npm run prod:stop
 - 生产地址：`http://127.0.0.1:8765`
 - 守护脚本：`scripts/daemon.ps1`
 - 部署脚本：`scripts/deploy-production.ps1`
-- PID 文件：`run/daemon.pid`、`run/server.pid`
+- PID 文件：`run/daemon.pid`、`run/server.pid`；Node 自己写入服务 PID，Supervisor 用 `$LASTEXITCODE` 记录真实退出码
 - 日志目录：`logs/`（`daemon.log` 记录守护事件，`server-*.out.log` / `server-*.err.log` 记录 Node 输出）
 - 服务只监听 `127.0.0.1`；`prod:stop` 会停止并暂时禁用自动巡检，`prod:start` 会重新启用。
+- 可使用 `npm run test:daemon` 在临时目录和隔离端口验证优雅退出、正常崩溃和强制终止的退出码记录，不影响生产数据库。
 
 ## 环境变量
 
@@ -229,7 +230,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 
 ## 产品观察池边界
 
-产品区不是实时行情，也不是买入建议。应用先加载 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买候选池（2026-10-23 为 426 只），再按评分、期限桶、本金、已确认持仓、待确认买入、短期桶下限、未来现金流和逐只额度动态决定买什么、买多少。本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实，不进入新增配置。产品数量不再固定；目标金额、期限桶金额、未分配金额和额度状态会一起展示。完整候选池可在“查看全部产品”中筛选，并逐只打开产品详情。当前规则剔除美元、私行/私银/私享/尊享/企享/专属/私募、成立不足 12 个月和缺 1M/3M/6M/1Y 历史的产品，并对 1Y 明显高于 6M 的前视偏差扣分。实时额度仍需在招行 App 核验；公开 CSV 缺失时只给分配上限并标记“额度未核验”。
+产品区不是实时行情，也不是买入建议。应用先加载 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买候选池，再按评分、期限桶、本金、已确认持仓、待确认买入、短期桶下限、未来现金流和逐只额度动态决定买什么、买多少。候选池列表展示并支持排序的“加权年化”严格使用 `50% × 近3M + 30% × 近6M + 20% × 近1Y`；任一周期缺失显示 `—`，不会用剩余周期重新归一化。本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实，不进入新增配置。完整候选池可在“查看全部产品”中筛选，并逐只打开产品详情。当前规则剔除美元、私行/私银/私享/尊享/企享/专属/私募、成立不足 12 个月和缺 1M/3M/6M/1Y 历史的产品，并对 1Y 明显高于 6M 的前视偏差扣分。实时额度仍需在招行 App 核验；公开 CSV 缺失时只给分配上限并标记“额度未核验”。
 
 全量池由 `npm run r2:refresh-all`（`scripts/fetch-cmb-r2-all.cjs`）刷新：脚本读取招行理财产品统一查询平台公开接口，生成 `cmb_r2_all-*.csv`（全量原始）、`cmb_r2_universe-*.csv`（普通可买候选池）和 `cmb_r2_selected-*.csv`（研究观察池，不含资金分配），并刷新应用。也可以用 `R2_PRODUCT_CSV` 指定候选池路径。页面“刷新快照”会重新解析 `data/` 下日期最新的 universe CSV，找不到时回退到旧的 `cmb_r2_products*.csv`。
 
@@ -270,12 +271,16 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 
 ## 数据与接口
 
-- `GET /api/dashboard`：记录、指标、本金账户、窗口汇总、产品观察池、决策提案和消息中心聚合。
+- `GET /api/dashboard`：纯读取记录、指标、本金账户、窗口汇总、产品观察池、已投影的决策提案和消息中心聚合。
+- `POST /api/dashboard/refresh`：显式执行决策提案、提醒生命周期和消息中心投影，并返回刷新后的完整 Dashboard。服务启动、后台巡检和写操作完成后也会自动投影。
 - `GET /api/review/workspace`：复盘与评估数据（决策、交易流水、收件箱、自动推导持仓、事件、五问、季度清单、持仓汇总、对账和时间轴）。
 - `GET /api/automation/workspace`：自动评估、通知、草稿、任务队列、设置和调度状态。
+- `GET /api/calibration/monthly?month=YYYY-MM`：按预测类型和置信度分桶的月度校准，包含命中率、待验证、失效、误差来源和逐条记录。
+- `GET /api/calibration/predictions/:id`：下钻单条预测的预测版本、实际结果和证据摘要。
+- `POST /api/calibration/predictions/:id/confirm`：人工确认低置信度预测的 `hit` 或 `miss`；未确认结果不计入命中率。
 - `GET /api/decision-proposals`：待采纳、已采纳待执行、已执行及历史提案。
 - `POST /api/decision-proposals/:id/adopt|reject`：采纳或拒绝提案；采纳只生成待执行决策，不创建交易。
-- `POST /api/automation/run`：立即运行一次本地自动化巡检。
+- `POST /api/automation/run`：立即在独立 worker 中运行一次本地自动化巡检；硬超时、执行中防重入和关闭终止由统一 runner 处理。
 - `PUT /api/automation/settings`：修改目标年化、期限 hurdle、流动性/单只上限、置信度门槛和巡检间隔。
 - `POST /api/evaluations/:id/apply|undo`：人工确认或撤销一条评估。
 - `POST /api/notifications/:id/read|unread|resolve`、`POST /api/notifications/read-all`：处理提醒。
@@ -296,6 +301,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - `GET /api/product-valuations?product_code=...`：读取逐产品收益摘要、完整逐日记录和修正审计；不传代码时返回近期对账结果。
 - `POST /api/product-valuations`、`PUT /api/product-valuations/:id`：补录或修正产品收益，并写入审计留痕。
 - `POST/PUT/DELETE /api/review/decisions`：决策日志的增改删。
+- `POST /api/review/decisions/:id/predictions`：追加一条不可改写历史的新预测版本；旧版本和结果继续保留。
 - `POST/PUT/DELETE /api/review/holdings`：兼容旧接口，实际写入或撤销买入交易，持仓仍由流水推导。
 - `POST/PUT/DELETE /api/review/events`：产品事件的增改删。
 - `PUT /api/review/notes/:month`：保存指定月份的月度五问。
@@ -314,6 +320,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - `PUT /api/records/:date`：修改指定日期记录。
 - `DELETE /api/records/:date`：删除指定日期记录。
 - `GET /api/export.csv`：导出台账 CSV。
+- `POST /api/inbox/confirmations`：写入 Codex 待确认事项。临时桥接本金需传 `metadata.capital_bridge`，包含金额、转入/转出日期、目标本金和已有决策 ID；逐产品收益待补需传 `metadata.product_income_requirement={product_code,yield_date}`。两类提醒都会在对应正式事实完成后自动关闭。
 
 服务默认只监听 `127.0.0.1`，不要把它直接暴露到公网。需要换端口时可设置 `PORT` 环境变量。
 

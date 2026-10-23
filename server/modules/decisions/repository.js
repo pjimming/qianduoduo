@@ -6,6 +6,9 @@ function createDecisionsRepository(repository) {
     createDecision(decision) {
       return repository.createDecision(decision);
     },
+    addPredictionVersion(id, input) {
+      return repository.addPredictionVersion(id, input);
+    },
     deleteDecision(id) {
       return repository.deleteDecision(id);
     },
@@ -25,6 +28,11 @@ function createDecisionsRepository(repository) {
       return repository.tradeStore
         .listTrades()
         .find((trade) => trade.decision_id === decisionId) || null;
+    },
+    findDecision(id) {
+      return repository
+        .listDecisions()
+        .find((decision) => Number(decision.id) === Number(id)) || null;
     },
     runEvaluationCycle(trigger, today) {
       return repository.automationStore.runCycle({

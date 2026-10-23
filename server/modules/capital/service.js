@@ -30,7 +30,7 @@ function createCapitalService({ capitalRepository, dashboardQuery }) {
       value.initial_date,
       '页面首次初始化',
     );
-    return dashboardQuery.getDashboard();
+    return dashboardQuery.projectDashboard();
   }
 
   function updateInitial(body, options = {}) {
@@ -46,7 +46,7 @@ function createCapitalService({ capitalRepository, dashboardQuery }) {
     } catch (error) {
       throw serviceError(400, error.message);
     }
-    return dashboardQuery.getDashboard();
+    return dashboardQuery.projectDashboard();
   }
 
   function createEvent(body, options = {}) {
@@ -59,7 +59,7 @@ function createCapitalService({ capitalRepository, dashboardQuery }) {
     }
     return {
       event,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -75,7 +75,7 @@ function createCapitalService({ capitalRepository, dashboardQuery }) {
     }
     return {
       deleted: true,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 

@@ -4,7 +4,13 @@ export type ProductBucket = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
 export type TermFilter = 'all' | ProductBucket
 export type SortDirection = 'asc' | 'desc'
 export type LedgerSortKey = 'date' | 'principal' | 'daily_pnl' | 'daily_return' | 'net_value'
-export type ProductSortKey = 'term' | 'return_1m' | 'return_3m' | 'return_6m' | 'return_1y'
+export type ProductSortKey =
+  | 'term'
+  | 'return_1m'
+  | 'return_3m'
+  | 'return_6m'
+  | 'return_1y'
+  | 'weighted_yield_pct'
 export type RangeValue = 7 | 30 | 90 | 'all'
 
 export interface LedgerRecord {
@@ -334,6 +340,129 @@ export interface DecisionEntry {
   rating: DecisionRating
   created_at: string
   updated_at: string
+}
+
+export interface DecisionPrediction {
+  schema_version: number
+  series_id: string
+  id: string
+  version: number
+  recommendation_type: string
+  action: DecisionAction
+  source: string
+  source_ref: string
+  created_at: string
+  data_cutoff_at: string
+  evidence_refs: Array<{
+    type?: string
+    ref?: string
+    as_of?: string
+    [key: string]: unknown
+  }>
+  confidence: number
+  horizon: {
+    start_date: string
+    end_date: string
+    days: number
+  }
+  baseline: {
+    metric: string
+    value: number | null
+    label: string
+    unit: string
+  }
+  expected: {
+    direction: string
+    target: {
+      point: number | null
+      min: number | null
+      max: number | null
+      unit: string
+    }
+  }
+  evaluation: {
+    metric: string
+    method: string
+    minimum_observations: number
+    minimum_coverage_ratio: number
+    tolerance_pp: number
+    tolerance_abs: number
+  }
+  invalidation_condition: string
+  invalidation_triggers: string[]
+  review_date: string
+  original_text: string
+}
+
+export interface DecisionPredictionResult {
+  status:
+    | 'hit'
+    | 'miss'
+    | 'invalidated'
+    | 'not_executed'
+    | 'insufficient_data'
+    | 'pending_confirmation'
+    | 'pending'
+  classification: string
+  reason_code: string
+  detail: string
+  evaluated_for: string
+  data_as_of: string
+  actual: number | null
+  target: DecisionPrediction['expected']['target'] | null
+  numeric_error: number | null
+  evidence: Record<string, unknown>
+  proposed_status?: 'hit' | 'miss'
+  proposed_classification?: string
+  proposed_reason_code?: string
+  confirmed_at?: string
+  confirmed_by?: string
+}
+
+export interface DecisionCalibrationRecord {
+  prediction: DecisionPrediction
+  prediction_versions: DecisionPrediction[]
+  result: DecisionPredictionResult
+  decision: {
+    id: number
+    product_name: string
+    action: DecisionAction
+    rating: DecisionRating
+  } | null
+  proposal: {
+    id: number
+    status: string
+    title: string
+    confidence: number
+  } | null
+}
+
+export interface DecisionCalibrationGroup {
+  key: string
+  total: number
+  evaluated: number
+  hit: number
+  miss: number
+  invalidated: number
+  insufficient_data: number
+  not_executed: number
+  pending: number
+  pending_confirmation: number
+  hit_rate: number | null
+  mean_absolute_error: number | null
+}
+
+export interface DecisionCalibrationReport {
+  month: string
+  generated_for: string
+  total: number
+  by_type: DecisionCalibrationGroup[]
+  by_confidence: DecisionCalibrationGroup[]
+  by_action: DecisionCalibrationGroup[]
+  by_horizon: DecisionCalibrationGroup[]
+  error_sources: Array<{ source: string; count: number }>
+  reason_codes: Array<{ code: string; count: number }>
+  records: DecisionCalibrationRecord[]
 }
 
 export interface Holding {
@@ -1103,11 +1232,22 @@ export interface AutomationWorkspace {
   drafts: ReviewDraft[]
   jobs: AutomationJob[]
   automation_runs: AutomationRun[]
+  calibration: DecisionCalibrationReport
   scheduler: {
     enabled: boolean
     last_run: AutomationRun | null
     next_run: string | null
   }
+  runner?: {
+    running: boolean
+    startedAt: string | null
+    finishedAt: string | null
+    durationMs: number | null
+    lastResult: Record<string, unknown> | null
+    lastError: string
+    timedOut: boolean
+    stopReason: string
+  } | null
 }
 
 export interface IncomeInboxParsed {
@@ -1324,6 +1464,7 @@ export interface Product {
   return_3m: number | null
   return_6m: number | null
   return_1y: number | null
+  weighted_yield_pct: number | null
   return_since_inception: number | null
   status: string
   source: string

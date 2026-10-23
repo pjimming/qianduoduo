@@ -39,7 +39,7 @@ function createTradesRoutes(trades) {
       async handler(request, response) {
         const body = await readJsonBody(request);
         try {
-          sendJson(response, 201, trades.createTrade(body));
+          sendJson(response, 201, await trades.createTrade(body));
         } catch (error) {
           sendTradeError(response, error);
         }
@@ -57,7 +57,7 @@ function createTradesRoutes(trades) {
           sendJson(
             response,
             200,
-            trades.confirmTrade(Number(match[1]), body),
+            await trades.confirmTrade(Number(match[1]), body),
           );
         } catch (error) {
           sendTradeError(response, error);
@@ -76,7 +76,7 @@ function createTradesRoutes(trades) {
           sendJson(
             response,
             200,
-            trades.cancelTrade(Number(match[1]), body),
+            await trades.cancelTrade(Number(match[1]), body),
           );
         } catch (error) {
           sendTradeError(response, error);
@@ -107,7 +107,7 @@ function createTradesRoutes(trades) {
           sendJson(
             response,
             200,
-            trades.updateTrade(Number(match[1]), body),
+            await trades.updateTrade(Number(match[1]), body),
           );
         } catch (error) {
           sendTradeError(response, error);
@@ -195,7 +195,7 @@ function createTradesRoutes(trades) {
         }
         const body = await readJsonBody(request);
         try {
-          sendJson(response, 200, trades.applyInboxItem(item, body));
+          sendJson(response, 200, await trades.applyInboxItem(item, body));
         } catch (error) {
           sendTradeError(response, error);
         }
@@ -215,7 +215,7 @@ function createTradesRoutes(trades) {
         }
         const body = await readJsonBody(request);
         try {
-          sendJson(response, 200, trades.visionApply(item, body));
+          sendJson(response, 200, await trades.visionApply(item, body));
         } catch (error) {
           sendTradeError(response, error);
         }

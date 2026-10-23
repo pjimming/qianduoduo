@@ -18,10 +18,64 @@ function createEvaluationsRoutes(evaluations) {
       },
     },
     {
+      method: 'GET',
+      path: '/api/calibration/monthly',
+      handler(request, response, context) {
+        try {
+          sendJson(
+            response,
+            200,
+            evaluations.calibration(
+              context.requestUrl.searchParams.get('month'),
+            ),
+          );
+        } catch (error) {
+          sendEvaluationError(response, error);
+        }
+      },
+    },
+    {
+      method: 'POST',
+      path: /^\/api\/calibration\/predictions\/([^/]+)\/confirm$/,
+      async handler(request, response, context) {
+        const match = context.pathname.match(
+          /^\/api\/calibration\/predictions\/([^/]+)\/confirm$/,
+        );
+        const body = await readJsonBody(request);
+        try {
+          sendJson(
+            response,
+            200,
+            evaluations.confirmCalibrationPrediction(match[1], body),
+          );
+        } catch (error) {
+          sendEvaluationError(response, error);
+        }
+      },
+    },
+    {
+      method: 'GET',
+      path: /^\/api\/calibration\/predictions\/([^/]+)$/,
+      handler(request, response, context) {
+        const match = context.pathname.match(
+          /^\/api\/calibration\/predictions\/([^/]+)$/,
+        );
+        try {
+          sendJson(
+            response,
+            200,
+            evaluations.calibrationPrediction(match[1]),
+          );
+        } catch (error) {
+          sendEvaluationError(response, error);
+        }
+      },
+    },
+    {
       method: 'POST',
       path: '/api/automation/run',
-      handler(request, response) {
-        const result = evaluations.run();
+      async handler(request, response) {
+        const result = await evaluations.run();
         sendJson(response, result.statusCode, result.body);
       },
     },

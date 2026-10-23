@@ -43,7 +43,7 @@ function createProposalsService({
     }
     return {
       result,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 

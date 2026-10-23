@@ -8,6 +8,7 @@ const {
 
 test('automation scheduler starts once, stops cleanly and runs the cycle', async () => {
   let cycleCount = 0;
+  let projectionCount = 0;
   let clock = 0;
   const repository = {
     automationStore: {
@@ -34,6 +35,9 @@ test('automation scheduler starts once, stops cleanly and runs the cycle', async
     logger: { log() {}, warn() {} },
     startupDelayMs: 1,
     pollIntervalMs: 5,
+    onCycleComplete: () => {
+      projectionCount += 1;
+    },
     now: () => {
       clock += 10 * 60 * 1000;
       return clock;
@@ -43,9 +47,10 @@ test('automation scheduler starts once, stops cleanly and runs the cycle', async
   scheduler.start();
   scheduler.start();
   await new Promise((resolve) => setTimeout(resolve, 25));
-  scheduler.stop();
+  await scheduler.stop();
 
   assert.equal(cycleCount >= 2, true);
+  assert.equal(projectionCount, cycleCount);
   assert.equal(scheduler.isRunning(), false);
   assert.equal(scheduler.getStatus().name, 'automation-cycle');
   assert.equal(scheduler.getStatus().lastResult.ok, true);
@@ -81,7 +86,7 @@ test('automation scheduler retries failed cycles and records final status', asyn
     retryBaseDelayMs: 1,
     maxAttempts: 3,
   });
-  const first = scheduler.run('manual');
+  const first = await scheduler.run('manual');
   assert.equal(first.ok, false);
   await new Promise((resolve) => setTimeout(resolve, 20));
   const status = scheduler.getStatus();
@@ -112,8 +117,9 @@ test('stopping scheduler cancels a pending retry', async () => {
     retryBaseDelayMs: 10,
     maxAttempts: 3,
   });
-  scheduler.run('manual');
-  scheduler.stop();
+  const active = scheduler.run('manual');
+  await scheduler.stop();
+  await active;
   await new Promise((resolve) => setTimeout(resolve, 25));
   assert.equal(cycleCount, 1);
   assert.equal(scheduler.getStatus().running, false);

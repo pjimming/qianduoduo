@@ -277,7 +277,7 @@ date,principal,daily_pnl,action,notes
 
 ### 5.1 它是什么
 
-应用先读取 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买候选池，再按评分、期限桶、本金、已确认持仓、待确认买入、短期桶下限、未来现金流和逐只额度动态决定产品数量与目标金额。本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实。以 2026-10-19 快照为例：432 只普通候选；实际分配数量随本金和约束变化，不再固定每桶 3 只。
+应用先读取 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买候选池，再按评分、期限桶、本金、已确认持仓、待确认买入、短期桶下限、未来现金流和逐只额度动态决定产品数量与目标金额。候选池表格的“加权年化”严格使用 `50% × 近3M + 30% × 近6M + 20% × 近1Y`，任一周期缺失显示 `—`，不会用剩余周期重新归一化。本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实。
 
 ### 5.2 怎么刷新
 
@@ -806,6 +806,7 @@ npm run research:publish
 | `npm run prod:start` | 启动生产守护 |
 | `npm run prod:stop` | 停止生产守护 |
 | `npm run prod:restart` | 重启生产服务 |
+| `npm run test:daemon` | 隔离验证守护进程三种退出码与重启行为 |
 | `npm run research:publish` | 发布报告：导航、同步、构建、重启 |
 | `npm run r2:refresh-all` | 刷新招行 R2 全量/候选/观察池 |
 | `npm test` | 运行单元/API 测试 |
@@ -814,6 +815,8 @@ npm run research:publish
 | `npm run db:list` | 列出数据库备份 |
 | `npm run db:backup` | 立即备份数据库 |
 | `npm run db:restore -- YYYY-MM-DD` | 恢复到指定日期备份 |
+
+生产 Supervisor 以 Node 自己写入的 `run/server.pid` 管理服务进程，并使用 `$LASTEXITCODE` 记录真实退出码。首次安装 Watchdog 需要运行 `scripts/install-watchdog.ps1` 或允许 `prod:deploy` 触发 Windows 提权；安装后当前用户可直接执行 `prod:start` / `prod:stop` 启用或停用任务。
 
 ---
 
@@ -871,7 +874,11 @@ npm run prod:restart
 
 分工原则：事实层可以由自动化维护；判断层由 Codex 起草证据、你确认后落库。禁止下单、赎回、转账、删除记录、覆盖手工评价或对外发送。
 
-Codex 巡检发现“需要用户补事实或最后确认、且平台不能自行处理”的事项时，会通过 `POST /api/inbox/confirmations` 写入消息中心，并使用确定性 `dedupe_key` 防止重复。Codex 返回的卡片只是摘要，消息中心才是持久化的待确认入口。
+Codex 巡检发现“需要用户补事实或最后确认、且平台不能自行处理”的事项时，会通过 `POST /api/inbox/confirmations` 写入消息中心，并使用确定性 `dedupe_key` 防止重复。逐产品收益待补事项会附带产品代码和收益日期，补录对应产品事实后自动转为已处理；临时桥接本金也会在转入、转出和本金恢复事实齐全后自动关闭。Codex 返回的卡片只是摘要，消息中心才是持久化的待确认入口。
+
+巡检读取 Dashboard 前会先调用 `POST /api/dashboard/refresh`，把决策提案、提醒生命周期和消息中心投影刷新到最新事实。临时桥接本金提醒写入时必须附带 `metadata.capital_bridge={bridge_amount,bridge_date,withdraw_date,target_principal,decision_id}`；当匹配的转入和转出事实都存在、当前本金恢复到目标且决策仍存在时，提醒与消息中心事项会自动解决。
+
+平台提案会冻结结构化预测，包括数据截止时间、证据引用、置信度、期限、基线、方向、目标、评价口径、失效条件和复核日。到复核日后，应用只使用已确认交易和正式产品收益事实判断命中、未命中、失效或待验证；数据不足和未执行不计入命中率。低于自动确认门槛的结果进入“待人工确认”，可在校准面板确认。月度视图位于“决策与评估 → 预测校准”，接口为 `GET /api/calibration/monthly?month=YYYY-MM`。
 
 ---
 

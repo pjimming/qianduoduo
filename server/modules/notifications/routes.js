@@ -30,7 +30,7 @@ function createNotificationsRoutes({ notifications, dashboardQuery }) {
           }
           throw error;
         }
-        const dashboard = dashboardQuery.getDashboard();
+        const dashboard = dashboardQuery.projectDashboard();
         sendJson(response, 201, {
           notification,
           inbox_center: dashboard.inbox_center,
@@ -43,7 +43,7 @@ function createNotificationsRoutes({ notifications, dashboardQuery }) {
       path: '/api/inbox/read-all',
       handler(request, response) {
         notifications.markAllInboxRead();
-        const dashboard = dashboardQuery.getDashboard();
+        const dashboard = dashboardQuery.projectDashboard();
         sendJson(response, 200, {
           inbox_center: dashboard.inbox_center,
           dashboard,
@@ -73,7 +73,7 @@ function createNotificationsRoutes({ notifications, dashboardQuery }) {
           sendError(response, 404, '没有找到这条消息');
           return;
         }
-        const dashboard = dashboardQuery.getDashboard();
+        const dashboard = dashboardQuery.projectDashboard();
         sendJson(response, 200, {
           item,
           inbox_center: dashboard.inbox_center,
@@ -105,6 +105,7 @@ function createNotificationsRoutes({ notifications, dashboardQuery }) {
           sendError(response, 404, '没有找到这条提醒');
           return;
         }
+        dashboardQuery.projectDashboard();
         sendJson(response, 200, { notification });
       },
     },

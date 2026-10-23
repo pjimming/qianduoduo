@@ -64,6 +64,72 @@ test('automation API persists strategy fields, evaluates, applies and undoes', a
   assert.equal(decision.bucket_plan.cash, 0);
   assert.deepEqual(decision.evaluation_at, ['buy_day', 'maturity']);
 
+  const predictionInput = {
+    recommendation_type: 'cash_allocation',
+    action: '买入',
+    source: 'human-correction',
+    start_date: '2026-10-01',
+    review_date: '2026-12-31',
+    confidence: 70,
+    baseline: {
+      metric: 'executed_amount',
+      value: 0,
+      unit: '元',
+    },
+    expected: {
+      direction: 'at_least',
+      target: { point: 10000, unit: '元' },
+    },
+    metric: 'executed_amount',
+    evaluation: {
+      method: 'confirmed_trade_amount',
+      tolerance_abs: 1,
+    },
+    invalidation_condition: '决策取消',
+    invalidation_triggers: ['decision_cancelled'],
+    original_text: '预期完成一万元买入',
+    reason: '补充可检验预测',
+  };
+  const predictionResponse = await postJson(
+    `${base}/api/review/decisions/${decision.id}/predictions`,
+    predictionInput,
+  );
+  assert.equal(predictionResponse.status, 201);
+  const predictionPayload = await predictionResponse.json();
+  assert.equal(predictionPayload.prediction.version, 1);
+  const revisedPredictionResponse = await postJson(
+    `${base}/api/review/decisions/${decision.id}/predictions`,
+    {
+      ...predictionInput,
+      confidence: 80,
+      expected: {
+        direction: 'at_least',
+        target: { point: 9000, unit: '元' },
+      },
+      reason: '调整执行金额目标',
+    },
+  );
+  assert.equal(revisedPredictionResponse.status, 201);
+  const revisedPrediction = await revisedPredictionResponse.json();
+  assert.equal(revisedPrediction.prediction.version, 2);
+  assert.equal(revisedPrediction.decision.review_meta.predictions.length, 2);
+
+  const calibration = await fetch(
+    `${base}/api/calibration/monthly?month=2026-12`,
+  ).then((response) => response.json());
+  assert.equal(calibration.month, '2026-12');
+  assert.equal(calibration.total, 1);
+  assert.equal(calibration.records[0].prediction.version, 2);
+  const calibrationDetail = await fetch(
+    `${base}/api/calibration/predictions/${encodeURIComponent(
+      revisedPrediction.prediction.id,
+    )}`,
+  ).then((response) => response.json());
+  assert.equal(
+    calibrationDetail.prediction.id,
+    revisedPrediction.prediction.id,
+  );
+
   const buy = await postJson(`${base}/api/trades`, {
     trade_date: '2026-10-01',
     confirm_date: '2026-10-01',

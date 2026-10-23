@@ -2,9 +2,9 @@
 
 更新时间：2026-10-23
 
-用途：记录长期有效的约束、当前架构和运行方式；具体选品方法以 `r2-wealth-management` skill 为准。
+用途：记录长期有效的约束、架构与数据口径和运行契约；具体选品方法以 `r2-wealth-management` skill 为准。
 
-记忆卫生：易变数据必须带 “截至日期 + 来源”，或直接指向数据库/API；不要把账户明细、未经当次核验的测试结果或会移动的版本提交号写成无限期有效的“当前事实”。
+记忆边界：`TODO.md`、Git、代码、数据库、运行接口和当次测试输出是时效性事实的来源。`MEMORY.md` 禁止记录待办是否完成、当前优先级、阻塞项、剩余任务编号、正在开发/待发布/待验证状态、当前实现暂不支持的能力、当前测试数量或覆盖率、当前服务/数据库/报告数量等会随开发或运行变化的内容；标注“截至日期 + 来源”也不构成豁免。这里只保留长期约束、架构与数据口径、运行契约和仍有决策价值的历史事实。
 
 ## 1. 约束
 
@@ -15,7 +15,7 @@
 - 不替用户下单；额度、费率、风险等级和赎回规则以招行 App 与产品说明书为准。
 - 交易、决策与截图必须完整绑定：任何买入、赎回、切换交易（包括待确认、手工录入和截图入账）都必须关联 `decision_id` 和能够证明该笔业务的原始交易截图 `screenshot_id`；决策至少包含原因、预期、策略及期限口径、证据日期、验证日期和失效条件。提交前预览页不算成交截图，只记交易流水、持仓或本金变化也不算完成。一张图包含多笔订单时，必须先拆分单笔截图、逐笔核对并分别绑定，禁止把同一张多笔总览图直接绑定到多笔交易；原总览图只保留历史证据，必须标记为 `ignored` 并清空 `trade_id`、`duplicate_of`，不参与逐笔对账。
 - 持有起点统一使用交易确认日 `confirm_date`：买入/切换在状态变为“已确认”后才进入持仓；未确认交易只占额度，不算持有。持仓批次、持有天数、期限、到期日和逐产品归档均不得从发起交易的 `trade_date` 起算；赎回持有终点同样优先使用赎回确认日。
-- 持仓复核旧字段已完成清理：`idle_days`、`compare_horizon_days`、旧设置列 `min_gain_amount`、`term_warning`、`idle_cost` 均不再进入数据库、接口或前端类型；`holding_review_settings` 通过一次性表重建保留赎回/到账 T+N、候选申购确认 T+N、费用、下一赎回开放日、备注和核验日期。涉及账本、交易、逐产品收益、审计或正式决策记录等事实数据的删除，仍必须先单独确认目标、影响和恢复方式。
+- 持仓复核的 schema 与类型契约不包含 `idle_days`、`compare_horizon_days`、旧设置列 `min_gain_amount`、`term_warning`、`idle_cost`；`holding_review_settings` 保存赎回/到账 T+N、候选申购确认 T+N、费用、下一赎回开放日、备注和核验日期。涉及账本、交易、逐产品收益、审计或正式决策记录等事实数据的删除，仍必须先单独确认目标、影响和恢复方式。
 
 ## 2. 应用与架构
 
@@ -24,13 +24,16 @@
 - 钱多多是本地个人财富工作台，左侧导航分为“理财”和“投资”两组，均可折叠；理财下按“收益概览、消息中心、每日记账、交易与持仓、产品与配置、复盘、决策与评估”排列，投资下为“科技全景图”和“调研报告”。分组折叠状态保存在浏览器 localStorage。
 - 本地生产页：`http://127.0.0.1:8765`；开发页：`http://127.0.0.1:5173`。
 - 前端：Vue 3 + Vite + TypeScript + Pinia + Vue Router；后端：Node.js 24+、内置 `node:sqlite`。
-- 截至 2026-10-23（来源：`server/http/routes.js`）：后端为模块化单体。`server.js` 只负责应用工厂和生命周期入口；`server/app.js` 装配 HTTP 应用，`server/lifecycle.js` 管理启动、维护任务、调度器、优雅关闭和数据库关闭；HTTP、域用例和基础设施分别位于 `server/http/`、`server/modules/`、`server/infrastructure/`。72 个 API pattern 均在启动时强制校验已注册且无重复，未知 API 继续返回 404 `{"error":"接口不存在"}`。
+- 后端为模块化单体。`server.js` 只负责应用工厂和生命周期入口；`server/app.js` 装配 HTTP 应用，`server/lifecycle.js` 管理启动、维护任务、调度器、优雅关闭和数据库关闭；HTTP、域用例和基础设施分别位于 `server/http/`、`server/modules/`、`server/infrastructure/`。API pattern 在启动时强制校验已注册且无重复，未知 API 继续返回 404 `{"error":"接口不存在"}`。
 - 后端模块按域拆为 capital、dashboard、data-trust、decisions、evaluations、income、ledger、notifications、operations、product-valuations、products、proposals、research、reviews、trades；`server/modules/` 和 `server/infrastructure/` 不直接写 SQL，仍通过 repository adapter 调用现有 `lib/*-store.js`。旧 `server/http/legacy-app.js` 已删除，不再保留两套 HTTP 业务实现。
-- 2026-10-22 的后端重构未改变 SQLite schema；2026-10-23 已单独执行财富数据可信度 v1 生产迁移。当前数据库有 33 张业务表、0 个触发器和 9 个新证据链外键；`quick_check=ok`、`foreign_key_check` 为空。
-- 财富数据可信度 v1（`2026-10-23-data-trust-v1`）已上线：新增 `schema_migrations`、`evidence_assets`、`evidence_events`、`fact_revisions`、`fact_evidence_links`；收益/交易收件箱增加 `evidence_id`、`workflow_state`、`selected_event_id`、`state_version` 和 `last_request_id`。生产迁移前备份为 `data/backups/pre-data-trust-v1-20261023-165810.sqlite`，设计与执行记录见 `docs/refactor/15-data-trust-lineage-design.md`、`docs/refactor/16-data-trust-schema-migration-plan.md`。
+- Dashboard 读取契约：`GET /api/dashboard`、`GET /api/review/workspace` 和 `GET /api/inbox` 只读；决策提案、提醒生命周期和消息中心持久化状态通过 `POST /api/dashboard/refresh`、服务启动、后台巡检或写操作完成后的显式投影更新。投影使用事务，不得重新把持久化写入塞回 GET。
+- 自动化执行契约：`automation cycle` 在独立 worker 中运行，主进程统一管理硬超时、防重入、终止和中断恢复；手动运行、后台调度及交易/决策写后评估共用同一 runner，不得在请求或调度线程直接执行长 cycle。
+- 预测校准契约：AI/平台提案把结构化预测冻结在正式决策的 `review_meta.predictions`，实际结果写入 `review_meta.prediction_results` 并复用正式交易、产品收益事实和事实修订链；预测修订只能追加版本，月度校准通过 `/api/calibration/monthly` 按类型和置信度汇总，待验证、未执行和失效不计入命中率。
+- SQLite schema、迁移版本、数据量、外键和完整性检查结果以代码、迁移脚本、运行接口和数据库查询为准；本文件不保存这些会变化的快照。
+- 财富数据可信度 v1 的长期契约是保留 `schema_migrations`、`evidence_assets`、`evidence_events`、`fact_revisions`、`fact_evidence_links` 证据链，并在收益/交易收件箱维护 `evidence_id`、`workflow_state`、`selected_event_id`、`state_version` 和 `last_request_id`。迁移状态与执行过程只查迁移系统及 `docs/refactor/15-data-trust-lineage-design.md`、`docs/refactor/16-data-trust-schema-migration-plan.md`。
 - `R2_DATA_TRUST_MODE` 默认 `shadow`；新写入在生产中同步维护旧字段投影和证据/修订链。生产启动使用 `migrationPolicy=require`，迁移未完成时拒绝启动；测试和临时库可自动迁移。`R2_DATA_TRUST_MODE=off` 是逻辑热回滚模式，保留新增表与历史数据。
-- 收益截图的产品收益、账户收益、修订、证据链接和收件箱状态现在由共享 `BEGIN IMMEDIATE` 事务提交；并发/重复 apply 收敛到同一正式事实。`TD-REF-001` 已于 2026-10-23 关闭。
-- 重构后尚未关闭的财务和运维风险统一登记在工作区根目录 `TODO.md`，以 `TD-REF-*` 编号跟踪。`TD-REF-001` 已完成；剩余读路径副作用、任务硬超时、Watchdog 和守护退出码分别由 `TD-REF-002` 至 `TD-REF-005` 跟踪。
+- 收益截图的产品收益、账户收益、修订、证据链接和收件箱状态必须由共享 `BEGIN IMMEDIATE` 事务提交；并发或重复 apply 应收敛到同一正式事实。
+- 财务与运维风险的待办状态只查工作区根目录 `TODO.md`；本文件只记录必须长期保持的约束，不复制任务编号、优先级、完成情况或阻塞状态。
 - R2 页面在 `src/views/r2/`：`R2LayoutView` 统一加载数据，`InboxView`、`OverviewView`、`DailyEntryView`、`TradesView`、`ProductsView`、`ReviewView`、`EvaluationView` 七个子页；页面外壳在 `src/components/r2/`，样式在 `src/styles/r2-pages.css` 与 `src/styles/inbox.css`。`/` 和 `/ledger` 都重定向到 `/ledger/overview`。
 - R2 路由：`/ledger/overview` 收益概览、`/ledger/inbox` 消息中心、`/ledger/daily` 每日记账、`/ledger/trades` 交易与持仓、`/ledger/products` 产品与配置、`/ledger/review` 复盘、`/ledger/evaluation` 决策与评估。七个页面共享同一个 `dashboard`，切换页面不重复请求 `/api/dashboard`。
 - R2 顶部悬浮分区导航已移除；左侧 sidebar 是唯一的跨页分区入口。页面内的 `R2SectionIndex` 只做当前页锚点（如复盘页的日周月评分 / 复盘节奏 / 月度五问 / 季度复盘），不重复承载跨页导航。
@@ -46,12 +49,13 @@
 - 收益账本与自动复盘的阅读字号下限为 **12px**：功能性文字、辅助说明、状态标签、分页、日历图例、备注、按钮、产品详情弹窗和全部产品弹窗内的筛选/排序/代码都不得低于 12px；关键数据 12.5–13px，卡片标题 13–14px。自动复盘左栏由“每日复盘 + 每周检查 + 最近可记日”组成，最近可记日最多显示 7 天，起始较晚时按实际可记天数显示；卡片自适应填满左栏剩余高度，点击日期可直接补记或修改。
 - 本金独立管理：首次初始化起始本金和日期，后续用转入/转出维护；收益记录不单独填写本金，由本金账户自动带入。
 - 本金起始日口径：`capital_settings.initial_date` 之前的日期不属于收益账本，不计收益、不计缺记、不计记录完整度和目标进度，也不能补记。复盘日历显示“起始日前”并禁用点击；日/周/月统计和评级只从起始日起算；起始月可记录天数不足 28 天时不落最终评级；上月/上季若完全早于起始日，时间轴显示“未纳入复盘”，即使存在旧笔记也不标为待补或已完成。记账表单和接口均拒绝起始日前的收益记录。
-- 收益起算口径：买入/认购日不等于产品收益日。订单已提交但仍在确认中、尚未取得产品份额的日期，不写 0 元收益记录，不计入收益期、缺记、记录完整度或年化分母；交易流水和决策日志仍保留原买入日期。收益账本从账户首批产品份额确认并开始计息之日起算；多产品分批确认时不把后确认产品追溯计入更早日期。当前账户据此把 `capital_settings.initial_date` 设为 2026-10-20，2026-10-19 仅保留为交易事实。
+- 收益起算口径：买入/认购日不等于产品收益日。订单已提交但仍在确认中、尚未取得产品份额的日期，不写 0 元收益记录，不计入收益期、缺记、记录完整度或年化分母；交易流水和决策日志仍保留原买入日期。收益账本从账户首批产品份额确认并开始计息之日起算；多产品分批确认时不把后确认产品追溯计入更早日期。具体起算日只查 `capital_settings.initial_date`。
 - 收益录入口径：收益日期由用户或截图提供，允许记录不晚于今天的日期；`reporting_date = today - 1` 只用于日常缺记提醒，不限制实际补记日期。产品收益 T+N 不参与账户收益日期判断。每日收益按“日期 + 金额”幂等处理：同日期同金额视为已记录并忽略；无记录才新增；同日期不同金额不得覆盖，必须写入消息中心等待人工确认。0 元是有效收益值，用户或银行页面明确确认无收益时必须写入 0 元记录。
 - `cash_balance` / “R2 流动性仓”输入字段已移除，数据库、API、页面和 CSV 不保存闲置现金余额。期限 0 天的日开产品仍是真实产品持仓，但本项目新增目标固定为 0%。
 - 产品池默认由 `npm run r2:refresh-all`（`scripts/fetch-cmb-r2-all.cjs`）刷新：拉取招行公开全量 R2 池，生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`（普通可买候选池）和 `cmb_r2_selected-*.csv`（当前精选池）；页面“刷新快照”会重新解析日期最新的 universe CSV。旧脚本 `fetch-cmb-r2-snapshot.cjs` 仅保留作兼容。
 - 快照选择：`R2_PRODUCT_CSV` 优先；否则扫描 `data/cmb_r2_universe*.csv`，找不到时回退 `data/cmb_r2_products*.csv`，均按文件名中的 `YYYY-MM-DD` 倒序、同日期按 `mtime` 倒序；刷新接口每次重新解析并整表替换 `products`。`product_snapshot_date` 是产品 `data_date` 的最大值，不是文件名日期。
-- 普通可买候选池：人民币 `currency_code=10`、公募 `pub_prv=A`、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、成立满 12 个月、期限可解析且 1M/3M/6M/1Y 完整。2026-10-23 快照为 426 只（日开 17、短 160、中 87、长 162）。
+- 普通可买候选池：人民币 `currency_code=10`、公募 `pub_prv=A`、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、成立满 12 个月、期限可解析且 1M/3M/6M/1Y 完整。候选数量与期限分布只查当前解析后的产品 API 或 CSV。
+- 候选池“加权年化”的计算契约固定为 `50% × 近3M年化 + 30% × 近6M年化 + 20% × 近1Y年化`；任一周期缺失必须返回空值并在界面显示 `—`，不得用剩余周期重新归一化。
 - 动态配置规则（`r2-dynamic-v2`）：基础评分仍为 `0.45×3M + 0.30×6M + 0.25×1Y`，若 `1M < 3M - 0.5` 扣 0.08，若 `1Y - 6M > 1` 再按差距扣最多 0.25，成立满 18/24 个月加 0.015/0.03。产品数量不再固定，按本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来 0–3/3–6/6–12 个月现金流、单只/发行方/底层策略上限和逐只额度共同决定目标金额。日开候选无论评分、短期桶下限或现金流如何都不会获得新增目标；现有日开金额单独展示并提示迁移。
 - 目标单只金额默认为本金的 10%，最低 1 万元、最高 25 万元；仍受单只 25%–30%、多发行方单发行方 40%–50%、同一底层策略 50% 的硬上限约束。额度缺失时标记“额度未核验”，不假装可买；待确认买入占用额度但不进入已确认持仓。
 - 产品区可调整本金、期限桶、短期桶下限、现金流假设和逐只额度，保存后即时重算；日开新增额度固定 0%，不能编辑。`data/cmb_r2_selected-*.csv` 只是研究观察池，不代表资金分配结果。
@@ -62,12 +66,12 @@
 - 赎回口径逐产品保存：赎回确认 T+N、到账 T+N、候选申购确认 T+N、赎回费/申购费、下一赎回开放日、备注与核验日期。T+N 只用于计算本次切换等待期，等待期不计收益；旧的空档和比较期限字段已从库中删除。公开快照的 `next_open_date` 是申购开放日，不得冒充赎回开放日。
 - 替换决策写入决策日志时必须带：证据日期、事后验证日期、当前/候选代码、快照日期、桶统一比较期限、切换等待天数、有效计息天数、到期续作0天空档、费用、盈亏平衡、预计差额和理由；产品页“记录替换决策”会生成 `review_meta`，决策日志展示并可按验证日复核。
 - `calculateSwitch()` 已统一为复利折算，当前收益、候选净收益、切换差额和盈亏平衡使用同一日数口径；若 `H-W<=0`，盈亏平衡为空且不给出可执行替换结论。页面、决策日志和消息中心保留等待天数、`verified/estimated` 状态与来源。
-- 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据快照日期为 2026-09-16。
-- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`；2026-10-22 核验为 19 篇，后续以发布清单为准。
+- 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据日期只查图谱数据源。
+- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`；报告数量和日期以发布清单为准。
 - 新增或修改报告后执行 `npm run research:publish`，会更新导航、同步副本与清单、构建并重启生产服务；旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
 - 报告库按 `publishedAt`（发布/更新到报告库的时间）倒序，调研日期作为次级排序；更新时间优先取报告中的 `<!-- rpnav-published: YYYY-MM-DD HH:mm -->`，缺失时沿用已生成导航清单中的发布时间，再回退文件修改时间。
 - 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库和可搜索切换器，左侧目录可折叠并高亮当前章节；无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。
-- 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；当前约 90 ms/篇、检索索引约 25 KB/篇，50 篇以上需重新评估索引拆分。
+- 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；索引随报告数增长，达到 50 篇以上需重新评估拆分方式，实际体积和耗时只查构建输出。
 - 通用调研工具位于 `scripts/research/`：包含个股/ETF DCF 模板、九章 HTML 骨架、调研清单、来源 CSV、纳斯达克100 ETF 候选池，以及新建临时目录、统一检查和安全清理脚本。说明见 `scripts/research/README.md`。
 - 单次调研工作目录统一放在 `tmp/research/<slug>/`，由 `new-research-workdir.ps1` 创建；成稿前用 `invoke-research-checks.ps1` 一次运行 DCF、检查器和 HTML 静态校验；发布前用 `cleanup-research-workdir.ps1` 清理。模板长期保存，实际行情、IOPV、持仓、PDF、财务 CSV、带真实数字的假设 JSON 和脚本输出仍按次删除。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
@@ -93,9 +97,9 @@
 - 复盘区：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计账本期内收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负日占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间；自本金起始日起可记录天数满 28 天且账本期内达到 20 条记录、月份结束后才落最终评级。
 - 每日记账页的 `QuickEntryPanel` 只保留两个主入口（成交截图、收益截图），手工收益与特殊事项收进“例外情况”折叠区；下方是每日记录表和本金账户。交易收件箱、交易流水、持仓移到交易与持仓页；产品事件移到产品与配置页；决策日志移到决策与评估页；月度五问/季度复盘移到复盘页并默认折叠为摘要。决策/事件/五问等数据表由 `lib/review-store.js` 管理，评估/通知/草稿由 `lib/automation-store.js` 管理。
 - 消息中心由 `lib/inbox-center.js` 动态聚合并持久化状态，统一承接决策提案、交易/收益截图、待确认交易、对账、评估、产品事件、持仓复核、复盘草稿和平台提醒。消息只保存状态与深链，不复制交易或账本事实；源事项消失后自动归档。持仓复核的“建议替换”若已有活动决策提案，只展示提案消息，不重复生成普通替换提醒。
-- `r2-2` / `r2-3` 中需要用户补事实或最后确认、且平台不能自行处理的事项，必须通过 `POST /api/inbox/confirmations` 写入消息中心；请求使用确定性的 `dedupe_key`，支持 `action|reminder|system`、`info|warn|urgent`、站内 `action_url` 和可选 `due_at`。Codex 回复卡片只作摘要，不能替代消息中心持久化。
+- `r2-2` / `r2-3` 中需要用户补事实或最后确认、且平台不能自行处理的事项，必须通过 `POST /api/inbox/confirmations` 写入消息中心；请求使用确定性的 `dedupe_key`，支持 `action|reminder|system`、`info|warn|urgent`、站内 `action_url` 和可选 `due_at`。逐产品收益待补事项使用 `metadata.product_income_requirement={product_code,yield_date}`，对应 `product_daily_valuations` 事实出现后由消息中心投影自动关闭；兼容旧键 `agent-confirmation:<yield_date>:<product_code>-income-missing`。Codex 回复卡片只作摘要，不能替代消息中心持久化。
 - 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析账户合计与多产品明细；高置信度先按“日期 + 金额”核对，同金额忽略账户总额、但同图新增的产品明细仍会补录，新日期写入，不同金额保留原记录并生成消息中心提醒，不自动覆盖。产品级记录进入 `product_daily_valuations`，按 `(product_code, yield_date)` 去重；产品合计只与账户总账对账，不重复计入收益，差异进入消息中心。截图漏掉的持仓先判断 `today < 收益归属日 + yield_lag_days` 是否仍为正常等到账：成立时不提示补图；满足 `today >= 收益归属日 + yield_lag_days` 后仍缺失才标记“本次未拍到”，不得自行推断为 0 或视为赎回；用户或银行页面明确确认 0 元时必须写入 0 元产品记录。产品 lag 不用于拒绝、改写或推迟用户已明确提供的收益日期。人工修正写入 `product_daily_valuation_audit`，并追加 `human_corrected` 证据事件。成交截图按 OCR 状态确认；交易落库后先匹配已采纳决策提案，只有无法匹配时才建立 `decision_status=incomplete`、`execution_status=unplanned` 的计划外决策。
-- 截至 2026-10-22（用户确认）：`17356D`、`17318K`、`13328D` 的收益均为 T+2 到账，已在 `product_yield_settings` 标记 `source=user-confirmed`。截图在 T+2 到账前未出现这三只产品属于正常情况，不提示补图；到账后仍缺明细才按产品收益缺口处理。
+- 逐产品收益 T+N 和来源只查 `product_yield_settings`。截图在 T+N 到账前未出现属于正常情况，不提示补图；到账后仍缺明细才按产品收益缺口处理。
 - `/api/dashboard` 的 `workspace.product_valuation_summary` 提供产品数、持有/已赎回数、最新档案日；`product_valuation_summaries` 提供每只产品的累计个人收益、档案/持有天数、负收益天数、最差单日与状态；`product_valuation_reconciliation` 提供产品合计和账户总账的匹配/差异。完整逐日历史通过 `/api/product-valuations?product_code=...` 按需读取，避免 dashboard 随时间无限膨胀。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现盈亏。页面中的“未赎回成本本金”= 已确认买入金额 − 已匹配赎回本金，不是余额或当前市值。待确认买入只占额度，待确认赎回不改持仓，均不进入未赎回成本、期限桶和流动性比例。
@@ -103,7 +107,7 @@
 - 决策提案由 `lib/decision-proposal-store.js` 管理 `decision_proposals`。可分配资金大于 0 时按目标产品生成买入提案；持仓复核达到 `replace` 时生成换仓提案。待采纳提案有证据日、有效期、置信度和预期交易腿；采纳才生成正式决策并标记 `lifecycle_status=accepted`、`execution_status=pending`，拒绝或过期不生成决策。已采纳但无交易时可取消，已有交易关联时不能直接取消。
 - 截图/手工交易落库后会先按已采纳提案的交易方向、产品代码、金额容差和有效期匹配：完全匹配时自动关联原决策；金额差异在最大 20%（至少 1 元）内视为调整并记录；方向/产品不匹配或金额超差则不绑定，自动转成 `execution_status=unplanned` 的计划外决策。执行审计同时检查交易腿、金额、成交截图和 R2/PR2 风险等级，交易确认后把决策更新为 `execution_status=confirmed`。
 - 2026-10-19 决策：截图识别采用方案 A（视觉优先、OCR 交叉校验），不做纯视觉，也不默认接入云端 OCR；理由是本机 OCR 布局丢失导致金额误读，而视觉能按行列正确还原。代价是截图会进入模型推理，OCR 本身仍留在本机。
-- 旧 `holdings` 表保留作迁移与兼容输入；六笔 2026-10-19 买入已一次性迁移为待确认交易（`trade_migration_v1`）。`/api/review/holdings` 兼容接口现在写入/撤销买入交易。
+- 旧 `holdings` 表仅作迁移与兼容输入；旧数据迁移状态只查数据库迁移记录。`/api/review/holdings` 兼容接口写入/撤销买入交易。
 - 持仓汇总用于最大单只/发行方成本占比、短期 7–30 天成本占比、现有日开金额与占比、未来 12 个月到期阶梯和到期未赎回提醒；现有日开不抵作短桶流动性。页面中的“未赎回成本本金”= 已确认买入金额 − 已匹配赎回本金，不是账户余额或当前市值。期限 0 天表示日开，不生成到期日。月度复盘可用 `GET /api/review/export?month=YYYY-MM` 导出 Markdown，月度结论会同步显示在复盘区历史月份。
 - 决策日志新增 `strategy_version`、`target_annualized`、`bucket_plan`、`evaluation_at`；`bucket_plan` 默认 `{short: 30, medium: 35, long: 35, cash: 0, max_single}`，评估时点默认 `buy_day,holding,maturity`。旧库由 `migrateDecisionColumns` 自动补列；所有决策写入都会移除日开目标，`r2-3pct-v1` / target3 固定为 30/35/35，单只上限 30%。旧库由 `daily_open_zero_policy_v1` 自动归一一次。
 - 决策日志另有 `evidence_date`、`verify_date`、`invalidation_condition`、`review_meta`；`review_meta.decision_completeness` 由服务端按理由、预期、证据日、验证日和失效条件计算。占位理由、`待补充：` 文本、空日期或空失效条件均视为不完整；不完整决策不能通过买入日流程检查。替换决策仍把当前/候选代码、快照日、比较期限、切换等待及核验状态、有效计息、费用、盈亏平衡和预计差额写入 `review_meta`。
@@ -112,9 +116,9 @@
 - 自动评估去重：同一决策、同一 `buy_day` 阶段、同一规则版本只保留最新一条待确认评估。交易或决策日期校正后，旧待确认评估自动标记为 `undone`，对应任务以 `skipped` 关闭、提醒标记已处理；历史记录保留，不物理删除。
 - 评估置信度默认 75% 才自动写入；低置信度、金额缺失、决策证据不完整或与手工评价冲突时进入 pending 队列，并存 `automation_jobs`。结果未知或建议评价仍为“待评估”时，`forceApplyRun` 拒绝人工空确认。写入记录 `evaluation_runs.previous_*`/`applied_*` 快照，可撤销；单产品评估与组合决策评估分 scope 保存。
 - 自动评估界面默认按“决策/交易 + 阶段”只展示最新有效结论，排除 `undone` 和旧规则版本重复项；完整审计历史需主动展开。买入日只显示流程检查结论，持有期和到期/赎回才显示结果结论；每条当前结论带 `evidence.next_update` 说明下一次自动更新时间。
-- 本地自动化由 `server/jobs/automation-scheduler.js` 在服务启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。调度器提供失败重试、指数退避、停止清理和执行状态；启动时会把中断的自动任务标记为失败。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。`timeout` 当前只能诊断，不能硬中断同步 cycle，跟踪项为 `TD-REF-003`。
+- 本地自动化由 `server/jobs/automation-scheduler.js` 在服务启动后 250ms 补跑一次，之后按 `scheduler_minutes`（默认 5 分钟）巡检：收件箱、到期、对账、评估、月度/季度草稿、通知去重。调度器提供失败重试、指数退避、停止清理和执行状态；启动时会把中断的自动任务标记为失败。任务、通知、草稿、自动化运行日志都在 SQLite，服务重启不丢。超时、中断和重试边界以代码及 `TODO.md` 为准，不在本文件保存当前支持程度。
 - 月度/季度草稿自动汇总收益、目标差距、流程正确/错误数、评估 pending、产品事件、持仓和异常；草稿不会自动写成正式复盘，需在“月度五问/季度复盘”采用并确认。
-- Codex 定时任务“钱多多R2每日巡检（含AI队列与消息中心）”每日 21:00 运行，先处理 `screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再读取 `decision_proposals` 并按 `meta.reporting_date`（通常为昨日）巡检最近已披露收益、逐产品收益档案与账户/产品对账；今日未披露不算缺记，产品缺失不写 0，差异不覆盖总账。任务只能提醒用户采纳/拒绝提案，不得代替用户决定、创建交易或下单。
+- Codex 定时任务的名称、运行时间、模型和完整提示词只查 `codex-automations/` 与本机实际任务定义。任务职责是先处理 `screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`，再读取 `decision_proposals` 并按 `meta.reporting_date` 巡检已披露收益、逐产品收益档案与账户/产品对账；今日未披露不算缺记，产品缺失不写 0，差异不覆盖总账。任务只能提醒用户采纳/拒绝提案，不得代替用户决定、创建交易或下单。
 - 导出 CSV：`date,principal,daily_pnl,action,notes`。
 
 ### 复盘与评估口径
@@ -129,27 +133,21 @@
 ## 4. 运行与测试
 
 - 生产守护：`npm run prod:deploy`；日常使用 `prod:status`、`prod:start`、`prod:stop`、`prod:restart`。
-- 守护脚本通过 `run/server.stop` 请求 Node 优雅关闭，超时才强杀；关闭流程会停止调度器、终止活动 OCR 子进程、关闭 HTTP Server 和数据库。2026-10-22 已实际重启验证 graceful path。截至同日 `prod:status` 显示本机 Watchdog 计划任务尚未安装，跟踪项为 `TD-REF-004`；进程和健康状态以实时 `prod:status` 为准，不写入固定 PID。
+- 守护脚本通过 `run/server.stop` 请求 Node 优雅关闭，超时才强杀；关闭流程会停止调度器、终止活动 OCR 子进程、关闭 HTTP Server 和数据库。进程、健康状态和 Watchdog 安装状态一律以实时 `prod:status` 为准，不在本文件保存固定 PID、安装状态或一次性验收结论。
+- Node 服务由 Supervisor 以前台子进程方式托管，Node 自写 `run/server.pid`，Supervisor 使用 `$LASTEXITCODE` 记录退出码。`install-watchdog.ps1` 负责注册计划任务并授予当前登录用户后续控制权限；`prod:stop` 必须停止并禁用 Watchdog 和 Startup 自启动，`prod:start` 恢复两者。
 - 手动前台：双击 `start.bat`，执行构建后启动 `8765` 服务。
 - 开发模式：双击 `start-dev.bat` 或运行 `npm run dev:all`；Vite 页面为 `5173`。
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
 - Node.js 要求 24+；启动脚本支持 PATH 未刷新时回退到 `C:\Program Files\nodejs`。
 - 检查与测试：`npm run check`、`npm test`；测试必须使用临时 SQLite，不得清空正式库。
-- 2026-10-23 数据可信度最终验证（生产迁移后复跑）：`node --test` 204/204 通过；`node --experimental-test-coverage --test` 行覆盖率 88.53%、分支覆盖率 72.05%、函数覆盖率 87.50%；`npm run check`、`npm run build`、`npm run test:e2e`、`db:verify:data-trust`、生产重启和健康检查均通过。后续仍须以当次实际运行结果为准。
-- `npm run test:e2e` 会检查侧边栏七个 R2 入口、消息中心分组与全部已读、每日记账两个主入口、复盘时间轴与记录日历、复盘模块白卡、跨页补记、逐产品收益档案与手工补录、来源与修订弹窗、产品分配桶、观察名单产品详情、5 个月度问题、交易流水录入、收件箱拖拽区和自动评估面板；只有最近一次实际运行结果才能表述为“测试通过”。
+- 测试通过数量、覆盖率、构建结果、生产重启和健康检查结果只写当次交付说明；本文件不保存测试快照。
+- `npm run test:e2e` 的具体覆盖范围随改动扩展，以测试代码和当次运行输出为准。
 - 生产日志在 `logs/`，守护器和 Node 的 PID 在 `run/`。
 
-## 5. 账本快照、数据快照与 Git
+## 5. 数据存储与 Git
 
-> 分享前：删除本节的个人账本快照（本金、待确认交易、持仓），见 `SETUP.md` 1.4。
+账户本金、交易、收益、持仓、复盘状态、产品筛选结果和市场快照都是时效性事实，只从数据库、API、CSV 或当次分析中读取；本文件不保存个人账本快照、产品池数量或一次性回测结果。可长期保留的原则是：历史收益快照不等于未来收益，任何时点都不能把研究观察池或 1Y 快照直接当作目标达成证据。
 
-- 2026-10-21 历史快照：本金 30,000 元，收益起算日 2026-10-20；2026-10-20 收益 2.31 元、累计净值 30,002.31 元；2026-10-19 六笔买入均已确认。交易明细、份额、到期日、收益和决策以 `data/r2_ledger.sqlite` 为准，MEMORY 不重复保存可变账本明细。
-- 2026-10-23 无缝切换已完成（来源：交易流水、决策 2、交易收件箱及当次核验）：JX040210 买入 3,000 元、份额 2,834.90 份为交易 7，2026-10-23 确认，7 天持有期到期日 2026-10-30；107320A 全部赎回 2,863.69 份、成本 3,000 元、最终赎回金额 3,000.57 元为交易 8，2026-10-23 确认，实现收益 0.57 元。两笔均关联决策 2（`107320A → JX040210 无缝切换`，`r2-3pct-v1`）。临时桥接本金 3,000 元已于 2026-10-23 转出，本金恢复 30,000 元。多笔总览截图 12 仅留历史，最新单笔证据为买入截图 14、赎回截图 13；更早的进行中截图 10/11 保留为过程证据。
-- 2026 年 9 月及以前全程空仓：9 月五问与 2026 Q3 清单已按“空仓、不适用”如实记录，不补编数字；复盘从 2026 Q4 起恢复正常。
-- 产品快照：文件名日期为 2026-10-23（`data/cmb_r2_all-2026-10-23.csv` 1001 只原始、`data/cmb_r2_universe-2026-10-23.csv` 426 只普通可买候选、`data/cmb_r2_selected-2026-10-23.csv` 9 只精选）；截至 2026-10-23 接口返回的 `product_snapshot_date` 为 2026-10-22（产品数据日，不等于文件名日期）；旧的 `data/cmb_r2_products-2026-10-19.csv` 仅作兼容回退。
-- 2026-10-19 候选池快照：432 只全池 1Y 中位约 1.73%；研究观察池 9 只的 1Y 中位约 2.72%，不是全池中位，也不是 3% 目标达成。观察池为 `JX040210,JX040213,SY040201,ZX040233,XY040215,111301,GD040320,GD040242,PAPB0105`，只用于研究排序；实际目标金额以 `buildProductView` 的 `r2-dynamic-v2` 动态配置为准。
-- 2026-10-19 全量池受限回测结论：普通非私行 432 只的 3% 进取型，1Y 同期快照约 2.87%、3M 时序回测约 2.53%、6M 时序回测约 1.89%；含私行/新品的全量公募 588 只为 3.56%/2.48%/2.09%；非私行且成立满 24 个月的 189 只为 2.61%/1.86%/1.86%。该快照下全量普通 R2 没有稳健 3% 支撑，3% 主要来自私行/新品/少数高收益产品，不能把 1Y 快照当未来收益。
-- 回测还显示：短/中端动量明显强于长端（前期与随后 3M 的秩相关约为短 0.50、中 0.57、长 0.35；6M 约为 0.55/0.62/0.12），全短债 3M 时序约 2.98% 但 6M 仅约 1.80%，长债没有持续期限溢价。该结论只适用于 2026-10-19 快照，不是未来预测。
 - 公开数据源：`POST https://finprod.paas.cmbchina.com/api/prod/queryProdList`，条件 `type=PN/isOwn=C/isPublic=Z/status=1/riskLevel=R2/crossFinance=Z`；`pastPerf.tqilstw4z3` 的 A/B/C/D/F = 1M/3M/6M/1Y/成立以来；`zchrCst+chrmn2+chrsal` 为固定费率，`begdat` 为下一开放日，`buynfq` 为起购金额。签名从公开页面捕获，不硬编码。
 - 数据备份：启动时自动写入 `data/backups/r2_ledger-YYYY-MM-DD.sqlite`，保留 45 天；`npm run db:list|db:backup|db:restore` 可手动查看、备份和恢复。
 - 钱多多应用 Git 仓库：远程 `https://github.com/pjimming/qianduoduo.git`，分支 `main`；`dist/`、`node_modules/`、`.env` 和 SQLite 文件均被 Git 忽略。
@@ -157,9 +155,8 @@
 
 ## 6. 自动化任务
 
-- `r2`：每周一 08:30 运行 `scripts/fetch-cmb-r2-all.cjs`，刷新全量/候选/精选 CSV 并调用刷新接口；额度仍需在招行 App 当日核验。
-- `r2-2`：每日 21:00 先处理 Codex 判断队列（截图视觉优先、多笔图按行切分，OCR 只做金额/代码交叉校验），再巡检决策提案、最近已披露收益记录（昨日及之前）、逐产品收益与对账、待确认交易、到期、自动评估和复盘节点；产品仪表盘字段为 `workspace.product_valuation_*`。今日收益未披露不算缺记，无异常保持安静。
-- `r2-3`：每周五 18:30 检查决策提案、记录完整度、逐产品个人表现、账户/产品对账、集中度、流动性、到期阶梯和下周动作；个人产品表现只作观察证据，不换算稳定年化。只在有风险/待办时发周卡。`r2-2`/`r2-3` 都不得代替用户采纳、拒绝或取消提案。
-- 2026-10-22 核验：三个任务均使用 `deepseek-flash`、reasoning `high`；任务配置变化后以本机自动化定义为准。
+- `r2`：运行 `scripts/fetch-cmb-r2-all.cjs`，刷新全量/候选/精选 CSV 并调用刷新接口；额度仍需在招行 App 当日核验。
+- `r2-2`：先处理 Codex 判断队列（截图视觉优先、多笔图按行切分，OCR 只做金额/代码交叉校验），再巡检决策提案、已披露收益记录、逐产品收益与对账、待确认交易、到期、自动评估和复盘节点；产品仪表盘字段为 `workspace.product_valuation_*`。今日收益未披露不算缺记，无异常保持安静。
+- `r2-3`：检查决策提案、记录完整度、逐产品个人表现、账户/产品对账、集中度、流动性、到期阶梯和下周动作；个人产品表现只作观察证据，不换算稳定年化。只在有风险/待办时发周卡。`r2-2`/`r2-3` 都不得代替用户采纳、拒绝或取消提案。
 - 定时任务的完整提示词、模型配置和跨机器复现步骤见 `codex-automations/README.md`；从零初始化与分享清单见 `SETUP.md`。本机实际定义在 `%USERPROFILE%\.codex\automations\<id>\automation.toml`，不要把该目录原样分享给他人。
 - 分工：事实层可由自动化维护；判断层由 Codex 起草证据、用户确认后落库；禁止下单/赎回/转账、删除记录、覆盖手工评价或对外发送。

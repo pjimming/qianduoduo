@@ -7,6 +7,7 @@ const {
   buildProductView,
   loadProductsFromCsv,
   parseCsv,
+  weightedAnnualizedReturn,
 } = require('../lib/products');
 
 const { productCsv } = require('./fixtures');
@@ -16,6 +17,33 @@ test('parseCsv handles quoted commas', () => {
   const rows = parseCsv('name,note\nA,"hello, world"\nB,"a ""quote"""');
   assert.equal(rows[1][1], 'hello, world');
   assert.equal(rows[2][1], 'a "quote"');
+});
+
+test('weighted annualized return requires all three horizons without renormalizing', () => {
+  assert.equal(
+    weightedAnnualizedReturn({
+      return_3m: 2,
+      return_6m: 3,
+      return_1y: 4,
+    }),
+    2.7,
+  );
+  assert.equal(
+    weightedAnnualizedReturn({
+      return_3m: 2,
+      return_6m: null,
+      return_1y: 4,
+    }),
+    null,
+  );
+  assert.equal(
+    weightedAnnualizedReturn({
+      return_3m: null,
+      return_6m: null,
+      return_1y: null,
+    }),
+    null,
+  );
 });
 
 test('product view loads the ordinary universe and allocates dynamically', () => {
@@ -41,4 +69,17 @@ test('product view loads the ordinary universe and allocates dynamically', () =>
   assert.ok(view.all.every((product) => product.observation_ready));
   assert.ok(view.all.every((product) => product.currency_code === '10'));
   assert.ok(view.all.every((product) => product.pub_prv === 'A'));
+  assert.ok(
+    view.all.every(
+      (product) =>
+        product.weighted_yield_pct ===
+        Number(
+          (
+            product.return_3m * 0.5 +
+            product.return_6m * 0.3 +
+            product.return_1y * 0.2
+          ).toFixed(4),
+        ),
+    ),
+  );
 });

@@ -5,6 +5,7 @@ import R2PageHeader from '@/components/r2/R2PageHeader.vue'
 import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
 import DecisionProposalPanel from '@/components/review/DecisionProposalPanel.vue'
 import DecisionLogPanel from '@/components/review/DecisionLogPanel.vue'
+import CalibrationPanel from '@/components/review/CalibrationPanel.vue'
 import AutomationPanel from '@/components/review/AutomationPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
 
@@ -41,6 +42,14 @@ const sections = computed(() => [
     meta: `${workspace.value.decisions.length} 条`,
   },
   {
+    id: 'calibration',
+    label: '预测校准',
+    meta:
+      props.dashboard.automation.calibration.total > 0
+        ? `${props.dashboard.automation.calibration.total} 条`
+        : '暂无到期预测',
+  },
+  {
     id: 'automation',
     label: '自动评估',
     meta:
@@ -55,8 +64,8 @@ const sections = computed(() => [
   <div class="r2-page">
     <R2PageHeader
       kicker="DECISIONS &amp; EVALUATION"
-      title="决策提案、决策日志与自动评估"
-      description="平台先提出有证据的配置或换仓提案；你采纳后仍需自行交易，再上传截图。平台匹配实际交易、记录偏差，并继续评估结果。"
+      title="决策提案、决策日志、预测校准与自动评估"
+      description="平台先提出有证据的配置或换仓提案；你采纳后仍需自行交易，再上传截图。平台匹配实际交易、记录偏差，并校准当时的可检验预测。"
     >
       <template #actions>
         <RouterLink
@@ -104,6 +113,10 @@ const sections = computed(() => [
           :trades="workspace.trades?.trades ?? []"
           :automation="dashboard.automation"
         />
+      </section>
+
+      <section id="calibration" class="rw-panel r2-anchor" aria-label="预测校准">
+        <CalibrationPanel :report="dashboard.automation.calibration" />
       </section>
 
       <section id="automation" class="rw-panel r2-anchor" aria-label="自动评估">

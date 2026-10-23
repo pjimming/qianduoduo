@@ -256,6 +256,18 @@ function nextUpdateLabel(run: EvaluationRun): string {
       <span class="rw-stat-chip" :class="{ 'is-warn': !automation.scheduler.enabled }">
         调度 <strong>{{ automation.scheduler.enabled ? '运行中' : '已关闭' }}</strong>
       </span>
+      <span class="rw-stat-chip" :class="{ 'is-warn': automation.runner?.timedOut }">
+        执行边界
+        <strong>{{
+          automation.runner?.running
+            ? '运行中'
+            : automation.runner?.timedOut
+              ? '上次超时'
+              : automation.runner
+                ? '就绪'
+                : '未检测'
+        }}</strong>
+      </span>
       <span class="rw-stat-chip">
         待确认评估 <strong>{{ automation.pending_evaluations.length }}</strong>
       </span>

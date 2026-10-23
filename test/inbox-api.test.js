@@ -107,7 +107,7 @@ test('message center aggregates, reads, snoozes and resolves a pending trade', a
 });
 
 test('confirmation API publishes deduplicated action items to the message center', async (t) => {
-  const { base } = await startTestServer(t);
+  const { base, repository } = await startTestServer(t);
   const payload = {
     dedupe_key: 'agent-confirmation:test-daily-open',
     title: '现有日开持仓待确认迁移',
@@ -131,6 +131,66 @@ test('confirmation API publishes deduplicated action items to the message center
   assert.equal(item.action_url, payload.action_url);
   assert.equal(item.due_at, payload.due_at);
 
+  const decision = repository.createDecision({
+    date: '2026-10-22',
+    product_name: '桥接切换',
+    action: '切换',
+    reason: '测试桥接本金',
+    expectation: '完成转出并恢复目标本金',
+    invalidation_condition: '转出缺失或目标本金未恢复',
+    actual_result: '',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+    evaluation_at: ['buy_day', 'holding', 'maturity'],
+    evidence_date: '2026-10-22',
+    verify_date: '2026-10-23',
+    review_meta: {},
+    rating: '待评估',
+  });
+  const bridgeCreated = await postJson(`${base}/api/inbox/confirmations`, {
+    ...payload,
+    dedupe_key: 'codex-r2-review:capital-bridge:2026-10-22:3000:metadata-test',
+    title: '桥接本金提醒',
+    metadata: {
+      capital_bridge: {
+        bridge_amount: 3000,
+        bridge_date: '2026-10-22',
+        withdraw_date: '2026-10-23',
+        target_principal: 30000,
+        decision_id: decision.id,
+      },
+    },
+  });
+  assert.equal(bridgeCreated.status, 201);
+  const bridgePayload = await bridgeCreated.json();
+  assert.deepEqual(
+    bridgePayload.notification.data.capital_bridge,
+    {
+      bridge_amount: 3000,
+      bridge_date: '2026-10-22',
+      withdraw_date: '2026-10-23',
+      target_principal: 30000,
+      decision_id: decision.id,
+    },
+  );
+
+  const invalidBridge = await postJson(
+    `${base}/api/inbox/confirmations`,
+    {
+      ...payload,
+      dedupe_key: 'codex-r2-review:capital-bridge:invalid',
+      metadata: {
+        capital_bridge: {
+          bridge_amount: 3000,
+          bridge_date: '2026-10-22',
+        },
+      },
+    },
+  );
+  assert.equal(invalidBridge.status, 400);
+  assert.match((await invalidBridge.json()).error, /target_principal/);
+
   const updated = await postJson(`${base}/api/inbox/confirmations`, {
     ...payload,
     message: '107320A 现有持仓 ¥3,000，已核对赎回规则，等待确认迁移安排。',
@@ -142,6 +202,86 @@ test('confirmation API publishes deduplicated action items to the message center
   );
   assert.equal(matches.length, 1);
   assert.match(matches[0].summary, /已核对赎回规则/);
+});
+
+test('product income reminders resolve after the matching yield is recorded', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  const yieldDate = shiftDate(todayShanghai(), -1);
+  const structured = await postJson(`${base}/api/inbox/confirmations`, {
+    dedupe_key: `codex-r2-review:income-missing:${yieldDate}:120026A`,
+    title: `120026A ${Number(yieldDate.slice(5, 7))}月${Number(
+      yieldDate.slice(8, 10),
+    )}日收益待补`,
+    message: `${yieldDate} 的 120026A 产品明细缺失，请补录。`,
+    category: 'action',
+    severity: 'warn',
+    action_label: '补录产品收益',
+    action_url: '/ledger/trades#holdings',
+    due_at: yieldDate,
+    metadata: {
+      product_income_requirement: {
+        product_code: '120026A',
+        yield_date: yieldDate,
+      },
+    },
+  });
+  assert.equal(structured.status, 201);
+  const structuredPayload = await structured.json();
+  assert.deepEqual(
+    structuredPayload.notification.data.product_income_requirement,
+    {
+      product_code: '120026A',
+      yield_date: yieldDate,
+    },
+  );
+
+  const legacy = await postJson(`${base}/api/inbox/confirmations`, {
+    dedupe_key: `agent-confirmation:${yieldDate}:120026A-income-missing`,
+    title: `120026A ${Number(yieldDate.slice(5, 7))}月${Number(
+      yieldDate.slice(8, 10),
+    )}日收益待补`,
+    message: `${yieldDate} 的 120026A 产品明细缺失，请补录。`,
+    category: 'action',
+    severity: 'warn',
+    action_label: '补录产品收益',
+    action_url: '/ledger/trades#holdings',
+    due_at: yieldDate,
+  });
+  assert.equal(legacy.status, 201);
+  const legacyPayload = await legacy.json();
+  const notificationIds = [
+    structuredPayload.notification.id,
+    legacyPayload.notification.id,
+  ];
+
+  const before = (
+    await fetch(`${base}/api/inbox`).then((response) => response.json())
+  ).inbox_center.pending.filter((item) =>
+    notificationIds.includes(item.metadata.notification_id),
+  );
+  assert.equal(before.length, 2);
+
+  const valuation = await postJson(`${base}/api/product-valuations`, {
+    yield_date: yieldDate,
+    credit_date: yieldDate,
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    holding_amount: 6001.17,
+    daily_pnl: 0,
+  });
+  assert.equal(valuation.status, 201);
+  const valuationPayload = await valuation.json();
+  const resolvedItems = valuationPayload.dashboard.inbox_center.items.filter(
+    (item) => notificationIds.includes(item.metadata.notification_id),
+  );
+  assert.equal(resolvedItems.length, 2);
+  assert.ok(resolvedItems.every((item) => item.status === 'resolved'));
+  assert.ok(
+    repository.automationStore
+      .listNotifications()
+      .filter((item) => notificationIds.includes(item.id))
+      .every((item) => item.resolved_at),
+  );
 });
 
 test('product lag remains informational and never blocks a user-provided income date', async (t) => {
@@ -309,6 +449,47 @@ test('non-replace holding review still creates a review-window reminder', () => 
   assert.equal(item.action_label, '查看持仓复核');
   assert.equal(item.metadata.verdict, 'hold');
   assert.equal(item.due_at, '2026-11-05');
+});
+
+test('JX040210 suppresses its replacement reminder after maturity when the candidate loses money', () => {
+  const review = {
+    lot_id: '7:JX040210',
+    product_name: '建信理财嘉鑫固收类最低持有7天产品第6期',
+    product_code: 'JX040210',
+    maturity_date: '2026-10-30',
+    verdict: 'hold',
+    verdict_label: '继续持有（锁定期）',
+    reminder: {
+      level: 'urgent',
+      text: '已到期 1 天，需处理赎回或续作',
+    },
+    horizon_days: 30,
+    top_candidate_code: 'JX040213',
+    candidates: [
+      {
+        code: 'JX040213',
+        name: '建信理财嘉鑫固收类最低持有30天产品第9期',
+        switch: { difference: -1.51 },
+      },
+    ],
+  };
+  const dashboard = (today) => ({
+    meta: { today },
+    workspace: { holding_reviews: [review] },
+    automation: {},
+  });
+
+  const beforeMaturity = makeSourceItems(dashboard('2026-10-29'));
+  assert.equal(
+    beforeMaturity.filter((item) => item.source_type === 'holding_review').length,
+    1,
+  );
+
+  const afterMaturity = makeSourceItems(dashboard('2026-10-31'));
+  assert.equal(
+    afterMaturity.filter((item) => item.source_type === 'holding_review').length,
+    0,
+  );
 });
 
 test('income screenshot API accepts a queued capture and records the P&L', async (t) => {

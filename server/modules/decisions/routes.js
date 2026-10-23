@@ -19,11 +19,30 @@ function createDecisionsRoutes(decisions) {
   return [
     {
       method: 'POST',
+      path: /^\/api\/review\/decisions\/(\d+)\/predictions$/,
+      async handler(request, response, context) {
+        const match = context.pathname.match(
+          /^\/api\/review\/decisions\/(\d+)\/predictions$/,
+        );
+        const body = await readJsonBody(request);
+        try {
+          sendJson(
+            response,
+            201,
+            await decisions.addPrediction(Number(match[1]), body),
+          );
+        } catch (error) {
+          sendDecisionError(response, error);
+        }
+      },
+    },
+    {
+      method: 'POST',
       path: '/api/review/decisions',
       async handler(request, response) {
         const body = await readJsonBody(request);
         try {
-          sendJson(response, 201, decisions.createDecision(body));
+          sendJson(response, 201, await decisions.createDecision(body));
         } catch (error) {
           sendDecisionError(response, error);
         }
@@ -41,7 +60,7 @@ function createDecisionsRoutes(decisions) {
           sendJson(
             response,
             200,
-            decisions.updateDecision(Number(match[1]), body),
+            await decisions.updateDecision(Number(match[1]), body),
           );
         } catch (error) {
           sendDecisionError(response, error);
@@ -51,7 +70,7 @@ function createDecisionsRoutes(decisions) {
     {
       method: 'DELETE',
       path: /^\/api\/review\/decisions\/(\d+)$/,
-      handler(request, response, context) {
+      async handler(request, response, context) {
         const match = context.pathname.match(
           /^\/api\/review\/decisions\/(\d+)$/,
         );
@@ -59,7 +78,7 @@ function createDecisionsRoutes(decisions) {
           sendJson(
             response,
             200,
-            decisions.deleteDecision(Number(match[1])),
+            await decisions.deleteDecision(Number(match[1])),
           );
         } catch (error) {
           sendDecisionError(response, error);

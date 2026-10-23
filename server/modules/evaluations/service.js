@@ -21,26 +21,91 @@ function createEvaluationsService({
   evaluationsRepository,
   dashboardQuery,
   transactionManager,
+  automationRunner = null,
   todayProvider = todayShanghai,
 }) {
-  function workspace() {
+  function automationWorkspace(today = todayProvider()) {
     return {
-      automation: evaluationsRepository.getWorkspace(todayProvider()),
+      ...evaluationsRepository.getWorkspace(today),
+      runner: automationRunner?.getStatus?.() || null,
     };
   }
 
-  function run() {
-    const today = todayProvider();
-    const result = evaluationsRepository.runCycle({
-      today,
-      trigger: 'manual',
-    });
+  function workspace() {
     return {
-      statusCode: result.ok ? 200 : 500,
+      automation: automationWorkspace(),
+    };
+  }
+
+  function calibration(month) {
+    const value = String(
+      month || todayProvider().slice(0, 7),
+    ).trim();
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
+      throw evaluationError(400, '校准月份格式应为 YYYY-MM');
+    }
+    return evaluationsRepository.getCalibration(
+      value,
+      todayProvider(),
+    );
+  }
+
+  function calibrationPrediction(id) {
+    const value = decodeURIComponent(String(id || '')).trim();
+    if (!value || value.length > 220) {
+      throw evaluationError(400, '预测 ID 不正确');
+    }
+    const prediction = evaluationsRepository.getCalibrationPrediction(
+      value,
+      todayProvider(),
+    );
+    if (!prediction) {
+      throw evaluationError(404, '没有找到这条预测');
+    }
+    return prediction;
+  }
+
+  function confirmCalibrationPrediction(id, body) {
+    const value = decodeURIComponent(String(id || '')).trim();
+    if (!value) throw evaluationError(400, '预测 ID 不正确');
+    let result;
+    try {
+      result = evaluationsRepository.confirmCalibrationPrediction(value, {
+        status: String(body.status || '').trim(),
+        note: body.note,
+      });
+    } catch (error) {
+      throw evaluationError(400, error.message);
+    }
+    if (!result) throw evaluationError(404, '没有找到这条预测');
+    dashboardQuery.projectDashboard();
+    return {
+      result,
+      prediction: evaluationsRepository.getCalibrationPrediction(
+        value,
+        todayProvider(),
+      ),
+      automation: automationWorkspace(),
+    };
+  }
+
+  async function run() {
+    const today = todayProvider();
+    const result = automationRunner
+      ? await automationRunner.run({
+          today,
+          trigger: 'manual',
+        })
+      : evaluationsRepository.runCycle({
+          today,
+          trigger: 'manual',
+        });
+    return {
+      statusCode: result.ok || result.skipped ? 200 : 500,
       body: {
         ...result,
-        automation: evaluationsRepository.getWorkspace(today),
-        dashboard: dashboardQuery.getDashboard(),
+        automation: automationWorkspace(today),
+        dashboard: dashboardQuery.projectDashboard(),
       },
     };
   }
@@ -103,7 +168,7 @@ function createEvaluationsService({
     }
     return {
       settings: evaluationsRepository.updateSettings(patch),
-      automation: evaluationsRepository.getWorkspace(todayProvider()),
+      automation: automationWorkspace(),
     };
   }
 
@@ -131,8 +196,8 @@ function createEvaluationsService({
     }
     return {
       evaluation,
-      automation: evaluationsRepository.getWorkspace(todayProvider()),
-      dashboard: dashboardQuery.getDashboard(),
+      automation: automationWorkspace(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -150,8 +215,8 @@ function createEvaluationsService({
     }
     return {
       evaluation,
-      automation: evaluationsRepository.getWorkspace(todayProvider()),
-      dashboard: dashboardQuery.getDashboard(),
+      automation: automationWorkspace(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -167,14 +232,18 @@ function createEvaluationsService({
       throw evaluationError(400, error.message);
     }
     if (!job) throw evaluationError(404, '没有找到这个任务');
+    dashboardQuery.projectDashboard();
     return {
       job,
-      automation: evaluationsRepository.getWorkspace(todayProvider()),
+      automation: automationWorkspace(),
     };
   }
 
   return {
     applyRun,
+    calibration,
+    calibrationPrediction,
+    confirmCalibrationPrediction,
     resolveJob,
     run,
     undoRun,

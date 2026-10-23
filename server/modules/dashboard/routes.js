@@ -20,6 +20,13 @@ function createDashboardRoutes(dashboardQuery) {
         });
       },
     },
+    {
+      method: 'POST',
+      path: '/api/dashboard/refresh',
+      handler(request, response) {
+        sendJson(response, 200, dashboardQuery.projectDashboard());
+      },
+    },
   ];
 }
 

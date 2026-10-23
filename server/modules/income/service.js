@@ -63,10 +63,12 @@ function createIncomeService({
     ) {
       throw incomeError(400, '保留天数需要是 30–3650 的整数');
     }
-    return incomeRepository.pruneScreenshots({
+    const result = incomeRepository.pruneScreenshots({
       today: todayProvider(),
       olderThanDays,
     });
+    dashboardQuery.projectDashboard();
+    return result;
   }
 
   async function upload(decoded) {
@@ -85,7 +87,7 @@ function createIncomeService({
           valuation_conflicts: [],
           missing_product_codes: [],
           reconciliation: null,
-          dashboard: dashboardQuery.getDashboard(),
+          dashboard: dashboardQuery.projectDashboard(),
         },
       };
     }
@@ -224,7 +226,7 @@ function createIncomeService({
           language: ocrResult.language,
           error: ocrResult.error,
         },
-        dashboard: dashboardQuery.getDashboard(),
+        dashboard: dashboardQuery.projectDashboard(),
       },
     };
   }
@@ -252,7 +254,7 @@ function createIncomeService({
     if (!result) throw incomeError(404, '没有找到这张收益截图');
     return {
       ...result,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -264,7 +266,7 @@ function createIncomeService({
     if (!inbox) throw incomeError(404, '没有找到这张收益截图');
     return {
       inbox,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 

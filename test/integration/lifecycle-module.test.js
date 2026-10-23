@@ -44,6 +44,19 @@ test('lifecycle starts the app without installing process handlers and stops cle
   const address = runtime.server.address();
   const response = await fetch(`http://127.0.0.1:${address.port}/api/health`);
   assert.equal(response.status, 200);
+  const automationRun = await fetch(
+    `http://127.0.0.1:${address.port}/api/automation/run`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    },
+  );
+  assert.equal(automationRun.status, 200);
+  const automationPayload = await automationRun.json();
+  assert.equal(automationPayload.ok, true);
+  assert.equal(automationPayload.automation.runner.running, false);
+  assert.equal(automationPayload.automation.runner.timedOut, false);
 
   await runtime.stop();
   assert.equal(runtime.server.listening, false);

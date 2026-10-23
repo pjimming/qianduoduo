@@ -310,6 +310,8 @@ test('monthly draft contains generated answers and confirmation saves the note',
   assert.equal(draft.content.answers.length, 5);
   assert.equal(typeof draft.content.holdings_changes.net_principal_change, 'number');
   assert.match(draft.content.answers[2], /样本不足|记录/);
+  assert.equal(draft.content.calibration.month, '2026-10');
+  assert.equal(Array.isArray(draft.content.calibration.records), true);
   const confirmed = automation.confirmDraft('monthly', '2026-10', {
     answers: draft.content.answers,
     conclusion: draft.content.conclusion,

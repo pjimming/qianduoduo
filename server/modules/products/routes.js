@@ -16,7 +16,7 @@ function createProductsRoutes({
         const refreshed = products.refresh(productCsvPath());
         sendJson(response, 200, {
           refreshed,
-          dashboard: dashboardQuery.getDashboard(),
+          dashboard: dashboardQuery.projectDashboard(),
         });
       },
     },
@@ -37,7 +37,7 @@ function createProductsRoutes({
         }
         sendJson(response, 200, {
           settings,
-          dashboard: dashboardQuery.getDashboard(),
+          dashboard: dashboardQuery.projectDashboard(),
         });
       },
     },
@@ -59,7 +59,7 @@ function createProductsRoutes({
         }
         sendJson(response, 200, {
           setting,
-          dashboard: dashboardQuery.getDashboard(),
+          dashboard: dashboardQuery.projectDashboard(),
         });
       },
     },

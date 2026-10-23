@@ -30,7 +30,7 @@ function createReviewsService({
   function createEvent(body) {
     return {
       event: reviewsRepository.createProductEvent(eventValue(body)),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -42,7 +42,7 @@ function createReviewsService({
     if (!event) throw reviewError(404, '没有找到这条产品事件');
     return {
       event,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -52,7 +52,7 @@ function createReviewsService({
     }
     return {
       deleted: true,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -73,7 +73,7 @@ function createReviewsService({
         month,
         saveNote(month, body, 5, '月度五问'),
       ),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -83,7 +83,7 @@ function createReviewsService({
         quarter,
         saveNote(quarter, body, 6, '季度清单'),
       ),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -140,6 +140,7 @@ function createReviewsService({
 
   function generateDraft(periodType, period) {
     const draft = reviewsRepository.generateDraft(periodType, period);
+    dashboardQuery.projectDashboard();
     return {
       draft,
       automation: reviewsRepository.getWorkspace(todayProvider()),
@@ -160,7 +161,7 @@ function createReviewsService({
     }
     return {
       ...result,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 

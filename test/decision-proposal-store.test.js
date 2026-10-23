@@ -160,6 +160,156 @@ test('cash proposals preserve top-up mode and reject undersized first positions'
   );
 });
 
+test('cash proposals expire without funding and can be reissued after funding returns', (t) => {
+  const repository = openTemp(t);
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const original = repository.decisionProposalStore
+    .getWorkspace('2026-10-22')
+    .pending.find((item) => item.proposal_type === 'cash_allocation');
+  assert.ok(original);
+
+  const noFunding = proposalDashboard();
+  noFunding.products.allocation.available_cash = 0;
+  noFunding.workspace.holding_reviews = [];
+  repository.decisionProposalStore.sync(noFunding);
+  let workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  assert.equal(
+    workspace.pending.some((item) => item.proposal_type === 'cash_allocation'),
+    false,
+  );
+  const expired = workspace.history.find((item) => item.id === original.id);
+  assert.equal(expired.status, 'expired');
+  assert.equal(expired.reject_reason, '当前可分配资金为 0，自动作废');
+
+  repository.decisionProposalStore.sync(noFunding);
+  workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  assert.equal(
+    workspace.history.filter((item) => item.id === original.id).length,
+    1,
+  );
+  assert.equal(
+    workspace.pending.some((item) => item.proposal_type === 'cash_allocation'),
+    false,
+  );
+
+  repository.decisionProposalStore.sync(proposalDashboard());
+  workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  const reissued = workspace.pending.find(
+    (item) => item.proposal_type === 'cash_allocation',
+  );
+  assert.ok(reissued);
+  assert.notEqual(reissued.id, original.id);
+  assert.match(reissued.dedupe_key, /:reissue:/);
+  assert.equal(
+    workspace.history.find((item) => item.id === original.id).status,
+    'expired',
+  );
+
+  repository.decisionProposalStore.adoptProposal(reissued.id, {
+    today: '2026-10-22',
+  });
+  repository.decisionProposalStore.sync(noFunding);
+  workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  assert.equal(
+    workspace.accepted.some((item) => item.id === reissued.id),
+    true,
+  );
+});
+
+test('adopted proposal predictions are frozen and later corrections append versions', (t) => {
+  const repository = openTemp(t);
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const proposal = repository.decisionProposalStore
+    .getWorkspace('2026-10-22')
+    .pending.find((item) => item.proposal_type === 'cash_allocation');
+  const original = proposal.payload.prediction;
+  assert.ok(original);
+  assert.equal(original.expected.target.point, proposal.amount);
+
+  const adopted = repository.decisionProposalStore.adoptProposal(proposal.id, {
+    today: '2026-10-22',
+  });
+  assert.equal(adopted.decision.review_meta.predictions.length, 1);
+  assert.equal(
+    adopted.decision.review_meta.predictions[0].id,
+    original.id,
+  );
+
+  const unchanged = repository.updateDecision(adopted.decision.id, {
+    ...adopted.decision,
+    expectation: '人工更新说明，但不得改写预测',
+    review_meta: {
+      ...adopted.decision.review_meta,
+      predictions: [],
+    },
+  });
+  assert.equal(unchanged.review_meta.predictions[0].id, original.id);
+  assert.equal(
+    unchanged.review_meta.predictions[0].expected.target.point,
+    original.expected.target.point,
+  );
+
+  const corrected = repository.addPredictionVersion(adopted.decision.id, {
+    source: 'human-correction',
+    start_date: '2026-10-22',
+    review_date: '2026-11-21',
+    confidence: 70,
+    baseline: original.baseline,
+    expected: {
+      direction: 'at_least',
+      target: { point: proposal.amount - 500, unit: '元' },
+    },
+    metric: 'executed_amount',
+    evaluation: {
+      method: 'confirmed_trade_amount',
+      tolerance_abs: 1,
+    },
+    invalidation_condition: original.invalidation_condition,
+    invalidation_triggers: original.invalidation_triggers,
+    original_text: '下调执行金额目标',
+    reason: '执行条件变化',
+  });
+  assert.equal(corrected.review_meta.predictions.length, 2);
+  assert.equal(corrected.review_meta.predictions[0].id, original.id);
+  assert.equal(corrected.review_meta.predictions[0].expected.target.point, original.expected.target.point);
+  assert.equal(corrected.review_meta.predictions[1].version, 2);
+  assert.equal(
+    corrected.review_meta.predictions[1].expected.target.point,
+    proposal.amount - 500,
+  );
+});
+
+test('zero available cash never expires accepted or holding-switch proposals', (t) => {
+  const repository = openTemp(t);
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  const cash = workspace.pending.find(
+    (item) => item.proposal_type === 'cash_allocation',
+  );
+  const holding = workspace.pending.find(
+    (item) => item.proposal_type === 'holding_switch',
+  );
+  assert.ok(cash);
+  assert.ok(holding);
+  repository.decisionProposalStore.adoptProposal(cash.id, {
+    today: '2026-10-22',
+  });
+
+  const noFunding = proposalDashboard();
+  noFunding.products.allocation.available_cash = 0;
+  repository.decisionProposalStore.sync(noFunding);
+  const next = repository.decisionProposalStore.getWorkspace('2026-10-22');
+
+  assert.equal(
+    next.accepted.some((item) => item.id === cash.id),
+    true,
+  );
+  assert.equal(
+    next.pending.some((item) => item.id === holding.id),
+    true,
+  );
+});
+
 test('allocation UI result and generated top-up proposal use the same code and amount', (t) => {
   const repository = openTemp(t);
   const candidate = {

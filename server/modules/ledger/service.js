@@ -36,7 +36,7 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
             duplicate: true,
             changed: false,
             conflict: null,
-            dashboard: dashboardQuery.getDashboard(),
+            dashboard: dashboardQuery.projectDashboard(),
           },
         };
       }
@@ -64,7 +64,7 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
               ) / 100,
             notification_id: notification.id,
           },
-          dashboard: dashboardQuery.getDashboard(),
+          dashboard: dashboardQuery.projectDashboard(),
         },
       };
     }
@@ -81,7 +81,7 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
         duplicate: false,
         changed: true,
         conflict: null,
-        dashboard: dashboardQuery.getDashboard(),
+        dashboard: dashboardQuery.projectDashboard(),
       },
     };
   }
@@ -109,7 +109,7 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
     }
     return {
       record,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -119,7 +119,7 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
     }
     return {
       deleted: true,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 

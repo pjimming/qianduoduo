@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $DaemonScript = Join-Path $PSScriptRoot 'daemon.ps1'
+$WatchdogScript = Join-Path $PSScriptRoot 'install-watchdog.ps1'
 $PowerShellExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
 Set-Location -LiteralPath $Root
@@ -44,39 +45,13 @@ if (-not $SkipTests) {
 Write-Host '3/4 Stopping the previous supervisor and installing the watchdog...'
 & $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $DaemonScript -Action stop -Port $Port -Root $Root -TaskName $TaskName
 
-$taskArgument = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ".\scripts\daemon.ps1" -Action start -Port {0} -Root "." -TaskName "{1}"' -f $Port, $TaskName
-$taskAction = New-ScheduledTaskAction `
-  -Execute $PowerShellExe `
-  -Argument $taskArgument `
-  -WorkingDirectory $Root
-
-$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser
-$watchdogTrigger = New-ScheduledTaskTrigger `
-  -Once `
-  -At ((Get-Date).AddMinutes(1)) `
-  -RepetitionInterval (New-TimeSpan -Minutes 5) `
-  -RepetitionDuration (New-TimeSpan -Days 3650)
-$settings = New-ScheduledTaskSettingsSet `
-  -StartWhenAvailable `
-  -MultipleInstances IgnoreNew `
-  -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
-  -AllowStartIfOnBatteries `
-  -DontStopIfGoingOnBatteries
-
 $taskInstalled = $false
 try {
-  Register-ScheduledTask `
-    -TaskName $TaskName `
-    -Action $taskAction `
-    -Trigger @($logonTrigger, $watchdogTrigger) `
-    -Settings $settings `
-    -Description 'QianDuoDuo production supervisor watchdog' `
-    -Force | Out-Null
-  Enable-ScheduledTask -TaskName $TaskName | Out-Null
-  Start-ScheduledTask -TaskName $TaskName
+  & $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $WatchdogScript -Port $Port -Root $Root -TaskName $TaskName
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Watchdog installer returned a non-zero exit code.'
+  }
   $taskInstalled = $true
-  Write-Host "Watchdog task installed: $TaskName"
 } catch {
   Write-Warning "Scheduled task installation failed: $($_.Exception.Message)"
   $startupDir = [Environment]::GetFolderPath('Startup')
@@ -84,6 +59,7 @@ try {
   $shell = New-Object -ComObject WScript.Shell
   $shortcut = $shell.CreateShortcut($shortcutPath)
   $shortcut.TargetPath = $PowerShellExe
+  $taskArgument = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ".\scripts\daemon.ps1" -Action start -Port {0} -Root "." -TaskName "{1}"' -f $Port, $TaskName
   $shortcut.Arguments = $taskArgument
   $shortcut.WorkingDirectory = $Root
   $shortcut.WindowStyle = 7

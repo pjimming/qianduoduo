@@ -3,7 +3,9 @@ param(
   [string]$Action = 'status',
   [int]$Port = 8765,
   [string]$Root = '',
-  [string]$TaskName = 'QianDuoDuo-Production'
+  [string]$TaskName = 'QianDuoDuo-Production',
+  [int]$GracefulStopTimeoutMs = 10000,
+  [int]$SupervisorExitWaitMs = 5000
 )
 
 $ErrorActionPreference = 'Stop'
@@ -120,7 +122,22 @@ function Start-Supervisor {
       Select-Object -First 1
   }
   if ($listener) {
-    throw "Port $Port is already in use by PID $($listener.OwningProcess) without a supervisor. Stop that process before starting production."
+    $recordedServer = Get-LiveProcess -PidFile $ServerPidFile
+    if ($recordedServer -and $recordedServer.Id -eq $listener.OwningProcess) {
+      Write-DaemonLog "recovering orphan server pid=$($recordedServer.Id) after missing supervisor"
+      Stop-Process -Id $recordedServer.Id -Force -ErrorAction SilentlyContinue
+      for ($attempt = 0; $attempt -lt 40; $attempt++) {
+        if (-not (Get-Process -Id $recordedServer.Id -ErrorAction SilentlyContinue)) {
+          break
+        }
+        Start-Sleep -Milliseconds 250
+      }
+      Remove-Item -LiteralPath $ServerPidFile -Force -ErrorAction SilentlyContinue
+      $listener = $null
+    }
+  }
+  if ($listener) {
+    throw "Port $Port is already in use by PID $($listener.OwningProcess) without a recorded supervised server."
   }
 
   Remove-Item -LiteralPath $StopFile -Force -ErrorAction SilentlyContinue
@@ -182,7 +199,8 @@ function Stop-Supervisor {
   $server = Get-LiveProcess -PidFile $ServerPidFile
   if ($server) {
     $serverId = $server.Id
-    for ($attempt = 0; $attempt -lt 40; $attempt++) {
+    $serverWaitAttempts = [Math]::Max(1, [Math]::Ceiling($GracefulStopTimeoutMs / 250))
+    for ($attempt = 0; $attempt -lt $serverWaitAttempts; $attempt++) {
       if (-not (Get-Process -Id $serverId -ErrorAction SilentlyContinue)) {
         break
       }
@@ -199,8 +217,18 @@ function Stop-Supervisor {
 
   $supervisor = Get-LiveProcess -PidFile $DaemonPidFile
   if ($supervisor) {
-    Stop-Process -Id $supervisor.Id -Force -ErrorAction SilentlyContinue
-    Write-DaemonLog "supervisor stopped pid=$($supervisor.Id)"
+    $supervisorWaitAttempts = [Math]::Max(1, [Math]::Ceiling($SupervisorExitWaitMs / 250))
+    for ($attempt = 0; $attempt -lt $supervisorWaitAttempts; $attempt++) {
+      if (-not (Get-Process -Id $supervisor.Id -ErrorAction SilentlyContinue)) {
+        break
+      }
+      Start-Sleep -Milliseconds 250
+    }
+    $supervisor = Get-Process -Id $supervisor.Id -ErrorAction SilentlyContinue
+    if ($supervisor) {
+      Stop-Process -Id $supervisor.Id -Force -ErrorAction SilentlyContinue
+      Write-DaemonLog "supervisor stopped pid=$($supervisor.Id)"
+    }
   }
 
   Start-Sleep -Milliseconds 500
@@ -261,29 +289,24 @@ function Run-Supervisor {
   try {
     while (-not (Test-Path -LiteralPath $StopFile)) {
       $nodeExe = Get-NodeExe
-      $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+      $stamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
       $stdoutLog = Join-Path $LogDir "server-$stamp.out.log"
       $stderrLog = Join-Path $LogDir "server-$stamp.err.log"
       $startedAt = Get-Date
 
       Write-DaemonLog "starting node=$nodeExe stdout=$stdoutLog"
-      $server = Start-Process `
-        -FilePath $nodeExe `
-        -ArgumentList @('--no-warnings', 'server.js') `
-        -WorkingDirectory $Root `
-        -RedirectStandardOutput $stdoutLog `
-        -RedirectStandardError $stderrLog `
-        -WindowStyle Hidden `
-        -PassThru
-
-      Set-Content -LiteralPath $ServerPidFile -Value $server.Id -Encoding ASCII
-      Write-DaemonLog "server started pid=$($server.Id)"
+      $env:R2_SERVER_PID_FILE = $ServerPidFile
+      & $nodeExe --no-warnings server.js 1>> $stdoutLog 2>> $stderrLog
+      $exitCode = if ($null -eq $LASTEXITCODE) { 'unknown' } else { [int]$LASTEXITCODE }
+      $serverPid = if (Test-Path -LiteralPath $ServerPidFile) {
+        (Get-Content -LiteralPath $ServerPidFile -ErrorAction SilentlyContinue | Select-Object -First 1)
+      } else {
+        'unknown'
+      }
       Prune-OldLogs
 
-      $server.WaitForExit()
-      $exitCode = $server.ExitCode
       $runSeconds = ((Get-Date) - $startedAt).TotalSeconds
-      Write-DaemonLog ('server exited pid={0} code={1} after={2}s' -f $server.Id, $exitCode, [math]::Round($runSeconds, 1))
+      Write-DaemonLog ('server exited pid={0} code={1} after={2}s' -f $serverPid, $exitCode, [math]::Round($runSeconds, 1))
       Remove-Item -LiteralPath $ServerPidFile -Force -ErrorAction SilentlyContinue
 
       if (Test-Path -LiteralPath $StopFile) {

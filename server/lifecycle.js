@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const path = require('node:path');
 const { openDatabase } = require('../lib/db');
 const {
   createDailyBackup,
@@ -12,6 +13,12 @@ const {
   createServer,
 } = require('./app');
 const { DATA_TRUST_MODE, DEFAULT_DB } = require('./config');
+const {
+  createDashboardQueryService,
+} = require('./modules/dashboard/service');
+const {
+  createAutomationRunner,
+} = require('./jobs/automation-runner');
 const { createAutomationScheduler } = require('./jobs/automation-scheduler');
 const { createSafeLogger } = require('./infrastructure/logging/logger');
 const {
@@ -74,10 +81,54 @@ function startServer(options = {}) {
     runStartupMaintenance(repository, logger);
   }
 
-  const scheduler = createAutomationScheduler({ repository, logger });
+  const pidFile =
+    options.pidFile || process.env.R2_SERVER_PID_FILE || '';
+  if (pidFile) {
+    try {
+      fs.mkdirSync(path.dirname(pidFile), { recursive: true });
+      fs.writeFileSync(pidFile, String(process.pid), 'ascii');
+    } catch (error) {
+      logger.warn?.(
+        `  Server PID 文件写入失败：${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+    }
+  }
+
+  const automationRunner =
+    options.automationRunner ||
+    createAutomationRunner({
+      repository,
+      logger,
+      timeoutMs: options.automationTimeoutMs || 30000,
+      dataTrustMode: options.dataTrustMode || DATA_TRUST_MODE,
+      migrationPolicy: options.migrationPolicy || 'auto',
+    });
+  const dashboardQuery = createDashboardQueryService(repository, {
+    automationRunner,
+  });
+  try {
+    dashboardQuery.projectDashboard();
+  } catch (error) {
+    logger.warn?.(
+      `  启动状态投影失败：${error instanceof Error ? error.message : error}`,
+    );
+  }
+  const scheduler = createAutomationScheduler({
+    repository,
+    runner: automationRunner,
+    logger,
+    taskTimeoutMs: options.automationTimeoutMs || 30000,
+    onCycleComplete: () => dashboardQuery.projectDashboard(),
+  });
   if (options.automation !== false) scheduler.start();
 
-  const server = createServer({ repository });
+  const server = createServer({
+    repository,
+    dashboardQuery,
+    automationRunner,
+  });
   const host = options.host || process.env.HOST || '127.0.0.1';
   const port = Number(options.port ?? process.env.PORT ?? 8765);
   let closing = null;
@@ -86,9 +137,11 @@ function startServer(options = {}) {
 
   function stop({ exitProcess = false, exitCode = 0 } = {}) {
     if (closing) return closing;
-    scheduler.stop();
-    terminateOcrProcesses();
-    closing = closeServer(server)
+    closing = Promise.resolve(scheduler.stop())
+      .then(() => {
+        terminateOcrProcesses();
+        return closeServer(server);
+      })
       .catch((error) => {
         logger.error?.(error);
       })

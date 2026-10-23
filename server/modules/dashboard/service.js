@@ -17,8 +17,9 @@ const { buildHoldingReviews } = require('../../../lib/holdings-review');
 function createDashboardQueryService(repository, options = {}) {
   if (!repository) throw new Error('dashboard 查询服务需要 repository');
   const todayProvider = options.todayProvider || todayShanghai;
+  const automationRunner = options.automationRunner || null;
 
-  function getDashboard(today = todayProvider()) {
+  function readDashboard(today = todayProvider()) {
     const rawRecords = repository.listRecords();
     const records = enrichRecords(rawRecords);
     const tradeOverview = repository.tradeStore.getOverview(today);
@@ -136,7 +137,12 @@ function createDashboardQueryService(repository, options = {}) {
       });
     }
 
-    const automation = repository.automationStore.getWorkspace(today);
+    const automation = {
+      ...repository.automationStore.getWorkspace(today),
+      ...(automationRunner
+        ? { runner: automationRunner.getStatus() }
+        : {}),
+    };
     const payload = {
       meta: {
         today,
@@ -168,20 +174,35 @@ function createDashboardQueryService(repository, options = {}) {
       capital,
       products: productView,
     };
-    repository.decisionProposalStore.sync(payload);
     payload.decision_proposals =
       repository.decisionProposalStore.getWorkspace(today);
-    payload.inbox_center = repository.inboxCenter.sync(payload);
+    payload.inbox_center = repository.inboxCenter.getWorkspace(today);
     return payload;
   }
 
+  function projectDashboard(today = todayProvider()) {
+    return repository.transactionManager.run(() => {
+      let payload = readDashboard(today);
+      repository.decisionProposalStore.sync(payload);
+      payload = readDashboard(today);
+      repository.inboxCenter.sync(payload);
+      payload = readDashboard(today);
+      repository.automationStore.resolveCapitalBridgeNotifications(payload);
+      repository.automationStore.resolveProductIncomeNotifications();
+      payload = readDashboard(today);
+      payload.inbox_center = repository.inboxCenter.sync(payload);
+      return payload;
+    });
+  }
+
   function getWorkspace(today = todayProvider()) {
-    return getDashboard(today).workspace;
+    return readDashboard(today).workspace;
   }
 
   return {
-    getDashboard,
+    getDashboard: readDashboard,
     getWorkspace,
+    projectDashboard,
   };
 }
 

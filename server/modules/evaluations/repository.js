@@ -9,6 +9,15 @@ function createEvaluationsRepository(repository) {
     getWorkspace(today) {
       return repository.automationStore.getWorkspace(today);
     },
+    getCalibration(month, today) {
+      return repository.automationStore.getCalibration(month, today);
+    },
+    getCalibrationPrediction(id, today) {
+      return repository.automationStore.getCalibrationPrediction(id, today);
+    },
+    confirmCalibrationPrediction(id, input) {
+      return repository.automationStore.confirmPredictionResult(id, input);
+    },
     resolveJob(id, input) {
       return repository.automationStore.resolveJob(id, input);
     },

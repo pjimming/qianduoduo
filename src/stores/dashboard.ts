@@ -10,6 +10,7 @@ import type {
   DashboardMutationResponse,
   DashboardPayload,
   DataTrustTraceResponse,
+  DecisionCalibrationReport,
   DecisionInput,
   DecisionProposalMutationResponse,
   DecisionMutationResponse,
@@ -218,6 +219,32 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }>('/api/automation/run', { method: 'POST', body: '{}' })
     dashboard.value = response.dashboard
     return response
+  }
+
+  async function loadCalibration(
+    month: string,
+  ): Promise<DecisionCalibrationReport> {
+    const report = await apiRequest<DecisionCalibrationReport>(
+      `/api/calibration/monthly?month=${encodeURIComponent(month)}`,
+    )
+    if (dashboard.value) {
+      dashboard.value.automation.calibration = report
+    }
+    return report
+  }
+
+  async function confirmCalibrationPrediction(
+    id: string,
+    status: 'hit' | 'miss',
+    note = '',
+  ): Promise<void> {
+    await apiRequest(
+      `/api/calibration/predictions/${encodeURIComponent(id)}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ status, note }),
+      },
+    )
   }
 
   async function updateAutomationSettings(
@@ -760,6 +787,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     updateAllocationSettings,
     saveHoldingReviewSetting,
     loadAutomation,
+    loadCalibration,
+    confirmCalibrationPrediction,
     runAutomation,
     updateAutomationSettings,
     applyEvaluation,

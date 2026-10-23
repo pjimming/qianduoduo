@@ -94,6 +94,9 @@ function seedProposals(repository) {
 test('proposal API adopts and rejects without creating premature decisions', async (t) => {
   const { base, repository } = await startTestServer(t);
   seedProposals(repository);
+  await fetch(`${base}/api/dashboard/refresh`, {
+    method: 'POST',
+  });
   const workspace = await fetch(`${base}/api/decision-proposals`).then((response) =>
     response.json(),
   );

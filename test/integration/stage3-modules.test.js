@@ -11,6 +11,25 @@ const {
   startTestServer,
 } = require('../helpers/test-context');
 
+function databaseSnapshot(repository) {
+  const tables = repository.db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    )
+    .all()
+    .map((row) => row.name);
+  return Object.fromEntries(
+    tables.map((table) => [
+      table,
+      repository.db
+        .prepare(`SELECT * FROM ${table}`)
+        .all()
+        .map((row) => JSON.stringify(row))
+        .sort(),
+    ]),
+  );
+}
+
 test('dashboard query facade exposes stable dashboard and workspace snapshots', (t) => {
   const context = createTestContext(t);
   const query = createDashboardQueryService(context.repository, {
@@ -95,6 +114,23 @@ test('health, backup, dashboard, product, notifications and static routes are mo
   const inbox = await requestJson(`${context.baseUrl}/api/inbox`);
   assert.equal(inbox.response.status, 200);
   assert.ok(inbox.body.inbox_center.items.length > 0);
+
+  const beforeReads = databaseSnapshot(context.repository);
+  const readDashboard = await requestJson(`${context.baseUrl}/api/dashboard`);
+  const readWorkspace = await requestJson(
+    `${context.baseUrl}/api/review/workspace`,
+  );
+  const readInbox = await requestJson(`${context.baseUrl}/api/inbox`);
+  assert.equal(readDashboard.response.status, 200);
+  assert.equal(readWorkspace.response.status, 200);
+  assert.equal(readInbox.response.status, 200);
+  assert.deepEqual(databaseSnapshot(context.repository), beforeReads);
+  const refreshed = await requestJson(
+    `${context.baseUrl}/api/dashboard/refresh`,
+    { method: 'POST', body: '{}' },
+  );
+  assert.equal(refreshed.response.status, 200);
+  assert.equal(refreshed.body.meta.storage, 'SQLite · 本地');
 
   const notificationsRead = await requestJson(
     `${context.baseUrl}/api/notifications/read-all`,

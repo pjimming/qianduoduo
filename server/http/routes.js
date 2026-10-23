@@ -5,6 +5,7 @@ const API_ROUTE_PATTERNS = Object.freeze([
   ['GET', '/api/backups'],
   ['POST', '/api/backups'],
   ['GET', '/api/dashboard'],
+  ['POST', '/api/dashboard/refresh'],
   ['GET', '/api/data-trust/status'],
   ['GET', /^\/api\/evidence\/\d+\/trace$/],
   ['GET', /^\/api\/facts\/[^/]+\/[^/]+\/trace$/],
@@ -25,6 +26,9 @@ const API_ROUTE_PATTERNS = Object.freeze([
   ['POST', /^\/api\/inbox\/\d+\/(?:read|unread|snooze|unsnooze)$/],
 
   ['GET', '/api/automation/workspace'],
+  ['GET', '/api/calibration/monthly'],
+  ['POST', /^\/api\/calibration\/predictions\/[^/]+\/confirm$/],
+  ['GET', /^\/api\/calibration\/predictions\/[^/]+$/],
   ['GET', '/api/decision-proposals'],
   ['POST', /^\/api\/decision-proposals\/\d+\/(?:adopt|reject)$/],
   ['POST', '/api/automation/run'],
@@ -73,6 +77,7 @@ const API_ROUTE_PATTERNS = Object.freeze([
   ['PUT', /^\/api\/trades\/inbox\/\d+$/],
 
   ['POST', '/api/review/decisions'],
+  ['POST', /^\/api\/review\/decisions\/\d+\/predictions$/],
   ['PUT', /^\/api\/review\/decisions\/\d+$/],
   ['DELETE', /^\/api\/review\/decisions\/\d+$/],
   ['POST', '/api/review/holdings'],

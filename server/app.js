@@ -85,8 +85,11 @@ function registerModuleRoutes(router, definitions, migrated) {
   }
 }
 
-function createRequestHandler(repository) {
-  const dashboardQuery = createDashboardQueryService(repository);
+function createRequestHandler(repository, options = {}) {
+  const automationRunner = options.automationRunner || null;
+  const dashboardQuery =
+    options.dashboardQuery ||
+    createDashboardQueryService(repository, { automationRunner });
   const dataTrust = createDataTrustService({ repository });
   const operations = createOperationsService(repository);
   const products = createProductsService(repository);
@@ -109,6 +112,7 @@ function createRequestHandler(repository) {
     decisionsRepository: createDecisionsRepository(repository),
     dashboardQuery,
     transactionManager,
+    automationRunner,
   });
   const proposals = createProposalsService({
     proposalsRepository: createProposalsRepository(repository),
@@ -119,6 +123,7 @@ function createRequestHandler(repository) {
     evaluationsRepository: createEvaluationsRepository(repository),
     dashboardQuery,
     transactionManager,
+    automationRunner,
   });
   const reviews = createReviewsService({
     reviewsRepository: createReviewsRepository(repository),
@@ -129,6 +134,7 @@ function createRequestHandler(repository) {
     tradesRepository: createTradesRepository(repository),
     dashboardQuery,
     ocr: createTradeOcrAdapter(),
+    automationRunner,
   });
   const income = createIncomeService({
     incomeRepository: createIncomeRepository(repository),
@@ -206,15 +212,20 @@ function createRequestHandler(repository) {
   };
 }
 
-function createServer({ repository }) {
+function createServer({ repository, dashboardQuery, automationRunner }) {
   if (!repository) throw new Error('createServer 需要 repository');
-  return http.createServer(createRequestHandler(repository));
+  return http.createServer(
+    createRequestHandler(repository, {
+      dashboardQuery,
+      automationRunner,
+    }),
+  );
 }
 
-function createApp({ repository }) {
+function createApp({ repository, dashboardQuery, automationRunner }) {
   if (!repository) throw new Error('createApp 需要 repository');
   return {
-    server: createServer({ repository }),
+    server: createServer({ repository, dashboardQuery, automationRunner }),
     repository,
   };
 }

@@ -40,6 +40,7 @@ const productSortLabels: Record<ProductSortKey, string> = {
   return_3m: '近 3 月收益率',
   return_6m: '近 6 月收益率',
   return_1y: '近 1 年收益率',
+  weighted_yield_pct: '加权年化',
 }
 
 const filters: Array<{ value: TermFilter; label: string }> = [
@@ -50,7 +51,16 @@ const filters: Array<{ value: TermFilter; label: string }> = [
   { value: 'long', label: '长期 100 天+' },
 ]
 
-const sortColumns: Array<{ key: ProductSortKey; label: string }> = [
+const sortColumns: Array<{
+  key: ProductSortKey
+  label: string
+  title?: string
+}> = [
+  {
+    key: 'weighted_yield_pct',
+    label: '加权年化',
+    title: '50% × 近 3 月年化 + 30% × 近 6 月年化 + 20% × 近 1 年年化；缺任一周期显示 —',
+  },
   { key: 'return_1m', label: '近 1 月' },
   { key: 'return_3m', label: '近 3 月' },
   { key: 'return_6m', label: '近 6 月' },
@@ -287,7 +297,11 @@ function onDialogClick(event: MouseEvent): void {
               :class="{ 'is-sorted': sortKey === column.key }"
               @click="toggleSort(column.key)"
             >
-              <button class="table-sort-button" type="button">
+              <button
+                class="table-sort-button"
+                type="button"
+                :title="column.title"
+              >
                 {{ column.label }} <span class="sort-glyph">{{ sortGlyph(column.key) }}</span>
               </button>
             </th>
@@ -312,6 +326,9 @@ function onDialogClick(event: MouseEvent): void {
                 <span class="product-detail-link">查看详情 →</span>
               </button>
             </td>
+            <td class="align-right money-cell">
+              {{ formatPct(product.weighted_yield_pct, 2) }}
+            </td>
             <td class="align-right money-cell">{{ formatPct(product.return_1m, 2) }}</td>
             <td class="align-right money-cell">{{ formatPct(product.return_3m, 2) }}</td>
             <td class="align-right money-cell">{{ formatPct(product.return_6m, 2) }}</td>
@@ -326,7 +343,7 @@ function onDialogClick(event: MouseEvent): void {
             </td>
           </tr>
           <tr v-if="sortedProducts.length === 0">
-            <td class="product-filter-empty" colspan="7">这个期限暂时没有产品。</td>
+            <td class="product-filter-empty" colspan="8">这个期限暂时没有产品。</td>
           </tr>
         </tbody>
       </table>
@@ -344,6 +361,21 @@ function onDialogClick(event: MouseEvent): void {
 
 .term-filter button {
   cursor: pointer;
+}
+
+.filter-label,
+.filter-count,
+.dialog-sort-bar,
+.table-sort-button,
+.dialog-note,
+.term-filter button,
+.product-name-cell span,
+.product-filter-empty {
+  font-size: 12px !important;
+}
+
+.product-table {
+  min-width: 940px;
 }
 
 .product-name-button {

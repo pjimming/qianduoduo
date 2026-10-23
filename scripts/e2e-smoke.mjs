@@ -652,6 +652,15 @@ async function main() {
         ],
       },
     })
+    const projectionRefresh = await fetch(`${base}/api/dashboard/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    assert(
+      projectionRefresh.status === 200,
+      '显式 Dashboard 状态投影应成功',
+    )
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.inbox-page')
     await assertFontFloor(page, '.inbox-page', '消息中心桌面端')
@@ -869,6 +878,19 @@ async function main() {
       (await page.locator('dialog[open]').count()) === 1,
       '打开候选池时不应同时存在其他弹窗',
     )
+    const poolHeaders = await poolDialog.locator('thead th').allTextContents()
+    assert(
+      poolHeaders.some((text) => text.includes('加权年化')),
+      '候选池缺少加权年化列',
+    )
+    await poolDialog.getByRole('button', { name: /加权年化/ }).click()
+    const weightedSortState =
+      (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
+    assert(
+      weightedSortState.includes('加权年化') &&
+        weightedSortState.includes('降序'),
+      `加权年化排序状态不正确：${weightedSortState}`,
+    )
     await poolDialog.getByRole('button', { name: '短期 7–30 天' }).click()
     await poolDialog.locator('th.sortable').first().click()
     const poolFilterBefore = (
@@ -960,6 +982,19 @@ async function main() {
       )) === rowTarget.code,
       '关闭详情后焦点没有回到原产品入口',
     )
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(
+      page,
+      '.product-dialog:not(.product-detail-dialog)[open]',
+      '普通可买候选池移动端',
+    )
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '普通可买候选池移动端出现页面级横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
     await poolDialog.locator('.dialog-head .icon-button').click()
     await page.waitForSelector('.product-dialog:not(.product-detail-dialog)[open]', {
       state: 'detached',
@@ -1092,7 +1127,8 @@ async function main() {
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      evaluationSectionOrder.join(',') === 'proposals,decisions,automation',
+      evaluationSectionOrder.join(',') ===
+        'proposals,decisions,calibration,automation',
       `决策与评估页模块顺序不正确：${evaluationSectionOrder.join(',')}`,
     )
     assert(
@@ -1108,6 +1144,20 @@ async function main() {
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
       ),
       '决策提案移动端出现横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
+    assert(
+      (await page.locator('#calibration .calibration-panel').count()) === 1,
+      '预测校准面板没有渲染',
+    )
+    await assertFontFloor(page, '#calibration', '预测校准桌面端')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(page, '#calibration', '预测校准移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '预测校准移动端出现横向溢出',
     )
     await page.setViewportSize({ width: 1280, height: 900 })
     assert(

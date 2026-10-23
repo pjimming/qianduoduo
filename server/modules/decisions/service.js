@@ -14,6 +14,7 @@ function createDecisionsService({
   decisionsRepository,
   dashboardQuery,
   transactionManager,
+  automationRunner = null,
   todayProvider = todayShanghai,
 }) {
   function validate(body) {
@@ -24,30 +25,37 @@ function createDecisionsService({
     return result.value;
   }
 
-  function evaluate(trigger) {
+  async function evaluate(trigger) {
+    if (automationRunner) {
+      await automationRunner.run({
+        today: todayProvider(),
+        trigger,
+      });
+      return;
+    }
     decisionsRepository.runEvaluationCycle(trigger, todayProvider());
   }
 
-  function createDecision(body) {
+  async function createDecision(body) {
     const decision = decisionsRepository.createDecision(validate(body));
-    evaluate('decision-create');
+    await evaluate('decision-create');
     return {
       decision,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
-  function updateDecision(id, body) {
+  async function updateDecision(id, body) {
     const decision = decisionsRepository.updateDecision(id, validate(body));
     if (!decision) throw decisionError(404, '没有找到这条决策记录');
-    evaluate('decision-update');
+    await evaluate('decision-update');
     return {
       decision,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
-  function deleteDecision(id) {
+  async function deleteDecision(id) {
     const linked = decisionsRepository.findLinkedTrade(id);
     if (linked) {
       throw decisionError(
@@ -71,11 +79,49 @@ function createDecisionsService({
     });
     return {
       deleted: true,
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
+    };
+  }
+
+  function addPrediction(id, body) {
+    if (!decisionsRepository.findDecision(id)) {
+      throw decisionError(404, '没有找到这条决策');
+    }
+    const input = {
+      recommendation_type: body.recommendation_type,
+      action: body.action,
+      source: body.source || 'human-correction',
+      source_ref: body.source_ref,
+      data_cutoff_at: body.data_cutoff_at,
+      start_date: body.start_date,
+      review_date: body.review_date,
+      confidence: body.confidence,
+      evidence_refs: body.evidence_refs,
+      baseline: body.baseline,
+      expected: body.expected,
+      metric: body.metric,
+      evaluation: body.evaluation,
+      invalidation_condition: body.invalidation_condition,
+      invalidation_triggers: body.invalidation_triggers,
+      original_text: body.original_text,
+      reason: body.reason,
+    };
+    const decision = decisionsRepository.addPredictionVersion(id, input);
+    if (!decision) {
+      throw decisionError(
+        400,
+        '预测字段不完整：至少需要复核日期和可检验目标',
+      );
+    }
+    return {
+      decision,
+      prediction: decision.review_meta.predictions.at(-1),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
   return {
+    addPrediction,
     createDecision,
     deleteDecision,
     updateDecision,

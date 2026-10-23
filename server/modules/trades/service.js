@@ -31,6 +31,7 @@ function createTradesService({
   tradesRepository,
   dashboardQuery,
   ocr,
+  automationRunner = null,
   todayProvider = todayShanghai,
 }) {
   if (!tradesRepository || !dashboardQuery || !ocr) {
@@ -50,27 +51,31 @@ function createTradesService({
     }
   }
 
-  function syncDecisionAndEvaluate(trade, trigger) {
+  async function syncDecisionAndEvaluate(trade, trigger) {
     const today = todayProvider();
     const matched = tradesRepository.matchProposal(trade, today);
     if (matched?.trade) trade = matched.trade;
     tradesRepository.reconcileExecutionStatuses(today);
     tradesRepository.ensureTradeDecisions();
-    tradesRepository.runAutomationCycle({ today, trigger });
+    if (automationRunner) {
+      await automationRunner.run({ today, trigger });
+    } else {
+      tradesRepository.runAutomationCycle({ today, trigger });
+    }
     tradesRepository.reconcileExecutionStatuses(today);
     return trade?.id ? tradesRepository.getTrade(trade.id) : trade;
   }
 
-  function mutationResult(trade, trigger) {
-    trade = syncDecisionAndEvaluate(trade, trigger);
+  async function mutationResult(trade, trigger) {
+    trade = await syncDecisionAndEvaluate(trade, trigger);
     return {
       trade,
       overview: overview(),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
-  function createTrade(body) {
+  async function createTrade(body) {
     const value = validationValue(validateTradePayload(body));
     ensureDecision(value);
     let trade;
@@ -82,7 +87,7 @@ function createTradesService({
     return mutationResult(trade, 'trade-create');
   }
 
-  function updateTrade(id, body) {
+  async function updateTrade(id, body) {
     const before = tradesRepository.getTrade(id);
     if (!before) throw tradeError(404, '没有找到这笔交易');
     const value = validationValue(
@@ -106,7 +111,7 @@ function createTradesService({
     return mutationResult(trade, 'trade-update');
   }
 
-  function confirmTrade(id, body) {
+  async function confirmTrade(id, body) {
     const today = todayProvider();
     const confirmDate = String(body.confirm_date || today).trim();
     if (!parseYmd(confirmDate)) {
@@ -129,7 +134,7 @@ function createTradesService({
     return mutationResult(trade, 'trade-confirm');
   }
 
-  function cancelTrade(id, body) {
+  async function cancelTrade(id, body) {
     let trade;
     try {
       trade = tradesRepository.cancelTrade(
@@ -318,7 +323,7 @@ function createTradesService({
     };
   }
 
-  function applyInboxItem(item, body) {
+  async function applyInboxItem(item, body) {
     const merged = { ...item.parsed, ...body };
     const fields = validationValue(validateTradePayload(merged));
     ensureDecision(fields);
@@ -356,18 +361,18 @@ function createTradesService({
     } catch (error) {
       storeError(error);
     }
-    result.trade = syncDecisionAndEvaluate(
+    result.trade = await syncDecisionAndEvaluate(
       result.trade,
       'trade-inbox-apply',
     );
     return {
       ...result,
       overview: overview(),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
-  function visionApply(item, body) {
+  async function visionApply(item, body) {
     const fields = validationValue(validateTradePayload(body));
     ensureDecision(fields);
     const parsed = item.parsed || {};
@@ -515,7 +520,7 @@ function createTradesService({
     } catch (error) {
       storeError(error);
     }
-    result.trade = syncDecisionAndEvaluate(
+    result.trade = await syncDecisionAndEvaluate(
       result.trade,
       'trade-inbox-vision-apply',
     );
@@ -525,7 +530,7 @@ function createTradesService({
       checks,
       vision: true,
       overview: overview(),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -535,6 +540,7 @@ function createTradesService({
       String(body.note || ''),
     );
     if (!inbox) throw tradeError(404, '没有找到这张截图');
+    dashboardQuery.projectDashboard();
     return { inbox, overview: overview() };
   }
 
@@ -569,6 +575,7 @@ function createTradesService({
       }
       return tradesRepository.getInboxItem(id);
     });
+    dashboardQuery.projectDashboard();
     return { inbox, overview: overview() };
   }
 
@@ -594,7 +601,7 @@ function createTradesService({
     const value = validationValue(validateHoldingPayload(body));
     return {
       holding: tradesRepository.createHolding(value),
-      dashboard: dashboardQuery.getDashboard(),
+      dashboard: dashboardQuery.projectDashboard(),
     };
   }
 
@@ -602,14 +609,14 @@ function createTradesService({
     const value = validationValue(validateHoldingPayload(body));
     const holding = tradesRepository.updateHolding(id, value);
     if (!holding) throw tradeError(404, '没有找到这笔持仓');
-    return { holding, dashboard: dashboardQuery.getDashboard() };
+    return { holding, dashboard: dashboardQuery.projectDashboard() };
   }
 
   function deleteHolding(id) {
     if (!tradesRepository.deleteHolding(id)) {
       throw tradeError(404, '没有找到这笔持仓');
     }
-    return { deleted: true, dashboard: dashboardQuery.getDashboard() };
+    return { deleted: true, dashboard: dashboardQuery.projectDashboard() };
   }
 
   return {
