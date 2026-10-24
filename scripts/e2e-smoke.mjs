@@ -1127,21 +1127,81 @@ async function main() {
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      productSectionOrder.join(',') === 'holding-reviews,products,events',
+      productSectionOrder.join(',') === 'products,events',
       `产品与配置页模块顺序不正确：${productSectionOrder.join(',')}`,
     )
+    const allocationTop = await page.locator('#allocationCardTitle').evaluate(
+      (element) => element.getBoundingClientRect().top,
+    )
+    const holdingReviewTop = await page.locator('#holding-reviews').evaluate(
+      (element) => element.getBoundingClientRect().top,
+    )
+    assert(
+      allocationTop < holdingReviewTop,
+      '配置目标与期限桶应位于当前持仓与同桶候选之前',
+    )
+    if ((await page.locator('#observationCardTitle').count()) > 0) {
+      const observationTop = await page.locator('#observationCardTitle').evaluate(
+        (element) => element.getBoundingClientRect().top,
+      )
+      assert(
+        allocationTop < observationTop && observationTop < holdingReviewTop,
+        '观察名单应位于配置目标与期限桶之后、当前持仓与同桶候选之前',
+      )
+    }
+    const holdingReviewBottom = await page.locator('#holding-reviews').evaluate(
+      (element) => element.getBoundingClientRect().bottom,
+    )
+    const riskCardTop = await page
+      .locator('#riskCardTitle')
+      .evaluate((element) => element.closest('.product-module-card')?.getBoundingClientRect().top ?? 0)
+    assert(
+      riskCardTop - holdingReviewBottom >= 24,
+      `持仓复核与风险边界间距不足：${riskCardTop - holdingReviewBottom}px`,
+    )
+    if ((await page.locator('#observationCardTitle').count()) > 0) {
+      const observationBottom = await page
+        .locator('#observationCardTitle')
+        .evaluate(
+          (element) =>
+            element.closest('.product-module-card')?.getBoundingClientRect().bottom ?? 0,
+        )
+      assert(
+        holdingReviewTop - observationBottom >= 24,
+        `观察名单与持仓复核间距不足：${holdingReviewTop - observationBottom}px`,
+      )
+    }
     assert(
       (await page.locator('.allocation-bucket').count()) === 3,
       '产品区没有渲染三个期限桶的分配结果',
     )
     assert(
-      (await page.locator('.allocation-target').count()) >= 1,
-      '产品区没有渲染目标金额',
+      (await page.locator('#targetProductsCardTitle').count()) === 0,
+      '目标产品模块应已删除',
     )
     assert(
-      (await page.locator('.product-module-card').count()) >= 4,
-      '产品页应有配置、目标产品、观察名单和风险边界模块卡',
+      (await page.locator('.product-card').count()) === 0,
+      '删除目标产品后不应再渲染目标产品卡片',
     )
+    assert(
+      (await page.locator('.product-module-card').count()) >= 3,
+      '产品页应保留配置、额度/观察名单和风险边界模块卡',
+    )
+    if (
+      (await page.locator('#quotaCardTitle').count()) > 0 &&
+      (await page.locator('#observationCardTitle').count()) > 0
+    ) {
+      const observationTop = await page.locator('#observationCardTitle').evaluate(
+        (element) => element.getBoundingClientRect().top,
+      )
+      const quotaTop = await page.locator('#quotaCardTitle').evaluate(
+        (element) => element.getBoundingClientRect().top,
+      )
+      assert(
+        observationTop < quotaTop,
+        '观察名单应位于买入前额度核验之前',
+      )
+    }
     await page.getByRole('button', { name: '调整假设', exact: true }).click()
     await page.waitForSelector('#assumptionsCardTitle')
     await assertNoLargeLightSurface(page, '.app-main', '配置假设深色主题')
@@ -1268,18 +1328,89 @@ async function main() {
     )
     const poolHeaders = await poolDialog.locator('thead th').allTextContents()
     assert(
-      poolHeaders.some((text) => text.includes('加权年化')),
-      '候选池缺少加权年化列',
+      poolHeaders.some((text) => text.includes('参考年化')),
+      '候选池缺少参考年化列',
     )
-    await poolDialog.getByRole('button', { name: /加权年化/ }).click()
-    const weightedSortState =
+    const defaultReferenceSortState =
       (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
     assert(
-      weightedSortState.includes('加权年化') &&
-        weightedSortState.includes('降序'),
-      `加权年化排序状态不正确：${weightedSortState}`,
+      defaultReferenceSortState.includes('参考年化') &&
+        defaultReferenceSortState.includes('降序'),
+      `参考年化默认排序状态不正确：${defaultReferenceSortState}`,
     )
-    await poolDialog.getByRole('button', { name: '短期 7–30 天' }).click()
+    await poolDialog.getByRole('button', { name: /参考年化/ }).click()
+    const referenceAscendingState =
+      (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
+    assert(
+      referenceAscendingState.includes('参考年化') &&
+        referenceAscendingState.includes('升序'),
+      `参考年化升序状态不正确：${referenceAscendingState}`,
+    )
+    await poolDialog.getByRole('button', { name: /参考年化/ }).click()
+    const referenceDescendingState =
+      (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
+    assert(
+      referenceDescendingState.includes('参考年化') &&
+        referenceDescendingState.includes('降序'),
+      `参考年化降序状态不正确：${referenceDescendingState}`,
+    )
+    const codeSearch = poolDialog.getByRole('searchbox', {
+      name: '按产品代码搜索',
+    })
+    await codeSearch.fill('ZX040231')
+    const zxRow = poolDialog.locator(
+      '.product-name-button[data-product-code="ZX040231"]',
+    )
+    await zxRow.waitFor()
+    const zxRowText = (await zxRow.textContent()) ?? ''
+    assert(zxRowText.includes('ZX040231'), '产品代码搜索没有命中 ZX040231')
+    await codeSearch.fill('')
+
+    const nameSearch = poolDialog.getByRole('searchbox', {
+      name: '按产品名称搜索',
+    })
+    await nameSearch.fill('安盈象')
+    await zxRow.waitFor()
+    await nameSearch.fill('')
+
+    const issuerSearch = poolDialog.getByRole('searchbox', {
+      name: '按发行方搜索',
+    })
+    await issuerSearch.fill('信银理财')
+    await zxRow.waitFor()
+    await issuerSearch.fill('')
+
+    const termDropdown = poolDialog.locator('details[data-filter="term"]')
+    await termDropdown.locator('summary').click()
+    await termDropdown
+      .getByRole('checkbox', { name: '短期 7–30 天' })
+      .check()
+    await termDropdown
+      .getByRole('checkbox', { name: '中期 31–100 天' })
+      .check()
+    await termDropdown.locator('summary').click()
+    const termSummaryText =
+      (await termDropdown.locator('summary').textContent())?.trim() ?? ''
+    assert(
+      termSummaryText.includes('短期 7–30 天') &&
+        termSummaryText.includes('中期 31–100 天'),
+      `期限多选没有保留两个选项：${termSummaryText}`,
+    )
+
+    const evidenceDropdown = poolDialog.locator(
+      'details[data-filter="evidence"]',
+    )
+    await evidenceDropdown.locator('summary').click()
+    await evidenceDropdown
+      .getByRole('checkbox', { name: '仅 3M' })
+      .check()
+    await evidenceDropdown.locator('summary').click()
+    assert(
+      ((await evidenceDropdown.locator('summary').textContent()) ?? '').includes(
+        '仅 3M',
+      ),
+      '候选池数据深度多选没有切换到仅 3M',
+    )
     await poolDialog.locator('th.sortable').first().click()
     const poolFilterBefore = (
       (await poolDialog.locator('.dialog-filter-bar').textContent()) ?? ''
@@ -1363,9 +1494,14 @@ async function main() {
     const poolSortAfter =
       (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
     assert(
-      (await poolDialog.locator('.term-filter button.is-active').textContent())?.trim() ===
-        '短期 7–30 天',
+      ((await poolDialog.locator('details[data-filter="term"] summary').textContent()) ??
+        '').includes('短期 7–30 天'),
       '关闭详情后候选池期限筛选没有保留',
+    )
+    assert(
+      ((await poolDialog.locator('details[data-filter="evidence"] summary').textContent()) ??
+        '').includes('仅 3M'),
+      '关闭详情后候选池数据深度筛选没有保留',
     )
     assert(poolFilterAfter === poolFilterBefore, '关闭详情后候选池筛选结果发生变化')
     assert(poolSortAfter === poolSortBefore, '关闭详情后候选池排序发生变化')
@@ -1376,6 +1512,23 @@ async function main() {
       '关闭详情后焦点没有回到原产品入口',
     )
     await page.setViewportSize({ width: 390, height: 844 })
+    const mobileEvidence = poolDialog.locator(
+      'details[data-filter="evidence"]',
+    )
+    await mobileEvidence.locator('summary').click()
+    const mobileMenuVisible = await mobileEvidence
+      .locator('.multi-select-menu')
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        return (
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.right <= window.innerWidth + 1 &&
+          rect.bottom <= window.innerHeight + 1
+        )
+      })
+    assert(mobileMenuVisible, '移动端多选下拉超出可视区域')
+    await mobileEvidence.locator('summary').click()
     await assertFontFloor(
       page,
       '.product-dialog:not(.product-detail-dialog)[open]',

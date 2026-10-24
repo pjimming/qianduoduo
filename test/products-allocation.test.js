@@ -116,6 +116,87 @@ test('zero and insufficient quotas are skipped or truncated and explained', () =
   assert.ok(view.allocation.reasons.some((item) => item.includes('额度未核验')));
 });
 
+test('6M evidence products are capped at 10% each and 20% in aggregate', () => {
+  const pool = Array.from({ length: 3 }, (_, index) =>
+    product({
+      code: `SIX-${index + 1}`,
+      term_days: 90,
+      benchmark: `六月中期限基准${index + 1}`,
+      return_1y: null,
+      history_months: 8,
+      return_3m: 4 - index * 0.1,
+      return_6m: 4.2 - index * 0.1,
+    }),
+  );
+  const view = buildProductView(pool, {
+    principal: 100000,
+    settings: {
+      liquidity_floor_pct: 0,
+      bucket_targets: { short: 0, medium: 100, long: 0 },
+    },
+  });
+  assert.ok(view.watchlist.length >= 2);
+  assert.ok(view.watchlist.every((item) => item.evidence_tier === 'six_month'));
+  assert.ok(view.watchlist.every((item) => item.target_amount <= 10000.01));
+  assert.ok(
+    view.watchlist.reduce((sum, item) => sum + item.target_amount, 0) <=
+      20000.01,
+  );
+  assert.equal(view.allocation.allocation_policy.evidence_caps.six_month.single_pct, 10);
+  assert.equal(view.allocation.allocation_policy.evidence_caps.six_month.aggregate_pct, 20);
+});
+
+test('3M evidence products use the confirmed 10% single and 20% aggregate caps', () => {
+  const pool = Array.from({ length: 3 }, (_, index) =>
+    product({
+      code: `THREE-${index + 1}`,
+      term_days: 90,
+      benchmark: `三月中期限基准${index + 1}`,
+      return_1y: null,
+      return_6m: null,
+      history_months: 4,
+      return_3m: 5 - index * 0.1,
+    }),
+  );
+  const view = buildProductView(pool, {
+    principal: 100000,
+    settings: {
+      liquidity_floor_pct: 0,
+      bucket_targets: { short: 0, medium: 100, long: 0 },
+    },
+  });
+  assert.ok(view.watchlist.length >= 2);
+  assert.ok(view.watchlist.every((item) => item.evidence_tier === 'three_month'));
+  assert.ok(view.watchlist.every((item) => item.target_amount <= 10000.01));
+  assert.ok(
+    view.watchlist.reduce((sum, item) => sum + item.target_amount, 0) <=
+      20000.01,
+  );
+  assert.equal(view.allocation.allocation_policy.evidence_caps.three_month.single_pct, 10);
+  assert.equal(view.allocation.allocation_policy.evidence_caps.three_month.aggregate_pct, 20);
+});
+
+test('1M-only products remain searchable but never receive an automatic target', () => {
+  const pool = [
+    product({
+      code: 'NEW-1M',
+      term_days: 90,
+      return_3m: null,
+      return_6m: null,
+      return_1y: null,
+      history_months: 2,
+      return_1m: 6,
+    }),
+  ];
+  const view = buildProductView(pool, { principal: 100000 });
+  assert.equal(view.all.length, 1);
+  assert.equal(view.all[0].evidence_tier, 'one_month');
+  assert.equal(view.all[0].observation_ready, false);
+  assert.equal(view.all[0].target_amount, 0);
+  assert.equal(view.watchlist.length, 0);
+  assert.equal(view.allocation.allocated_amount, 0);
+});
+
 test('pending buys reduce available cash and count toward concentration without becoming holdings', () => {
   const view = buildProductView(basePool(), {
     principal: 30000,

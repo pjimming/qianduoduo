@@ -82,6 +82,18 @@ function quotaLabel(product: Product): string {
   if (product.quota_status === 'limited') return '额度不足，已截断'
   return '额度未核验'
 }
+
+function score(value: number | null): string {
+  return value === null ? '—' : value.toFixed(2)
+}
+
+function oneYearLabel(product: Product): string {
+  if (product.return_1y !== null) return pct(product.return_1y)
+  if (Number.isFinite(product.history_months) && (product.history_months ?? 0) < 12) {
+    return '未满1年'
+  }
+  return '待披露'
+}
 </script>
 
 <template>
@@ -120,6 +132,9 @@ function quotaLabel(product: Product): string {
             {{ bucketLabel(product.bucket) }} ·
             {{ formatTerm(product.term_days, product.bucket) }}
           </span>
+          <span class="detail-chip">
+            历史证据 · {{ product.evidence_label }}
+          </span>
           <span v-if="!inTarget" class="detail-chip is-muted">
             未进入当前目标配置
           </span>
@@ -138,7 +153,10 @@ function quotaLabel(product: Product): string {
               <span>近 6 月</span><strong>{{ pct(product.return_6m) }}</strong>
             </div>
             <div class="detail-item">
-              <span>近 1 年</span><strong>{{ pct(product.return_1y) }}</strong>
+              <span>近 1 年</span><strong>{{ oneYearLabel(product) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span>参考年化</span><strong>{{ pct(product.reference_yield_pct) }}</strong>
             </div>
             <div class="detail-item">
               <span>成立以来</span><strong>{{ pct(product.return_since_inception) }}</strong>
@@ -186,10 +204,10 @@ function quotaLabel(product: Product): string {
           <h3>研究评分</h3>
           <div class="detail-grid">
             <div class="detail-item">
-              <span>选择评分</span><strong>{{ product.selection_score.toFixed(2) }}</strong>
+              <span>选择评分</span><strong>{{ score(product.selection_score) }}</strong>
             </div>
             <div class="detail-item">
-              <span>观察评分</span><strong>{{ product.observation_score.toFixed(2) }}</strong>
+              <span>观察评分</span><strong>{{ score(product.observation_score) }}</strong>
             </div>
             <div class="detail-item">
               <span>原始评分</span>
@@ -199,10 +217,26 @@ function quotaLabel(product: Product): string {
               <span>精选排名</span><strong>{{ product.selection_rank ?? '—' }}</strong>
             </div>
             <div class="detail-item">
-              <span>观察就绪</span><strong>{{ product.observation_ready ? '是' : '否' }}</strong>
+              <span>可进入评分</span><strong>{{ product.observation_ready ? '是' : '否' }}</strong>
             </div>
             <div class="detail-item">
               <span>当前精选</span><strong>{{ product.selected ? '是' : '否' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span>证据档位</span><strong>{{ product.evidence_label }}</strong>
+            </div>
+            <div class="detail-item">
+              <span>单只上限</span><strong>{{ product.evidence_single_cap_pct }}%</strong>
+            </div>
+            <div class="detail-item">
+              <span>同类合计上限</span>
+              <strong>
+                {{
+                  product.evidence_aggregate_cap_pct === null
+                    ? '沿用完整历史规则'
+                    : `${product.evidence_aggregate_cap_pct}%`
+                }}
+              </strong>
             </div>
           </div>
         </section>
@@ -223,8 +257,8 @@ function quotaLabel(product: Product): string {
               <strong>{{ inTarget ? formatPct(product.target_pct, 1) : '—' }}</strong>
             </div>
             <div class="detail-item">
-              <span>距 3% 目标</span>
-              <strong>{{ formatPp(product.target_gap_pct, 2, true) }}</strong>
+              <span>参考年化距 3%</span>
+              <strong>{{ formatPp(product.reference_target_gap_pct, 2, true) }}</strong>
             </div>
             <div class="detail-item">
               <span>可用额度</span>

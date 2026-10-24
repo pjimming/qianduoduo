@@ -202,7 +202,6 @@ html[data-theme='dark'] body {
 :root[data-theme='dark'] :is(
   .panel,
   .stat-card,
-  .product-card,
   .product-module-card,
   .rw-panel,
   .rw-quick,

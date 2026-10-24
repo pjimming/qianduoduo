@@ -913,6 +913,7 @@ function clearReviewFilters(): void {
                   <small>
                     <span>{{ candidate.code }}</span>
                     <span>{{ candidate.issuer }}</span>
+                    <span>{{ candidate.evidence_label }}</span>
                     <span>数据 {{ candidate.data_date || '未获取到' }}</span>
                   </small>
                 </div>

@@ -1,6 +1,12 @@
 export type LedgerAction = '无操作' | '买入' | '赎回' | '切换'
 export type CapitalEventType = 'deposit' | 'withdraw'
 export type ProductBucket = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
+export type ProductEvidenceTier =
+  | 'full_1y'
+  | 'six_month'
+  | 'three_month'
+  | 'one_month'
+  | 'no_data'
 export type TermFilter = 'all' | ProductBucket
 export type SortDirection = 'asc' | 'desc'
 export type LedgerSortKey =
@@ -15,6 +21,7 @@ export type ProductSortKey =
   | 'return_3m'
   | 'return_6m'
   | 'return_1y'
+  | 'reference_yield_pct'
   | 'weighted_yield_pct'
 export type RangeValue = 7 | 30 | 90 | 'all'
 
@@ -740,6 +747,10 @@ export interface HoldingReviewCandidate {
   data_date: string
   next_open_date: string
   history_months: number | null
+  evidence_tier: ProductEvidenceTier
+  evidence_label: string
+  evidence_single_cap_pct: number | null
+  evidence_single_cap_amount: number | null
   selection_score: number | null
   return_1m: number | null
   return_3m: number | null
@@ -1601,6 +1612,7 @@ export interface Product {
   return_3m: number | null
   return_6m: number | null
   return_1y: number | null
+  reference_yield_pct: number | null
   weighted_yield_pct: number | null
   return_since_inception: number | null
   status: string
@@ -1612,8 +1624,14 @@ export interface Product {
   fee_bps: number | null
   next_open_date: string
   bucket: ProductBucket
-  observation_score: number
-  selection_score: number
+  evidence_tier: ProductEvidenceTier
+  evidence_label: string
+  evidence_scoring: boolean
+  evidence_automatic: boolean
+  evidence_single_cap_pct: number
+  evidence_aggregate_cap_pct: number | null
+  observation_score: number | null
+  selection_score: number | null
   observation_ready: boolean
   selected: boolean
   selection_rank: number | null
@@ -1633,6 +1651,7 @@ export interface Product {
   quota_verified_at: string
   allocation_reason: string
   target_gap_pct: number | null
+  reference_target_gap_pct: number | null
 }
 
 export interface ProductAllocationBucket {
@@ -1699,6 +1718,15 @@ export interface ProductAllocation {
     target_slice_amount: number
     max_single_amount: number
     minimum_new_position_amount: number
+    evidence_caps: {
+      six_month: { single_pct: number; aggregate_pct: number }
+      three_month: { single_pct: number; aggregate_pct: number }
+      one_month: {
+        automatic: false
+        single_pct: number
+        aggregate_pct: number
+      }
+    }
   }
   liquidity: {
     floor_pct: number
@@ -1748,12 +1776,16 @@ export interface ProductStats {
   observation_ready: number
   selected_count: number
   observation_count: number
+  evidence_counts: Record<ProductEvidenceTier, number>
+  scored_bucket_counts: Record<'cash' | 'short' | 'medium' | 'long', number>
   median_1y: number | null
   median_3m: number | null
   median_6m: number | null
+  median_reference: number | null
   universe_median_1y: number | null
   universe_median_3m: number | null
   universe_median_6m: number | null
+  universe_median_reference: number | null
   bucket_counts: Record<'cash' | 'short' | 'medium' | 'long', number>
   target_annualized: number
   target_gap_pct: number | null
@@ -1770,7 +1802,9 @@ export interface ProductView {
     per_bucket: number | null
     max_single_pct: number
     min_history_months: number
+    full_history_months: number
     selected_count: number
+    evidence_caps: ProductAllocation['allocation_policy']['evidence_caps']
     rules: string[]
   }
   stats: ProductStats

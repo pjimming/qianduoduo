@@ -19,15 +19,15 @@ const openEvents = computed(
 const reviewSummary = computed(() => props.dashboard.workspace.holding_reviews_summary)
 
 const sections = computed(() => [
+  { id: 'products', label: '配置目标与期限桶' },
   {
     id: 'holding-reviews',
-    label: '持仓复核与替换',
+    label: '当前持仓 vs 同桶候选',
     meta:
       reviewSummary.value.replace > 0
         ? `${reviewSummary.value.replace} 只建议替换`
         : `${reviewSummary.value.total} 只在持`,
   },
-  { id: 'products', label: '配置与候选池' },
   {
     id: 'events',
     label: '特殊事项',
@@ -40,8 +40,8 @@ const sections = computed(() => [
   <div class="r2-page">
     <R2PageHeader
       kicker="PRODUCTS &amp; ALLOCATION"
-      title="持仓复核、目标配置与产品事件"
-      description="先核对当前持仓与同桶候选；短、中、长期限桶统一按 30、100、360 天比较，本次切换等待期不计收益，到期自动续作不重复扣空档。日开持仓改看短期限候选，再查看新增资金如何分配；买入前仍需在招行 App 核对额度、费率和交易规则。"
+      title="配置目标、持仓复核与产品事件"
+      description="先确认新资金的期限桶配置并查看观察名单，再核对当前持仓与同桶候选；短、中、长期限桶统一按 30、100、360 天比较，本次切换等待期不计收益，到期自动续作不重复扣空档。日开持仓改看短期限候选；买入前仍需在招行 App 核对额度、费率和交易规则。"
     >
       <template #actions>
         <RouterLink
@@ -67,17 +67,23 @@ const sections = computed(() => [
     <R2SectionIndex :items="sections" />
 
     <div class="r2-stack">
-      <section id="holding-reviews" class="rw-panel r2-anchor" aria-label="持仓复核与替换">
-        <HoldingReviewPanel
-          :reviews="dashboard.workspace.holding_reviews"
-          :today="dashboard.meta.today"
-          :snapshot-date="dashboard.meta.product_snapshot_date"
-          :history-date="dashboard.meta.product_history_date"
-        />
-      </section>
-
-      <section id="products" class="r2-anchor" aria-label="配置与候选池">
-        <ProductsSection :dashboard="dashboard" />
+      <section id="products" class="r2-anchor" aria-label="配置目标与候选池">
+        <ProductsSection :dashboard="dashboard">
+          <template #after-allocation>
+            <section
+              id="holding-reviews"
+              class="rw-panel r2-anchor"
+              aria-label="当前持仓与同桶候选"
+            >
+              <HoldingReviewPanel
+                :reviews="dashboard.workspace.holding_reviews"
+                :today="dashboard.meta.today"
+                :snapshot-date="dashboard.meta.product_snapshot_date"
+                :history-date="dashboard.meta.product_history_date"
+              />
+            </section>
+          </template>
+        </ProductsSection>
       </section>
 
       <section id="events" class="rw-panel r2-anchor" aria-label="产品事件">

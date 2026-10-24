@@ -234,6 +234,44 @@ test('same-term candidate above the net gain threshold is a replace candidate', 
   assert.equal(review.candidates[0].comparison_days, 100);
 });
 
+test('3M replacement candidates cannot bypass the 10% single-product cap', () => {
+  const candidate = product({
+    code: 'NEW3M',
+    name: '三月期候选',
+    term_days: 90,
+    return_3m: 5,
+    return_6m: null,
+    return_1y: null,
+    history_months: 4,
+  });
+  const review = buildHoldingReview({
+    holding: holding({ amount: 100000 }),
+    products: [candidate],
+    universe: [current()],
+    principal: 100000,
+    setting: {
+      redemption_days: 1,
+      arrival_days: 1,
+      verified_at: '2026-10-20',
+      redemption_fee_bps: 0,
+      purchase_fee_bps: 0,
+      next_redeem_open_date: '2026-10-20',
+    },
+    settingsByCode: candidateRule('NEW3M'),
+    quotaByCode: { NEW3M: { available: 50000, max_order: 50000 } },
+    today: '2026-10-20',
+    snapshotDate: '2026-10-19',
+  });
+  const row = review.candidates.find((item) => item.code === 'NEW3M');
+  assert.ok(row);
+  assert.equal(row.evidence_tier, 'three_month');
+  assert.equal(row.evidence_single_cap_pct, 10);
+  assert.equal(row.evidence_single_cap_amount, 10000);
+  assert.equal(row.verdict, 'watch');
+  assert.ok(row.reasons.some((item) => item.includes('单只 10%')));
+  assert.notEqual(review.verdict, 'replace');
+});
+
 test('yield edge below 0.15pp is not worth switching even if fees are zero', () => {
   const candidate = product({
     code: 'TINY90',

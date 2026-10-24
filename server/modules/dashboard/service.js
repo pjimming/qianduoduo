@@ -234,6 +234,7 @@ function createDashboardQueryService(repository, options = {}) {
       holdings: tradeOverview.holdings,
       products: productView.all,
       universe: repository.listProducts(),
+      principal,
       settingsByCode: holdingReviewSettings,
       quotaByCode: allocationSettings.quota_by_code || {},
       today,

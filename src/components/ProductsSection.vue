@@ -6,7 +6,6 @@ import {
   bucketLabel,
   formatMoney,
   formatPct,
-  formatPp,
   formatTerm,
 } from '@/composables/useFormatters'
 import type { DashboardPayload, Product, ProductAllocationSettings } from '@/types/dashboard'
@@ -115,9 +114,11 @@ const goalText = computed(() => {
   )}（补仓 ¥${formatMoney(value.top_up_amount, 0)} / 新开 ¥${formatMoney(
     value.new_position_amount,
     0,
-  )} · 未分配 ¥${formatMoney(value.unallocated_amount, 0)} · 候选池 ${stats.value.total} 只（短 ${
-    counts.short
-  } / 中 ${counts.medium} / 长 ${counts.long}）`
+  )} · 未分配 ¥${formatMoney(value.unallocated_amount, 0)} · 可研究 ${
+    stats.value.total
+  } 只 / 可评分 ${stats.value.observation_ready} 只（短 ${counts.short} / 中 ${
+    counts.medium
+  } / 长 ${counts.long}）`
 })
 
 const progressStyle = computed(() => ({
@@ -142,16 +143,6 @@ const observationCandidates = computed(() => {
 function openProductDetail(product: Product): void {
   detailProduct.value = product
   detailOpen.value = true
-}
-
-function gapClass(product: Product): string {
-  return product.target_gap_pct !== null && product.target_gap_pct >= 0 ? 'positive' : ''
-}
-
-function quotaLabel(product: Product): string {
-  if (product.quota_status === 'verified') return '额度已核验'
-  if (product.quota_status === 'limited') return '额度不足，已截断'
-  return '额度未核验'
 }
 
 async function refreshSnapshot(): Promise<void> {
@@ -329,6 +320,48 @@ async function saveQuotas(): Promise<void> {
     </section>
 
     <section
+      v-if="observationCandidates.length"
+      class="product-module-card"
+      aria-labelledby="observationCardTitle"
+    >
+      <header class="product-module-head">
+        <div class="rw-card-heading">
+          <p class="kicker">OBSERVATION</p>
+          <h3 id="observationCardTitle" class="rw-panel-title">观察名单</h3>
+          <p class="rw-panel-sub">
+            研究排序，不代表已分配金额；点击产品查看收益、期限、额度与配置详情。
+          </p>
+        </div>
+      </header>
+      <div class="observation-grid">
+        <button
+          v-for="product in observationCandidates"
+          :key="product.code"
+          type="button"
+          class="observation-card"
+          :aria-label="`查看 ${product.name} 详情`"
+          @click="openProductDetail(product)"
+        >
+          <span class="observation-term">
+            {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
+          </span>
+          <strong class="observation-name">{{ product.name }}</strong>
+          <span class="observation-code">{{ product.code }} · {{ product.issuer }}</span>
+          <span class="observation-code">历史证据 · {{ product.evidence_label }}</span>
+          <small class="observation-meta">
+            参考年化 {{ formatPct(product.reference_yield_pct, 2) }} · 评分
+            {{ product.selection_score === null ? '—' : product.selection_score.toFixed(2) }}
+          </small>
+          <span class="observation-detail-hint">查看详情 →</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="product-section-slot">
+      <slot name="after-allocation" />
+    </div>
+
+    <section
       v-if="settingsOpen"
       class="product-module-card"
       aria-labelledby="assumptionsCardTitle"
@@ -422,85 +455,6 @@ async function saveQuotas(): Promise<void> {
       </form>
     </section>
 
-    <section class="product-module-card" aria-labelledby="targetProductsCardTitle">
-      <header class="product-module-head">
-        <div class="rw-card-heading">
-          <p class="kicker">TARGET PRODUCTS</p>
-          <h3 id="targetProductsCardTitle" class="rw-panel-title">目标产品</h3>
-          <p class="rw-panel-sub">
-            按期限桶、流动性、单只与底层策略上限生成目标金额；发行方仅展示，买入前需在招行 App 核验。
-          </p>
-        </div>
-      </header>
-      <div class="product-module-body">
-        <div v-if="products.watchlist.length" class="watchlist">
-          <article
-            v-for="product in products.watchlist"
-            :key="product.code"
-            class="product-card"
-            :class="`bucket-${product.bucket}`"
-          >
-            <div class="product-top">
-              <span class="term-badge">
-                {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
-              </span>
-              <span class="product-code">{{ product.code }}</span>
-              <span
-                v-if="product.allocation_mode"
-                class="allocation-mode-badge"
-                :class="`is-${product.allocation_mode}`"
-              >
-                {{ product.allocation_mode === 'top_up' ? '优先补仓' : '首次建仓' }}
-              </span>
-            </div>
-            <h3 class="product-name">{{ product.name }}</h3>
-            <div class="allocation-target">
-              <strong>¥{{ formatMoney(product.target_amount, 0) }}</strong>
-              <span>目标占比 {{ product.target_pct.toFixed(1) }}%</span>
-            </div>
-            <div class="product-yield">
-              <strong>{{ formatPct(product.return_1y, 2) }}</strong>
-              <span>近 1 年历史年化</span>
-            </div>
-            <div class="product-stats">
-              <div class="product-stat">
-                <span>近 3 月</span>
-                <strong>{{ formatPct(product.return_3m, 2) }}</strong>
-              </div>
-              <div class="product-stat">
-                <span>近 6 月</span>
-                <strong>{{ formatPct(product.return_6m, 2) }}</strong>
-              </div>
-            </div>
-            <p class="allocation-reason">{{ product.allocation_reason }}</p>
-            <div class="product-foot">
-              <span class="quota-badge" :class="`is-${product.quota_status}`">
-                {{ quotaLabel(product) }}
-              </span>
-              <span class="product-gap" :class="gapClass(product)">
-                距 3%
-                {{
-                  product.target_gap_pct === null
-                    ? '—'
-                    : formatPp(product.target_gap_pct, 2, true)
-                }}
-              </span>
-            </div>
-          </article>
-        </div>
-        <div v-else class="allocation-empty">
-          <strong>{{ allocation.principal > 0 ? '没有新增可分配金额' : '尚未初始化本金' }}</strong>
-          <p>
-            {{
-              allocation.principal > 0
-                ? '当前本金已被已确认持仓和待确认买入占用。下面保留观察名单，等资金释放或本金转入后再生成金额。'
-                : '先在“本金管理”中初始化本金，系统会按期限桶、流动性、单只和底层策略上限生成配置。'
-            }}
-          </p>
-        </div>
-      </div>
-    </section>
-
     <section
       v-if="products.watchlist.length"
       class="product-module-card"
@@ -556,43 +510,6 @@ async function saveQuotas(): Promise<void> {
       </div>
     </section>
 
-    <section
-      v-if="observationCandidates.length"
-      class="product-module-card"
-      aria-labelledby="observationCardTitle"
-    >
-      <header class="product-module-head">
-        <div class="rw-card-heading">
-          <p class="kicker">OBSERVATION</p>
-          <h3 id="observationCardTitle" class="rw-panel-title">观察名单</h3>
-          <p class="rw-panel-sub">
-            研究排序，不代表已分配金额；点击产品查看收益、期限、额度与配置详情。
-          </p>
-        </div>
-      </header>
-      <div class="observation-grid">
-        <button
-          v-for="product in observationCandidates"
-          :key="product.code"
-          type="button"
-          class="observation-card"
-          :aria-label="`查看 ${product.name} 详情`"
-          @click="openProductDetail(product)"
-        >
-          <span class="observation-term">
-            {{ bucketLabel(product.bucket) }} · {{ formatTerm(product.term_days, product.bucket) }}
-          </span>
-          <strong class="observation-name">{{ product.name }}</strong>
-          <span class="observation-code">{{ product.code }} · {{ product.issuer }}</span>
-          <small class="observation-meta">
-            近 1 年 {{ formatPct(product.return_1y, 2) }} · 评分
-            {{ product.selection_score.toFixed(2) }}
-          </small>
-          <span class="observation-detail-hint">查看详情 →</span>
-        </button>
-      </div>
-    </section>
-
     <section class="product-module-card product-risk-card" aria-labelledby="riskCardTitle">
       <header class="product-module-head">
         <div class="rw-card-heading">
@@ -607,6 +524,8 @@ async function saveQuotas(): Promise<void> {
         </svg>
         <span>
           目标金额由本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来现金流、单只与底层策略上限共同计算。
+          缺 1Y 的 6M 档和仅有 3M 的新发档可参与评分，单只与同类合计上限均为 10%/20%；仅有 1M
+          的产品只作人工新品观察，不自动分配。
           发行方名称和当前持仓占比只作展示，不参与产品筛选、金额分配、买入门槛、提案或自动评估。
           同桶残余资金优先补足仍可加仓的已确认持仓；首次建仓须同时达到起购金额和目标单只金额的一半，避免制造小额新仓。
           本项目日开新增额度固定为 0%，现有日开持仓只作为真实持仓保留并提示迁移；短桶承担流动性。
@@ -641,11 +560,6 @@ async function saveQuotas(): Promise<void> {
   position: relative;
 }
 
-.watchlist {
-  align-items: stretch;
-  margin-top: 0;
-}
-
 .product-module-card {
   padding: 20px 22px 22px;
   border: 1px solid rgba(205, 213, 202, 0.8);
@@ -655,8 +569,10 @@ async function saveQuotas(): Promise<void> {
   backdrop-filter: blur(10px);
 }
 
-.product-module-card + .product-module-card {
-  margin-top: 18px;
+.product-module-card + .product-module-card,
+.product-module-card + .product-section-slot,
+.product-section-slot + .product-module-card {
+  margin-top: 28px;
 }
 
 .product-module-head {
@@ -707,10 +623,6 @@ async function saveQuotas(): Promise<void> {
 
 .product-module-body .allocation-reasons {
   margin-bottom: 0;
-}
-
-.product-module-body .allocation-empty {
-  margin: 0;
 }
 
 .product-module-body .product-disclaimer {
@@ -839,74 +751,6 @@ async function saveQuotas(): Promise<void> {
   color: #7b6129;
   font-size: 12px;
   line-height: 1.6;
-}
-
-.allocation-target {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 9px 11px;
-  border-radius: 9px;
-  background: var(--green-wash);
-}
-
-.allocation-target strong {
-  color: var(--green);
-  font-family: var(--serif);
-  font-size: 24px;
-  font-weight: 400;
-}
-
-.allocation-target span {
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 12px;
-}
-
-.allocation-mode-badge {
-  padding: 2px 7px;
-  border: 1px solid rgba(var(--green-rgb), 0.22);
-  border-radius: 999px;
-  background: var(--green-wash);
-  color: var(--green);
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.allocation-mode-badge.is-new {
-  border-color: rgba(185, 137, 58, 0.28);
-  background: #fbf7ed;
-  color: #7b6129;
-}
-
-.allocation-reason {
-  margin: 9px 0 0;
-  color: var(--muted-light);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.allocation-empty {
-  margin: 14px 0;
-  padding: 22px;
-  border: 1px dashed rgba(var(--green-rgb), 0.28);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.58);
-}
-
-.allocation-empty strong {
-  color: var(--ink-soft);
-  font-size: 13px;
-}
-
-.allocation-empty p {
-  margin: 7px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
 }
 
 .quota-editor-grid {

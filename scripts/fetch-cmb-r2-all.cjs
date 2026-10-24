@@ -13,7 +13,10 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { buildProductView, isObservationReady } = require('../lib/products');
+const {
+  buildProductView,
+  isProductPoolEligible,
+} = require('../lib/products');
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
@@ -361,7 +364,7 @@ async function main() {
     }
 
     const products = rawProducts.map(toProduct).filter((product) => product.code);
-    const universe = products.filter(isObservationReady);
+    const universe = products.filter(isProductPoolEligible);
     const view = buildProductView(universe);
     const today = todayShanghai();
     const allPath = path.join(DATA_DIR, `cmb_r2_all-${today}.csv`);
