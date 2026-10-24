@@ -47,7 +47,7 @@
 2. 待确认交易：统计笔数、金额、最早交易日期；今天新增的待确认交易提示核对；超过 3 天未确认提示，超过 7 天标为警告。
 3. 交易收件箱：未处理截图、OCR 置信度低于 50% 或 parsed.warnings 非空、等待超过 1 天、重复匹配。需要校正的只列出字段，不擅自生成交易。
 4. 对账：缺成交截图、截图金额与流水不一致、产品代码不一致、赎回到账金额缺失、赎回没有匹配到买入批次、待确认时间过长。给出对应交易 id 或产品名。
-5. 到期与替换提醒：读取 workspace.holding_reviews。只报 reminder.level 为 urgent/window 的持仓，以及 verdict=replace 的替换建议；写清到期/赎回开放日、当前参考年化、首选候选、比较期限、切换等待及 `switch_wait_status`（verified/estimated）、有效计息、扣除等待与费用后的复利预计差额。若 workspace.holdings_summary 显示现有日开持仓，明确写“现有日开 ¥X，按赎回规则和同期限候选迁移；新增日开目标固定 0%”，不追溯删除。`switch_wait_status=estimated` 时必须标注“估算”并提醒执行前核验，不能写成已确认事实；额度或费率未核验时写“待核”，不要自行补猜。每日任务不重新跑完整选品。
+5. 到期与替换提醒：读取 workspace.holding_reviews。只报 reminder.level 为 urgent/window 的持仓，以及 verdict=replace 的替换建议；当前与候选参考年化都以 3M/6M/1Y 可得周期归一化，不要求 1Y 必须存在，也不能把缺失周期当成 0。写清到期/赎回开放日、当前参考年化、首选候选、`candidate.evidence_label`、可用的 3M/6M/1Y、比较期限、切换等待及 `switch_wait_status`（verified/estimated）、有效计息、扣除等待与费用后的复利预计差额；候选为 `six_month` 或 `three_month` 时同时写单只 10% 上限及是否已通过执行闸门。若 workspace.holdings_summary 显示现有日开持仓，明确写“现有日开 ¥X，按赎回规则和同期限候选迁移；新增日开目标固定 0%”，不追溯删除。`switch_wait_status=estimated` 时必须标注“估算”并提醒执行前核验，不能写成已确认事实；额度或费率未核验时写“待核”，不要自行补猜。每日任务不重新跑完整选品。
 6. 决策提案与自动评估：只读 `decision_proposals.pending` 和 `decision_proposals.accepted`。待采纳提案只提醒用户在消息中心决定；已采纳提案只提醒用户自行执行并上传截图。不得调用 `POST /api/decision-proposals/:id/adopt|reject` 代替用户决定，也不得创建对应交易。再报新增 pending 评估、运行失败、与手工评价冲突、低置信度，以及仍未处理的 screenshot_review、income_screenshot_review、evaluation_review、monthly_summary、quarterly_summary。证据不足保持 pending，不覆盖手工评价。
 7. 复盘节点：每月 1–5 日检查上月五问是否已填；季度首周检查上季度清单是否已填。同时读取 workspace.timeline.nodes，只要有 overdue 的月度五问或季度清单，即使已过 5 日或首周也提示待补。若数据已清空，建议如实写“数据未保留/样本不足”，不要补编数字。
 8. 服务状态：如果 8765 无法连接，只报告“本地服务未运行，巡检未执行”，不要猜测账本数据。
