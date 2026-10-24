@@ -5,6 +5,12 @@ function createProductValuationsRepository(repository) {
     throw new Error('product valuations repository 需要 repository');
   }
   return {
+    createHoldingValuation(input, context) {
+      return repository.holdingValuationStore.createSnapshot(
+        input,
+        context,
+      );
+    },
     flagProductIncomeConflict(input) {
       return repository.flagProductIncomeConflict(input);
     },
@@ -20,11 +26,23 @@ function createProductValuationsRepository(repository) {
     getWorkspace(today, holdings) {
       return repository.productValuationStore.getWorkspace(today, holdings);
     },
+    getCurrentHoldingsValuation(today, holdings) {
+      return repository.holdingValuationStore.getCurrent(today, holdings);
+    },
+    getHoldingValuationEvidenceFile(id) {
+      return repository.holdingValuationStore.getEvidenceFile(id);
+    },
+    listHoldingValuations(limit) {
+      return repository.holdingValuationStore.listSnapshots(limit);
+    },
     listValuations() {
       return repository.productValuationStore.listValuations();
     },
     listYieldSettings() {
       return repository.productValuationStore.listYieldSettings();
+    },
+    saveHoldingValuationEvidence(decoded) {
+      return repository.holdingValuationStore.saveEvidenceImage(decoded);
     },
     saveYieldSetting(productCode, body) {
       return repository.productValuationStore.saveYieldSetting(

@@ -73,6 +73,7 @@ const shortcuts = computed(() => [
       :summary="dashboard.summary"
       :windows="dashboard.windows"
       :records="dashboard.records"
+      :valuation="dashboard.workspace.current_holdings_valuation"
     />
 
     <section class="r2-overview-charts" aria-label="收益图表">

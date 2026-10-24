@@ -31,7 +31,7 @@ const sortableColumns: Array<{ key: LedgerSortKey; label: string; numeric: boole
   { key: 'principal', label: 'R2 本金', numeric: true },
   { key: 'daily_pnl', label: '当日收益', numeric: true },
   { key: 'daily_return', label: '日收益率', numeric: true },
-  { key: 'net_value', label: '账户净值', numeric: true },
+  { key: 'net_value', label: '记录日参考净值', numeric: true },
 ]
 
 function numericValue(record: LedgerRecord, key: LedgerSortKey): number {

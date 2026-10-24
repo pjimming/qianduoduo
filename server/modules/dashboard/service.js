@@ -23,6 +23,11 @@ function createDashboardQueryService(repository, options = {}) {
     const rawRecords = repository.listRecords();
     const records = enrichRecords(rawRecords);
     const tradeOverview = repository.tradeStore.getOverview(today);
+    const currentHoldingsValuation =
+      repository.holdingValuationStore.getCurrent(
+        today,
+        tradeOverview.holdings,
+      );
     const incomeDisclosurePolicy =
       repository.productValuationStore.getDisclosurePolicy(
         today,
@@ -93,6 +98,7 @@ function createDashboardQueryService(repository, options = {}) {
       review,
       trades: tradeOverview,
     });
+    workspace.current_holdings_valuation = currentHoldingsValuation;
     workspace.holding_reviews = holdingReviews;
     workspace.holding_reviews_summary = {
       total: holdingReviews.length,

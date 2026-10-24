@@ -6,6 +6,7 @@ import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
 import TradeInboxPanel from '@/components/review/TradeInboxPanel.vue'
 import TradesPanel from '@/components/review/TradesPanel.vue'
 import HoldingsPanel from '@/components/review/HoldingsPanel.vue'
+import CurrentHoldingsValuationPanel from '@/components/r2/CurrentHoldingsValuationPanel.vue'
 import ProductValuationPanel from '@/components/r2/ProductValuationPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
 
@@ -22,6 +23,13 @@ const pendingInbox = computed(
 )
 
 const sections = computed(() => [
+  {
+    id: 'current-value',
+    label: '当前净值',
+    meta: props.dashboard.workspace.current_holdings_valuation.available
+      ? `快照 ${props.dashboard.workspace.current_holdings_valuation.as_of_date}`
+      : '暂无快照',
+  },
   {
     id: 'holdings',
     label: '当前持仓',
@@ -73,6 +81,14 @@ function openTrades(): void {
     <R2SectionIndex :items="sections" />
 
     <div class="r2-stack">
+      <section id="current-value" class="rw-panel r2-anchor" aria-label="当前已确认持仓净值">
+        <CurrentHoldingsValuationPanel
+          :valuation="dashboard.workspace.current_holdings_valuation"
+          :holdings="dashboard.workspace.holdings"
+          :today="today"
+        />
+      </section>
+
       <section id="holdings" class="rw-panel r2-anchor" aria-label="持仓结构">
         <HoldingsPanel
           :holdings="dashboard.workspace.holdings"

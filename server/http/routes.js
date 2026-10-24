@@ -60,6 +60,10 @@ const API_ROUTE_PATTERNS = Object.freeze([
   ['PUT', /^\/api\/product-yield-settings\/[A-Za-z0-9-]+$/],
   ['POST', '/api/product-valuations'],
   ['PUT', /^\/api\/product-valuations\/\d+$/],
+  ['GET', '/api/holding-valuations'],
+  ['POST', '/api/holding-valuations'],
+  ['POST', '/api/holding-valuations/evidence'],
+  ['GET', /^\/api\/holding-valuations\/evidence\/\d+\/image$/],
 
   ['GET', '/api/trades'],
   ['POST', '/api/trades'],

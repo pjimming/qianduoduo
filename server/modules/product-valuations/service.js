@@ -37,6 +37,59 @@ function createProductValuationsService({
     };
   }
 
+  function listHoldingValuations(query) {
+    const today = todayProvider();
+    const limit = Number(query.get('limit') || 20);
+    return {
+      current: productValuationsRepository.getCurrentHoldingsValuation(
+        today,
+        productValuationsRepository.getPortfolio(),
+      ),
+      snapshots:
+        productValuationsRepository.listHoldingValuations(limit),
+    };
+  }
+
+  function createHoldingValuation(body) {
+    let result;
+    try {
+      result = productValuationsRepository.createHoldingValuation(
+        body,
+        { today: todayProvider(), now: new Date().toISOString() },
+      );
+    } catch (error) {
+      throw serviceError(400, error.message);
+    }
+    return {
+      statusCode: result.created ? 201 : 200,
+      body: {
+        snapshot: result.snapshot,
+        created: result.created,
+        dashboard: dashboardQuery.projectDashboard(),
+      },
+    };
+  }
+
+  function uploadHoldingValuationEvidence(decoded) {
+    try {
+      const result =
+        productValuationsRepository.saveHoldingValuationEvidence(decoded);
+      return {
+        statusCode: result.duplicate ? 200 : 201,
+        body: {
+          evidence: result.evidence,
+          duplicate: result.duplicate,
+        },
+      };
+    } catch (error) {
+      throw serviceError(400, error.message);
+    }
+  }
+
+  function getHoldingValuationEvidenceFile(id) {
+    return productValuationsRepository.getHoldingValuationEvidenceFile(id);
+  }
+
   function saveYieldSetting(productCode, body) {
     try {
       return {
@@ -141,9 +194,13 @@ function createProductValuationsService({
   }
 
   return {
+    createHoldingValuation,
+    uploadHoldingValuationEvidence,
     createValuation,
     getValuation,
+    getHoldingValuationEvidenceFile,
     list,
+    listHoldingValuations,
     listYieldSettings,
     saveYieldSetting,
     updateValuation,

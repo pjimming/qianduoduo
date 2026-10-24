@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { LedgerRecord, Summary } from '@/types/dashboard'
+import type {
+  CurrentHoldingsValuation,
+  LedgerRecord,
+  Summary,
+} from '@/types/dashboard'
 import {
   formatDateShort,
   formatMoney,
@@ -13,12 +17,30 @@ const props = defineProps<{
   summary: Summary
   windows: Record<'7' | '30' | '90', Summary>
   records: LedgerRecord[]
+  valuation: CurrentHoldingsValuation
 }>()
 
 const hasRecords = computed(() => props.records.length > 0)
 const lastRecord = computed(() => props.records.at(-1) ?? null)
 const window30 = computed(() => props.windows['30'])
 const annualized = computed(() => window30.value.annualized_pct)
+const valuationBadge = computed(() => {
+  if (!props.valuation.available || !props.valuation.as_of_date) return '暂无快照'
+  const date = formatDateShort(props.valuation.as_of_date)
+  return props.valuation.status === 'stale' ? `${date} · 待更新` : date
+})
+
+const valuationSub = computed(() => {
+  if (!props.valuation.available) {
+    return `已确认 ${props.valuation.active_holding_count} 批 · 待录入银行持仓市值`
+  }
+  return `已确认 ${props.valuation.active_holding_count} 批 · 成本 ¥${formatMoney(
+    props.valuation.active_cost,
+  )} · 待确认 ¥${formatMoney(
+    props.valuation.pending_buy_amount,
+    0,
+  )} 未计入`
+})
 
 const annualizedSub = computed(() => {
   if (annualized.value === null) return '至少需要两天记录'
@@ -65,21 +87,17 @@ function tone(value: number | null): string {
   <section class="stats-grid" aria-label="收益概览">
     <article class="stat-card stat-primary">
       <div class="stat-head">
-        <span>账户净值</span>
-        <span class="soft-badge">{{ hasRecords ? formatDateShort(summary.last_date) : '最新' }}</span>
+        <span>已确认持仓净值</span>
+        <span class="soft-badge">{{ valuationBadge }}</span>
       </div>
       <strong class="stat-value">
-        {{ hasRecords ? `¥${formatMoney(summary.latest_net_value)}` : '—' }}
-      </strong>
-      <p class="stat-sub">
         {{
-          hasRecords
-            ? `本金 ¥${formatMoney(summary.latest_principal)} · 累计 ${formatSignedMoney(
-                summary.latest_cumulative_pnl,
-              )}`
-            : '本金 + 累计收益'
+          valuation.available && valuation.current_value !== null
+            ? `¥${formatMoney(valuation.current_value)}`
+            : '—'
         }}
-      </p>
+      </strong>
+      <p class="stat-sub">{{ valuationSub }}</p>
       <svg class="stat-spark" viewBox="0 0 180 44" aria-hidden="true">
         <template v-if="sparkline">
           <defs>

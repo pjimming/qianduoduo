@@ -155,6 +155,41 @@ export interface CapitalState {
   events: CapitalEvent[]
 }
 
+export interface HoldingValuationItem {
+  id: number
+  snapshot_id: number
+  product_code: string
+  product_name: string
+  market_value: number
+  active_cost: number | null
+  created_at: string
+}
+
+export interface CurrentHoldingsValuation {
+  available: boolean
+  status: 'current' | 'stale' | 'missing'
+  current_value: number | null
+  as_of_date: string | null
+  as_of_at: string | null
+  source: string | null
+  notes: string
+  evidence_id: number | null
+  active_holding_count: number
+  active_product_count: number
+  active_cost: number
+  market_gain: number | null
+  pending_buy_count: number
+  pending_buy_amount: number
+  items: HoldingValuationItem[]
+  items_complete: boolean
+  stale_reasons: string[]
+  latest_confirmed_change_date?: string | null
+  snapshot_id?: number
+  previous_value: number | null
+  previous_as_of_date: string | null
+  change_since_previous: number | null
+}
+
 export interface Summary {
   record_count: number
   first_date: string | null
@@ -982,6 +1017,7 @@ export interface TimelineNode {
 export interface ReviewWorkspace {
   decisions: DecisionEntry[]
   holdings: Holding[]
+  current_holdings_valuation: CurrentHoldingsValuation
   holding_reviews: HoldingReview[]
   holding_reviews_summary: HoldingReviewsSummary
   events: ProductEvent[]
@@ -1409,6 +1445,55 @@ export interface ProductValuationMutationResponse {
   valuation: ProductDailyValuation
   conflict: string | null
   dashboard: DashboardPayload
+}
+
+export interface HoldingValuationItemInput {
+  product_code: string
+  product_name?: string
+  market_value: number
+}
+
+export interface HoldingValuationInput {
+  as_of_date: string
+  total_value: number
+  source?: string
+  evidence_id?: number | null
+  notes?: string
+  items?: HoldingValuationItemInput[]
+}
+
+export interface HoldingValuationMutationResponse {
+  snapshot: {
+    id: number
+    as_of_date: string
+    as_of_at: string
+    total_value: number
+    source: string
+    evidence_id: number | null
+    notes: string
+    items: HoldingValuationItem[]
+  }
+  created: boolean
+  dashboard: DashboardPayload
+}
+
+export interface HoldingValuationEvidence {
+  id: number
+  evidence_type: string
+  source_channel: string
+  sha256: string
+  original_name: string
+  storage_namespace: string
+  storage_name: string
+  mime: string
+  bytes: number
+  available: boolean
+  status: string
+}
+
+export interface HoldingValuationEvidenceUploadResponse {
+  evidence: HoldingValuationEvidence
+  duplicate: boolean
 }
 
 export interface ProductYieldSettingInput {

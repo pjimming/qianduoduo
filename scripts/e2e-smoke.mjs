@@ -240,6 +240,15 @@ async function main() {
       ],
       { source: 'income-screenshot', screenshotId: 99 },
     )
+    repository.holdingValuationStore.createSnapshot(
+      {
+        as_of_date: '2026-10-24',
+        total_value: 3006.04,
+        source: 'user-confirmed',
+        notes: 'E2E 银行已确认持仓市值',
+      },
+      { today: '2026-10-24' },
+    )
     const addIncomeHistory = ({
       key,
       name,
@@ -348,6 +357,15 @@ async function main() {
       (await page.locator('.r2-jump-card').count()) === 3,
       '收益概览应只保留两类截图和消息中心入口',
     )
+    const currentValueCard =
+      (await page.locator('.stat-primary').textContent()) ?? ''
+    assert(
+      currentValueCard.includes('已确认持仓净值') &&
+        currentValueCard.includes('¥3,006.04') &&
+        currentValueCard.includes('待确认 ¥0 未计入'),
+      `首页没有使用已确认持仓市值快照：${currentValueCard}`,
+    )
+    await assertFontFloor(page, '.stats-grid', '收益概览桌面端')
 
     await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.ledger-panel')
@@ -497,12 +515,47 @@ async function main() {
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      tradesSectionOrder.join(',') === 'holdings,valuations,trades,inbox',
+      tradesSectionOrder.join(',') ===
+        'current-value,holdings,valuations,trades,inbox',
       `交易与持仓页模块顺序不正确：${tradesSectionOrder.join(',')}`,
+    )
+    const currentValuationPanel =
+      (await page.locator('#current-value').textContent()) ?? ''
+    assert(
+      currentValuationPanel.includes('¥3,006.04') &&
+        currentValuationPanel.includes('银行快照 10.24'),
+      `持仓市值面板数据不正确：${currentValuationPanel}`,
     )
     assert(
       (await page.locator('.back-to-top').count()) === 0,
       '页面顶部不应提前显示回到顶部悬浮球',
+    )
+    await page.getByRole('button', { name: '更新持仓市值' }).click()
+    await page
+      .locator('.nav-form input[type="number"]')
+      .first()
+      .fill('3007.04')
+    await page.locator('.nav-evidence input[type="file"]').setInputFiles({
+      name: 'e2e-bank-holdings.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(ONE_PIXEL_PNG, 'base64'),
+    })
+    await page.waitForFunction(() =>
+      document
+        .querySelector('.nav-evidence')
+        ?.textContent?.includes('已绑定：e2e-bank-holdings.png'),
+    )
+    await page.getByRole('button', { name: '保存市值快照' }).click()
+    await page.waitForFunction(() =>
+      document
+        .querySelector('#current-value')
+        ?.textContent?.includes('¥3,007.04'),
+    )
+    await page.waitForSelector('#current-value a[href*="/api/holding-valuations/evidence/"]')
+    await assertFontFloor(
+      page,
+      '#current-value',
+      '当前已确认持仓净值桌面端',
     )
     await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'instant' }))
     await page.waitForSelector('.back-to-top')
@@ -740,6 +793,17 @@ async function main() {
     await assertFontFloor(page, '.inbox-page', '消息中心移动端')
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.product-valuation-panel .pv-card')
+    await assertFontFloor(
+      page,
+      '#current-value',
+      '当前已确认持仓净值移动端',
+    )
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '移动端当前持仓净值出现横向溢出',
+    )
     await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'instant' }))
     await page.waitForSelector('.back-to-top')
     const mobileBackToTop = await page.locator('.back-to-top').evaluate((element) => {
