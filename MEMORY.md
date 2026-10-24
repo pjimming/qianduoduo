@@ -27,7 +27,7 @@
 - 前端：Vue 3 + Vite + TypeScript + Pinia + Vue Router；后端：Node.js 24+、内置 `node:sqlite`。
 - 后端为模块化单体。`server.js` 只负责应用工厂和生命周期入口；`server/app.js` 装配 HTTP 应用，`server/lifecycle.js` 管理启动、维护任务、调度器、优雅关闭和数据库关闭；HTTP、域用例和基础设施分别位于 `server/http/`、`server/modules/`、`server/infrastructure/`。API pattern 在启动时强制校验已注册且无重复，未知 API 继续返回 404 `{"error":"接口不存在"}`。
 - 后端模块按域拆为 capital、dashboard、data-trust、decisions、evaluations、income、ledger、notifications、operations、product-valuations、products、proposals、research、reviews、trades；`server/modules/` 和 `server/infrastructure/` 不直接写 SQL，仍通过 repository adapter 调用现有 `lib/*-store.js`。旧 `server/http/legacy-app.js` 已删除，不再保留两套 HTTP 业务实现。
-- Dashboard 读取契约：`GET /api/dashboard`、`GET /api/review/workspace` 和 `GET /api/inbox` 只读；决策提案、提醒生命周期和消息中心持久化状态通过 `POST /api/dashboard/refresh`、服务启动、后台巡检或写操作完成后的显式投影更新。投影使用事务，不得重新把持久化写入塞回 GET。
+- Dashboard 读取契约：`GET /api/dashboard` 保留完整兼容响应；`GET /api/dashboard/sections?include=...` 与 `/api/dashboard/{summary|overview|ledger|trades|products|evaluation|inbox}` 提供同一只读快照的分区视图，兼容聚合与分区由同一查询快照选择器生成，不形成两套业务读模型；`GET /api/review/workspace` 和 `GET /api/inbox` 同样只读。决策提案、提醒生命周期和消息中心持久化状态通过 `POST /api/dashboard/refresh`、服务启动、后台巡检或写操作完成后的显式投影更新。投影使用事务，不得重新把持久化写入塞回 GET。
 - 自动化执行契约：`automation cycle` 在独立 worker 中运行，主进程统一管理硬超时、防重入、终止和中断恢复；手动运行、后台调度及交易/决策写后评估共用同一 runner，不得在请求或调度线程直接执行长 cycle。
 - 预测校准契约：AI/平台提案把结构化预测冻结在正式决策的 `review_meta.predictions`，实际结果写入 `review_meta.prediction_results` 并复用正式交易、产品收益事实和事实修订链；预测修订只能追加版本，月度校准通过 `/api/calibration/monthly` 按类型和置信度汇总，待验证、未执行和失效不计入命中率。
 - SQLite schema、迁移版本、数据量、外键和完整性检查结果以代码、迁移脚本、运行接口和数据库查询为准；本文件不保存这些会变化的快照。
@@ -36,7 +36,7 @@
 - 收益截图的产品收益、账户收益、修订、证据链接和收件箱状态必须由共享 `BEGIN IMMEDIATE` 事务提交；并发或重复 apply 应收敛到同一正式事实。
 - 财务与运维风险的待办状态只查工作区根目录 `TODO.md`；本文件只记录必须长期保持的约束，不复制任务编号、优先级、完成情况或阻塞状态。
 - R2 页面在 `src/views/r2/`：`R2LayoutView` 统一加载数据，`InboxView`、`OverviewView`、`DailyEntryView`、`TradesView`、`ProductsView`、`ReviewView`、`EvaluationView` 七个子页；页面外壳在 `src/components/r2/`，样式在 `src/styles/r2-pages.css` 与 `src/styles/inbox.css`。`/` 和 `/ledger` 都重定向到 `/ledger/overview`。
-- R2 路由：`/ledger/overview` 收益概览、`/ledger/inbox` 消息中心、`/ledger/daily` 每日记账、`/ledger/trades` 交易与持仓、`/ledger/products` 产品与配置、`/ledger/review` 复盘、`/ledger/evaluation` 决策与评估。七个页面共享同一个 `dashboard`，切换页面不重复请求 `/api/dashboard`。
+- R2 路由：`/ledger/overview` 收益概览、`/ledger/inbox` 消息中心、`/ledger/daily` 每日记账、`/ledger/trades` 交易与持仓、`/ledger/products` 产品与配置、`/ledger/review` 复盘、`/ledger/evaluation` 决策与评估。`R2LayoutView` 按页面请求 `/api/dashboard/sections` 的对应分区，store 深合并分区并保留共享状态；页面首屏不下载完整 `/api/dashboard`，写接口继续返回完整 Dashboard 兼容响应。
 - R2 顶部悬浮分区导航已移除；左侧 sidebar 是唯一的跨页分区入口。页面内的 `R2SectionIndex` 只做当前页锚点（如复盘页的日周月评分 / 复盘节奏 / 月度五问 / 季度复盘），不重复承载跨页导航。
 - R2 卡片规范：每个模块用主题卡片包起来，浅色主题为暖白、深色主题为石墨青灰；卡片头固定为“英文小标签 + 中文标题 + 一行说明 + 右侧操作”，统计标签放在标题下方；产品页使用 `product-module-card`，复盘页使用 `review-module-card`。内层子卡片不再叠加厚重阴影，避免卡片套卡片。
 - 收益概览：压缩 hero 与 KPI 高度，两个图表在所有宽度下单列全宽排列（桌面高 340px、移动端 300px），待办入口放到图表下方；图表宽度随主内容区铺满，优先保证数据可读性。

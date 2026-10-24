@@ -1605,8 +1605,47 @@ async function main() {
       '自动评估没有说明结论更新时间',
     )
 
+    const sectionPage = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    })
+    const sectionRequests = []
+    sectionPage.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/dashboard/sections') {
+        sectionRequests.push(url.searchParams.get('include'))
+      }
+      if (url.pathname === '/api/dashboard') {
+        sectionRequests.push('FULL_DASHBOARD')
+      }
+    })
+    const expectedPageSections = [
+      ['/ledger/overview', 'overview'],
+      ['/ledger/inbox', 'summary,inbox'],
+      ['/ledger/daily', 'summary,ledger,trades,inbox'],
+      ['/ledger/trades', 'summary,trades'],
+      ['/ledger/products', 'summary,products'],
+      ['/ledger/review', 'summary,ledger,trades,evaluation'],
+      ['/ledger/evaluation', 'summary,trades,evaluation'],
+    ]
+    for (const [path, include] of expectedPageSections) {
+      const start = sectionRequests.length
+      await sectionPage.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+      await sectionPage.waitForSelector('.r2-page')
+      assert(
+        sectionRequests.slice(start).includes(include),
+        `${path} 没有请求所需 Dashboard 分区：${include}`,
+      )
+    }
+    assert(
+      !sectionRequests.includes('FULL_DASHBOARD'),
+      'R2 页面仍在请求完整 /api/dashboard',
+    )
+    await sectionPage.close()
+
     const errorPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
-    await errorPage.route('**/api/dashboard', (route) => route.abort())
+    await errorPage.route('**/api/dashboard/sections**', (route) =>
+      route.abort(),
+    )
     await errorPage.goto(`${base}/`, { waitUntil: 'domcontentloaded' })
     await errorPage.waitForSelector('.dashboard-error-state')
     assert(

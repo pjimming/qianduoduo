@@ -15,6 +15,150 @@ const {
 const { buildProductView } = require('../../../lib/products');
 const { buildHoldingReviews } = require('../../../lib/holdings-review');
 
+const DASHBOARD_SECTIONS = Object.freeze([
+  'summary',
+  'overview',
+  'ledger',
+  'trades',
+  'products',
+  'evaluation',
+  'inbox',
+]);
+const DASHBOARD_SECTION_SET = new Set(DASHBOARD_SECTIONS);
+
+function mergeSectionData(target, source) {
+  const output =
+    target && typeof target === 'object' && !Array.isArray(target)
+      ? { ...target }
+      : {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return output;
+  }
+  for (const [key, value] of Object.entries(source)) {
+    if (value === undefined) continue;
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      output[key] &&
+      typeof output[key] === 'object' &&
+      !Array.isArray(output[key])
+    ) {
+      output[key] = mergeSectionData(output[key], value);
+    } else {
+      output[key] = value;
+    }
+  }
+  return output;
+}
+
+function selectDashboardSection(payload, section) {
+  const workspace = payload.workspace || {};
+  switch (section) {
+    case 'summary':
+      return {
+        meta: payload.meta,
+        summary: payload.summary,
+        windows: payload.windows,
+        capital: payload.capital,
+        inbox_center: {
+          summary: payload.inbox_center.summary,
+        },
+      };
+    case 'overview':
+      return {
+        meta: payload.meta,
+        records: payload.records,
+        summary: payload.summary,
+        windows: payload.windows,
+        capital: payload.capital,
+        workspace: {
+          current_holdings_valuation: workspace.current_holdings_valuation,
+          trades: workspace.trades
+            ? {
+                summary: workspace.trades.summary,
+              }
+            : null,
+          events: workspace.events,
+        },
+        automation: {
+          pending_evaluations: payload.automation.pending_evaluations,
+        },
+        decision_proposals: {
+          summary: payload.decision_proposals.summary,
+        },
+        inbox_center: {
+          summary: payload.inbox_center.summary,
+        },
+      };
+    case 'ledger':
+      return {
+        meta: payload.meta,
+        records: payload.records,
+        summary: payload.summary,
+        windows: payload.windows,
+        review: payload.review,
+        capital: payload.capital,
+      };
+    case 'trades':
+      return {
+        meta: payload.meta,
+        workspace: {
+          current_holdings_valuation: workspace.current_holdings_valuation,
+          holdings: workspace.holdings,
+          holdings_summary: workspace.holdings_summary,
+          trades: workspace.trades,
+          timeline: workspace.timeline,
+          product_valuation_summary: workspace.product_valuation_summary,
+          product_valuation_summaries: workspace.product_valuation_summaries,
+          product_valuation_reconciliation:
+            workspace.product_valuation_reconciliation,
+          product_valuation_disclosure_policy:
+            workspace.product_valuation_disclosure_policy,
+        },
+      };
+    case 'products':
+      return {
+        meta: payload.meta,
+        products: payload.products,
+        workspace: {
+          holding_reviews: workspace.holding_reviews,
+          holding_reviews_summary: workspace.holding_reviews_summary,
+          events: workspace.events,
+          timeline: workspace.timeline,
+        },
+        inbox_center: {
+          summary: payload.inbox_center.summary,
+        },
+      };
+    case 'evaluation':
+      return {
+        meta: payload.meta,
+        workspace: {
+          decisions: workspace.decisions,
+          notes: workspace.notes,
+          quarterly: workspace.quarterly,
+          events: workspace.events,
+          timeline: workspace.timeline,
+          trades: workspace.trades,
+        },
+        automation: payload.automation,
+        decision_proposals: payload.decision_proposals,
+      };
+    case 'inbox':
+      return {
+        meta: payload.meta,
+        workspace: {
+          income_inbox: workspace.income_inbox,
+          income_summary: workspace.income_summary,
+        },
+        inbox_center: payload.inbox_center,
+      };
+    default:
+      throw new Error(`未知 Dashboard 分区：${section}`);
+  }
+}
+
 function createDashboardQueryService(repository, options = {}) {
   if (!repository) throw new Error('dashboard 查询服务需要 repository');
   const todayProvider = options.todayProvider || todayShanghai;
@@ -207,16 +351,67 @@ function createDashboardQueryService(repository, options = {}) {
   }
 
   function getWorkspace(today = todayProvider()) {
-    return readDashboard(today).workspace;
+    return getSections(['trades', 'products', 'evaluation', 'inbox'], today)
+      .workspace;
+  }
+
+  function normalizeSections(sections) {
+    const requested = Array.isArray(sections)
+      ? sections
+      : String(sections || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+    const normalized = [...new Set(requested)];
+    const invalid = normalized.filter(
+      (section) => !DASHBOARD_SECTION_SET.has(section),
+    );
+    if (invalid.length) {
+      const error = new Error(
+        `未知 Dashboard 分区：${invalid.join(', ')}`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!normalized.length) {
+      const error = new Error('至少选择一个 Dashboard 分区');
+      error.statusCode = 400;
+      throw error;
+    }
+    return normalized;
+  }
+
+  function getSection(section, today = todayProvider()) {
+    const [normalized] = normalizeSections([section]);
+    return selectDashboardSection(readDashboard(today), normalized);
+  }
+
+  function getSections(sections, today = todayProvider()) {
+    const normalized = normalizeSections(sections);
+    const dashboard = readDashboard(today);
+    return normalized.reduce(
+      (result, section) =>
+        mergeSectionData(
+          result,
+          selectDashboardSection(dashboard, section),
+        ),
+      {},
+    );
   }
 
   return {
+    DASHBOARD_SECTIONS,
     getDashboard: readDashboard,
+    getSection,
+    getSections,
     getWorkspace,
     projectDashboard,
   };
 }
 
 module.exports = {
+  DASHBOARD_SECTIONS,
   createDashboardQueryService,
+  mergeSectionData,
+  selectDashboardSection,
 };

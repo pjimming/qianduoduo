@@ -159,7 +159,6 @@ onBeforeUnmount(() => {
           ref="quickRef"
           :dashboard="dashboard"
           :workspace="dashboard.workspace"
-          :automation="dashboard.automation"
           @saved="handleRecordSaved"
           @open-module="goModule"
         />

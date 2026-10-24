@@ -7,7 +7,6 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort } from '@/composables/useFormatters'
 import type {
-  AutomationWorkspace,
   DashboardPayload,
   IncomeInboxItem,
   ProductEventImpact,
@@ -55,7 +54,6 @@ interface IncomeDraft {
 const props = defineProps<{
   dashboard: DashboardPayload
   workspace: ReviewWorkspace
-  automation: AutomationWorkspace
 }>()
 
 const emit = defineEmits<{

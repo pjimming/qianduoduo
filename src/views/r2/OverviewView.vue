@@ -13,9 +13,8 @@ const props = defineProps<{
 
 const pendingInbox = computed(
   () =>
-    props.dashboard.workspace.trades?.inbox.filter(
-      (item) => item.status === 'pending',
-    ).length ?? 0,
+    props.dashboard.inbox_center.summary.by_source.trade_screenshot
+      ?.pending ?? 0,
 )
 const pendingTrades = computed(
   () => props.dashboard.workspace.trades?.summary.pending_count ?? 0,

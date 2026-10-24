@@ -48,9 +48,51 @@ import type {
   TradeOverviewResponse,
 } from '@/types/dashboard'
 
+export type DashboardView =
+  | 'overview'
+  | 'daily'
+  | 'trades'
+  | 'products'
+  | 'review'
+  | 'evaluation'
+  | 'inbox'
+
+const DASHBOARD_VIEW_SECTIONS: Record<DashboardView, string[]> = {
+  overview: ['overview'],
+  daily: ['summary', 'ledger', 'trades', 'inbox'],
+  trades: ['summary', 'trades'],
+  products: ['summary', 'products'],
+  review: ['summary', 'ledger', 'trades', 'evaluation'],
+  evaluation: ['summary', 'trades', 'evaluation'],
+  inbox: ['summary', 'inbox'],
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function mergeDashboardData(
+  current: unknown,
+  patch: unknown,
+): Record<string, unknown> {
+  const merged = isPlainObject(current) ? { ...current } : {}
+  if (!isPlainObject(patch)) return merged
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue
+    if (isPlainObject(value) && isPlainObject(merged[key])) {
+      merged[key] = mergeDashboardData(merged[key], value)
+    } else {
+      merged[key] = value
+    }
+  }
+  return merged
+}
+
 export const useDashboardStore = defineStore('dashboard', () => {
   const dashboard = ref<DashboardPayload | null>(null)
   const loading = ref(false)
+  const currentView = ref<DashboardView | null>(null)
+  let loadVersion = 0
 
   const capital = computed<CapitalState | null>(() => dashboard.value?.capital ?? null)
 
@@ -66,12 +108,19 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  async function load(): Promise<void> {
+  async function load(view: DashboardView = 'overview'): Promise<void> {
+    const version = ++loadVersion
     loading.value = true
     try {
-      dashboard.value = await apiRequest<DashboardPayload>('/api/dashboard')
+      const sections = DASHBOARD_VIEW_SECTIONS[view]
+      const patch = await apiRequest<Record<string, unknown>>(
+        `/api/dashboard/sections?include=${encodeURIComponent(sections.join(','))}`,
+      )
+      if (version !== loadVersion) return
+      dashboard.value = mergeDashboardData(dashboard.value, patch) as unknown as DashboardPayload
+      currentView.value = view
     } finally {
-      loading.value = false
+      if (version === loadVersion) loading.value = false
     }
   }
 
@@ -803,6 +852,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   return {
     dashboard,
     loading,
+    currentView,
     capital,
     load,
     recordByDate,

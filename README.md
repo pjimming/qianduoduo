@@ -41,7 +41,7 @@
 | 复盘 | `/ledger/review` | 日/周/月评分与五问怎么写 | 复盘时间轴、自动复盘评分、月度五问、季度复盘 | `lib/metrics.js`、`lib/review-store.js` |
 | 决策与评估 | `/ledger/evaluation` | 当时为什么做、事后怎么评 | 决策日志、自动评估 | 决策日志、`lib/automation-store.js` |
 
-共享数据由 `src/views/r2/R2LayoutView.vue` 统一加载一次 `/api/dashboard`，七个页面只接收同一个 `dashboard` 对象；页面外壳在 `src/components/r2/`，页面样式在 `src/styles/r2-pages.css` 和 `src/styles/inbox.css`。两个截图收件箱默认只显示待处理项，已处理截图折叠；复盘页的月度五问和季度复盘默认折叠为摘要。
+`src/views/r2/R2LayoutView.vue` 根据当前页面请求 `/api/dashboard/sections` 所需的分区，Pinia store 把分区合并进共享状态；切换页面只刷新对应分区，不再为每个页面下载完整 Dashboard。页面外壳在 `src/components/r2/`，页面样式在 `src/styles/r2-pages.css` 和 `src/styles/inbox.css`。两个截图收件箱默认只显示待处理项，已处理截图折叠；复盘页的月度五问和季度复盘默认折叠为摘要。
 
 产品与配置页按“配置目标与期限桶、分配假设、目标产品、额度核验、观察名单、风险边界、持仓复核与替换”拆成模块卡。持仓复核先给当前持仓与首选候选的并排对比条（参考年化、年化差、切换等待、有效计息、预计多赚、盈亏平衡和门槛），再列前 3 个同桶候选。短、中、长期限桶固定按 30、100、360 天统一复利计算；本次切换的当前产品赎回确认、到账和候选产品申购确认时间不计收益。T+N 未核验时按当前产品赎回 T+1、到账 T+0、候选申购 T+1 估算，并明确标“估算”；候选申购确认可逐只覆盖和核验为 T+0/T+1/T+2/T+3，核验后显示“已核验”。到期后的自动续作不重复扣空档，估算等待期不会通过执行闸门。结论区分“继续持有/观察/建议替换”，锁定期内只显示“到期后可替换”和到期计划。可直接把替换理由、等待状态与验证日写入决策日志；观察名单产品可点击查看收益、期限、评分、额度和分配原因。复盘页按“复盘节奏、自动复盘评分与记录、月度五问、季度复盘”拆成模块卡。
 
@@ -276,8 +276,10 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 
 ## 数据与接口
 
-- `GET /api/dashboard`：纯读取记录、指标、本金账户、窗口汇总、产品观察池、已投影的决策提案和消息中心聚合。
-- `POST /api/dashboard/refresh`：显式执行决策提案、提醒生命周期和消息中心投影，并返回刷新后的完整 Dashboard。服务启动、后台巡检和写操作完成后也会自动投影。
+- `GET /api/dashboard`：兼容入口，纯读取完整 Dashboard；R2 页面首屏不再调用该完整接口。
+- `GET /api/dashboard/sections?include=summary,ledger`：按需组合只读分区；`include` 支持 `summary`、`overview`、`ledger`、`trades`、`products`、`evaluation`、`inbox`。
+- `GET /api/dashboard/summary|overview|ledger|trades|products|evaluation|inbox`：读取单个只读分区。七页分别加载概览、收益与复盘、产品与持仓、评估和消息中心所需数据。
+- `POST /api/dashboard/refresh`：显式执行决策提案、提醒生命周期和消息中心投影，并返回刷新后的完整 Dashboard 兼容响应。服务启动、后台巡检和写操作完成后也会自动投影。
 - `GET /api/review/workspace`：复盘与评估数据（决策、交易流水、收件箱、自动推导持仓、事件、五问、季度清单、持仓汇总、对账和时间轴）。
 - `GET /api/automation/workspace`：自动评估、通知、草稿、任务队列、设置和调度状态。
 - `GET /api/calibration/monthly?month=YYYY-MM`：按预测类型和置信度分桶的月度校准，包含命中率、待验证、失效、误差来源和逐条记录。
@@ -320,7 +322,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - `DELETE /api/capital/events/:id`：删除一笔转入或转出。
 - `POST /api/products/refresh`：重新读取本地产品 CSV，替换当前产品快照。
 - `PUT /api/holding-reviews/:code`：保存单只产品的赎回 T+N、到账 T+N、候选申购确认 T+N、费用、下一赎回开放日和核验日期。实际使用期限桶固定的 `30/100/360` 天复利比较，T+N 计算本次切换等待期并从有效计息天数扣除；未核验时使用带 `estimated` 标识的默认估算。旧的 `idle_days`、`compare_horizon_days` 和设置级 `min_gain_amount` 请求会被拒绝，返回重算后的完整工作台。
-- `GET /api/dashboard` 的 `workspace.holding_reviews`：逐只持仓的候选、盈亏平衡、数据缺口、提醒与最近替换决策。
+- `GET /api/dashboard/products` 的 `workspace.holding_reviews`：逐只持仓的候选、盈亏平衡、数据缺口、提醒与最近替换决策；完整兼容响应仍位于 `GET /api/dashboard`。
 - `GET /api/backups`：列出本地数据库备份。
 - `POST /api/backups`：立即生成当天备份（每天启动时也会自动生成一次）。
 - `POST /api/records`：按收益日期幂等新增；同日期同金额返回 `duplicate`，不同金额返回 `conflict` 并生成消息中心提醒，不覆盖原记录。
