@@ -1354,26 +1354,94 @@ async function main() {
         referenceDescendingState.includes('降序'),
       `参考年化降序状态不正确：${referenceDescendingState}`,
     )
-    const codeSearch = poolDialog.getByRole('searchbox', {
+    const codeSearch = poolDialog.getByRole('combobox', {
       name: '按产品代码搜索',
     })
-    await codeSearch.fill('ZX040231')
+    await codeSearch.fill('13500')
+    const matchingCodeLabels = await poolDialog
+      .locator('[data-filter="code"] .option-menu-item strong')
+      .allTextContents()
+    assert(matchingCodeLabels.length > 0, '产品代码筛选没有返回匹配项')
+    assert(
+      matchingCodeLabels.every((label) => label.includes('13500')),
+      '产品代码筛选混入了产品名称或期限中的数字',
+    )
+    await codeSearch.fill('040231')
     const zxRow = poolDialog.locator(
       '.product-name-button[data-product-code="ZX040231"]',
     )
     await zxRow.waitFor()
     const zxRowText = (await zxRow.textContent()) ?? ''
-    assert(zxRowText.includes('ZX040231'), '产品代码搜索没有命中 ZX040231')
-    await codeSearch.fill('')
+    assert(zxRowText.includes('ZX040231'), '产品代码模糊搜索没有命中 ZX040231')
+    const zxOption = poolDialog
+      .locator('[data-filter="code"] .option-menu-item')
+      .filter({ hasText: 'ZX040231' })
+      .first()
+    await zxOption.waitFor()
+    const codeCardsOverlap = await poolDialog
+      .locator('[data-filter="code"] .option-menu-item')
+      .evaluateAll((items) => {
+        const boxes = items.map((item) => item.getBoundingClientRect())
+        return boxes.some(
+          (box, index) =>
+            index > 0 && box.top < boxes[index - 1].bottom - 0.5,
+        )
+      })
+    assert(!codeCardsOverlap, '产品代码选项卡片发生重叠')
+    await zxOption.click()
+    assert(
+      ((await poolDialog.locator('[data-filter="code"] .option-control').textContent()) ??
+        '').includes('ZX040231'),
+      '产品代码下拉选择后没有保留选中项',
+    )
+    await poolDialog.locator('.filter-count').click()
+    assert(
+      (await codeSearch.inputValue()) === '',
+      '完成产品代码筛选并收起下拉后搜索框仍残留原始搜索词',
+    )
+    await poolDialog
+      .getByRole('button', { name: '移除产品代码 ZX040231' })
+      .click()
+    const codeOptions = poolDialog.locator(
+      '[data-filter="code"] .option-menu-item',
+    )
+    await codeOptions.nth(0).click()
+    await codeOptions.nth(1).click()
+    assert(
+      (await poolDialog.locator('[data-filter="code"] .option-chip:not(.option-chip-count)').count()) ===
+        2,
+      '产品代码下拉没有支持连续多选',
+    )
+    const selectAllCodes = poolDialog
+      .locator('[data-filter="code"] .select-all-option')
+      .first()
+    await codeSearch.fill('0402')
+    await selectAllCodes.click()
+    assert(
+      (await selectAllCodes.getAttribute('aria-pressed')) === 'true' &&
+        ((await selectAllCodes.textContent()) ?? '').includes('取消全选'),
+      '产品代码下拉没有全选当前筛选结果',
+    )
+    await selectAllCodes.click()
+    assert(
+      (await codeSearch.inputValue()) === '',
+      '取消全选产品代码后搜索框仍残留关键词',
+    )
+    await poolDialog.locator('.dialog-sort-bar').click()
+    assert(
+      (await poolDialog.locator('[data-filter="code"] .option-menu').count()) === 0,
+      '点击候选池空白处没有关闭产品代码下拉',
+    )
+    await poolDialog.getByRole('button', { name: '重置筛选' }).click()
 
-    const nameSearch = poolDialog.getByRole('searchbox', {
+    const nameSearch = poolDialog.getByRole('combobox', {
       name: '按产品名称搜索',
     })
     await nameSearch.fill('安盈象')
     await zxRow.waitFor()
     await nameSearch.fill('')
 
-    const issuerSearch = poolDialog.getByRole('searchbox', {
+    const issuerSearch = poolDialog.getByRole('combobox', {
       name: '按发行方搜索',
     })
     await issuerSearch.fill('信银理财')
@@ -1382,13 +1450,33 @@ async function main() {
 
     const termDropdown = poolDialog.locator('details[data-filter="term"]')
     await termDropdown.locator('summary').click()
+    const selectAllTerms = termDropdown.locator('.select-all-option')
+    await selectAllTerms.click()
+    assert(
+      (await termDropdown.getByRole('checkbox').count()) ===
+        (await termDropdown.getByRole('checkbox').evaluateAll(
+          (boxes) => boxes.filter((box) => box.checked).length,
+        )),
+      '期限下拉没有全选全部筛选项',
+    )
+    await selectAllTerms.click()
+    assert(
+      (await termDropdown.getByRole('checkbox').evaluateAll(
+        (boxes) => boxes.filter((box) => box.checked).length,
+      )) === 0,
+      '期限下拉再次点击没有取消全选',
+    )
     await termDropdown
       .getByRole('checkbox', { name: '短期 7–30 天' })
       .check()
     await termDropdown
       .getByRole('checkbox', { name: '中期 31–100 天' })
       .check()
-    await termDropdown.locator('summary').click()
+    await poolDialog.locator('.dialog-sort-bar').click()
+    assert(
+      (await termDropdown.getAttribute('open')) === null,
+      '点击候选池空白处没有关闭期限下拉',
+    )
     const termSummaryText =
       (await termDropdown.locator('summary').textContent())?.trim() ?? ''
     assert(
@@ -1401,10 +1489,24 @@ async function main() {
       'details[data-filter="evidence"]',
     )
     await evidenceDropdown.locator('summary').click()
+    const selectAllEvidence = evidenceDropdown.locator('.select-all-option')
+    await selectAllEvidence.click()
+    assert(
+      (await evidenceDropdown.getByRole('checkbox').count()) ===
+        (await evidenceDropdown.getByRole('checkbox').evaluateAll(
+          (boxes) => boxes.filter((box) => box.checked).length,
+        )),
+      '数据深度下拉没有全选全部筛选项',
+    )
+    await selectAllEvidence.click()
     await evidenceDropdown
       .getByRole('checkbox', { name: '仅 3M' })
       .check()
-    await evidenceDropdown.locator('summary').click()
+    await poolDialog.locator('.dialog-sort-bar').click()
+    assert(
+      (await evidenceDropdown.getAttribute('open')) === null,
+      '点击候选池空白处没有关闭数据深度下拉',
+    )
     assert(
       ((await evidenceDropdown.locator('summary').textContent()) ?? '').includes(
         '仅 3M',
@@ -1512,6 +1614,26 @@ async function main() {
       '关闭详情后焦点没有回到原产品入口',
     )
     await page.setViewportSize({ width: 390, height: 844 })
+    const mobileNameFilter = poolDialog.locator('[data-filter="name"]')
+    await mobileNameFilter.getByRole('combobox').click()
+    await mobileNameFilter.getByRole('combobox').fill('盈象')
+    const mobileQuickMenuVisible = await mobileNameFilter
+      .locator('.option-menu')
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        return (
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.right <= window.innerWidth + 1 &&
+          rect.bottom <= window.innerHeight + 1
+        )
+      })
+    assert(mobileQuickMenuVisible, '移动端产品筛选下拉超出可视区域')
+    await poolDialog.locator('.dialog-head h2').click()
+    assert(
+      (await mobileNameFilter.locator('.option-menu').count()) === 0,
+      '移动端点击空白处没有关闭产品筛选下拉',
+    )
     const mobileEvidence = poolDialog.locator(
       'details[data-filter="evidence"]',
     )
