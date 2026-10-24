@@ -189,7 +189,7 @@ cwds = ["<WORKSPACE>"]
 | 时区 | `Asia/Shanghai` |
 | Codex 定时任务 | 3 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
 | 生产守护 | Supervisor 运行中，Health OK |
-| Windows 看门狗任务 | `QianDuoDuo-Production` 未安装 |
+| 登录自启 | 当前用户 Startup 快捷方式，单次触发，无周期巡检 |
 | 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，短期桶下限 30%，新增日开 0%，置信度 75%，巡检 5 分钟；包含逐产品收益对账和现有日开迁移提示 |
 
 这份快照会随环境变化；分享项目时以 `SETUP.md` 的步骤为准，不要把快照当成永久配置。

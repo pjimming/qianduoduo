@@ -820,7 +820,7 @@ npm run research:publish
 | `npm run db:backup` | 立即备份数据库 |
 | `npm run db:restore -- YYYY-MM-DD` | 恢复到指定日期备份 |
 
-生产 Supervisor 以 Node 自己写入的 `run/server.pid` 管理服务进程，并使用 `$LASTEXITCODE` 记录真实退出码。首次安装 Watchdog 需要运行 `scripts/install-watchdog.ps1` 或允许 `prod:deploy` 触发 Windows 提权；安装后当前用户可直接执行 `prod:start` / `prod:stop` 启用或停用任务。
+生产 Supervisor 以 Node 自己写入的 `run/server.pid` 管理服务进程，并使用 `$LASTEXITCODE` 记录真实退出码。登录自启优先使用单次任务 `QianDuoDuo-AutoStart`，权限不足时使用当前用户的 Startup 快捷方式；它只在用户登录时启动一次服务，不包含周期触发、健康巡检或外部 Watchdog。`prod:stop` 会停用登录自启，`prod:start` 会重新启用；机器重启并完成用户登录后自动启动服务。
 
 ---
 

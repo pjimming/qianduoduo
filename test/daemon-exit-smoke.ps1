@@ -67,13 +67,14 @@ $results = @{}
 $savedMode = $env:QDD_SMOKE_MODE
 try {
   $env:QDD_SMOKE_MODE = 'graceful'
-  Invoke-Daemon @('-Action', 'start', '-Port', "$Port", '-Root', $testRoot)
+  Invoke-Daemon @('-Action', 'start', '-Port', "$Port", '-Root', $testRoot, '-SkipAutoStart')
   Invoke-Daemon @(
     '-Action', 'stop',
     '-Port', "$Port",
     '-Root', $testRoot,
     '-GracefulStopTimeoutMs', '1000',
-    '-SupervisorExitWaitMs', '2000'
+    '-SupervisorExitWaitMs', '2000',
+    '-SkipAutoStart'
   )
   $log = Read-DaemonLog
   if ($log -notmatch 'server exited pid=\d+ code=0 ') {
@@ -92,7 +93,8 @@ try {
       '-File', (Join-Path $testRoot 'scripts\daemon.ps1'),
       '-Action', 'run',
       '-Port', "$Port",
-      '-Root', $testRoot
+      '-Root', $testRoot,
+      '-SkipAutoStart'
     ) `
     -WorkingDirectory $testRoot `
     -WindowStyle Hidden `
@@ -126,13 +128,14 @@ try {
   Remove-Item -LiteralPath (Join-Path $testRoot 'logs') -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath (Join-Path $testRoot 'run') -Recurse -Force -ErrorAction SilentlyContinue
   $env:QDD_SMOKE_MODE = 'hang'
-  Invoke-Daemon @('-Action', 'start', '-Port', "$Port", '-Root', $testRoot)
+  Invoke-Daemon @('-Action', 'start', '-Port', "$Port", '-Root', $testRoot, '-SkipAutoStart')
   Invoke-Daemon @(
     '-Action', 'stop',
     '-Port', "$Port",
     '-Root', $testRoot,
     '-GracefulStopTimeoutMs', '300',
-    '-SupervisorExitWaitMs', '2000'
+    '-SupervisorExitWaitMs', '2000',
+    '-SkipAutoStart'
   )
   $log = Read-DaemonLog
   if ($log -notmatch 'server exited pid=\d+ code=-?\d+ ') {
@@ -142,7 +145,7 @@ try {
 } finally {
   $env:QDD_SMOKE_MODE = $savedMode
   try {
-    & $powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $testRoot 'scripts\daemon.ps1') -Action stop -Port $Port -Root $testRoot -GracefulStopTimeoutMs 300 -SupervisorExitWaitMs 1000
+    & $powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $testRoot 'scripts\daemon.ps1') -Action stop -Port $Port -Root $testRoot -GracefulStopTimeoutMs 300 -SupervisorExitWaitMs 1000 -SkipAutoStart
   } catch {}
   if (Test-Path -LiteralPath $resolvedTest) {
     Remove-Item -LiteralPath $resolvedTest -Recurse -Force

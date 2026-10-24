@@ -3,9 +3,9 @@ param(
   [string]$Action = 'status',
   [int]$Port = 8765,
   [string]$Root = '',
-  [string]$TaskName = 'QianDuoDuo-Production',
   [int]$GracefulStopTimeoutMs = 10000,
-  [int]$SupervisorExitWaitMs = 5000
+  [int]$SupervisorExitWaitMs = 5000,
+  [switch]$SkipAutoStart
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +23,7 @@ $StopFile = Join-Path $RunDir 'daemon.stop'
 $ServerStopFile = Join-Path $RunDir 'server.stop'
 $DaemonLog = Join-Path $LogDir 'daemon.log'
 $HealthUrl = "http://127.0.0.1:$Port/api/health"
+$AutoStartTaskName = 'QianDuoDuo-AutoStart'
 
 function Ensure-Directories {
   New-Item -ItemType Directory -Force -Path $RunDir, $LogDir | Out-Null
@@ -69,35 +70,60 @@ function Get-NodeExe {
   throw 'Node.js 24 or newer was not found.'
 }
 
-function Enable-WatchdogTask {
-  if (-not (Get-Command Enable-ScheduledTask -ErrorAction SilentlyContinue)) {
-    return
-  }
-  try {
-    Enable-ScheduledTask -TaskName $TaskName -ErrorAction Stop | Out-Null
-  } catch {
-    # The task is optional when the daemon is started manually.
-  }
-}
-
-function Get-StartupShortcut {
+function Get-AutoStartShortcut {
   return Join-Path ([Environment]::GetFolderPath('Startup')) 'QianDuoDuo Production.lnk'
 }
 
-function Enable-WatchdogStartup {
-  $shortcut = Get-StartupShortcut
-  $disabled = "$shortcut.disabled"
-  if ((Test-Path -LiteralPath $disabled) -and -not (Test-Path -LiteralPath $shortcut)) {
-    Move-Item -LiteralPath $disabled -Destination $shortcut -Force
+function Enable-AutoStart {
+  if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
+    $task = Get-ScheduledTask -TaskName $AutoStartTaskName -ErrorAction SilentlyContinue
+    if ($task -and (Get-Command Enable-ScheduledTask -ErrorAction SilentlyContinue)) {
+      try {
+        Enable-ScheduledTask -TaskName $AutoStartTaskName -ErrorAction SilentlyContinue | Out-Null
+      } catch {}
+    }
+  }
+
+  $shortcut = Get-AutoStartShortcut
+  $disabledShortcut = "$shortcut.disabled"
+  if ((Test-Path -LiteralPath $disabledShortcut) -and -not (Test-Path -LiteralPath $shortcut)) {
+    Move-Item -LiteralPath $disabledShortcut -Destination $shortcut -Force
   }
 }
 
-function Disable-WatchdogStartup {
-  $shortcut = Get-StartupShortcut
-  $disabled = "$shortcut.disabled"
-  if (Test-Path -LiteralPath $shortcut) {
-    Move-Item -LiteralPath $shortcut -Destination $disabled -Force
+function Disable-AutoStart {
+  if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
+    $task = Get-ScheduledTask -TaskName $AutoStartTaskName -ErrorAction SilentlyContinue
+    if ($task -and (Get-Command Disable-ScheduledTask -ErrorAction SilentlyContinue)) {
+      try {
+        Disable-ScheduledTask -TaskName $AutoStartTaskName -ErrorAction SilentlyContinue | Out-Null
+      } catch {}
+    }
   }
+
+  $shortcut = Get-AutoStartShortcut
+  $disabledShortcut = "$shortcut.disabled"
+  if (Test-Path -LiteralPath $shortcut) {
+    Move-Item -LiteralPath $shortcut -Destination $disabledShortcut -Force
+  }
+}
+
+function Get-AutoStartStatus {
+  if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
+    $task = Get-ScheduledTask -TaskName $AutoStartTaskName -ErrorAction SilentlyContinue
+    if ($task) {
+      return "$AutoStartTaskName ($($task.State))"
+    }
+  }
+
+  $shortcut = Get-AutoStartShortcut
+  if (Test-Path -LiteralPath $shortcut) {
+    return 'Startup shortcut (enabled)'
+  }
+  if (Test-Path -LiteralPath "$shortcut.disabled") {
+    return 'disabled'
+  }
+  return 'not installed'
 }
 
 function Start-Supervisor {
@@ -105,6 +131,9 @@ function Start-Supervisor {
   $distIndex = Join-Path $Root 'dist\index.html'
   if (-not (Test-Path -LiteralPath $distIndex)) {
     throw 'dist/index.html is missing. Run npm run build before starting production.'
+  }
+  if (-not $SkipAutoStart) {
+    Enable-AutoStart
   }
 
   $existing = Get-LiveProcess -PidFile $DaemonPidFile
@@ -141,8 +170,6 @@ function Start-Supervisor {
   }
 
   Remove-Item -LiteralPath $StopFile -Force -ErrorAction SilentlyContinue
-  Enable-WatchdogTask
-  Enable-WatchdogStartup
 
   $powerShellExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
   $arguments = @(
@@ -152,8 +179,7 @@ function Start-Supervisor {
     '-File', '.\scripts\daemon.ps1',
     '-Action run',
     '-Port', $Port,
-    '-Root', '.',
-    '-TaskName', $TaskName
+    '-Root', '.'
   )
 
   $supervisor = Start-Process `
@@ -180,17 +206,9 @@ function Start-Supervisor {
 }
 
 function Stop-Supervisor {
-  if (Get-Command Stop-ScheduledTask -ErrorAction SilentlyContinue) {
-    try {
-      Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    } catch {}
+  if (-not $SkipAutoStart) {
+    Disable-AutoStart
   }
-  if (Get-Command Disable-ScheduledTask -ErrorAction SilentlyContinue) {
-    try {
-      Disable-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | Out-Null
-    } catch {}
-  }
-  Disable-WatchdogStartup
 
   Ensure-Directories
   New-Item -ItemType File -Force -Path $StopFile | Out-Null
@@ -240,17 +258,14 @@ function Show-Status {
   $server = Get-LiveProcess -PidFile $ServerPidFile
   $supervisor = Get-LiveProcess -PidFile $DaemonPidFile
   $healthy = Test-Health
-  $task = $null
-  if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
-    $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-  }
+  $autoStartStatus = Get-AutoStartStatus
 
   Write-Host 'QianDuoDuo production status'
   Write-Host "URL:        http://127.0.0.1:$Port"
   Write-Host ('Health:     {0}' -f $(if ($healthy) { 'OK' } else { 'FAIL' }))
   Write-Host ('Server:     {0}' -f $(if ($server) { "running (PID $($server.Id))" } else { 'stopped' }))
   Write-Host ('Supervisor: {0}' -f $(if ($supervisor) { "running (PID $($supervisor.Id))" } else { 'stopped' }))
-  Write-Host ('Watchdog:   {0}' -f $(if ($task) { "$TaskName ($($task.State))" } else { 'not installed' }))
+  Write-Host ('Auto-start: {0}' -f $autoStartStatus)
   Write-Host "Logs:       $LogDir"
 
   if (-not $healthy) {

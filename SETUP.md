@@ -283,17 +283,17 @@ npm run prod:start
 npm run prod:status
 ```
 
-状态显示 Supervisor 运行中、Health OK；Windows 计划任务 `QianDuoDuo-Production` **未安装**。如果你想和当前机器完全一致，用 `prod:start` 即可。
+状态显示 Supervisor、当前用户登录自启和 Health。登录自启优先使用单次任务 `QianDuoDuo-AutoStart`；当前账户没有计划任务权限时使用 Startup 快捷方式。两种方式都只触发一次，不执行周期巡检。
 
-### 6.3 带开机自启的方式
+### 6.3 带登录自启的完整部署方式
 
 ```powershell
 npm run prod:deploy
 ```
 
-它会构建、跑测试、停止旧守护、注册 Windows 计划任务 `QianDuoDuo-Production`（失败时回退到 Startup 快捷方式），然后启动并检查健康状态。
+它会构建、跑测试、停止旧守护、注册当前用户登录自启，再启动 Supervisor 并检查健康状态。首次注册计划任务需要权限；权限不足时自动使用当前用户 Startup 快捷方式。
 
-这条命令会改变开机自启行为；只在你确实需要时使用。
+登录后会自动启动一次服务，不安装 Watchdog。机器重启并完成用户登录后，无需手动执行 `prod:start`。
 
 ### 6.4 停止与重启
 
@@ -301,6 +301,8 @@ npm run prod:deploy
 npm run prod:stop
 npm run prod:restart
 ```
+
+`prod:stop` 会停用登录自启；`prod:restart` 停止后重新启用；`prod:start` 也会恢复自启。
 
 ---
 
@@ -397,7 +399,6 @@ http://127.0.0.1:8765/investment/research
 | Node.js | `v24.20.0` |
 | 本地服务 | `http://127.0.0.1:8765` |
 | 生产守护 | Supervisor 运行中，Health OK |
-| Windows 看门狗 | `QianDuoDuo-Production` 未安装 |
 | Codex 定时任务 | 3 个，全部 ACTIVE，全部 deepseek-flash，全部 local |
 | 应用自动化 | 目标 3.0%，hurdle 2.5/2.8/3.0%，单只 30%，流动性 30%，置信度 75%，巡检 5 分钟 |
 | 产品快照 | 2026-10-19：全量 980 / 候选 432 / 研究观察池 9 |

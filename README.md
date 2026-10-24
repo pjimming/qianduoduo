@@ -130,7 +130,7 @@ npm run server
 npm run prod:deploy
 ```
 
-脚本会依次执行生产构建、回归测试、后台守护进程启动和健康检查，并通过 `scripts/install-watchdog.ps1` 注册计划任务 `QianDuoDuo-Production`。该任务在用户登录后启动，并每 5 分钟检查一次守护进程是否存活；首次注册需要 Windows 提权，安装器会授予当前登录用户后续启用/禁用该任务的控制权限。如果当前用户没有创建计划任务的权限，部署脚本会回退到 Startup 快捷方式，但 `prod:status` 会明确显示 Watchdog 未安装。
+脚本会依次执行生产构建、回归测试、登录自启注册、后台 Supervisor 启动和健康检查。登录自启优先注册为单次计划任务 `QianDuoDuo-AutoStart`；当前账户没有计划任务权限时回退到用户 Startup 快捷方式。两者都只在当前用户登录时触发一次，没有周期重复、健康巡检或看门狗循环；Supervisor 负责当前运行期间重启异常退出的 Node 子进程。`prod:stop` 会同时停用登录自启，`prod:start` 会重新启用。
 
 日常运维命令：
 

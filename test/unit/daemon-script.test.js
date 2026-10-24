@@ -6,7 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 test(
-  'daemon and watchdog scripts parse under Windows PowerShell 5.1',
+  'daemon and auto-start scripts parse under Windows PowerShell 5.1',
   { skip: process.platform !== 'win32' },
   () => {
     const powershell = path.join(
@@ -18,7 +18,7 @@ test(
     );
     for (const relativePath of [
       'scripts/daemon.ps1',
-      'scripts/install-watchdog.ps1',
+      'scripts/install-autostart.ps1',
       'test/daemon-exit-smoke.ps1',
     ]) {
       const scriptPath = path.resolve(__dirname, '../../', relativePath);

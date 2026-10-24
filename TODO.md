@@ -10,6 +10,13 @@
 
 ## 近期完成（2026-10）
 
+- **2026-10-24 `TD-OPS-001` 以登录自启替代外部 Watchdog**
+  - 删除 `scripts/install-watchdog.ps1`，移除 Supervisor 对 Windows 计划任务和登录启动快捷方式的创建、启用、禁用及状态展示逻辑。
+  - 新增登录自启：优先注册单次任务 `QianDuoDuo-AutoStart`；当前账户无计划任务权限时回退到 Startup 快捷方式。两者都只在当前用户登录时执行一次 `daemon.ps1 -Action start`，没有重复触发、健康巡检或看门狗循环。
+  - `prod:deploy` 注册登录自启、重启 Supervisor 并检查健康；`prod:stop` 停用自启，`prod:start` 重新启用。本机当前使用 Startup 快捷方式。
+  - 本机旧 `QianDuoDuo-Production` 计划任务保持注销。保留 Supervisor 对异常退出 Node 子进程的重启能力。
+  - 验证：`npm run check`、229 项 `npm test`、`npm run test:daemon`、生产构建、`npm run test:e2e` 全部通过；停止服务后直接启动 Startup 快捷方式可恢复 Health OK，且隔离测试不会改动生产自启状态。
+
 - **2026-10-24 `TD-R2-NAV-001` 当前已确认持仓净值**
   - “当前已确认持仓净值”改为由未赎回确认持仓本金加逐产品累计收益实时派生；待确认买入、临时桥接本金和已赎回产品不计入。银行市值快照降为对照证据，不再是主净值来源。
   - 当前 6 批、未赎回成本 ¥30,000，逐产品累计收益 ¥6.03，派生净值 ¥30,006.03；银行对照 ¥30,006.04，差额 ¥0.01 按分位舍入一致处理。

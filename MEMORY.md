@@ -136,8 +136,8 @@
 ## 4. 运行与测试
 
 - 生产守护：`npm run prod:deploy`；日常使用 `prod:status`、`prod:start`、`prod:stop`、`prod:restart`。
-- 守护脚本通过 `run/server.stop` 请求 Node 优雅关闭，超时才强杀；关闭流程会停止调度器、终止活动 OCR 子进程、关闭 HTTP Server 和数据库。进程、健康状态和 Watchdog 安装状态一律以实时 `prod:status` 为准，不在本文件保存固定 PID、安装状态或一次性验收结论。
-- Node 服务由 Supervisor 以前台子进程方式托管，Node 自写 `run/server.pid`，Supervisor 使用 `$LASTEXITCODE` 记录退出码。`install-watchdog.ps1` 负责注册计划任务并授予当前登录用户后续控制权限；`prod:stop` 必须停止并禁用 Watchdog 和 Startup 自启动，`prod:start` 恢复两者。
+- 守护脚本通过 `run/server.stop` 请求 Node 优雅关闭，超时才强杀；关闭流程会停止调度器、终止活动 OCR 子进程、关闭 HTTP Server 和数据库。进程和健康状态一律以实时 `prod:status` 为准，不在本文件保存固定 PID 或一次性验收结论。
+- Node 服务由 Supervisor 以前台子进程方式托管，Node 自写 `run/server.pid`，Supervisor 使用 `$LASTEXITCODE` 记录退出码。登录自启优先使用单次任务 `QianDuoDuo-AutoStart`，权限不足时使用当前用户 Startup 快捷方式；它只负责在用户登录时执行一次 `daemon.ps1 -Action start`，不得增加周期重复、健康巡检或外部 Watchdog 循环。`prod:stop` 停用自启，`prod:start` 重新启用。
 - 手动前台：双击 `start.bat`，执行构建后启动 `8765` 服务。
 - 开发模式：双击 `start-dev.bat` 或运行 `npm run dev:all`；Vite 页面为 `5173`。
 - `dist/` 只会在 `npm run build`、`npm start` 或 `start.bat` 时更新。
