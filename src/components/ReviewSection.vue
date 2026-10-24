@@ -396,8 +396,8 @@ function selectMonth(month: string): void {
         </div>
         <div class="review-metrics">
           <div>
-            <span>当日本金</span>
-            <strong>{{ daily ? `¥${formatMoney(daily.principal, 0)}` : '待记录' }}</strong>
+            <span>当日持仓金额</span>
+            <strong>{{ daily ? `¥${formatMoney(daily.holding_amount, 0)}` : '待记录' }}</strong>
           </div>
           <div>
             <span>月累计</span>
@@ -577,8 +577,8 @@ function selectMonth(month: string): void {
                 <strong>{{ monthly ? formatSignedMoney(monthly.pnl) : '—' }}</strong>
               </div>
               <div>
-                <span>月均本金</span>
-                <strong>{{ monthly ? `¥${formatMoney(monthly.avg_principal, 0)}` : '—' }}</strong>
+                <span>月均持仓金额</span>
+                <strong>{{ monthly ? `¥${formatMoney(monthly.avg_holding_amount, 0)}` : '—' }}</strong>
               </div>
               <div>
                 <span>记录完整度</span>
@@ -835,7 +835,7 @@ function selectMonth(month: string): void {
                   <strong>{{ item.month_label }}</strong>
                   <span>
                     {{ item.record_days }}/{{ item.elapsed_days }} 天 · 月均 ¥{{
-                      formatMoney(item.avg_principal)
+                      formatMoney(item.avg_holding_amount)
                     }}
                     <em v-if="hasNote(item.month)" class="review-note-flag">已复盘</em>
                   </span>
@@ -876,7 +876,7 @@ function selectMonth(month: string): void {
     </div>
 
     <p class="review-footnote">
-      评分口径：月收益 ÷ 月均本金，0.16% 及格、0.20% 良好、0.25% 优秀、0.30%
+      评分口径：月收益 ÷ 月均持仓金额，0.16% 及格、0.20% 良好、0.25% 优秀、0.30%
       卓越。当前月份只显示进度和参考区间，月末且满 28 天、20 条记录后才落最终评级；年化、回撤和环比只用于个人复盘，不代表未来收益。
     </p>
   </section>

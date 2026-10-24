@@ -15,7 +15,7 @@ import {
 } from '@/composables/useFormatters'
 import {
   chartGeometry,
-  niceTicks,
+  niceStep,
   xAxisIndices,
   type ChartMargins,
   type ChartPoint,
@@ -54,42 +54,83 @@ interface AxisLabel {
   anchor: 'start' | 'middle' | 'end'
 }
 
+function buildAxisScale(
+  values: number[],
+  top: number,
+  bottom: number,
+  zeroY: number,
+) {
+  const positiveMax = Math.max(0, ...values)
+  const negativeMax = Math.abs(Math.min(0, ...values))
+  const positiveRange = positiveMax > 0 ? positiveMax * 1.08 : 1
+  const negativeRange =
+    negativeMax > 0 ? negativeMax * 1.08 : positiveRange / 4
+  const step = niceStep(
+    Math.max(positiveRange, negativeRange) / 4,
+  )
+  const positiveLimit = Math.max(
+    step,
+    Math.ceil(positiveRange / step) * step,
+  )
+  const negativeLimit = Math.max(
+    step,
+    Math.ceil(negativeRange / step) * step,
+  )
+  const positiveHeight = Math.max(1, zeroY - top)
+  const negativeHeight = Math.max(1, bottom - zeroY)
+  const ticks: number[] = []
+  for (
+    let value = -negativeLimit;
+    value <= positiveLimit + step * 0.5;
+    value += step
+  ) {
+    ticks.push(Number(value.toPrecision(12)))
+  }
+  return {
+    y(value: number): number {
+      if (value >= 0) {
+        return zeroY - (value / positiveLimit) * positiveHeight
+      }
+      return zeroY + (Math.abs(value) / negativeLimit) * negativeHeight
+    },
+    ticks,
+  }
+}
+
 const model = computed(() => {
   if (!chartRecords.value.length) return null
   const margins: ChartMargins = { top: 20, right: 78, bottom: 34, left: 86 }
   const geometry = chartGeometry(chartRecords.value, width.value, height.value, margins)
   const pnlValues = chartRecords.value.map((record) => record.daily_pnl)
-  let pnlMin = Math.min(0, ...pnlValues)
-  let pnlMax = Math.max(0, ...pnlValues)
-  if (pnlMin === pnlMax) {
-    pnlMin = -1
-    pnlMax = 1
-  }
-  const pnlSpan = pnlMax - pnlMin
-  if (pnlSpan > 0) {
-    pnlMin -= pnlSpan * 0.08
-    pnlMax += pnlSpan * 0.08
-  }
-  const pnlScale = niceTicks(pnlMin, pnlMax, 4)
-  const yPnl = (value: number): number =>
-    margins.top +
-    (1 - (value - pnlScale.min) / (pnlScale.max - pnlScale.min)) *
-      geometry.plotHeight
-  const zeroY = yPnl(0)
-
   const rateValues = chartRecords.value.map((record) => record.daily_return * 100)
-  let rateMin = Math.min(0, ...rateValues)
-  let rateMax = Math.max(0, ...rateValues)
-  if (rateMin === rateMax) {
-    rateMin = -0.001
-    rateMax = 0.001
-  }
-  const ratePadding = (rateMax - rateMin) * 0.18 || 0.0002
-  const rateScale = niceTicks(rateMin - ratePadding, rateMax + ratePadding, 4)
-  const yRate = (value: number): number =>
-    margins.top +
-    (1 - (value - rateScale.min) / (rateScale.max - rateScale.min)) *
-      geometry.plotHeight
+  const pnlPositive = Math.max(0, ...pnlValues)
+  const pnlNegative = Math.abs(Math.min(0, ...pnlValues))
+  const ratePositive = Math.max(0, ...rateValues)
+  const rateNegative = Math.abs(Math.min(0, ...rateValues))
+  const negativeShare = Math.max(
+    pnlPositive + pnlNegative > 0
+      ? pnlNegative / (pnlPositive + pnlNegative)
+      : 0,
+    ratePositive + rateNegative > 0
+      ? rateNegative / (ratePositive + rateNegative)
+      : 0,
+  )
+  const zeroFromTop = 0.25 + (1 - negativeShare) * 0.5
+  const zeroY = margins.top + geometry.plotHeight * zeroFromTop
+  const pnlScale = buildAxisScale(
+    pnlValues,
+    margins.top,
+    margins.top + geometry.plotHeight,
+    zeroY,
+  )
+  const rateScale = buildAxisScale(
+    rateValues,
+    margins.top,
+    margins.top + geometry.plotHeight,
+    zeroY,
+  )
+  const yPnl = pnlScale.y
+  const yRate = rateScale.y
 
   const grid = pnlScale.ticks.map((tick) => ({
     y: yPnl(tick),
@@ -417,7 +458,7 @@ onUnmounted(() => {
           <span>
             日收益率 <b>{{ formatPct(activeRecord.daily_return * 100, 4, true) }}</b>
           </span>
-          <span>R2 本金 <b>¥{{ formatMoney(activeRecord.principal) }}</b></span>
+          <span>持仓金额 <b>¥{{ formatMoney(activeRecord.holding_amount) }}</b></span>
         </template>
       </div>
     </div>

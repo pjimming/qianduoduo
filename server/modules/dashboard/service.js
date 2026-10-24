@@ -4,6 +4,7 @@ const path = require('node:path');
 const { listBackups } = require('../../../lib/backup');
 const {
   TARGET_ANNUALIZED,
+  buildHoldingAmountsByDate,
   buildReview,
   buildWindows,
   enrichRecords,
@@ -21,8 +22,12 @@ function createDashboardQueryService(repository, options = {}) {
 
   function readDashboard(today = todayProvider()) {
     const rawRecords = repository.listRecords();
-    const records = enrichRecords(rawRecords);
     const tradeOverview = repository.tradeStore.getOverview(today);
+    const holdingAmountsByDate = buildHoldingAmountsByDate(
+      rawRecords,
+      tradeOverview.trades,
+    );
+    const records = enrichRecords(rawRecords, { holdingAmountsByDate });
     const currentHoldingsValuation =
       repository.holdingValuationStore.getCurrent(
         today,

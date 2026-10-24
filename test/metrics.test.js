@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  buildHoldingAmountsByDate,
   buildWindows,
   buildReview,
   enrichRecords,
@@ -43,6 +44,35 @@ test('enrichRecords compounds returns and derives account value', () => {
   assert.equal(enriched[1].net_value, 539946);
   assert.ok(enriched[1].drawdown < 0);
   assert.equal(enriched[2].net_value, 540027);
+});
+
+test('daily returns use confirmed holdings instead of account principal', () => {
+  const records = [
+    { date: '2026-10-20', principal: 30000, daily_pnl: 2.31, action: '无操作', notes: '' },
+    { date: '2026-10-21', principal: 30000, daily_pnl: 3.57, action: '无操作', notes: '' },
+    { date: '2026-10-22', principal: 33000, daily_pnl: 0.7208, action: '无操作', notes: '' },
+  ];
+  const trades = [
+    { id: 1, trade_date: '2026-10-19', confirm_date: '2026-10-20', trade_type: 'buy', status: 'confirmed', amount: 6000 },
+    { id: 2, trade_date: '2026-10-19', confirm_date: '2026-10-20', trade_type: 'buy', status: 'confirmed', amount: 7500 },
+    { id: 3, trade_date: '2026-10-19', confirm_date: '2026-10-20', trade_type: 'buy', status: 'confirmed', amount: 3000 },
+    { id: 4, trade_date: '2026-10-19', confirm_date: '2026-10-21', trade_type: 'buy', status: 'confirmed', amount: 3000 },
+    { id: 5, trade_date: '2026-10-19', confirm_date: '2026-10-21', trade_type: 'buy', status: 'confirmed', amount: 3000 },
+    { id: 6, trade_date: '2026-10-19', confirm_date: '2026-10-21', trade_type: 'buy', status: 'confirmed', amount: 7500 },
+    { id: 7, trade_date: '2026-10-21', confirm_date: '2026-10-23', trade_type: 'buy', status: 'confirmed', amount: 3000 },
+    { id: 8, trade_date: '2026-10-21', confirm_date: '2026-10-23', trade_type: 'redeem', status: 'confirmed', amount: 3000 },
+  ];
+  const holdingAmountsByDate = buildHoldingAmountsByDate(records, trades);
+  assert.equal(holdingAmountsByDate.get('2026-10-20'), 16500);
+  assert.equal(holdingAmountsByDate.get('2026-10-21'), 30000);
+  assert.equal(holdingAmountsByDate.get('2026-10-22'), 30000);
+
+  const enriched = enrichRecords(records, { holdingAmountsByDate });
+  assert.equal(enriched[0].holding_amount, 16500);
+  assert.equal(enriched[0].daily_return, 0.00014);
+  assert.equal(enriched[2].principal, 33000);
+  assert.equal(enriched[2].holding_amount, 30000);
+  assert.equal(enriched[2].daily_return, 0.0000240267);
 });
 
 test('summarize reports total P&L, drawdown and target gap', () => {

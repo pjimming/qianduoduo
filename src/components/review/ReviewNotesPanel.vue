@@ -378,7 +378,7 @@ function regenerateSuggestion(): void {
       </span>
       <span>最大回撤 <strong>{{ formatPct(monthRow.max_drawdown_pct, 3) }}</strong></span>
       <span>记录 <strong>{{ monthRow.record_days }}/{{ monthRow.elapsed_days }} 天</strong></span>
-      <span>月均本金 <strong>¥{{ formatMoney(monthRow.avg_principal, 0) }}</strong></span>
+      <span>月均持仓金额 <strong>¥{{ formatMoney(monthRow.avg_holding_amount, 0) }}</strong></span>
     </div>
     <div v-else-if="mode === 'monthly'" class="rw-note-metrics is-empty">
       该月还没有收益记录，五问仍然可以先写。

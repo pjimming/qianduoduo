@@ -28,7 +28,7 @@ const traceTitle = ref('')
 
 const sortableColumns: Array<{ key: LedgerSortKey; label: string; numeric: boolean }> = [
   { key: 'date', label: '日期', numeric: false },
-  { key: 'principal', label: 'R2 本金', numeric: true },
+  { key: 'holding_amount', label: '持仓金额', numeric: true },
   { key: 'daily_pnl', label: '当日收益', numeric: true },
   { key: 'daily_return', label: '日收益率', numeric: true },
   { key: 'net_value', label: '记录日参考净值', numeric: true },
@@ -189,7 +189,7 @@ defineExpose({
         <tbody>
           <tr v-for="record in visibleRecords" :key="record.date">
             <td><span class="ledger-date">{{ record.date }}</span></td>
-            <td class="align-right money-cell">¥{{ formatMoney(record.principal) }}</td>
+            <td class="align-right money-cell">¥{{ formatMoney(record.holding_amount) }}</td>
             <td
               class="align-right money-cell"
               :class="record.daily_pnl >= 0 ? 'positive' : 'negative'"

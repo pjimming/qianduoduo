@@ -373,7 +373,7 @@ defineExpose({
       </div>
     </form>
     <p v-if="!compact" class="form-note">
-      本金在“本金管理”中统一维护，收益记录会自动读取该日适用的本金。日收益率 = 当日收益 ÷ 当日本金。
+      本金在“本金管理”中统一维护；日收益率 = 当日收益 ÷ 当日已确认持仓金额。
     </p>
   </aside>
 </template>

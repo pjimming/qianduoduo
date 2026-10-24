@@ -3,7 +3,12 @@ export type CapitalEventType = 'deposit' | 'withdraw'
 export type ProductBucket = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
 export type TermFilter = 'all' | ProductBucket
 export type SortDirection = 'asc' | 'desc'
-export type LedgerSortKey = 'date' | 'principal' | 'daily_pnl' | 'daily_return' | 'net_value'
+export type LedgerSortKey =
+  | 'date'
+  | 'holding_amount'
+  | 'daily_pnl'
+  | 'daily_return'
+  | 'net_value'
 export type ProductSortKey =
   | 'term'
   | 'return_1m'
@@ -17,6 +22,7 @@ export interface LedgerRecord {
   id?: number
   date: string
   principal: number
+  holding_amount: number
   daily_pnl: number
   action: LedgerAction
   notes: string
@@ -238,6 +244,8 @@ export interface Summary {
   total_pnl: number
   avg_principal: number
   latest_principal: number
+  avg_holding_amount: number
+  latest_holding_amount: number
   latest_net_value: number
   latest_daily_pnl: number
   latest_daily_return: number
@@ -279,6 +287,7 @@ export interface MonthlyReview {
   record_coverage_pct: number | null
   pnl: number
   avg_principal: number
+  avg_holding_amount: number
   return_pct: number | null
   annualized_pct: number | null
   max_drawdown_pct: number
@@ -324,6 +333,7 @@ export interface MonthlyComparison {
 export interface DailyReview {
   date: string
   principal: number
+  holding_amount: number
   daily_pnl: number
   daily_return_pct: number
   action: string
@@ -331,6 +341,7 @@ export interface DailyReview {
   month: string
   month_pnl: number
   month_avg_principal: number
+  month_avg_holding_amount: number
   month_return_pct: number | null
   month_grade: string
   month_grade_preview: string | null
@@ -349,6 +360,7 @@ export interface WeeklyReview {
   missing_days: number
   pnl: number
   avg_principal: number
+  avg_holding_amount: number
   return_pct: number | null
   negative_days: number
   positive_days: number

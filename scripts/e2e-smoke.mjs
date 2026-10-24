@@ -545,6 +545,35 @@ async function main() {
       `首页没有使用逐产品收益推算净值：${currentValueCard}`,
     )
     await assertFontFloor(page, '.stats-grid', '收益概览桌面端')
+    const pnlChart = page
+      .locator('.chart-panel')
+      .filter({ hasText: '每日收益与收益率' })
+      .first()
+    const axisZero = await pnlChart.locator('svg').evaluate((svg) => {
+      const labels = Array.from(svg.querySelectorAll('text'))
+      const leftZero = labels.find(
+        (label) => label.textContent?.trim() === '0',
+      )
+      const rightZero = labels.find(
+        (label) => label.textContent?.trim() === '0.000%',
+      )
+      const zeroLine = Array.from(svg.querySelectorAll('line')).find(
+        (line) =>
+          line.getAttribute('stroke') === 'var(--chart-zero)' &&
+          line.getAttribute('y1') === line.getAttribute('y2'),
+      )
+      return {
+        left: Number(leftZero?.getAttribute('y')),
+        right: Number(rightZero?.getAttribute('y')),
+        line: Number(zeroLine?.getAttribute('y1')),
+      }
+    })
+    assert(
+      Number.isFinite(axisZero.left) &&
+        Math.abs(axisZero.left - axisZero.right) < 0.01 &&
+        Math.abs(axisZero.left - axisZero.line) < 3.01,
+      `收益与收益率零轴未对齐：${JSON.stringify(axisZero)}`,
+    )
 
     await page.goto(`${base}/investment/research`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.library-page')
@@ -594,6 +623,17 @@ async function main() {
     assert(
       (await page.locator('.ledger-table tbody tr').count()) === 1,
       '每日记账没有渲染历史记录',
+    )
+    const ledgerHeaderText =
+      (await page.locator('.ledger-table thead').textContent()) ?? ''
+    const ledgerRowText =
+      (await page.locator('.ledger-table tbody tr').first().textContent()) ?? ''
+    assert(
+      ledgerHeaderText.includes('持仓金额') &&
+        !ledgerHeaderText.includes('R2 本金') &&
+        ledgerRowText.includes('¥3,000.00') &&
+        ledgerRowText.includes('0.1667%'),
+      `账本没有按持仓金额展示收益率：${JSON.stringify(ledgerRowText)}`,
     )
     const incomeHistory = page.locator('.income-history')
     await incomeHistory.waitFor()
@@ -936,6 +976,18 @@ async function main() {
     assert(
       projectionRefresh.status === 200,
       '显式 Dashboard 状态投影应成功',
+    )
+    const dashboardWithHoldings = await fetch(`${base}/api/dashboard`).then(
+      (response) => response.json(),
+    )
+    const returnBaseRecord = dashboardWithHoldings.records.find(
+      (record) => record.date === '2026-10-18',
+    )
+    assert(
+      returnBaseRecord?.principal === 10000 &&
+        returnBaseRecord?.holding_amount === 3000 &&
+        Math.abs(returnBaseRecord.daily_return - 5 / 3000) < 0.0000000001,
+      `收益率没有按当日持仓金额计算：${JSON.stringify(returnBaseRecord)}`,
     )
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.inbox-page')
