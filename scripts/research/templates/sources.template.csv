@@ -1,5 +1,0 @@
-tier,category,title,publisher,published_at,accessed_at,url,period,page_or_section,used_for,status,notes
-1,监管/公司公告,示例文件,示例发布方,YYYY-MM-DD,YYYY-MM-DD,https://example.com,报告期,页码或章节,收入/利润/治理,verified,
-2,交易所/指数官方,NASDAQ-100 Factsheet,Nasdaq,YYYY-MM-DD,YYYY-MM-DD,https://indexes.nasdaq.com/,YYYY-MM-DD,第1页,权重与行业,verified,
-3,基金定期报告,示例季报,示例基金公司,YYYY-MM-DD,YYYY-MM-DD,https://example.com/report.pdf,YYYYQn,§3/§5,净值与持仓,verified,
-4,行情聚合,示例行情源,示例数据商,YYYY-MM-DD,YYYY-MM-DD,https://example.com/quote,YYYY-MM-DD 收盘,行情快照,价格/成交/IOPV,cross-checked,需与官方IOPV交叉核对

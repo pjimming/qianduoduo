@@ -88,7 +88,7 @@ onMounted(() => {
         <p class="library-lede">
           个股、产业链与板块研究，按调研日期归档
           <span>
-            Serenity 供应链瓶颈分析 + Equity Research 框架 · 源目录
+            Serenity 产业链瓶颈 + 市场叙事与资金结构 + 五红灯财务快筛 · 源目录
             {{ stockReportLibrary.source }}
           </span>
         </p>

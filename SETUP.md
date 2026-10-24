@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | 应用与报告 | 代码、`report/`、`research/`、脚本、文档 | 随项目分享 |
 | 个人数据 | `data/r2_ledger.sqlite`、备份、成交截图 | **不要分享**；仅自己迁移时复制 |
-| Codex 环境 | 三个 skill、四个定时任务、模型/时区设置 | 按本文档重建，不复制密钥 |
+| Codex 环境 | 两个 skill、四个定时任务、模型/时区设置 | 按本文档重建，不复制密钥 |
 
 “达到一样的环境”指的是同一套工具、同一套流程和同一套默认设置，不是把同一个账本交给别人。每个人应该用自己的本金、收益记录和成交截图初始化。
 
@@ -122,14 +122,13 @@ npm run dev:all
 
 ---
 
-## 3. 安装三个 skill
+## 3. 安装两个 skill
 
-三个 skill 不在项目仓库里，而是安装在当前用户的全局 Codex 目录：
+两个 skill 不在项目仓库里，而是安装在当前用户的全局 Codex 目录：
 
 ```text
 %USERPROFILE%\.codex\skills\r2-wealth-management\
 %USERPROFILE%\.codex\skills\serenity-skill\
-%USERPROFILE%\.codex\skills\equity-research\
 ```
 
 当前机器的路径是：
@@ -137,7 +136,6 @@ npm run dev:all
 ```text
 C:\Users\Administrator\.codex\skills\r2-wealth-management\
 C:\Users\Administrator\.codex\skills\serenity-skill\
-C:\Users\Administrator\.codex\skills\equity-research\
 ```
 
 ### 3.1 安装方式
@@ -145,7 +143,7 @@ C:\Users\Administrator\.codex\skills\equity-research\
 任选一种：
 
 1. 在 Codex 里使用 `$skill-installer` 或 `$manage-skills` 安装；
-2. 把三个 skill 目录复制到 `%USERPROFILE%\.codex\skills\`；
+2. 把两个 skill 目录复制到 `%USERPROFILE%\.codex\skills\`；
 3. 如果你有自己的 skill 仓库，按仓库的安装说明部署。
 
 分享 skill 时直接复制当前安装目录；仓库不再保留旧版打包压缩包，避免误用缺少最新参考文件的版本。
@@ -156,19 +154,17 @@ C:\Users\Administrator\.codex\skills\equity-research\
 
 - `r2-wealth-management`：1.4.1
 - `serenity-skill`：1.1.0
-- `equity-research`：以当前安装版本为准
 
 在 Codex 里试触发：
 
 ```text
 $r2-wealth-management 帮我检查一个 R2 产品。
 $serenity-skill 帮我拆解一个产业链。
-$equity-research 帮我研究一只股票。
 ```
 
 ### 3.3 注意
 
-股票相关请求按 `AGENTS.md` 会同时使用 `serenity-skill` 和 `equity-research`。只装其中一个，双 skill 流程会不完整。
+所有股票和产业链请求只使用 `serenity-skill`。项目规则要求补充市场叙事、价格资金结构、五个财务红灯和退出条件，不另装估值 skill。
 
 研究能力还依赖 Codex 的网页/文件访问工具。当前机器启用了浏览器、computer-use 等插件；新环境至少要保证能打开公告、财报和行情页面，否则 skill 只能给出有边界的初步结论。
 
@@ -383,7 +379,7 @@ http://127.0.0.1:8765/investment/research
 | 定时任务不触发 | 确认 Codex 桌面端在运行、任务已启用、时区正确 |
 | 定时任务读不到数据 | 先启动本地服务，检查 `8765/api/health` |
 | 提示模型不存在 | 换同等能力模型，保持 high reasoning |
-| skill 没触发 | 确认三个 skill 已安装，并用 `$skill-name` 显式点名 |
+| skill 没触发 | 确认两个 skill 已安装，并用 `$skill-name` 显式点名 |
 | 周报读不到产品快照 | 把提示词里的 `cmb_r2_products` 改成 `cmb_r2_selected`（精选）或 `cmb_r2_universe`（全量候选） |
 | Windows 计划任务安装失败 | `prod:deploy` 会回退到 Startup 快捷方式；也可只用 `prod:start` |
 | 报告页没有新报告 | 确认文件名以 `-YYYY-MM-DD.html` 结尾，执行 `npm run research:publish` |
@@ -403,7 +399,7 @@ http://127.0.0.1:8765/investment/research
 | 应用自动化 | 目标 3.0%，hurdle 2.5/2.8/3.0%，单只 30%，流动性 30%，置信度 75%，巡检 5 分钟 |
 | 产品快照 | 2026-10-19：全量 980 / 候选 432 / 研究观察池 9 |
 | 报告数量 | 13 篇（截至 2026-10-19） |
-| skill | `r2-wealth-management` 1.4.1、`serenity-skill` 1.1.0、`equity-research` 当前安装版 |
+| skill | `r2-wealth-management` 1.4.1、`serenity-skill` 1.1.0 |
 
 快照会随环境变化。分享时以本文档的步骤为准，不要把快照里的个人路径、PID 或数据当成永久配置。
 
@@ -416,7 +412,7 @@ http://127.0.0.1:8765/investment/research
 - [ ] `npm run build` 成功；
 - [ ] `npm run prod:start`，`http://127.0.0.1:8765/api/health` 返回 200；
 - [ ] 首次进入初始化自己的起始本金和日期，并确认起始日前日期显示为“起始日前”、无需补记；
-- [ ] 三个 skill 都已安装，`SKILL.md` 可读；
+- [ ] 两个 skill 都已安装，`SKILL.md` 可读；
 - [ ] 四个 Codex 定时任务已创建并启用；
 - [ ] 应用评估设置与第 5 节一致；
 - [ ] `npm run r2:refresh-all` 生成最新产品 CSV；

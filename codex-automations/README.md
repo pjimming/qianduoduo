@@ -82,7 +82,7 @@
 1. 已安装并登录 Codex 桌面端；
 2. 已在 Codex 中打开本项目工作区，项目出现在项目列表中；
 3. 本地应用能启动，`http://127.0.0.1:8765/api/health` 返回 200；
-4. 已安装 `r2-wealth-management`、`serenity-skill`、`equity-research` 三个 skill；
+4. 已安装 `r2-wealth-management`、`serenity-skill` 两个 skill；
 5. 系统时区或 Codex 调度时区为 `Asia/Shanghai`。
 
 ### 3.2 创建步骤
