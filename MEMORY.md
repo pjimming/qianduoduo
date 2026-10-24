@@ -90,9 +90,9 @@
 - 数据库：`data/r2_ledger.sqlite`；备份目录：`data/backups/`。
 - 每日记录字段：`date`、`principal`、`daily_pnl`、`action`、`notes`。
 - 本金表：`capital_settings`（起始本金/日期）、`capital_events`（转入/转出流水）。
-- 首页“已确认持仓净值”只取最新有效银行持仓市值快照，并与当前未赎回确认持仓集合匹配；待确认买入、临时桥接本金、已赎回产品和账户外资金都不计入。快照与当前持仓不一致或已有后续交易确认时标记“待更新”，没有快照时显示未知，不得回退到本金账户或每日记录本金。
+- 首页“已确认持仓净值”由当前未赎回确认持仓本金加逐产品累计收益派生；待确认买入、临时桥接本金、已赎回产品和账户外资金都不计入。银行持仓市值快照只用作对照证据，不参与净值主值计算；没有银行快照也照常显示派生净值。推算值与同期银行对照值相差不超过 ¥0.01 时视为分位舍入差异，超过才提示不一致。
 - 每日记录中的 `net_value` 是“记录日参考净值”= 该日本金 + 截至该日累计收益，只用于历史账本曲线和按日收益分析，不等于当前持仓市值。
-- 逐产品收益按最多 4 位小数保存，界面按分展示；当前持仓市值相对成本的变动与有效产品累计每日收益之间若仅相差不超过 ¥0.01，视为显示或四舍五入差异，不生成异常、不反向拆分公司收益、不改写任一产品事实。超过 ¥0.01 才进入来源、时点或缺口核查。
+- 逐产品收益按分保存和汇总，不保留四位小数；推算净值与银行对照值之间允许 ¥0.01 的四舍五入差异，不生成异常、不反向拆分公司收益、不改写任一产品事实。超过 ¥0.01 才进入来源、时点或缺口核查。
 - 日收益率 = 当日收益 ÷ 当日本金。
 - 月收益率 = 当月累计收益 ÷ 当月平均本金。
 - 月度评级：低于 0.16% 不及格；0.16% 及格；0.20% 良好；0.25% 优秀；0.30% 卓越。
@@ -103,7 +103,7 @@
 - 收益截图由 `lib/income-store.js` 保存原图、`lib/income-parser.js` 解析账户合计与多产品明细；高置信度先按“日期 + 金额”核对，同金额忽略账户总额、但同图新增的产品明细仍会补录，新日期写入，不同金额保留原记录并生成消息中心提醒，不自动覆盖。产品级记录进入 `product_daily_valuations`，按 `(product_code, yield_date)` 去重；产品合计只与账户总账对账，不重复计入收益，差异进入消息中心。截图漏掉的持仓先判断 `today < 收益归属日 + yield_lag_days` 是否仍为正常等到账：成立时不提示补图；满足 `today >= 收益归属日 + yield_lag_days` 后仍缺失才标记“本次未拍到”，不得自行推断为 0 或视为赎回；用户或银行页面明确确认 0 元时必须写入 0 元产品记录。产品 lag 不用于拒绝、改写或推迟用户已明确提供的收益日期。人工修正写入 `product_daily_valuation_audit`，并追加 `human_corrected` 证据事件。成交截图按 OCR 状态确认；交易落库后先匹配已采纳决策提案，只有无法匹配时才建立 `decision_status=incomplete`、`execution_status=unplanned` 的计划外决策。
 - 逐产品收益 T+N 和来源只查 `product_yield_settings`。截图在 T+N 到账前未出现属于正常情况，不提示补图；到账后仍缺明细才按产品收益缺口处理。
 - `/api/dashboard` 的 `workspace.product_valuation_summary` 提供产品数、持有/已赎回数、最新档案日；`product_valuation_summaries` 提供每只产品的累计个人收益、档案/持有天数、负收益天数、最差单日与状态；`product_valuation_reconciliation` 提供产品合计和账户总账的匹配/差异。完整逐日历史通过 `/api/product-valuations?product_code=...` 按需读取，避免 dashboard 随时间无限膨胀。
-- `workspace.current_holdings_valuation` 是首页和交易与持仓页的当前持仓市值契约；快照头与逐产品明细分别保存在 `holding_valuation_snapshots`、`holding_valuation_items`，迁移版本为 `holding-valuation-v1`。`GET/POST /api/holding-valuations` 读取或追加快照；写入必须事务化、幂等，逐产品明细若填写必须覆盖全部当前确认持仓并与总市值一致。银行持仓截图通过 `/api/holding-valuations/evidence` 保存为 `bank-statement` 证据，并以 `evidence_id` 绑定快照。
+- `workspace.current_holdings_valuation` 是首页和交易与持仓页的当前持仓净值契约：主值为确认持仓本金加逐产品收益档案，另附逐产品组成、收益截止日、覆盖缺口和银行对照结果。银行快照头与逐产品明细仍保存在 `holding_valuation_snapshots`、`holding_valuation_items`，只作为对照证据；`GET/POST /api/holding-valuations` 读取派生净值并追加快照，写入必须事务化、幂等。银行持仓截图通过 `/api/holding-valuations/evidence` 保存为 `bank-statement` 证据，并以 `evidence_id` 绑定快照。
 - 持仓结构不再手工维护快照，而是由交易流水推导。
 - 交易流水是持仓唯一事实源：`lib/trade-store.js` 管理 `trade_transactions`、`trade_allocations`、`trade_inbox`、`trade_audit`、`app_meta`；已确认买入生成批次，赎回/切换按先进先出匹配批次并计算已实现盈亏。页面中的“未赎回成本本金”= 已确认买入金额 − 已匹配赎回本金，不是余额或当前市值。待确认买入只占额度，待确认赎回不改持仓，均不进入未赎回成本、期限桶和流动性比例。
 - 交易收件箱支持本地拖入 PNG/JPEG/WebP；每日巡检以视觉识别原图为准，`scripts/split-trade-rows.mjs` 负责把多笔总览按行切分；`server/infrastructure/ocr/` 调用 `scripts/ocr-image.ps1` 使用 Windows 自带 OCR（zh-Hans-CN），只用于金额与代码的交叉校验，`lib/ocr.js` 仅保留兼容导出，OCR 子进程纳入服务关闭生命周期。`POST /api/trades/inbox/:id/vision-apply` 在冲突时返回 409 拒绝写入。`lib/trade-parser.js` 解析日期、类型、状态、代码、产品、金额、份额和期限。图片按 SHA-256 去重，业务字段按交易日期+类型+产品代码+金额+状态去重；原图默认保存在 `data/trade-inbox/`。已处理/已忽略且未被正式事实引用的原图才会进入 180 天自动清理，已被事实引用的证据永久保留。

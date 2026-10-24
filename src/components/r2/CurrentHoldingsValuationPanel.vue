@@ -1,231 +1,68 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { useDashboardStore } from '@/stores/dashboard'
-import { useToast } from '@/composables/useToast'
+import { computed } from 'vue'
 import {
   formatDateShort,
   formatMoney,
   formatSignedMoney,
 } from '@/composables/useFormatters'
-import type {
-  CurrentHoldingsValuation,
-  Holding,
-  HoldingValuationItemInput,
-} from '@/types/dashboard'
+import type { CurrentHoldingsValuation } from '@/types/dashboard'
 
 const props = defineProps<{
   valuation: CurrentHoldingsValuation
-  holdings: Holding[]
-  today: string
 }>()
 
-const dashboardStore = useDashboardStore()
-const { show } = useToast()
-const showForm = ref(false)
-const saving = ref(false)
-const uploadingEvidence = ref(false)
-const evidenceId = ref<number | null>(null)
-const evidenceName = ref('')
-const includeItems = ref(false)
-const itemValues = reactive<Record<string, number | ''>>({})
-const form = reactive({
-  as_of_date: props.valuation.as_of_date || props.today,
-  total_value: props.valuation.current_value ?? null,
-  notes: '',
-})
-
-const groupedHoldings = computed(() => {
-  const grouped = new Map<
-    string,
-    { product_code: string; product_name: string; cost: number }
-  >()
-  for (const holding of props.holdings) {
-    const code = String(holding.product_code || '').trim().toUpperCase()
-    if (!code) continue
-    const current = grouped.get(code) || {
-      product_code: code,
-      product_name: holding.product_name,
-      cost: 0,
-    }
-    current.cost += Number(holding.amount || 0)
-    current.product_name = current.product_name || holding.product_name
-    grouped.set(code, current)
-  }
-  return [...grouped.values()].sort((a, b) =>
-    a.product_code.localeCompare(b.product_code),
-  )
-})
+const bank = computed(() => props.valuation.bank_reconciliation)
 
 const statusLabel = computed(() => {
-  if (!props.valuation.available) return '暂无市值快照'
-  return props.valuation.status === 'stale' ? '快照待更新' : '银行快照'
+  if (!props.valuation.available) return '暂无确认持仓'
+  if (bank.value.status === 'missing') return '银行对照未录入'
+  if (bank.value.status === 'outdated') return '银行对照待更新'
+  if (bank.value.status === 'mismatch') return '银行对照有差异'
+  if (bank.value.status === 'rounding') return '银行对照一致 ±¥0.01'
+  return '银行对照一致'
 })
 
-const itemTotal = computed(() =>
-  groupedHoldings.value.reduce((sum, holding) => {
-    const value = itemValues[holding.product_code]
-    return sum + (value === '' || value === undefined ? 0 : Number(value))
-  }, 0),
-)
+const statusTone = computed(() => {
+  if (bank.value.status === 'mismatch') return 'is-warn'
+  if (bank.value.status === 'outdated') return 'is-note'
+  return 'is-ok'
+})
 
-watch(
-  () => props.valuation.as_of_date,
-  (value) => {
-    if (value) form.as_of_date = value
-  },
-)
+const differenceLabel = computed(() => {
+  if (bank.value.difference === null) return '—'
+  return formatSignedMoney(bank.value.difference)
+})
 
-watch(
-  () => props.valuation.current_value,
-  (value) => {
-    if (value !== null) form.total_value = value
-  },
-)
-
-function openForm(): void {
-  form.as_of_date = props.valuation.as_of_date || props.today
-  form.total_value = props.valuation.current_value ?? null
-  form.notes = ''
-  evidenceId.value = null
-  evidenceName.value = ''
-  includeItems.value = false
-  for (const key of Object.keys(itemValues)) delete itemValues[key]
-  showForm.value = true
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = () => reject(new Error('读取截图失败'))
-    reader.readAsDataURL(file)
-  })
-}
-
-async function uploadEvidence(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-    show('只支持 PNG、JPEG 或 WebP 截图', { error: true })
-    input.value = ''
-    return
+const coverageNote = computed(() => {
+  if (!props.valuation.missing_income_product_codes.length) {
+    return `${props.valuation.income_product_count} 只产品均有收益档案，收益记录截至 ${
+      props.valuation.income_as_of_date
+        ? formatDateShort(props.valuation.income_as_of_date)
+        : '—'
+    }。`
   }
-  if (file.size > 10 * 1024 * 1024) {
-    show('单张截图不能超过 10 MB', { error: true })
-    input.value = ''
-    return
-  }
-  uploadingEvidence.value = true
-  try {
-    const data = await fileToBase64(file)
-    const response = await dashboardStore.uploadHoldingValuationEvidence({
-      filename: file.name,
-      mime: file.type,
-      data,
-    })
-    evidenceId.value = response.evidence.id
-    evidenceName.value = file.name
-    show(response.duplicate ? '该截图已存在，已关联原证据' : '市值截图已保存')
-  } catch (error) {
-    evidenceId.value = null
-    evidenceName.value = ''
-    input.value = ''
-    show(error instanceof Error ? error.message : '截图上传失败', {
-      error: true,
-      duration: 6000,
-    })
-  } finally {
-    uploadingEvidence.value = false
-  }
-}
-
-async function save(): Promise<void> {
-  const total = Number(form.total_value)
-  if (!form.as_of_date) {
-    show('请选择银行市值快照日期', { error: true })
-    return
-  }
-  if (!Number.isFinite(total) || total < 0) {
-    show('请输入不小于 0 的当前持仓总市值', { error: true })
-    return
-  }
-  let items: HoldingValuationItemInput[] | undefined
-  if (includeItems.value) {
-    const missing = groupedHoldings.value.filter((holding) => {
-      const value = itemValues[holding.product_code]
-      return value === '' || value === undefined
-    })
-    if (missing.length) {
-      show(
-        `请填写全部逐产品市值，缺少 ${missing
-          .map((item) => item.product_code)
-          .join('、')}`,
-        { error: true },
-      )
-      return
-    }
-    items = groupedHoldings.value.map((holding) => ({
-      product_code: holding.product_code,
-      product_name: holding.product_name,
-      market_value: Number(itemValues[holding.product_code]),
-    }))
-    if (Math.abs(itemTotal.value - total) > 0.01) {
-      show(
-        `逐产品合计 ¥${formatMoney(itemTotal.value)} 与总市值 ¥${formatMoney(
-          total,
-        )} 不一致`,
-        { error: true },
-      )
-      return
-    }
-  }
-  saving.value = true
-  try {
-    await dashboardStore.saveHoldingValuation({
-      as_of_date: form.as_of_date,
-      total_value: total,
-      source: 'user-confirmed',
-      notes: form.notes.trim(),
-      evidence_id: evidenceId.value,
-      items,
-    })
-    show('当前已确认持仓市值已更新')
-    showForm.value = false
-  } catch (error) {
-    show(error instanceof Error ? error.message : '市值快照保存失败', {
-      error: true,
-      duration: 6000,
-    })
-  } finally {
-    saving.value = false
-  }
-}
+  return `${props.valuation.missing_income_product_codes.join(
+    '、',
+  )} 尚无产品收益记录，当前按 0 元收益计入；新确认产品不视为缺失。`
+})
 </script>
 
 <template>
   <div class="rw-panel-body current-nav-panel">
     <div class="rw-toolbar">
       <div class="rw-card-heading">
-        <p class="kicker">CONFIRMED HOLDINGS VALUE</p>
+        <p class="kicker">DERIVED CONFIRMED HOLDINGS VALUE</p>
         <strong class="rw-panel-title">当前已确认持仓净值</strong>
         <p class="rw-panel-sub">
-          只使用银行当前已确认产品的市值快照。待确认买入、临时桥接本金和已赎回产品不进入这个净值。
+          由当前已确认持仓本金加逐产品累计收益实时推算。待确认买入、临时桥接本金和已赎回产品不进入净值。
         </p>
       </div>
-      <div class="rw-toolbar-actions">
-        <span class="nav-status" :class="`is-${valuation.status}`">
-          {{ statusLabel }}
-        </span>
-        <button type="button" class="rw-button" @click="openForm">
-          更新持仓市值
-        </button>
-      </div>
+      <span class="nav-status" :class="statusTone">{{ statusLabel }}</span>
     </div>
 
     <div class="nav-hero">
       <div>
-        <span class="nav-label">当前净值</span>
+        <span class="nav-label">推算净值</span>
         <strong class="nav-value">
           {{
             valuation.available && valuation.current_value !== null
@@ -236,33 +73,35 @@ async function save(): Promise<void> {
         <p>
           {{
             valuation.as_of_date
-              ? `银行快照 ${formatDateShort(valuation.as_of_date)}`
-              : '尚未录入银行当前持仓市值'
+              ? `推算日 ${formatDateShort(valuation.as_of_date)}`
+              : '尚无已确认持仓'
           }}
+          <span v-if="valuation.income_as_of_date">
+            · 收益档案截至 {{ formatDateShort(valuation.income_as_of_date) }}
+          </span>
         </p>
       </div>
       <div class="nav-facts">
         <div>
           <span>已确认持仓</span>
-          <strong>{{ valuation.active_holding_count }} 批</strong>
+          <strong>
+            {{ valuation.active_holding_count }} 批 ·
+            {{ valuation.active_product_count }} 只
+          </strong>
         </div>
         <div>
-          <span>未赎回成本</span>
+          <span>未赎回本金</span>
           <strong>¥{{ formatMoney(valuation.active_cost) }}</strong>
         </div>
         <div>
-          <span>相对成本变动</span>
+          <span>累计产品收益</span>
           <strong
             :class="{
-              'rw-gain-text': (valuation.market_gain ?? 0) > 0,
-              'rw-danger-text': (valuation.market_gain ?? 0) < 0,
+              'rw-gain-text': valuation.product_income > 0,
+              'rw-danger-text': valuation.product_income < 0,
             }"
           >
-            {{
-              valuation.market_gain === null
-                ? '—'
-                : formatSignedMoney(valuation.market_gain)
-            }}
+            {{ formatSignedMoney(valuation.product_income) }}
           </strong>
         </div>
         <div>
@@ -272,41 +111,67 @@ async function save(): Promise<void> {
             ¥{{ formatMoney(valuation.pending_buy_amount, 0) }}
           </strong>
         </div>
-        <div>
-          <span>较上一快照</span>
-          <strong
-            :class="{
-              'rw-gain-text': (valuation.change_since_previous ?? 0) > 0,
-              'rw-danger-text': (valuation.change_since_previous ?? 0) < 0,
-            }"
-          >
-            {{
-              valuation.change_since_previous === null
-                ? '首笔快照'
-                : formatSignedMoney(valuation.change_since_previous)
-            }}
-            <small v-if="valuation.previous_as_of_date">
-              · {{ formatDateShort(valuation.previous_as_of_date) }}
-            </small>
-          </strong>
-        </div>
       </div>
     </div>
 
-    <p v-if="valuation.notes" class="nav-note">{{ valuation.notes }}</p>
-    <p v-if="valuation.evidence_id" class="nav-note">
-      银行持仓截图：
+    <div class="nav-formula">
+      <span>计算公式</span>
+      <strong>
+        ¥{{ formatMoney(valuation.active_cost) }}
+        {{ valuation.product_income < 0 ? '−' : '+' }}
+        ¥{{ formatMoney(Math.abs(valuation.product_income)) }}
+        =
+        ¥{{ formatMoney(valuation.current_value ?? 0) }}
+      </strong>
+      <small>金额按分记录和汇总；银行对照差异不超过 ¥0.01 视为舍入差异。</small>
+    </div>
+
+    <p class="nav-note">{{ coverageNote }}</p>
+
+    <div class="nav-bank" :class="statusTone">
+      <div>
+        <span>银行对照</span>
+        <strong>
+          {{
+            bank.available && bank.bank_value !== null
+              ? `¥${formatMoney(bank.bank_value)}`
+              : '尚未录入'
+          }}
+        </strong>
+      </div>
+      <div>
+        <span>对照日期</span>
+        <strong>
+          {{ bank.as_of_date ? formatDateShort(bank.as_of_date) : '—' }}
+        </strong>
+      </div>
+      <div>
+        <span>推算 − 银行</span>
+        <strong>{{ differenceLabel }}</strong>
+      </div>
+      <div>
+        <span>判定</span>
+        <strong>{{ statusLabel }}</strong>
+      </div>
       <a
-        :href="`/api/holding-valuations/evidence/${valuation.evidence_id}/image`"
+        v-if="bank.evidence_id"
+        :href="`/api/holding-valuations/evidence/${bank.evidence_id}/image`"
         target="_blank"
         rel="noreferrer"
       >
-        查看原始证据
+        查看银行原始证据
       </a>
-    </p>
-    <p v-if="!valuation.items_complete && valuation.available" class="nav-note">
-      当前只保存了银行总市值，尚未录入逐产品拆分。
-    </p>
+    </div>
+
+    <div v-if="bank.stale_reasons.length" class="rw-alerts">
+      <span
+        v-for="reason in bank.stale_reasons"
+        :key="reason"
+        class="rw-alert is-warn"
+      >
+        {{ reason }}
+      </span>
+    </div>
     <div v-if="valuation.stale_reasons.length" class="rw-alerts">
       <span
         v-for="reason in valuation.stale_reasons"
@@ -317,119 +182,57 @@ async function save(): Promise<void> {
       </span>
     </div>
 
-    <form v-if="showForm" class="nav-form" @submit.prevent="save">
-      <div class="nav-form-head">
-        <strong>录入银行当前持仓市值</strong>
-        <button type="button" class="rw-link-button" @click="showForm = false">
-          取消
-        </button>
+    <div class="nav-components">
+      <div class="nav-components-head">
+        <strong>净值的逐产品组成</strong>
+        <span>本金 + 累计收益 = 产品推算金额</span>
       </div>
-      <div class="nav-form-grid">
-        <label>
-          <span>快照日期</span>
-          <input v-model="form.as_of_date" type="date" :max="today" required />
-        </label>
-        <label>
-          <span>当前已确认持仓总市值</span>
-          <div class="nav-money-input">
-            <span>¥</span>
-            <input
-              v-model.number="form.total_value"
-              type="number"
-              min="0"
-              step="0.01"
-              inputmode="decimal"
-              placeholder="0.00"
-              required
-            />
-          </div>
-        </label>
-        <label class="nav-wide">
-          <span>备注</span>
-          <input
-            v-model="form.notes"
-            type="text"
-            maxlength="300"
-            placeholder="例：招行 App 当前已确认理财产品市值"
-          />
-        </label>
-        <div class="nav-wide nav-evidence">
-          <label>
-            <span>银行持仓截图（可选）</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              :disabled="uploadingEvidence"
-              @change="uploadEvidence"
-            />
-          </label>
-          <p>
-            {{
-              uploadingEvidence
-                ? '截图上传中…'
-                : evidenceId
-                  ? `已绑定：${evidenceName}`
-                  : 'PNG、JPEG 或 WebP，单张不超过 10 MB'
-            }}
-          </p>
-        </div>
+      <div class="nav-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>产品</th>
+              <th>未赎回本金</th>
+              <th>累计产品收益</th>
+              <th>产品推算金额</th>
+              <th>收益截至</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in valuation.components" :key="item.product_code">
+              <td>
+                <strong>{{ item.product_name || item.product_code }}</strong>
+                <small>{{ item.product_code }}</small>
+              </td>
+              <td>¥{{ formatMoney(item.principal) }}</td>
+              <td
+                :class="{
+                  'rw-gain-text': item.product_income > 0,
+                  'rw-danger-text': item.product_income < 0,
+                }"
+              >
+                {{ formatSignedMoney(item.product_income) }}
+              </td>
+              <td>¥{{ formatMoney(item.current_value) }}</td>
+              <td>
+                {{
+                  item.last_yield_date
+                    ? formatDateShort(item.last_yield_date)
+                    : '暂无收益记录'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
-      <label class="nav-item-toggle">
-        <input v-model="includeItems" type="checkbox" />
-        <span>同时录入逐产品市值（可选，填写时必须覆盖全部已确认持仓）</span>
-      </label>
-
-      <div v-if="includeItems" class="nav-items">
-        <label
-          v-for="holding in groupedHoldings"
-          :key="holding.product_code"
-          class="nav-item"
-        >
-          <span>
-            <strong>{{ holding.product_name }}</strong>
-            <small>
-              {{ holding.product_code }} · 成本
-              ¥{{ formatMoney(holding.cost) }}
-            </small>
-          </span>
-          <div class="nav-money-input">
-            <span>¥</span>
-            <input
-              v-model.number="itemValues[holding.product_code]"
-              type="number"
-              min="0"
-              step="0.01"
-              inputmode="decimal"
-              placeholder="0.00"
-              required
-            />
-          </div>
-        </label>
-        <p class="nav-item-total">
-          逐产品合计
-          <strong>¥{{ formatMoney(itemTotal) }}</strong>
-          <span v-if="form.total_value !== null">
-            · 与总市值差
-            ¥{{ formatMoney(itemTotal - Number(form.total_value)) }}
-          </span>
-        </p>
-      </div>
-
-      <div class="nav-form-actions">
-        <span>保存后首页会立即更新，且保留历史快照。</span>
-        <button type="submit" class="rw-button" :disabled="saving">
-          {{ saving ? '保存中…' : '保存市值快照' }}
-        </button>
-      </div>
-    </form>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .current-nav-panel {
   display: grid;
-  gap: 20px;
+  gap: 18px;
 }
 
 .nav-status {
@@ -438,21 +241,28 @@ async function save(): Promise<void> {
   min-height: 28px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #eef4f1;
-  color: #2d6758;
   font-size: 12px;
   font-weight: 700;
 }
 
-.nav-status.is-stale,
-.nav-status.is-missing {
+.nav-status.is-ok {
+  background: #eef4f1;
+  color: #2d6758;
+}
+
+.nav-status.is-warn {
+  background: #fff0eb;
+  color: #a33d23;
+}
+
+.nav-status.is-note {
   background: #fff3e4;
   color: #9a5a12;
 }
 
 .nav-hero {
   display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
+  grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.5fr);
   gap: 20px;
   align-items: stretch;
   padding: 22px;
@@ -465,9 +275,11 @@ async function save(): Promise<void> {
 
 .nav-label,
 .nav-facts span,
-.nav-form label > span,
-.nav-item small,
-.nav-form-actions span {
+.nav-formula span,
+.nav-formula small,
+.nav-bank span,
+.nav-components-head span,
+.nav-components td small {
   color: #65746e;
   font-size: 12px;
 }
@@ -505,13 +317,30 @@ async function save(): Promise<void> {
   background: rgba(255, 255, 255, 0.86);
 }
 
-.nav-facts > div:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-.nav-facts strong {
+.nav-facts strong,
+.nav-bank strong {
   color: #263b34;
   font-size: 14px;
+}
+
+.nav-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  border: 1px solid #e1ebe6;
+  border-radius: 12px;
+  background: #fbfdfc;
+}
+
+.nav-formula strong {
+  color: #214c40;
+  font-size: 14px;
+}
+
+.nav-formula small {
+  flex-basis: 100%;
 }
 
 .nav-note {
@@ -520,137 +349,93 @@ async function save(): Promise<void> {
   background: #f5f8f6;
 }
 
-.nav-form {
+.nav-bank {
   display: grid;
-  gap: 16px;
-  padding: 18px;
-  border: 1px solid #dfe8e4;
-  border-radius: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #dfe9e4;
+  border-radius: 12px;
   background: #fff;
 }
 
-.nav-form-head,
-.nav-form-actions,
-.nav-item-toggle,
-.nav-item-total {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.nav-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.nav-form label {
-  display: grid;
-  gap: 7px;
-}
-
-.nav-wide {
-  grid-column: 1 / -1;
-}
-
-.nav-evidence {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 12px;
-  border: 1px dashed #cad8d2;
-  border-radius: 10px;
-  background: #f9fbfa;
-}
-
-.nav-evidence > label {
-  flex: 1;
-}
-
-.nav-evidence p {
-  margin: 0;
-  color: #65746e;
-  font-size: 12px;
-}
-
-.nav-form input[type='date'],
-.nav-form input[type='text'],
-.nav-form input[type='number'] {
-  width: 100%;
-  min-height: 38px;
-  padding: 8px 10px;
-  border: 1px solid #ccd9d4;
-  border-radius: 9px;
-  background: #fff;
-  color: #24352f;
-  font: inherit;
-  font-size: 12.5px;
-}
-
-.nav-money-input {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 5px;
-}
-
-.nav-money-input > span {
-  color: #52635d;
-  font-size: 12.5px;
-}
-
-.nav-item-toggle {
-  justify-content: flex-start;
-  color: #43544e;
-  font-size: 12.5px;
-}
-
-.nav-item-toggle input {
-  width: 16px;
-  height: 16px;
-}
-
-.nav-items {
-  display: grid;
-  gap: 8px;
-}
-
-.nav-item {
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 210px);
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid #e5ece9;
-  border-radius: 10px;
-  background: #fafcfb;
-}
-
-.nav-item > span {
+.nav-bank > div {
   display: grid;
   gap: 3px;
 }
 
-.nav-item strong {
+.nav-bank.is-warn {
+  border-color: #f0c9bd;
+  background: #fffaf8;
+}
+
+.nav-bank a {
+  color: #176456;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nav-components {
+  display: grid;
+  gap: 10px;
+}
+
+.nav-components-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.nav-components-head strong {
+  color: #263b34;
+  font-size: 14px;
+}
+
+.nav-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e3ebe7;
+  border-radius: 12px;
+}
+
+.nav-components table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.nav-components th,
+.nav-components td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf2ef;
+  text-align: left;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.nav-components th {
+  color: #65746e;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f8fbf9;
+}
+
+.nav-components tr:last-child td {
+  border-bottom: 0;
+}
+
+.nav-components td:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.nav-components td strong {
   color: #2d3c37;
-  font-size: 12.5px;
-}
-
-.nav-item-total {
-  justify-content: flex-end;
-  padding-top: 4px;
-  color: #52635d;
-  font-size: 12.5px;
-}
-
-.nav-form-actions {
-  padding-top: 12px;
-  border-top: 1px solid #edf1ef;
 }
 
 @media (max-width: 760px) {
-  .nav-hero,
-  .nav-form-grid {
+  .nav-hero {
     grid-template-columns: 1fr;
   }
 
@@ -658,15 +443,13 @@ async function save(): Promise<void> {
     grid-template-columns: 1fr 1fr;
   }
 
-  .nav-form-head,
-  .nav-form-actions,
-  .nav-evidence {
-    align-items: flex-start;
-    flex-direction: column;
+  .nav-bank {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .nav-item {
-    grid-template-columns: 1fr;
+  .nav-components-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

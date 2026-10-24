@@ -55,16 +55,40 @@ test('holding valuation API updates dashboard with confirmed holdings value', as
       term_days: 7,
     }),
   );
+  repository.productValuationStore.upsertMany(
+    [
+      {
+        yield_date: shiftDate(today, -1),
+        product_code: '120026A',
+        product_name: '招银理财14天',
+        daily_pnl: 2.5,
+        confidence: 100,
+      },
+      {
+        yield_date: shiftDate(today, -1),
+        product_code: '120056A',
+        product_name: '招银理财90天',
+        daily_pnl: 3.53,
+        confidence: 100,
+      },
+    ],
+    { source: 'income-screenshot', screenshotId: 1 },
+  );
 
   const before = await requestJson(`${baseUrl}/api/dashboard`);
   assert.equal(before.response.status, 200);
   assert.equal(
-    before.body.workspace.current_holdings_valuation.status,
-    'missing',
+    before.body.workspace.current_holdings_valuation.current_value,
+    30006.03,
   );
   assert.equal(
-    before.body.workspace.current_holdings_valuation.current_value,
-    null,
+    before.body.workspace.current_holdings_valuation.product_income,
+    6.03,
+  );
+  assert.equal(
+    before.body.workspace.current_holdings_valuation.bank_reconciliation
+      .status,
+    'missing',
   );
   assert.equal(
     before.body.workspace.current_holdings_valuation.pending_buy_amount,
@@ -85,7 +109,7 @@ test('holding valuation API updates dashboard with confirmed holdings value', as
   assert.equal(created.body.snapshot.total_value, 30006.04);
   assert.equal(
     created.body.dashboard.workspace.current_holdings_valuation.current_value,
-    30006.04,
+    30006.03,
   );
   assert.equal(
     created.body.dashboard.workspace.current_holdings_valuation.active_cost,
@@ -94,6 +118,21 @@ test('holding valuation API updates dashboard with confirmed holdings value', as
   assert.equal(
     created.body.dashboard.workspace.current_holdings_valuation.status,
     'current',
+  );
+  assert.equal(
+    created.body.dashboard.workspace.current_holdings_valuation
+      .bank_reconciliation.status,
+    'rounding',
+  );
+  assert.equal(
+    created.body.dashboard.workspace.current_holdings_valuation
+      .bank_reconciliation.difference,
+    -0.01,
+  );
+  assert.equal(
+    created.body.dashboard.workspace.current_holdings_valuation
+      .bank_reconciliation.matched,
+    true,
   );
   assert.equal(
     created.body.dashboard.workspace.current_holdings_valuation
@@ -170,7 +209,8 @@ test('holding valuation API updates dashboard with confirmed holdings value', as
     `${baseUrl}/api/holding-valuations?limit=10`,
   );
   assert.equal(listed.response.status, 200);
-  assert.equal(listed.body.current.current_value, 30006.04);
+  assert.equal(listed.body.current.current_value, 30006.03);
+  assert.equal(listed.body.current.bank_reconciliation.bank_value, 30006.04);
   assert.equal(listed.body.snapshots.length, 2);
 
   const future = await requestJson(`${baseUrl}/api/holding-valuations`, {

@@ -27,8 +27,11 @@ const sections = computed(() => [
     id: 'current-value',
     label: '当前净值',
     meta: props.dashboard.workspace.current_holdings_valuation.available
-      ? `快照 ${props.dashboard.workspace.current_holdings_valuation.as_of_date}`
-      : '暂无快照',
+      ? `收益截至 ${
+          props.dashboard.workspace.current_holdings_valuation.income_as_of_date ??
+          props.dashboard.workspace.current_holdings_valuation.as_of_date
+        }`
+      : '暂无确认持仓',
   },
   {
     id: 'holdings',
@@ -84,8 +87,6 @@ function openTrades(): void {
       <section id="current-value" class="rw-panel r2-anchor" aria-label="当前已确认持仓净值">
         <CurrentHoldingsValuationPanel
           :valuation="dashboard.workspace.current_holdings_valuation"
-          :holdings="dashboard.workspace.holdings"
-          :today="today"
         />
       </section>
 

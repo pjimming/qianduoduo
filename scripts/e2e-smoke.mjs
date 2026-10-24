@@ -243,9 +243,9 @@ async function main() {
     repository.holdingValuationStore.createSnapshot(
       {
         as_of_date: '2026-10-24',
-        total_value: 3006.04,
+        total_value: 3002.03,
         source: 'user-confirmed',
-        notes: 'E2E 银行已确认持仓市值',
+        notes: 'E2E 银行对照市值',
       },
       { today: '2026-10-24' },
     )
@@ -361,9 +361,9 @@ async function main() {
       (await page.locator('.stat-primary').textContent()) ?? ''
     assert(
       currentValueCard.includes('已确认持仓净值') &&
-        currentValueCard.includes('¥3,006.04') &&
+        currentValueCard.includes('¥3,002.02') &&
         currentValueCard.includes('待确认 ¥0 未计入'),
-      `首页没有使用已确认持仓市值快照：${currentValueCard}`,
+      `首页没有使用逐产品收益推算净值：${currentValueCard}`,
     )
     await assertFontFloor(page, '.stats-grid', '收益概览桌面端')
 
@@ -522,36 +522,16 @@ async function main() {
     const currentValuationPanel =
       (await page.locator('#current-value').textContent()) ?? ''
     assert(
-      currentValuationPanel.includes('¥3,006.04') &&
-        currentValuationPanel.includes('银行快照 10.24'),
-      `持仓市值面板数据不正确：${currentValuationPanel}`,
+      currentValuationPanel.includes('¥3,002.02') &&
+        currentValuationPanel.includes('银行对照') &&
+        currentValuationPanel.includes('¥3,002.03') &&
+        currentValuationPanel.includes('银行对照一致 ±¥0.01'),
+      `持仓净值派生或银行对照不正确：${currentValuationPanel}`,
     )
     assert(
       (await page.locator('.back-to-top').count()) === 0,
       '页面顶部不应提前显示回到顶部悬浮球',
     )
-    await page.getByRole('button', { name: '更新持仓市值' }).click()
-    await page
-      .locator('.nav-form input[type="number"]')
-      .first()
-      .fill('3007.04')
-    await page.locator('.nav-evidence input[type="file"]').setInputFiles({
-      name: 'e2e-bank-holdings.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(ONE_PIXEL_PNG, 'base64'),
-    })
-    await page.waitForFunction(() =>
-      document
-        .querySelector('.nav-evidence')
-        ?.textContent?.includes('已绑定：e2e-bank-holdings.png'),
-    )
-    await page.getByRole('button', { name: '保存市值快照' }).click()
-    await page.waitForFunction(() =>
-      document
-        .querySelector('#current-value')
-        ?.textContent?.includes('¥3,007.04'),
-    )
-    await page.waitForSelector('#current-value a[href*="/api/holding-valuations/evidence/"]')
     await assertFontFloor(
       page,
       '#current-value',

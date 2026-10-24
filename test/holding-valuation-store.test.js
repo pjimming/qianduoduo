@@ -41,25 +41,54 @@ function createTrade(store, overrides = {}) {
   });
 }
 
-test('missing snapshot never falls back to principal or daily record value', (t) => {
+function addIncome(repository, productCode, dailyPnl, productName = '') {
+  return repository.productValuationStore.upsertValuation({
+    valuation_date: '2026-10-22',
+    yield_date: '2026-10-22',
+    product_code: productCode,
+    product_name: productName,
+    daily_pnl: dailyPnl,
+  });
+}
+
+test('current value derives from confirmed principal and product income without a snapshot', (t) => {
   const repository = openTemp(t);
   createTrade(repository.tradeStore, {
     product_code: '120026A',
     amount: 30000,
   });
+  createTrade(repository.tradeStore, {
+    trade_date: '2026-10-23',
+    confirm_date: null,
+    status: 'pending',
+    product_code: 'JX040210',
+    product_name: '建信理财7天',
+    amount: 16000,
+    term_days: 7,
+  });
+  addIncome(repository, '120026A', 0.6, '招银理财14天');
 
   const current = repository.holdingValuationStore.getCurrent(
     '2026-10-24',
     repository.tradeStore.getPortfolio(),
   );
-  assert.equal(current.available, false);
-  assert.equal(current.status, 'missing');
-  assert.equal(current.current_value, null);
+  assert.equal(current.available, true);
+  assert.equal(current.status, 'current');
+  assert.equal(current.value_source, 'confirmed_holdings_plus_product_income');
+  assert.equal(current.current_value, 30000.6);
   assert.equal(current.active_cost, 30000);
-  assert.match(current.stale_reasons[0], /尚未录入/);
+  assert.equal(current.product_income, 0.6);
+  assert.equal(current.market_gain, 0.6);
+  assert.equal(current.income_as_of_date, '2026-10-22');
+  assert.equal(current.active_holding_count, 1);
+  assert.equal(current.pending_buy_count, 1);
+  assert.equal(current.pending_buy_amount, 16000);
+  assert.equal(current.bank_reconciliation.status, 'missing');
+  assert.equal(current.bank_reconciliation.available, false);
+  assert.deepEqual(current.stale_reasons, []);
 });
 
-test('confirmed holdings snapshot excludes pending buys and is idempotent', (t) => {
+test('bank snapshot is reconciliation only and a one-cent difference is accepted', (t) => {
   const repository = openTemp(t);
   createTrade(repository.tradeStore, {
     product_code: '120026A',
@@ -71,15 +100,8 @@ test('confirmed holdings snapshot excludes pending buys and is idempotent', (t) 
     amount: 15000,
     term_days: 90,
   });
-  createTrade(repository.tradeStore, {
-    trade_date: '2026-10-23',
-    confirm_date: null,
-    status: 'pending',
-    product_code: 'JX040210',
-    product_name: '建信理财7天',
-    amount: 16000,
-    term_days: 7,
-  });
+  addIncome(repository, '120026A', 2.5, '招银理财14天');
+  addIncome(repository, '120056A', 3.53, '招银理财90天');
 
   const first = repository.holdingValuationStore.createSnapshot(
     {
@@ -91,7 +113,6 @@ test('confirmed holdings snapshot excludes pending buys and is idempotent', (t) 
     { today: '2026-10-24', now: '2026-10-24T02:00:00.000Z' },
   );
   assert.equal(first.created, true);
-
   const duplicate = repository.holdingValuationStore.createSnapshot(
     {
       as_of_date: '2026-10-24',
@@ -102,80 +123,88 @@ test('confirmed holdings snapshot excludes pending buys and is idempotent', (t) 
     { today: '2026-10-24', now: '2026-10-24T03:00:00.000Z' },
   );
   assert.equal(duplicate.created, false);
-  assert.equal(duplicate.snapshot.id, first.snapshot.id);
 
   const current = repository.holdingValuationStore.getCurrent(
     '2026-10-24',
     repository.tradeStore.getPortfolio(),
   );
-  assert.equal(current.status, 'current');
-  assert.equal(current.current_value, 30006.04);
-  assert.equal(current.active_cost, 30000);
-  assert.equal(current.market_gain, 6.04);
-  assert.equal(current.active_holding_count, 2);
-  assert.equal(current.pending_buy_count, 1);
-  assert.equal(current.pending_buy_amount, 16000);
-  assert.equal(current.previous_value, null);
-  assert.equal(current.change_since_previous, null);
+  assert.equal(current.current_value, 30006.03);
+  assert.equal(current.product_income, 6.03);
+  assert.equal(current.bank_reconciliation.status, 'rounding');
+  assert.equal(current.bank_reconciliation.bank_value, 30006.04);
+  assert.equal(current.bank_reconciliation.difference, -0.01);
+  assert.equal(current.bank_reconciliation.matched, true);
+  assert.equal(current.bank_reconciliation.tolerance, 0.01);
+  assert.deepEqual(current.stale_reasons, []);
 });
 
-test('a trade confirmed after the snapshot marks it stale', (t) => {
+test('a larger bank difference is surfaced while the derived value stays authoritative', (t) => {
   const repository = openTemp(t);
-  const firstBuy = createTrade(repository.tradeStore, {
+  createTrade(repository.tradeStore, { amount: 30000 });
+  addIncome(repository, '120026A', 6.03, '招银理财14天');
+  repository.holdingValuationStore.createSnapshot(
+    {
+      as_of_date: '2026-10-24',
+      total_value: 30100,
+      source: 'user-confirmed',
+    },
+    { today: '2026-10-24' },
+  );
+
+  const current = repository.holdingValuationStore.getCurrent(
+    '2026-10-24',
+    repository.tradeStore.getPortfolio(),
+  );
+  assert.equal(current.current_value, 30006.03);
+  assert.equal(current.bank_reconciliation.status, 'mismatch');
+  assert.equal(current.bank_reconciliation.matched, false);
+  assert.equal(current.bank_reconciliation.difference, -93.97);
+  assert.ok(current.stale_reasons.some((item) => /超过 ¥0.01 容差/.test(item)));
+});
+
+test('confirmed trades update the derived value even when the bank snapshot is old', (t) => {
+  const repository = openTemp(t);
+  createTrade(repository.tradeStore, {
     product_code: '107320A',
     product_name: '日开1号',
     amount: 30000,
     term_days: 0,
   });
+  addIncome(repository, '107320A', 1, '日开1号');
   repository.holdingValuationStore.createSnapshot(
     {
       as_of_date: '2026-10-22',
-      total_value: 33006.6,
+      total_value: 30001,
       source: 'user-confirmed',
     },
     { today: '2026-10-24', now: '2026-10-22T12:00:00.000Z' },
   );
   createTrade(repository.tradeStore, {
-    trade_date: '2026-10-21',
+    trade_date: '2026-10-23',
     confirm_date: '2026-10-23',
-    trade_type: 'redeem',
-    product_code: '107320A',
-    product_name: '日开1号',
-    amount: 3000,
-    settlement_amount: 3000.57,
-    term_days: null,
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    amount: 5000,
+    term_days: 90,
   });
-  assert.ok(firstBuy.id > 0);
+  addIncome(repository, '120056A', 0.5, '招银理财90天');
 
-  const stale = repository.holdingValuationStore.getCurrent(
-    '2026-10-24',
-    repository.tradeStore.getPortfolio(),
-  );
-  assert.equal(stale.status, 'stale');
-  assert.equal(stale.current_value, 33006.6);
-  assert.ok(stale.stale_reasons.some((item) => item.includes('2026-10-23')));
-
-  const refreshed = repository.holdingValuationStore.createSnapshot(
-    {
-      as_of_date: '2026-10-24',
-      total_value: 27006.04,
-      source: 'user-confirmed',
-    },
-    { today: '2026-10-24', now: '2026-10-24T04:00:00.000Z' },
-  );
-  assert.equal(refreshed.created, true);
   const current = repository.holdingValuationStore.getCurrent(
     '2026-10-24',
     repository.tradeStore.getPortfolio(),
   );
-  assert.equal(current.status, 'current');
-  assert.equal(current.current_value, 27006.04);
-  assert.equal(current.active_cost, 27000);
-  assert.equal(current.previous_value, 33006.6);
-  assert.equal(current.change_since_previous, -6000.56);
+  assert.equal(current.current_value, 35001.5);
+  assert.equal(current.active_cost, 35000);
+  assert.equal(current.bank_reconciliation.status, 'outdated');
+  assert.equal(current.bank_reconciliation.comparison_valid, false);
+  assert.ok(
+    current.bank_reconciliation.stale_reasons.some((item) =>
+      item.includes('2026-10-23'),
+    ),
+  );
 });
 
-test('per-product values must cover all active holdings and reconcile to total', (t) => {
+test('per-product bank values must cover all active holdings and reconcile to total', (t) => {
   const repository = openTemp(t);
   createTrade(repository.tradeStore, {
     product_code: '120026A',
@@ -203,28 +232,6 @@ test('per-product values must cover all active holdings and reconcile to total',
         { today: '2026-10-24' },
       ),
     /必须覆盖全部当前已确认持仓/,
-  );
-
-  assert.throws(
-    () =>
-      repository.holdingValuationStore.createSnapshot(
-        {
-          as_of_date: '2026-10-24',
-          total_value: 13506.04,
-          items: [
-            {
-              product_code: '120026A',
-              market_value: 6001.17,
-            },
-            {
-              product_code: '120056A',
-              market_value: 7501.44,
-            },
-          ],
-        },
-        { today: '2026-10-24' },
-      ),
-    /合计.*不一致/,
   );
 
   const saved = repository.holdingValuationStore.createSnapshot(

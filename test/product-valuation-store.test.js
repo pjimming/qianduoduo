@@ -282,3 +282,21 @@ test('product yield lag is stored as reference without changing the disclosure d
   assert.equal(detail.summary.yield_lag_days, 2);
   assert.equal(detail.summary.expected_latest_yield_date, '2026-10-20');
 });
+
+test('product income is stored and aggregated to cents without four-decimal precision', (t) => {
+  const { repository } = openTemp(t);
+  createBuy(repository);
+  const saved = repository.productValuationStore.upsertValuation({
+    yield_date: '2026-10-21',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    holding_amount: 6000,
+    daily_pnl: 1.2345,
+  });
+
+  assert.equal(saved.valuation.daily_pnl, 1.23);
+  const summary = repository.productValuationStore
+    .getSummaries('2026-10-22', repository.tradeStore.getPortfolio())
+    .find((item) => item.product_code === '120056A');
+  assert.equal(summary.cumulative_pnl, 1.23);
+});

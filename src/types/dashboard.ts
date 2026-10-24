@@ -165,9 +165,43 @@ export interface HoldingValuationItem {
   created_at: string
 }
 
+export interface HoldingValuationComponent {
+  product_code: string
+  product_name: string
+  principal: number
+  product_income: number
+  current_value: number
+  last_yield_date: string
+  income_recorded: boolean
+}
+
+export type BankReconciliationStatus =
+  | 'missing'
+  | 'outdated'
+  | 'matched'
+  | 'rounding'
+  | 'mismatch'
+
+export interface BankHoldingReconciliation {
+  available: boolean
+  status: BankReconciliationStatus
+  comparison_valid: boolean
+  bank_value: number | null
+  difference: number | null
+  tolerance: number
+  matched: boolean
+  as_of_date: string | null
+  as_of_at: string | null
+  snapshot_id: number | null
+  evidence_id: number | null
+  notes: string
+  stale_reasons: string[]
+}
+
 export interface CurrentHoldingsValuation {
   available: boolean
   status: 'current' | 'stale' | 'missing'
+  value_source: 'confirmed_holdings_plus_product_income'
   current_value: number | null
   as_of_date: string | null
   as_of_at: string | null
@@ -177,6 +211,11 @@ export interface CurrentHoldingsValuation {
   active_holding_count: number
   active_product_count: number
   active_cost: number
+  product_income: number
+  income_as_of_date: string | null
+  income_product_count: number
+  missing_income_product_codes: string[]
+  components: HoldingValuationComponent[]
   market_gain: number | null
   pending_buy_count: number
   pending_buy_amount: number
@@ -184,10 +223,11 @@ export interface CurrentHoldingsValuation {
   items_complete: boolean
   stale_reasons: string[]
   latest_confirmed_change_date?: string | null
-  snapshot_id?: number
+  snapshot_id?: number | null
   previous_value: number | null
   previous_as_of_date: string | null
   change_since_previous: number | null
+  bank_reconciliation: BankHoldingReconciliation
 }
 
 export interface Summary {

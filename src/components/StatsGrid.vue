@@ -25,17 +25,24 @@ const lastRecord = computed(() => props.records.at(-1) ?? null)
 const window30 = computed(() => props.windows['30'])
 const annualized = computed(() => window30.value.annualized_pct)
 const valuationBadge = computed(() => {
-  if (!props.valuation.available || !props.valuation.as_of_date) return '暂无快照'
-  const date = formatDateShort(props.valuation.as_of_date)
-  return props.valuation.status === 'stale' ? `${date} · 待更新` : date
+  if (!props.valuation.available) return '暂无确认持仓'
+  const date = props.valuation.income_as_of_date
+    ? formatDateShort(props.valuation.income_as_of_date)
+    : '暂无收益记录'
+  if (props.valuation.bank_reconciliation.status === 'mismatch') {
+    return `${date} · 银行对照有差异`
+  }
+  return `收益至 ${date}`
 })
 
 const valuationSub = computed(() => {
   if (!props.valuation.available) {
-    return `已确认 ${props.valuation.active_holding_count} 批 · 待录入银行持仓市值`
+    return '尚无已确认产品持仓'
   }
-  return `已确认 ${props.valuation.active_holding_count} 批 · 成本 ¥${formatMoney(
+  return `本金 ¥${formatMoney(
     props.valuation.active_cost,
+  )} + 产品收益 ${formatSignedMoney(
+    props.valuation.product_income,
   )} · 待确认 ¥${formatMoney(
     props.valuation.pending_buy_amount,
     0,
