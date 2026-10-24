@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { initializeTheme } from './composables/useTheme'
 import './styles/tokens.css'
 import './styles/layout.css'
 import './styles/controls.css'
@@ -14,5 +15,7 @@ import './styles/research.css'
 import './styles/report.css'
 import './styles/r2-pages.css'
 import './styles/inbox.css'
+import './styles/theme.css'
 
+initializeTheme()
 createApp(App).use(createPinia()).use(router).mount('#app')

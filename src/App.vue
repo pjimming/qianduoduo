@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AppSidebar from '@/components/AppSidebar.vue'
 import BackToTop from '@/components/BackToTop.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import ToastBanner from '@/components/ToastBanner.vue'
 
 const route = useRoute()
@@ -49,6 +50,7 @@ watch(
           <strong>钱多多</strong>
         </RouterLink>
         <span class="mobile-module">{{ isInvestment ? '投资' : '理财' }}</span>
+        <ThemeToggle compact />
       </header>
 
       <main :class="{ 'research-main': isInvestment }">

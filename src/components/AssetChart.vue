@@ -253,9 +253,9 @@ onUnmounted(() => {
         >
           <defs>
             <linearGradient id="assetAreaFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#397c68" stop-opacity=".2" />
-              <stop offset="78%" stop-color="#397c68" stop-opacity=".035" />
-              <stop offset="100%" stop-color="#397c68" stop-opacity="0" />
+              <stop offset="0%" stop-color="var(--chart-area)" stop-opacity=".2" />
+              <stop offset="78%" stop-color="var(--chart-area)" stop-opacity=".035" />
+              <stop offset="100%" stop-color="var(--chart-area)" stop-opacity="0" />
             </linearGradient>
           </defs>
           <template v-for="tick in model.grid" :key="tick.y">
@@ -264,14 +264,14 @@ onUnmounted(() => {
               :x2="model.width - model.margins.right"
               :y1="tick.y"
               :y2="tick.y"
-              stroke="#e6ebe3"
+              stroke="var(--chart-grid)"
               stroke-width="1"
               stroke-dasharray="2 5"
             />
             <text
               :x="model.margins.left - 10"
               :y="tick.y + 3"
-              fill="#8b958e"
+              fill="var(--chart-axis)"
               font-size="12"
               text-anchor="end"
               font-family="Cascadia Mono, Consolas, monospace"
@@ -284,7 +284,7 @@ onUnmounted(() => {
             :x2="model.width - model.margins.right"
             :y1="model.zeroY"
             :y2="model.zeroY"
-            stroke="#c5d0c7"
+            stroke="var(--chart-zero)"
             stroke-width="1"
             stroke-dasharray="4 5"
           />
@@ -292,7 +292,7 @@ onUnmounted(() => {
           <path
             :d="model.line"
             fill="none"
-            stroke="#176456"
+            stroke="var(--green)"
             stroke-width="2.5"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -301,15 +301,15 @@ onUnmounted(() => {
             :cx="model.last.x"
             :cy="model.last.y"
             r="8"
-            fill="#176456"
+            fill="var(--green)"
             opacity=".1"
           />
           <circle
             :cx="model.last.x"
             :cy="model.last.y"
             r="3.2"
-            fill="#176456"
-            stroke="#fffefa"
+            fill="var(--green)"
+            stroke="var(--chart-point)"
             stroke-width="1.5"
           />
           <text
@@ -317,7 +317,7 @@ onUnmounted(() => {
             :key="`${label.text}-${label.x}`"
             :x="label.x"
             :y="label.y"
-            fill="#8b958e"
+            fill="var(--chart-axis)"
             font-size="12"
             :text-anchor="label.anchor"
             font-family="Cascadia Mono, Consolas, monospace"
@@ -330,7 +330,7 @@ onUnmounted(() => {
               :x2="activePoint.x"
               :y1="activePoint.top"
               :y2="activePoint.bottom"
-              stroke="#60756a"
+              stroke="var(--chart-crosshair)"
               stroke-width="1"
               stroke-dasharray="3 4"
             />
@@ -338,8 +338,8 @@ onUnmounted(() => {
               :cx="activePoint.x"
               :cy="activePoint.y"
               r="4.6"
-              fill="#fffefa"
-              stroke="#176456"
+              fill="var(--chart-point)"
+              stroke="var(--green)"
               stroke-width="2"
             />
           </template>

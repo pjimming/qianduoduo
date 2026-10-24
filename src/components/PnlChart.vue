@@ -110,7 +110,7 @@ const model = computed(() => {
       width: barWidth,
       height: Math.max(1, Math.abs(yValue - zeroY)),
       rx: Math.min(3, barWidth / 2),
-      color: record.daily_pnl >= 0 ? '#c25243' : '#2c7d60',
+      color: record.daily_pnl >= 0 ? 'var(--gain)' : 'var(--loss)',
       opacity: record.daily_pnl === 0 ? 0.26 : 0.82,
       date: record.date,
     }
@@ -292,14 +292,14 @@ onUnmounted(() => {
               :x2="model.width - model.margins.right"
               :y1="tick.y"
               :y2="tick.y"
-              stroke="#e6ebe3"
+              stroke="var(--chart-grid)"
               stroke-width="1"
               stroke-dasharray="2 5"
             />
             <text
               :x="model.margins.left - 16"
               :y="tick.y + 3"
-              fill="#8b958e"
+              fill="var(--chart-axis)"
               font-size="12"
               text-anchor="end"
               font-family="Cascadia Mono, Consolas, monospace"
@@ -312,7 +312,7 @@ onUnmounted(() => {
             :key="`rate-${tick.y}`"
             :x="model.width - model.margins.right + 16"
             :y="tick.y + 3"
-            fill="#a79470"
+            fill="var(--chart-rate-axis)"
             font-size="12"
             text-anchor="start"
             font-family="Cascadia Mono, Consolas, monospace"
@@ -324,7 +324,7 @@ onUnmounted(() => {
             :x2="model.width - model.margins.right"
             :y1="model.zeroY"
             :y2="model.zeroY"
-            stroke="#c7d0c8"
+            stroke="var(--chart-zero)"
             stroke-width="1"
           />
           <rect
@@ -341,7 +341,7 @@ onUnmounted(() => {
           <path
             :d="model.rateLine"
             fill="none"
-            stroke="#b77c2d"
+            stroke="var(--amber)"
             stroke-width="1.8"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -352,8 +352,8 @@ onUnmounted(() => {
             :cx="point.x"
             :cy="point.y"
             r="2.2"
-            fill="#fffefa"
-            stroke="#b77c2d"
+            fill="var(--chart-point)"
+            stroke="var(--amber)"
             stroke-width="1.4"
           />
           <text
@@ -361,7 +361,7 @@ onUnmounted(() => {
             :key="`x-${label.text}-${label.x}`"
             :x="label.x"
             :y="label.y"
-            fill="#8b958e"
+            fill="var(--chart-axis)"
             font-size="12"
             :text-anchor="label.anchor"
             font-family="Cascadia Mono, Consolas, monospace"
@@ -374,7 +374,7 @@ onUnmounted(() => {
               :x2="activePoint.x"
               :y1="activePoint.top"
               :y2="activePoint.bottom"
-              stroke="#60756a"
+              stroke="var(--chart-crosshair)"
               stroke-width="1"
               stroke-dasharray="3 4"
             />
@@ -382,8 +382,8 @@ onUnmounted(() => {
               :cx="activePoint.x"
               :cy="activePoint.y"
               r="4.6"
-              fill="#fffefa"
-              stroke="#176456"
+              fill="var(--chart-point)"
+              stroke="var(--green)"
               stroke-width="2"
             />
           </template>

@@ -43,7 +43,7 @@ function assert(condition, message) {
 
 async function assertFontFloor(page, selector, label) {
   const offenders = await page.locator(selector).evaluate((root) => {
-    return Array.from(root.querySelectorAll('*'))
+    return [root, ...Array.from(root.querySelectorAll('*'))]
       .filter((element) => {
         const style = getComputedStyle(element)
         if (
@@ -68,6 +68,71 @@ async function assertFontFloor(page, selector, label) {
   assert(
     offenders.length === 0,
     `${label}存在低于 12px 的信息文字：${JSON.stringify(offenders)}`,
+  )
+}
+
+async function assertNoLargeLightSurface(page, selector, label) {
+  const surfaces = await page.locator(selector).first().evaluate((root) => {
+    const isLightPaint = (value) => {
+      for (const match of value.matchAll(
+        /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/g,
+      )) {
+        const alpha = match[4] === undefined ? 1 : Number(match[4])
+        if (
+          alpha >= 0.45 &&
+          Number(match[1]) >= 210 &&
+          Number(match[2]) >= 210 &&
+          Number(match[3]) >= 210
+        ) {
+          return true
+        }
+      }
+      return false
+    }
+
+    return [root, ...Array.from(root.querySelectorAll('*'))]
+      .filter((element) => {
+        if (
+          !(element instanceof HTMLElement) &&
+          !(element instanceof SVGElement)
+        ) {
+          return false
+        }
+        if (
+          element.closest('svg') ||
+          element.tagName === 'IMG' ||
+          element.closest('[aria-hidden="true"]')
+        ) {
+          return false
+        }
+        const rect = element.getBoundingClientRect()
+        const style = getComputedStyle(element)
+        if (
+          rect.width * rect.height < 5000 ||
+          style.display === 'none' ||
+          style.visibility === 'hidden'
+        ) {
+          return false
+        }
+        return (
+          isLightPaint(style.backgroundColor) ||
+          isLightPaint(style.backgroundImage)
+        )
+      })
+      .slice(0, 6)
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        className:
+          typeof element.className === 'string'
+            ? element.className
+            : element.getAttribute('class') || '',
+        background: getComputedStyle(element).backgroundColor,
+        backgroundImage: getComputedStyle(element).backgroundImage.slice(0, 160),
+      }))
+  })
+  assert(
+    surfaces.length === 0,
+    `${label}仍存在大面积浅色表面：${JSON.stringify(surfaces)}`,
   )
 }
 
@@ -357,6 +422,94 @@ async function main() {
       (await page.locator('.r2-jump-card').count()) === 3,
       '收益概览应只保留两类截图和消息中心入口',
     )
+    const desktopThemeModes = page.locator(
+      '.sidebar-appearance .theme-mode-switch',
+    )
+    await desktopThemeModes.locator('[data-theme-preference="dark"]').click()
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    )
+    assert(
+      (await page.evaluate(() =>
+        localStorage.getItem('qianduoduo:theme:v1'),
+      )) === 'dark',
+      '深色主题没有写入本地偏好',
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForSelector('.stats-grid')
+    assert(
+      (await page.evaluate(() => document.documentElement.dataset.theme)) === 'dark',
+      '刷新后没有恢复深色主题',
+    )
+    assert(
+      (await page
+        .locator(
+          '.sidebar-appearance [data-theme-preference="dark"]',
+        )
+        .getAttribute(
+        'aria-pressed',
+      )) === 'true',
+      '刷新后主题按钮状态与页面不一致',
+    )
+    await assertFontFloor(page, '.sidebar-appearance', '主题切换')
+    await assertNoLargeLightSurface(page, '.app-main', '收益概览深色主题')
+    await page
+      .locator('.sidebar-appearance [data-theme-preference="light"]')
+      .click()
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'light',
+    )
+    assert(
+      (await page.evaluate(() =>
+        localStorage.getItem('qianduoduo:theme:v1'),
+      )) === 'light',
+      '切回浅色主题没有写入本地偏好',
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForSelector('.stats-grid')
+    assert(
+      (await page.evaluate(() => document.documentElement.dataset.theme)) ===
+        'light',
+      '刷新后没有恢复浅色主题',
+    )
+    await page
+      .locator('.sidebar-appearance [data-theme-preference="system"]')
+      .click()
+    const systemMode = await page.evaluate(() => ({
+      preference: localStorage.getItem('qianduoduo:theme:v1'),
+      resolvedPreference: document.documentElement.dataset.themePreference,
+    }))
+    assert(
+      systemMode.preference === 'system' &&
+        systemMode.resolvedPreference === 'system',
+      '跟随系统模式没有写入本地偏好',
+    )
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    )
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'light',
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForSelector('.stats-grid')
+    const restoredSystemMode = await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      preference: document.documentElement.dataset.themePreference,
+    }))
+    assert(
+      restoredSystemMode.theme === 'light' &&
+        restoredSystemMode.preference === 'system',
+      '刷新后没有恢复跟随系统模式',
+    )
+    await page
+      .locator('.sidebar-appearance [data-theme-preference="dark"]')
+      .click()
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    )
+
     const currentValueCard =
       (await page.locator('.stat-primary').textContent()) ?? ''
     assert(
@@ -367,8 +520,47 @@ async function main() {
     )
     await assertFontFloor(page, '.stats-grid', '收益概览桌面端')
 
+    await page.goto(`${base}/investment/research`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.library-page')
+    await assertNoLargeLightSurface(page, '.app-main', '报告库深色主题')
+    await page.locator('.report-card').first().click()
+    await page.waitForSelector('.rp-doc')
+    await assertNoLargeLightSurface(page, '.rp-doc', '报告正文深色主题')
+    await page.locator('.report-switcher-trigger').click()
+    await page.waitForSelector('.report-switcher-pop')
+    await assertNoLargeLightSurface(
+      page,
+      '.report-switcher-pop',
+      '报告切换器深色主题',
+    )
+    await page.keyboard.press('Escape')
+    await page.goto(`${base}/investment/tech-map`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.tm-view')
+    await assertNoLargeLightSurface(page, '.app-main', '科技图谱深色主题')
+    await page.goto(`${base}/investment/tech-map?view=tree`, {
+      waitUntil: 'networkidle',
+    })
+    await page.waitForSelector('.tm-tree-view')
+    await assertNoLargeLightSurface(page, '.app-main', '科技图谱树状深色主题')
+    await page.goto(`${base}/investment/tech-map?view=table`, {
+      waitUntil: 'networkidle',
+    })
+    await page.waitForSelector('.tm-table-view')
+    await assertNoLargeLightSurface(page, '.app-main', '科技图谱表格深色主题')
+
     await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.ledger-panel')
+    await assertNoLargeLightSurface(page, '.app-main', '每日记账深色主题')
+    await page.locator('.ledger-table tbody tr').first().hover()
+    await assertNoLargeLightSurface(page, '.ledger-table', '账本表格悬浮深色主题')
+    await page.getByRole('button', { name: '调整起始' }).click()
+    await page.waitForSelector('.capital-dialog[open]')
+    await assertNoLargeLightSurface(
+      page,
+      '.capital-dialog[open]',
+      '本金设置弹窗深色主题',
+    )
+    await page.keyboard.press('Escape')
     assert(
       (await page.locator('.rw-quick-card').count()) === 2,
       '每日记账应只保留交易截图和收益截图两个主入口',
@@ -444,6 +636,7 @@ async function main() {
     await assertFontFloor(page, '.income-history', '收益截图历史桌面端')
 
     await page.locator('.capture-manual > summary').click()
+    await assertNoLargeLightSurface(page, '.capture-manual', '手工补正深色主题')
     await page.getByLabel('发生了什么').fill('E2E 特殊事项：额度临时关闭')
     await page.getByRole('button', { name: '交给平台跟踪' }).click()
     await page.waitForFunction(
@@ -462,6 +655,7 @@ async function main() {
 
     await page.goto(`${base}/ledger/review`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.monthly-record-panel')
+    await assertNoLargeLightSurface(page, '.app-main', '复盘深色主题')
     const reviewSectionOrder = await page
       .locator('.r2-stack > [id]')
       .evaluateAll((sections) => sections.map((section) => section.id))
@@ -490,6 +684,9 @@ async function main() {
       '月度五问应有 5 个问题',
     )
     await page.locator('#monthly-notes > summary').click()
+    await assertNoLargeLightSurface(page, '#monthly-notes', '月度五问深色主题')
+    await page.locator('#score .review-history-row').first().hover()
+    await assertNoLargeLightSurface(page, '#score', '复盘历史悬浮深色主题')
     assert(
       (await page.locator('#monthly-notes .rw-question:visible').count()) === 5,
       '展开月度五问后应显示 5 个问题',
@@ -511,6 +708,7 @@ async function main() {
 
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#inbox .rw-dropzone')
+    await assertNoLargeLightSurface(page, '.app-main', '交易与持仓深色主题')
     const tradesSectionOrder = await page
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
@@ -615,6 +813,7 @@ async function main() {
       .first()
       .click()
     await page.waitForSelector('.dt-dialog')
+    await assertNoLargeLightSurface(page, '.dt-dialog', '来源与修订深色主题')
     const traceDialogText = (await page.locator('.dt-dialog').textContent()) ?? ''
     assert(
       traceDialogText.includes('事实修订历史'),
@@ -626,6 +825,11 @@ async function main() {
     )
     await assertFontFloor(page, '.dt-dialog', '来源与修订桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
+    await assertNoLargeLightSurface(
+      page,
+      '.dt-dialog',
+      '来源与修订移动深色主题',
+    )
     await assertFontFloor(page, '.dt-dialog', '来源与修订移动端')
     assert(
       await page.evaluate(
@@ -709,6 +913,7 @@ async function main() {
     )
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.inbox-page')
+    await assertNoLargeLightSurface(page, '.app-main', '消息中心深色主题')
     await assertFontFloor(page, '.inbox-page', '消息中心桌面端')
     assert(
       (await page.locator('.inbox-message').count()) > 0,
@@ -750,6 +955,38 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.income-capture-layout')
+    const mobileThemeToggle = page.locator('.mobile-topbar .theme-toggle')
+    assert(
+      (await page.evaluate(
+        () => document.documentElement.dataset.themePreference,
+      )) === 'dark',
+      '移动端没有保持桌面选择的深色主题',
+    )
+    await assertNoLargeLightSurface(page, '.app-main', '每日记账移动深色主题')
+    await mobileThemeToggle.click()
+    await page.waitForSelector('.theme-mode-menu')
+    await assertFontFloor(page, '.theme-mode-menu', '移动端主题模式菜单')
+    await page
+      .getByRole('menuitemradio', { name: /浅色/ })
+      .click()
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'light',
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForSelector('.income-capture-layout')
+    assert(
+      (await page.evaluate(
+        () => document.documentElement.dataset.themePreference,
+      )) === 'light',
+      '移动端切换浅色主题后没有持久化',
+    )
+    await page.locator('.mobile-topbar .theme-toggle').click()
+    await page
+      .getByRole('menuitemradio', { name: /深色/ })
+      .click()
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    )
     await page.locator('.income-history > summary').click()
     await page.waitForFunction(
       () => document.querySelectorAll('.income-history-card').length === 4,
@@ -764,6 +1001,7 @@ async function main() {
     await assertFontFloor(page, '.income-history', '收益截图历史移动端')
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.inbox-page')
+    await assertNoLargeLightSurface(page, '.app-main', '消息中心移动深色主题')
     assert(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
@@ -773,6 +1011,7 @@ async function main() {
     await assertFontFloor(page, '.inbox-page', '消息中心移动端')
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.product-valuation-panel .pv-card')
+    await assertNoLargeLightSurface(page, '.app-main', '交易与持仓移动深色主题')
     await assertFontFloor(
       page,
       '#current-value',
@@ -805,6 +1044,7 @@ async function main() {
 
     await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.allocation-bucket')
+    await assertNoLargeLightSurface(page, '.app-main', '产品与配置深色主题')
     const productSectionOrder = await page
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
@@ -826,6 +1066,7 @@ async function main() {
     )
     await page.getByRole('button', { name: '调整假设', exact: true }).click()
     await page.waitForSelector('#assumptionsCardTitle')
+    await assertNoLargeLightSurface(page, '.app-main', '配置假设深色主题')
     const assumptionsText =
       (await page
         .locator('section[aria-labelledby="assumptionsCardTitle"]')
@@ -942,6 +1183,7 @@ async function main() {
       '.product-dialog:not(.product-detail-dialog)[open]',
     )
     await poolDialog.waitFor()
+    await assertNoLargeLightSurface(page, '.product-dialog[open]', '候选池弹窗深色主题')
     assert(
       (await page.locator('dialog[open]').count()) === 1,
       '打开候选池时不应同时存在其他弹窗',
@@ -998,6 +1240,11 @@ async function main() {
     await page.mouse.click(rowTarget.x, rowTarget.y)
     const detailDialog = page.locator('.product-detail-dialog[open]')
     await detailDialog.waitFor()
+    await assertNoLargeLightSurface(
+      page,
+      '.product-detail-dialog[open]',
+      '产品详情深色主题',
+    )
     assert(
       (await page.locator('dialog[open]').count()) === 1,
       '候选池行详情不应与候选池弹窗叠层',
@@ -1116,7 +1363,17 @@ async function main() {
     )
     await reviewCard.locator('.hr-actions button').click()
     await page.waitForSelector('#holding-reviews .hr-candidate')
+    await assertNoLargeLightSurface(
+      page,
+      '#holding-reviews',
+      '展开候选深色主题',
+    )
     await page.setViewportSize({ width: 390, height: 844 })
+    await assertNoLargeLightSurface(
+      page,
+      '#holding-reviews',
+      '持仓复核移动深色主题',
+    )
     await assertFontFloor(page, '#holding-reviews', '当前持仓与同桶候选移动端')
     assert(
       await page.evaluate(
@@ -1191,6 +1448,7 @@ async function main() {
 
     await page.goto(`${base}/ledger/evaluation`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#automation .rw-automation-grid')
+    await assertNoLargeLightSurface(page, '.app-main', '决策与评估深色主题')
     const evaluationSectionOrder = await page
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))

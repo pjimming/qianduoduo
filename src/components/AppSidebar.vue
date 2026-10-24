@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useDashboardStore } from '@/stores/dashboard'
 
 defineProps<{
@@ -323,5 +324,10 @@ watch(
         </div>
       </section>
     </nav>
+
+    <div class="sidebar-appearance">
+      <span class="sidebar-appearance-label">外观</span>
+      <ThemeToggle />
+    </div>
   </aside>
 </template>

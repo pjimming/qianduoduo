@@ -107,6 +107,23 @@
   margin-top: 2px;
 }
 
+.sidebar-appearance {
+  display: grid;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar-appearance-label {
+  padding: 0 3px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+
 .nav-group {
   display: flex;
   flex-direction: column;
