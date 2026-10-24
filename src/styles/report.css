@@ -129,9 +129,9 @@
 }
 
 .library-search input:focus {
-  border-color: rgba(23, 100, 86, 0.42);
+  border-color: rgba(var(--green-rgb), 0.42);
   background: var(--card);
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.08);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.08);
 }
 
 .library-chips {
@@ -442,7 +442,7 @@
   gap: 20px;
   margin-top: 20px;
   padding: 16px 20px;
-  border: 1px solid rgba(23, 100, 86, 0.14);
+  border: 1px solid rgba(var(--green-rgb), 0.14);
   border-radius: 16px;
   background:
     linear-gradient(100deg, rgba(223, 238, 232, 0.72), rgba(255, 254, 250, 0.7));
@@ -538,7 +538,7 @@
 .reader-back-link:focus-visible,
 .reader-pager-icon:focus-visible,
 .reader-topbar-button:focus-visible {
-  outline: 3px solid rgba(23, 100, 86, 0.18);
+  outline: 3px solid rgba(var(--green-rgb), 0.18);
   outline-offset: 2px;
 }
 

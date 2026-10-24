@@ -158,7 +158,7 @@
 }
 
 .nav-group-toggle:focus-visible {
-  outline: 3px solid rgba(23, 100, 86, 0.16);
+  outline: 3px solid rgba(var(--green-rgb), 0.16);
   outline-offset: 1px;
 }
 
@@ -283,7 +283,7 @@
 
 .sidebar-link.is-active {
   border-color: var(--line);
-  background: linear-gradient(90deg, rgba(23, 100, 86, 0.06), var(--card) 36%);
+  background: linear-gradient(90deg, rgba(var(--green-rgb), 0.06), var(--card) 36%);
   box-shadow: 0 8px 24px rgba(33, 53, 43, 0.055);
 }
 

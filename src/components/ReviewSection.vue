@@ -902,7 +902,7 @@ function selectMonth(month: string): void {
 .review-period-note {
   margin: 12px 0 0;
   padding: 8px 11px;
-  border: 1px dashed rgba(23, 100, 86, 0.2);
+  border: 1px dashed rgba(var(--green-rgb), 0.2);
   border-radius: 9px;
   background: rgba(239, 247, 242, 0.55);
   color: var(--muted);
@@ -959,7 +959,7 @@ function selectMonth(month: string): void {
 }
 
 .recent-day-row:hover {
-  border-color: rgba(23, 100, 86, 0.3);
+  border-color: rgba(var(--green-rgb), 0.3);
 }
 
 .recent-day-row.is-missing {
@@ -1014,7 +1014,7 @@ function selectMonth(month: string): void {
 .recent-day-foot button {
   flex: 0 0 auto;
   padding: 4px 9px;
-  border: 1px solid rgba(23, 100, 86, 0.22);
+  border: 1px solid rgba(var(--green-rgb), 0.22);
   border-radius: 999px;
   background: var(--green-wash);
   color: var(--green);
@@ -1064,7 +1064,7 @@ function selectMonth(month: string): void {
 .monthly-record-cta {
   flex: 0 0 auto;
   padding: 6px 11px;
-  border: 1px solid rgba(23, 100, 86, 0.24);
+  border: 1px solid rgba(var(--green-rgb), 0.24);
   border-radius: 999px;
   background: var(--green-wash);
   color: var(--green);
@@ -1078,7 +1078,7 @@ function selectMonth(month: string): void {
   margin-top: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(23, 100, 86, 0.1);
+  background: rgba(var(--green-rgb), 0.1);
 }
 
 .monthly-record-progress span {
@@ -1122,7 +1122,7 @@ function selectMonth(month: string): void {
 }
 
 .record-day.is-recorded {
-  border-color: rgba(23, 100, 86, 0.18);
+  border-color: rgba(var(--green-rgb), 0.18);
   background: var(--green-soft);
   color: var(--green);
   font-weight: 700;

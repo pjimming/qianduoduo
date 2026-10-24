@@ -15,10 +15,10 @@
   gap: 18px;
   margin-top: 14px;
   padding: 14px 16px;
-  border: 1px solid rgba(23, 100, 86, 0.2);
+  border: 1px solid rgba(var(--green-rgb), 0.2);
   border-radius: 14px;
   background:
-    linear-gradient(120deg, rgba(23, 100, 86, 0.08), transparent 62%),
+    linear-gradient(120deg, rgba(var(--green-rgb), 0.08), transparent 62%),
     var(--card);
 }
 
@@ -481,7 +481,7 @@
 
 .income-history-products a {
   padding: 2px 6px;
-  border: 1px solid rgba(23, 100, 86, 0.2);
+  border: 1px solid rgba(var(--green-rgb), 0.2);
   border-radius: 5px;
   background: var(--green-soft);
   color: var(--green);
@@ -492,7 +492,7 @@
 .income-history-notes {
   margin: 0;
   padding: 8px 9px;
-  border-left: 3px solid rgba(23, 100, 86, 0.35);
+  border-left: 3px solid rgba(var(--green-rgb), 0.35);
   border-radius: 0 7px 7px 0;
   background: var(--card-soft);
   color: var(--muted);
@@ -575,10 +575,10 @@
   gap: 28px;
   margin: 6px 0 18px;
   padding: 24px 26px;
-  border: 1px solid rgba(23, 100, 86, 0.2);
+  border: 1px solid rgba(var(--green-rgb), 0.2);
   border-radius: 22px;
   background:
-    linear-gradient(125deg, rgba(23, 100, 86, 0.09), transparent 56%),
+    linear-gradient(125deg, rgba(var(--green-rgb), 0.09), transparent 56%),
     rgba(255, 254, 250, 0.88);
   box-shadow: var(--shadow-soft);
 }
@@ -753,7 +753,7 @@
 
 .inbox-message.is-unread {
   background:
-    linear-gradient(90deg, rgba(23, 100, 86, 0.05), transparent 54%),
+    linear-gradient(90deg, rgba(var(--green-rgb), 0.05), transparent 54%),
     #fffefa;
   box-shadow: 0 7px 20px rgba(33, 53, 43, 0.055);
 }
@@ -789,7 +789,7 @@
 }
 
 .inbox-message-main:focus-visible {
-  outline: 3px solid rgba(23, 100, 86, 0.16);
+  outline: 3px solid rgba(var(--green-rgb), 0.16);
   outline-offset: 4px;
   border-radius: 7px;
 }

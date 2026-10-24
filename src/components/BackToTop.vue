@@ -91,7 +91,7 @@ onBeforeUnmount(() => {
 }
 
 .back-to-top:focus-visible {
-  outline: 3px solid rgba(23, 100, 86, 0.28);
+  outline: 3px solid rgba(var(--green-rgb), 0.28);
   outline-offset: 3px;
 }
 

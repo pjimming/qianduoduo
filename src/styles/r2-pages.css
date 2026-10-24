@@ -108,7 +108,7 @@ a.r2-head-chip:hover {
 }
 
 .r2-index-link:hover {
-  border-color: rgba(23, 100, 86, 0.3);
+  border-color: rgba(var(--green-rgb), 0.3);
   background: var(--green-wash);
   color: var(--green);
 }
@@ -303,7 +303,7 @@ a.r2-head-chip:hover {
 .pv-card:hover,
 .pv-card:focus-visible,
 .pv-card.is-selected {
-  border-color: rgba(23, 100, 86, 0.42);
+  border-color: rgba(var(--green-rgb), 0.42);
   box-shadow: 0 8px 22px rgba(35, 66, 57, 0.08);
   outline: none;
   transform: translateY(-1px);
@@ -379,7 +379,7 @@ a.r2-head-chip:hover {
 }
 
 .pv-card-stats strong.is-negative {
-  color: #a14d40;
+  color: var(--loss);
 }
 
 .pv-detail {
@@ -524,8 +524,8 @@ a.r2-head-chip:hover {
 }
 
 .hr-search:focus-within {
-  border-color: rgba(23, 100, 86, 0.5);
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.08);
+  border-color: rgba(var(--green-rgb), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.08);
 }
 
 .hr-search-icon {
@@ -569,7 +569,7 @@ a.r2-head-chip:hover {
   max-height: 340px;
   padding: 6px;
   overflow-y: auto;
-  border: 1px solid rgba(23, 100, 86, 0.2);
+  border: 1px solid rgba(var(--green-rgb), 0.2);
   border-radius: 12px;
   background: var(--card);
   box-shadow: 0 18px 42px rgba(33, 53, 43, 0.16);
@@ -609,7 +609,7 @@ a.r2-head-chip:hover {
 
 .hr-search-option:hover,
 .hr-search-option.is-active {
-  border-color: rgba(23, 100, 86, 0.2);
+  border-color: rgba(var(--green-rgb), 0.2);
   background: var(--green-wash);
 }
 
@@ -667,7 +667,7 @@ a.r2-head-chip:hover {
 }
 
 .hr-filter-chip.is-active {
-  border-color: rgba(23, 100, 86, 0.36);
+  border-color: rgba(var(--green-rgb), 0.36);
   background: var(--green-soft);
   color: var(--green);
 }
@@ -691,7 +691,7 @@ a.r2-head-chip:hover {
 .hr-filter-clear {
   min-height: 32px;
   padding: 0 10px;
-  border: 1px solid rgba(23, 100, 86, 0.22);
+  border: 1px solid rgba(var(--green-rgb), 0.22);
   border-radius: 8px;
   background: var(--green-wash);
   color: var(--green);
@@ -701,7 +701,7 @@ a.r2-head-chip:hover {
 }
 
 .hr-filter-clear:hover {
-  border-color: rgba(23, 100, 86, 0.4);
+  border-color: rgba(var(--green-rgb), 0.4);
   background: var(--green-soft);
 }
 
@@ -792,7 +792,7 @@ a.r2-head-chip:hover {
 
 .hr-verdict.is-hold,
 .hr-candidate-verdict.is-hold {
-  border-color: rgba(23, 100, 86, 0.24);
+  border-color: rgba(var(--green-rgb), 0.24);
   background: var(--green-wash);
   color: var(--green);
 }
@@ -865,7 +865,7 @@ a.r2-head-chip:hover {
 }
 
 .hr-redemption.is-open {
-  border: 1px solid rgba(23, 100, 86, 0.22);
+  border: 1px solid rgba(var(--green-rgb), 0.22);
   background: var(--green-wash);
   color: var(--green);
 }
@@ -962,7 +962,7 @@ a.r2-head-chip:hover {
 }
 
 .hr-settings-state.is-verified {
-  background: rgba(23, 100, 86, 0.1);
+  background: rgba(var(--green-rgb), 0.1);
   color: var(--green);
 }
 
@@ -1011,9 +1011,9 @@ a.r2-head-chip:hover {
 
 .hr-settings-grid .rw-field input:focus,
 .hr-settings-grid .rw-field textarea:focus {
-  border-color: rgba(23, 100, 86, 0.42);
+  border-color: rgba(var(--green-rgb), 0.42);
   background: #fff;
-  outline: 3px solid rgba(23, 100, 86, 0.08);
+  outline: 3px solid rgba(var(--green-rgb), 0.08);
 }
 
 .hr-dynamic-threshold {
@@ -1170,10 +1170,10 @@ a.r2-head-chip:hover {
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid rgba(23, 100, 86, 0.2);
+  border: 1px solid rgba(var(--green-rgb), 0.2);
   border-radius: 12px;
   background:
-    linear-gradient(135deg, rgba(23, 100, 86, 0.05), transparent 52%),
+    linear-gradient(135deg, rgba(var(--green-rgb), 0.05), transparent 52%),
     var(--card);
 }
 
@@ -1201,7 +1201,7 @@ a.r2-head-chip:hover {
 }
 
 .hr-compare-tag.is-replace {
-  border-color: rgba(23, 100, 86, 0.28);
+  border-color: rgba(var(--green-rgb), 0.28);
   background: var(--green-wash);
   color: var(--green);
 }
@@ -1240,7 +1240,7 @@ a.r2-head-chip:hover {
 }
 
 .hr-compare-col.is-candidate {
-  border-color: rgba(23, 100, 86, 0.24);
+  border-color: rgba(var(--green-rgb), 0.24);
   background: rgba(238, 247, 242, 0.7);
 }
 
@@ -1306,8 +1306,8 @@ button.hr-compare-name {
 }
 
 .hr-compare-yield em.is-positive {
-  background: rgba(23, 100, 86, 0.12);
-  color: var(--green);
+  background: rgba(var(--gain-rgb), 0.12);
+  color: var(--gain);
 }
 
 .hr-compare-bar {
@@ -1378,7 +1378,7 @@ button.hr-compare-name {
 }
 
 .hr-compare-result strong.is-positive {
-  color: var(--green);
+  color: var(--gain);
 }
 
 .hr-candidate-list-head {
@@ -1414,18 +1414,18 @@ button.hr-compare-name {
 }
 
 .hr-candidate.is-top {
-  border-color: rgba(23, 100, 86, 0.3);
+  border-color: rgba(var(--green-rgb), 0.3);
   box-shadow:
-    0 10px 30px rgba(23, 100, 86, 0.07),
-    inset 0 3px 0 rgba(23, 100, 86, 0.72);
+    0 10px 30px rgba(var(--green-rgb), 0.07),
+    inset 0 3px 0 rgba(var(--green-rgb), 0.72);
 }
 
 .hr-top-tag {
   justify-self: start;
   padding: 3px 8px;
-  border: 1px solid rgba(23, 100, 86, 0.14);
+  border: 1px solid rgba(var(--green-rgb), 0.14);
   border-radius: 999px;
-  background: rgba(23, 100, 86, 0.08);
+  background: rgba(var(--green-rgb), 0.08);
   color: var(--green);
   font-size: 12px;
   font-weight: 700;
@@ -1540,7 +1540,7 @@ button.hr-compare-name {
 
 .hr-candidate-kpi.is-yield {
   background: linear-gradient(145deg, #f2f8f5, #fafcf9);
-  border-color: rgba(23, 100, 86, 0.15);
+  border-color: rgba(var(--green-rgb), 0.15);
 }
 
 .hr-candidate-kpi.is-yield strong {
@@ -1551,7 +1551,7 @@ button.hr-compare-name {
 .hr-candidate-kpi.is-yield em {
   padding: 2px 6px;
   border-radius: 999px;
-  background: rgba(23, 100, 86, 0.08);
+  background: rgba(var(--green-rgb), 0.08);
   color: var(--muted);
   font-size: 12px;
   font-style: normal;
@@ -1560,8 +1560,8 @@ button.hr-compare-name {
 }
 
 .hr-candidate-kpi.is-yield em.is-positive {
-  background: rgba(23, 100, 86, 0.11);
-  color: var(--green);
+  background: rgba(var(--gain-rgb), 0.12);
+  color: var(--gain);
 }
 
 .hr-candidate-kpi.is-gain {
@@ -1595,7 +1595,7 @@ button.hr-compare-name {
 }
 
 .hr-candidate-rule.is-verified {
-  border-color: rgba(23, 100, 86, 0.18);
+  border-color: rgba(var(--green-rgb), 0.18);
   background: #f5faf7;
 }
 
@@ -1652,7 +1652,7 @@ button.hr-compare-name {
 }
 
 .hr-wait-badge.is-verified {
-  background: rgba(23, 100, 86, 0.1);
+  background: rgba(var(--green-rgb), 0.1);
   color: var(--green);
 }
 
@@ -1797,7 +1797,7 @@ button.hr-compare-name {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: rgba(23, 100, 86, 0.55);
+  background: rgba(var(--green-rgb), 0.55);
 }
 
 .hr-candidate-gaps {
@@ -1829,7 +1829,7 @@ button.hr-compare-name {
   gap: 10px;
   flex-wrap: wrap;
   padding: 10px 12px;
-  border: 1px solid rgba(23, 100, 86, 0.2);
+  border: 1px solid rgba(var(--green-rgb), 0.2);
   border-radius: 9px;
   background: var(--green-wash);
   color: var(--muted);
@@ -2065,7 +2065,7 @@ button.hr-compare-name {
 }
 
 .r2-jump-card:hover {
-  border-color: rgba(23, 100, 86, 0.3);
+  border-color: rgba(var(--green-rgb), 0.3);
   box-shadow: 0 12px 26px rgba(33, 53, 43, 0.08);
   transform: translateY(-1px);
 }
@@ -2076,7 +2076,7 @@ button.hr-compare-name {
 }
 
 .r2-jump-card.is-done {
-  border-color: rgba(23, 100, 86, 0.2);
+  border-color: rgba(var(--green-rgb), 0.2);
   background: rgba(239, 247, 242, 0.62);
 }
 

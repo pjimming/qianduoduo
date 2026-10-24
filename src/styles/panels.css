@@ -383,9 +383,9 @@
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  border-color: rgba(23, 100, 86, 0.52);
+  border-color: rgba(var(--green-rgb), 0.52);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.08);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.08);
 }
 
 .field input::placeholder,
@@ -507,7 +507,7 @@
 }
 
 .review-alert.is-ok {
-  border-color: rgba(23, 100, 86, 0.16);
+  border-color: rgba(var(--green-rgb), 0.16);
   background: rgba(239, 247, 242, 0.8);
   color: var(--green);
 }
@@ -625,7 +625,7 @@
   margin-top: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(23, 100, 86, 0.1);
+  background: rgba(var(--green-rgb), 0.1);
 }
 
 .target-progress-track span {
@@ -691,7 +691,7 @@
 .review-conclusion {
   margin-top: 10px;
   padding: 11px 12px;
-  border: 1px solid rgba(23, 100, 86, 0.16);
+  border: 1px solid rgba(var(--green-rgb), 0.16);
   border-radius: 10px;
   background: var(--green-wash);
 }
@@ -771,8 +771,8 @@
 }
 
 .review-month-select:focus {
-  border-color: rgba(23, 100, 86, 0.5);
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.08);
+  border-color: rgba(var(--green-rgb), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.08);
 }
 
 .daily-review-main {
@@ -983,7 +983,7 @@
 }
 
 .grade-steps span.is-current {
-  border-color: rgba(23, 100, 86, 0.25);
+  border-color: rgba(var(--green-rgb), 0.25);
   background: var(--green-soft);
   color: var(--green);
   font-weight: 700;
@@ -1622,8 +1622,8 @@
 
 .ledger-page-size select:focus,
 .ledger-page-jump input:focus {
-  border-color: rgba(23, 100, 86, 0.5);
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.08);
+  border-color: rgba(var(--green-rgb), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.08);
 }
 
 .ledger-pagination .button:disabled {
@@ -1931,7 +1931,7 @@
 }
 
 .table-sort-button:focus-visible {
-  outline: 2px solid rgba(23, 100, 86, 0.2);
+  outline: 2px solid rgba(var(--green-rgb), 0.2);
   outline-offset: 2px;
 }
 

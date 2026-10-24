@@ -429,6 +429,20 @@ async function main() {
     await page.waitForFunction(
       () => document.documentElement.dataset.theme === 'dark',
     )
+    const darkSemanticColors = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement)
+      return {
+        accent: style.getPropertyValue('--green').trim(),
+        gain: style.getPropertyValue('--gain').trim(),
+        loss: style.getPropertyValue('--loss').trim(),
+      }
+    })
+    assert(
+      darkSemanticColors.accent === '#91d5d5' &&
+        darkSemanticColors.gain === '#78d7a4' &&
+        darkSemanticColors.loss === '#ff8b81',
+      `石墨青灰或涨跌色没有正确生效：${JSON.stringify(darkSemanticColors)}`,
+    )
     assert(
       (await page.evaluate(() =>
         localStorage.getItem('qianduoduo:theme:v1'),
@@ -458,6 +472,18 @@ async function main() {
       .click()
     await page.waitForFunction(
       () => document.documentElement.dataset.theme === 'light',
+    )
+    const lightSemanticColors = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement)
+      return {
+        gain: style.getPropertyValue('--gain').trim(),
+        loss: style.getPropertyValue('--loss').trim(),
+      }
+    })
+    assert(
+      lightSemanticColors.gain === '#238b63' &&
+        lightSemanticColors.loss === '#c24f43',
+      `浅色主题涨跌色没有正确生效：${JSON.stringify(lightSemanticColors)}`,
     )
     assert(
       (await page.evaluate(() =>

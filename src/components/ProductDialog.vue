@@ -406,7 +406,7 @@ function onDialogClick(event: MouseEvent): void {
 }
 
 .product-name-button:focus-visible {
-  outline: 2px solid rgba(23, 100, 86, 0.35);
+  outline: 2px solid rgba(var(--green-rgb), 0.35);
   outline-offset: 1px;
 }
 

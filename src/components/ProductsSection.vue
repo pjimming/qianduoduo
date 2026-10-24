@@ -683,7 +683,7 @@ async function saveQuotas(): Promise<void> {
   gap: 6px 14px;
   margin-top: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(23, 100, 86, 0.18);
+  border: 1px solid rgba(var(--green-rgb), 0.18);
   border-radius: 10px;
   background: var(--green-wash);
   color: var(--ink-soft);
@@ -775,7 +775,7 @@ async function saveQuotas(): Promise<void> {
 }
 
 .allocation-bucket.is-filled {
-  border-color: rgba(23, 100, 86, 0.24);
+  border-color: rgba(var(--green-rgb), 0.24);
   background: var(--green-wash);
 }
 
@@ -867,7 +867,7 @@ async function saveQuotas(): Promise<void> {
 
 .allocation-mode-badge {
   padding: 2px 7px;
-  border: 1px solid rgba(23, 100, 86, 0.22);
+  border: 1px solid rgba(var(--green-rgb), 0.22);
   border-radius: 999px;
   background: var(--green-wash);
   color: var(--green);
@@ -892,7 +892,7 @@ async function saveQuotas(): Promise<void> {
 .allocation-empty {
   margin: 14px 0;
   padding: 22px;
-  border: 1px dashed rgba(23, 100, 86, 0.28);
+  border: 1px dashed rgba(var(--green-rgb), 0.28);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.58);
 }
@@ -948,13 +948,13 @@ async function saveQuotas(): Promise<void> {
 }
 
 .observation-card:hover {
-  border-color: rgba(23, 100, 86, 0.3);
+  border-color: rgba(var(--green-rgb), 0.3);
   box-shadow: 0 10px 24px rgba(33, 53, 43, 0.08);
   transform: translateY(-1px);
 }
 
 .observation-card:focus-visible {
-  outline: 2px solid rgba(23, 100, 86, 0.45);
+  outline: 2px solid rgba(var(--green-rgb), 0.45);
   outline-offset: 2px;
 }
 

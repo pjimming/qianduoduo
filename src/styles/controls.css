@@ -51,7 +51,7 @@
 .icon-button:focus-visible,
 .range-switch button:focus-visible,
 .today-notice button:focus-visible {
-  outline: 3px solid rgba(23, 100, 86, 0.2);
+  outline: 3px solid rgba(var(--green-rgb), 0.2);
   outline-offset: 2px;
 }
 
@@ -345,7 +345,7 @@
 .soft-badge {
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(23, 100, 86, 0.08);
+  background: rgba(var(--green-rgb), 0.08);
   color: var(--green);
   font-size: 9px;
   font-weight: 700;

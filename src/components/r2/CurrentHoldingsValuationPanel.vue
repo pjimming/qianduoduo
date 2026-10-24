@@ -371,7 +371,7 @@ const coverageNote = computed(() => {
 }
 
 .nav-bank a {
-  color: #176456;
+  color: var(--green);
   font-size: 12px;
   font-weight: 700;
 }

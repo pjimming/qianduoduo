@@ -424,7 +424,7 @@ function regenerateSuggestion(): void {
 
 <style scoped>
 .rw-draft-banner.is-suggestion {
-  border-color: rgba(23, 100, 86, 0.24);
+  border-color: rgba(var(--green-rgb), 0.24);
   background: var(--green-wash);
 }
 </style>

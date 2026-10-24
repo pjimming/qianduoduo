@@ -109,15 +109,15 @@ function tone(value: number | null): string {
         <template v-if="sparkline">
           <defs>
             <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#2d8069" stop-opacity=".24" />
-              <stop offset="100%" stop-color="#2d8069" stop-opacity="0" />
+              <stop offset="0%" stop-color="var(--green)" stop-opacity=".24" />
+              <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
             </linearGradient>
           </defs>
           <path :d="sparkline.area" fill="url(#sparkFill)" />
           <path
             :d="sparkline.line"
             fill="none"
-            stroke="#176456"
+            stroke="var(--green)"
             stroke-width="1.7"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -126,8 +126,8 @@ function tone(value: number | null): string {
             :cx="sparkline.last.x"
             :cy="sparkline.last.y"
             r="2.6"
-            fill="#176456"
-            stroke="#fffefa"
+            fill="var(--green)"
+            stroke="var(--chart-point)"
             stroke-width="1.2"
           />
         </template>

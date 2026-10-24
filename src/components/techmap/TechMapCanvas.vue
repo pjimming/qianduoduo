@@ -53,7 +53,7 @@ function createNode(options: Partial<CanvasNode> & Pick<CanvasNode, 'level' | 'n
     side: 'center',
     meta: '',
     desc: '',
-    color: '#176456',
+    color: 'var(--green)',
     board: '',
     cos: [],
     search: '',

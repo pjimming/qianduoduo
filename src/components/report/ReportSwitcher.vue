@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
 }
 
 .report-switcher-trigger:focus-visible {
-  outline: 3px solid rgba(23, 100, 86, 0.18);
+  outline: 3px solid rgba(var(--green-rgb), 0.18);
   outline-offset: 2px;
 }
 
@@ -293,8 +293,8 @@ onBeforeUnmount(() => {
 }
 
 .report-switcher-search input:focus {
-  border-color: rgba(23, 100, 86, 0.42);
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.08);
+  border-color: rgba(var(--green-rgb), 0.42);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.08);
 }
 
 .report-switcher-search input::-webkit-search-cancel-button {

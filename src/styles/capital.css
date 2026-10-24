@@ -14,7 +14,7 @@
   align-items: center;
   height: 24px;
   padding: 0 9px;
-  border: 1px solid rgba(23, 100, 86, 0.16);
+  border: 1px solid rgba(var(--green-rgb), 0.16);
   border-radius: 999px;
   background: var(--green-wash);
   color: var(--green);

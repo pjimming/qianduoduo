@@ -63,7 +63,7 @@
 
 .tm-search input:focus {
   border-color: #8bb5a5;
-  box-shadow: 0 0 0 3px rgba(23, 100, 86, 0.11);
+  box-shadow: 0 0 0 3px rgba(var(--green-rgb), 0.11);
 }
 
 .tm-search .tm-clear {
