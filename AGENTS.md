@@ -21,6 +21,9 @@
 - 优先使用 `.codex/agents/` 中的项目级角色：`workspace_explorer` 负责只读代码路径和影响面探索，`backend_integrity_worker` 负责边界明确的后端实现，`ui_quality_worker` 负责前端实现与响应式质量，`stock_research_analyst` 负责股票证据调研，`delivery_reviewer` 负责独立交付审查。主 Agent 负责编排、冲突裁决、最终写稿、发布和验收。
 - 所有子 Agent 继承并遵守本文件、相关 Skill 和权限约束。主 Agent 必须汇总所需结果，核对事实、冲突和文件状态，并完成统一验证后交付，不得把未经核验的子 Agent 结论直接作为最终结果。
 - 多 Agent 协作不得扩大用户明确限定的范围，也不得改变 R2 与股票研究的数据隔离、财务事务边界和报告发布约束。
+- 子 Agent 派发必须遵守 [.codex/agents/TASK_PROTOCOL.md](.codex/agents/TASK_PROTOCOL.md)：每次使用唯一 `TASK_ID`，在 `run/agent-briefs/<TASK_ID>.md` 写入完整任务契约，再直接调用 `spawn_agent`；需要当前会话上下文的任务必须显式使用 `fork_turns="all"`，禁止使用 `fork_turns="none"`。
+- 需要上下文的任务不得通过批量工具包装器创建子 Agent。应逐个直接创建，让各子 Agent 在后台并行运行；唯一任务简报和完整会话继承同时存在，不能只依赖临时提示词。
+- 子 Agent 最终答复首行必须是 `CONTEXT_OK <TASK_ID>`，并复述任务目标；缺失、错 ID、沿用旧任务或要求重新提供已知目标时，一律判定为上下文失败，停止该 Agent 并重新派发。不要用 `followup_task` 修补已经上下文失败的任务。
 
 ### 记忆维护（强制）
 
