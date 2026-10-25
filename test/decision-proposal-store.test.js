@@ -32,8 +32,22 @@ function holdingReview() {
     amount: 10000,
     evidence_date: '2026-10-22',
     verify_date: '2026-11-21',
+    yield_policy_version: 'r2-term-yield-v1',
     verdict: 'replace',
     top_candidate_code: 'NEW001',
+    current: {
+      found: true,
+      yield_pct: 2.4,
+      yield_status: 'available',
+      yield_reason: 'complete_history',
+      yield_available_horizons: ['3m', '6m', '1y'],
+      yield_normalized_weights: {
+        return_3m: 0.5,
+        return_6m: 0.3,
+        return_1y: 0.2,
+      },
+      data_date: '2026-10-21',
+    },
     redemption: {
       redeemable_now: true,
       available_date: '2026-10-22',
@@ -54,6 +68,16 @@ function holdingReview() {
           difference: 50,
           break_even_yield_pct: 2.1,
         },
+        yield_pct: 2.9,
+        yield_status: 'available',
+        yield_reason: 'partial_history',
+        yield_available_horizons: ['3m', '6m'],
+        yield_normalized_weights: {
+          return_3m: 0.625,
+          return_6m: 0.375,
+        },
+        yield_policy_version: 'r2-term-yield-v1',
+        data_date: '2026-10-21',
       },
     ],
   };
@@ -69,6 +93,17 @@ function allocationProduct() {
     allocation_bucket: 'short',
     allocation_reason: '短期桶目标不足，额度和集中度均满足',
     selection_score: 82,
+    reference_yield_pct: 2.75,
+    reference_yield_status: 'available',
+    reference_yield_reason: 'complete_history',
+    reference_available_horizons: ['1m', '3m', '6m'],
+    reference_normalized_weights: {
+      return_1m: 0.2,
+      return_3m: 0.5,
+      return_6m: 0.3,
+    },
+    yield_policy_version: 'r2-term-yield-v1',
+    data_date: '2026-10-21',
     quota_status: 'verified',
     quota_available: 8000,
     quota_verified_at: '2026-10-22',
@@ -113,6 +148,109 @@ test('proposal engine creates holding-switch and cash-allocation proposals witho
         item.amount === 5000,
     ),
   );
+  for (const proposal of workspace.pending) {
+    assert.equal(proposal.yield_policy_version, 'r2-term-yield-v1');
+    assert.equal(proposal.payload.yield_policy.version, 'r2-term-yield-v1');
+    assert.equal(
+      proposal.payload.review_meta.yield_policy_version,
+      'r2-term-yield-v1',
+    );
+  }
+  const holdingProposal = workspace.pending.find(
+    (item) => item.proposal_type === 'holding_switch',
+  );
+  assert.deepEqual(
+    holdingProposal.payload.yield_policy.current.available_horizons,
+    ['3m', '6m', '1y'],
+  );
+  assert.equal(
+    holdingProposal.payload.yield_policy.current.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  assert.deepEqual(
+    holdingProposal.payload.yield_policy.candidate.normalized_weights,
+    {
+      return_3m: 0.625,
+      return_6m: 0.375,
+    },
+  );
+  assert.equal(
+    holdingProposal.payload.yield_policy.candidate.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  const cashProposal = workspace.pending.find(
+    (item) => item.proposal_type === 'cash_allocation',
+  );
+  assert.deepEqual(
+    cashProposal.payload.yield_policy.product.available_horizons,
+    ['1m', '3m', '6m'],
+  );
+});
+
+test('same-key pending proposal stays fully frozen when allocation context changes', (t) => {
+  const repository = openTemp(t);
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const before = repository.decisionProposalStore
+    .getWorkspace('2026-10-22')
+    .pending.find((item) => item.proposal_type === 'cash_allocation');
+  assert.ok(before);
+
+  const changed = proposalDashboard();
+  changed.workspace.holding_reviews = [];
+  changed.products.allocation.available_cash = 5500;
+  changed.products.watchlist[0].allocation_reason =
+    '可分配资金和说明已变化，但目标金额与快照仍相同';
+  repository.decisionProposalStore.sync(changed);
+  const after = repository.decisionProposalStore.getProposal(before.id);
+
+  assert.equal(after.summary, before.summary);
+  assert.deepEqual(after.payload.prediction, before.payload.prediction);
+  assert.equal(after.updated_at, before.updated_at);
+});
+
+test('a pending proposal from an older yield policy is expired and replaced', (t) => {
+  const repository = openTemp(t);
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const oldProposal = repository.decisionProposalStore
+    .getWorkspace('2026-10-22')
+    .pending.find((item) => item.proposal_type === 'cash_allocation');
+  assert.ok(oldProposal);
+  const row = repository.db
+    .prepare('SELECT payload_json, dedupe_key FROM decision_proposals WHERE id = ?')
+    .get(oldProposal.id);
+  const payload = JSON.parse(row.payload_json);
+  payload.yield_policy.version = 'r2-term-yield-v0';
+  payload.review_meta.yield_policy_version = 'r2-term-yield-v0';
+  repository.db
+    .prepare(
+      `UPDATE decision_proposals
+       SET payload_json = ?, dedupe_key = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(
+      JSON.stringify(payload),
+      String(row.dedupe_key).replace(
+        'r2-term-yield-v1',
+        'r2-term-yield-v0',
+      ),
+      '2026-10-22T00:00:00.000Z',
+      oldProposal.id,
+    );
+
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const workspace = repository.decisionProposalStore.getWorkspace('2026-10-22');
+  const expired = workspace.history.find((item) => item.id === oldProposal.id);
+  assert.equal(expired.status, 'expired');
+  assert.match(expired.reject_reason, /收益策略已升级/);
+  const replacement = workspace.pending.find(
+    (item) =>
+      item.proposal_type === 'cash_allocation' &&
+      item.product_code === oldProposal.product_code,
+  );
+  assert.ok(replacement);
+  assert.notEqual(replacement.id, oldProposal.id);
+  assert.equal(replacement.yield_policy_version, 'r2-term-yield-v1');
+  assert.match(replacement.dedupe_key, /r2-term-yield-v1/);
 });
 
 test('cash proposals preserve top-up mode and reject undersized first positions', (t) => {
@@ -224,12 +362,21 @@ test('adopted proposal predictions are frozen and later corrections append versi
     .pending.find((item) => item.proposal_type === 'cash_allocation');
   const original = proposal.payload.prediction;
   assert.ok(original);
-  assert.equal(original.expected.target.point, proposal.amount);
+  assert.equal(original.expected.target.point, 2.75);
+  assert.equal(original.expected.target.unit, '%');
 
   const adopted = repository.decisionProposalStore.adoptProposal(proposal.id, {
     today: '2026-10-22',
   });
   assert.equal(adopted.decision.review_meta.predictions.length, 1);
+  assert.equal(
+    adopted.decision.review_meta.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  assert.deepEqual(
+    adopted.decision.review_meta.yield_policy.product.available_horizons,
+    ['1m', '3m', '6m'],
+  );
   assert.equal(
     adopted.decision.review_meta.predictions[0].id,
     original.id,
@@ -239,7 +386,6 @@ test('adopted proposal predictions are frozen and later corrections append versi
     ...adopted.decision,
     expectation: '人工更新说明，但不得改写预测',
     review_meta: {
-      ...adopted.decision.review_meta,
       predictions: [],
     },
   });
@@ -247,6 +393,18 @@ test('adopted proposal predictions are frozen and later corrections append versi
   assert.equal(
     unchanged.review_meta.predictions[0].expected.target.point,
     original.expected.target.point,
+  );
+  assert.equal(
+    unchanged.review_meta.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  assert.deepEqual(
+    unchanged.review_meta.yield_policy.product.available_horizons,
+    ['1m', '3m', '6m'],
+  );
+  assert.equal(
+    unchanged.review_meta.product_yield_reason,
+    'complete_history',
   );
 
   const corrected = repository.addPredictionVersion(adopted.decision.id, {
@@ -257,12 +415,14 @@ test('adopted proposal predictions are frozen and later corrections append versi
     baseline: original.baseline,
     expected: {
       direction: 'at_least',
-      target: { point: proposal.amount - 500, unit: '元' },
+      target: { point: original.expected.target.point - 0.25, unit: '%' },
     },
-    metric: 'executed_amount',
+    metric: 'personal_annualized_return_pct',
     evaluation: {
-      method: 'confirmed_trade_amount',
-      tolerance_abs: 1,
+      method: 'confirmed_trade_personal_annualized',
+      minimum_observations: 7,
+      minimum_coverage_ratio: 0.5,
+      tolerance_pp: 0.15,
     },
     invalidation_condition: original.invalidation_condition,
     invalidation_triggers: original.invalidation_triggers,
@@ -275,8 +435,46 @@ test('adopted proposal predictions are frozen and later corrections append versi
   assert.equal(corrected.review_meta.predictions[1].version, 2);
   assert.equal(
     corrected.review_meta.predictions[1].expected.target.point,
-    proposal.amount - 500,
+    original.expected.target.point - 0.25,
   );
+});
+
+test('adoption refuses and expires a pending proposal from an old yield policy', (t) => {
+  const repository = openTemp(t);
+  repository.decisionProposalStore.sync(proposalDashboard());
+  const proposal = repository.decisionProposalStore
+    .getWorkspace('2026-10-22')
+    .pending.find((item) => item.proposal_type === 'cash_allocation');
+  assert.ok(proposal);
+  const row = repository.db
+    .prepare('SELECT payload_json FROM decision_proposals WHERE id = ?')
+    .get(proposal.id);
+  const payload = JSON.parse(row.payload_json);
+  payload.yield_policy.version = 'r2-term-yield-v0';
+  payload.review_meta.yield_policy_version = 'r2-term-yield-v0';
+  repository.db
+    .prepare(
+      `UPDATE decision_proposals
+       SET payload_json = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(
+      JSON.stringify(payload),
+      '2026-10-22T00:00:00.000Z',
+      proposal.id,
+    );
+
+  assert.throws(
+    () =>
+      repository.decisionProposalStore.adoptProposal(proposal.id, {
+        today: '2026-10-22',
+      }),
+    /收益策略已升级/,
+  );
+  const stored = repository.decisionProposalStore.getProposal(proposal.id);
+  assert.equal(stored.status, 'expired');
+  assert.match(stored.reject_reason, /收益策略已升级/);
+  assert.equal(repository.listDecisions().length, 0);
 });
 
 test('zero available cash never expires accepted or holding-switch proposals', (t) => {

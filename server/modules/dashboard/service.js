@@ -239,7 +239,7 @@ function createDashboardQueryService(repository, options = {}) {
     const returnAttribution = buildReturnAttribution({
       records,
       trades: tradeOverview.trades,
-      products: productView.all,
+      products: repository.listProducts(),
       valuations: repository.productValuationStore.listValuations(),
       settingsByCode: holdingReviewSettings,
       windowSummary: windows[30],

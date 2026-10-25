@@ -827,6 +827,7 @@ export interface HoldingReview {
   next_redeem_open_date: string
   days_to_redeem_open: number | null
   horizon_days: number
+  review_version: string
   yield_policy_version: string
   current: {
     found: boolean
@@ -1130,6 +1131,9 @@ export interface ReturnAttributionProduct {
   reference_yield_pct: number | null
   reference_yield_status: ReferenceYieldStatus
   reference_yield_reason: ReferenceYieldReason | null
+  reference_available_horizons: string[]
+  reference_normalized_weights: Record<string, number>
+  reference_yield_policy_version: string | null
   reference_data_date: string | null
   holding_days_amount: number
   target_pnl: number
@@ -1276,6 +1280,28 @@ export type DecisionProposalStatus =
   | 'rejected'
   | 'expired'
 
+export interface DecisionYieldEvidence {
+  product_code: string
+  product_name: string
+  found?: boolean
+  yield_policy_version: string | null
+  reference_yield_pct: number | null
+  status: ReferenceYieldStatus
+  reason: ReferenceYieldReason | null
+  available_horizons: string[]
+  normalized_weights: Record<string, number>
+  data_date: string | null
+  snapshot_date: string | null
+}
+
+export interface DecisionYieldPolicy {
+  version: string
+  snapshot_date: string | null
+  current?: DecisionYieldEvidence
+  candidate?: DecisionYieldEvidence
+  product?: DecisionYieldEvidence
+}
+
 export interface DecisionProposal {
   id: number
   dedupe_key: string
@@ -1295,9 +1321,11 @@ export interface DecisionProposal {
   confidence: number
   status: DecisionProposalStatus
   decision_id: number | null
+  yield_policy_version: string | null
   payload: {
     decision?: Partial<DecisionInput>
     review_meta?: Record<string, unknown>
+    yield_policy?: DecisionYieldPolicy
     expected_legs?: Array<{
       side: 'buy' | 'redeem'
       product_code: string
@@ -1771,6 +1799,7 @@ export interface Product {
   return_1y: number | null
   reference_yield_status: ReferenceYieldStatus
   reference_yield_reason: ReferenceYieldReason
+  yield_policy_version: string
   reference_available_horizons: string[]
   reference_normalized_weights: Record<string, number>
   reference_yield_pct: number | null

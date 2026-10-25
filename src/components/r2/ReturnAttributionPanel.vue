@@ -128,6 +128,25 @@ function referenceYieldLabel(
     : '不可计算'
 }
 
+function referenceYieldHint(
+  product: ReturnAttribution['product_evidence']['products'][number],
+): string {
+  const policy = product.reference_yield_policy_version || '策略版本待核'
+  if (product.reference_yield_reason === 'no_product_snapshot') {
+    return `当前快照缺失 · ${policy}`
+  }
+  if (product.reference_yield_reason === 'unknown_term') {
+    return `期限无法分桶 · ${policy}`
+  }
+  if (product.reference_yield_reason === 'no_available_horizons') {
+    return `指定窗口均缺失 · ${policy}`
+  }
+  const windows = product.reference_available_horizons.join(' + ') || '—'
+  const prefix =
+    product.reference_yield_reason === 'partial_history' ? '部分历史 · ' : ''
+  return `${prefix}可用窗口 ${windows} · ${policy}`
+}
+
 function barStyle(component: ReturnAttributionComponent): Record<string, string> {
   const amount = component.amount ?? 0
   const width = Math.max(
@@ -490,15 +509,14 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
                 </template>
               </small>
             </span>
-            <span data-label="期限调整参考年化">
+            <span
+              data-label="期限调整参考年化"
+              :data-reference-status="product.reference_yield_status"
+              :data-reference-reason="product.reference_yield_reason || ''"
+              :data-reference-policy-version="product.reference_yield_policy_version || ''"
+            >
               <strong>{{ referenceYieldLabel(product) }}</strong>
-              <small>
-                {{
-                  product.reference_yield_status === 'available'
-                    ? '缺失窗口不按 0 补齐'
-                    : '指定窗口均缺失'
-                }}
-              </small>
+              <small>{{ referenceYieldHint(product) }}</small>
             </span>
             <span data-label="选择贡献估算">
               <strong :class="amountTone(product.selection_estimate_pnl)">

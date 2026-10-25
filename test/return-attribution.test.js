@@ -69,7 +69,10 @@ test('return attribution ranks selection drag and closes the account bridge', ()
       {
         code: 'P001',
         name: '测试产品',
-        reference_yield_pct: 2,
+        term_days: 90,
+        return_3m: 2,
+        return_6m: 2,
+        return_1y: 2,
         data_date: '2026-08-31',
       },
     ],
@@ -98,6 +101,22 @@ test('return attribution ranks selection drag and closes the account bridge', ()
   assert.equal(
     attribution.product_evidence.account_pnl,
     attribution.actual.observed_period_pnl,
+  );
+  assert.deepEqual(
+    attribution.product_evidence.products[0].reference_available_horizons,
+    ['3m', '6m', '1y'],
+  );
+  assert.deepEqual(
+    attribution.product_evidence.products[0].reference_normalized_weights,
+    {
+      return_3m: 0.5,
+      return_6m: 0.3,
+      return_1y: 0.2,
+    },
+  );
+  assert.equal(
+    attribution.product_evidence.products[0].reference_yield_policy_version,
+    'r2-term-yield-v1',
   );
 });
 
@@ -213,7 +232,7 @@ test('missing reference yield is unavailable rather than zero-filled', () => {
       {
         code: 'P003',
         name: '无年化产品',
-        reference_yield_pct: null,
+        term_days: 90,
         data_date: '2026-08-31',
       },
     ],
@@ -247,6 +266,102 @@ test('missing reference yield is unavailable rather than zero-filled', () => {
     'no_available_horizons',
   );
   assert.equal(attribution.bridge.reconciled, true);
+  assert.deepEqual(
+    attribution.product_evidence.products[0].reference_available_horizons,
+    [],
+  );
+  assert.deepEqual(
+    attribution.product_evidence.products[0].reference_normalized_weights,
+    {},
+  );
+  assert.equal(
+    attribution.product_evidence.products[0].reference_yield_policy_version,
+    'r2-term-yield-v1',
+  );
+});
+
+test('unknown term is distinct from missing horizons and missing snapshot', () => {
+  const trades = [
+    {
+      id: 1,
+      trade_date: '2026-09-01',
+      confirm_date: '2026-09-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: 'P004',
+      product_name: '期限未知产品',
+      amount: 30000,
+    },
+  ];
+  const records = buildRecords({ days: 3, dailyPnl: 1, trades });
+  const attribution = buildReturnAttribution({
+    records,
+    trades,
+    products: [
+      {
+        code: 'P004',
+        name: '期限未知产品',
+        term_days: null,
+        return_3m: 2.4,
+        return_6m: 2.5,
+        return_1y: 2.6,
+        data_date: '2026-08-31',
+      },
+    ],
+    valuations: records.map((record) => ({
+      yield_date: record.date,
+      product_code: 'P004',
+      product_name: '期限未知产品',
+      daily_pnl: 1,
+    })),
+    windowSummary: buildWindows(records)[30],
+    targetAnnualized: 3,
+  });
+  const product = attribution.product_evidence.products[0];
+  assert.equal(product.reference_yield_pct, null);
+  assert.equal(product.reference_yield_status, 'unavailable');
+  assert.equal(product.reference_yield_reason, 'unknown_term');
+  assert.deepEqual(product.reference_available_horizons, []);
+  assert.deepEqual(product.reference_normalized_weights, {});
+  assert.equal(
+    product.reference_yield_policy_version,
+    'r2-term-yield-v1',
+  );
+});
+
+test('missing product snapshot uses a distinct reason and empty yield metadata', () => {
+  const trades = [
+    {
+      id: 1,
+      trade_date: '2026-09-01',
+      confirm_date: '2026-09-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: 'MISSING',
+      product_name: '快照缺失产品',
+      amount: 30000,
+    },
+  ];
+  const records = buildRecords({ days: 3, dailyPnl: 1, trades });
+  const attribution = buildReturnAttribution({
+    records,
+    trades,
+    products: [],
+    valuations: records.map((record) => ({
+      yield_date: record.date,
+      product_code: 'MISSING',
+      product_name: '快照缺失产品',
+      daily_pnl: 1,
+    })),
+    windowSummary: buildWindows(records)[30],
+    targetAnnualized: 3,
+  });
+  const product = attribution.product_evidence.products[0];
+  assert.equal(product.reference_yield_status, 'unavailable');
+  assert.equal(product.reference_yield_reason, 'no_product_snapshot');
+  assert.deepEqual(product.reference_available_horizons, []);
+  assert.deepEqual(product.reference_normalized_weights, {});
+  assert.equal(product.reference_yield_policy_version, null);
 });
 
 test('product income remains a reconciliation source, not a second account total', () => {

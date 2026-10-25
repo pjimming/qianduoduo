@@ -352,9 +352,40 @@ function cancelDecision(): void {
 
 function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): Record<string, unknown> {
   const result = candidate.switch
+  const currentYield = {
+    product_code: review.product_code,
+    product_name: review.product_name,
+    found: review.current.found,
+    yield_policy_version: review.current.yield_policy_version,
+    reference_yield_pct: review.current.yield_pct,
+    status: review.current.yield_status,
+    reason: review.current.yield_reason,
+    available_horizons: review.current.yield_available_horizons,
+    normalized_weights: review.current.yield_normalized_weights,
+    data_date: review.current.data_date || null,
+    snapshot_date: review.evidence_date,
+  }
+  const candidateYield = {
+    product_code: candidate.code,
+    product_name: candidate.name,
+    yield_policy_version: candidate.yield_policy_version,
+    reference_yield_pct: candidate.yield_pct,
+    status: candidate.yield_status,
+    reason: candidate.yield_reason,
+    available_horizons: candidate.yield_available_horizons,
+    normalized_weights: candidate.yield_normalized_weights,
+    data_date: candidate.data_date || null,
+    snapshot_date: review.evidence_date,
+  }
   return {
-    review_version: 'r2-holding-review-v7',
+    review_version: review.review_version,
     yield_policy_version: review.yield_policy_version,
+    yield_policy: {
+      version: review.yield_policy_version,
+      snapshot_date: review.evidence_date,
+      current: currentYield,
+      candidate: candidateYield,
+    },
     holding_lot_id: review.lot_id,
     holding_code: review.product_code,
     holding_name: review.product_name,
@@ -378,11 +409,14 @@ function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): R
     current_yield_pct: review.current.yield_pct,
     current_yield_status: review.current.yield_status,
     current_yield_reason: review.current.yield_reason,
+    current_yield_available_horizons: review.current.yield_available_horizons,
+    current_yield_normalized_weights: review.current.yield_normalized_weights,
     candidate_yield_pct: candidate.yield_pct,
     candidate_yield_status: candidate.yield_status,
     candidate_yield_reason: candidate.yield_reason,
-    candidate_available_horizons: candidate.yield_available_horizons,
-    candidate_normalized_weights: candidate.yield_normalized_weights,
+    candidate_yield_available_horizons: candidate.yield_available_horizons,
+    candidate_yield_normalized_weights: candidate.yield_normalized_weights,
+    candidate_yield_policy_version: candidate.yield_policy_version,
     yield_gap_pp: candidate.yield_gap_pp,
     break_even_yield_pct: result?.break_even_yield_pct ?? null,
     difference: result?.difference ?? 0,
@@ -416,7 +450,7 @@ async function saveDecision(review: HoldingReview): Promise<void> {
       invalidation_condition:
         '到验证日若实际起息、到账、费用或比较期收益未达到本次测算，或当前产品已不再锁定时，重新评估；若候选额度、风险、期限或赎回规则恶化，则取消替换。',
       actual_result: '',
-      strategy_version: 'r2-holding-review-v7',
+      strategy_version: review.review_version,
       target_annualized: 3,
       bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
       evaluation_at: ['holding', 'maturity'],

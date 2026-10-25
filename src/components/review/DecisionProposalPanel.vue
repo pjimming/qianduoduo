@@ -102,6 +102,30 @@ function statusClass(proposal: DecisionProposal): string {
   }
   return 'is-warn'
 }
+
+function yieldEvidenceText(
+  evidence: NonNullable<DecisionProposal['payload']['yield_policy']>['current'],
+): string {
+  if (!evidence) return '未获取'
+  if (evidence.status === 'available') {
+    const windows = evidence.available_horizons.join(' + ') || '—'
+    return evidence.reason === 'partial_history'
+      ? `部分历史 ${windows}`
+      : `可用 ${windows}`
+  }
+  return {
+    no_product_snapshot: '快照缺失',
+    unknown_term: '期限未知',
+    no_available_horizons: '指定窗口均缺失',
+  }[String(evidence.reason)] || '不可计算'
+}
+
+function yieldPolicyText(proposal: DecisionProposal): string {
+  const policy = proposal.payload.yield_policy
+  if (!policy) return '收益口径未记录'
+  const evidence = policy.candidate || policy.product || policy.current
+  return `${policy.version} · ${evidence?.snapshot_date || policy.snapshot_date || '快照待核'} · ${yieldEvidenceText(evidence)}`
+}
 </script>
 
 <template>
@@ -154,6 +178,9 @@ function statusClass(proposal: DecisionProposal): string {
           </span>
           <span><em>金额</em>¥{{ formatMoney(proposal.amount, 2) }}</span>
           <span><em>证据日</em>{{ proposal.evidence_date || '—' }}</span>
+          <span data-testid="proposal-yield-policy">
+            <em>收益口径</em>{{ yieldPolicyText(proposal) }}
+          </span>
           <span><em>有效期</em>{{ proposal.expires_at || '—' }}</span>
           <span><em>验证日</em>{{ proposal.verify_date || '—' }}</span>
         </div>

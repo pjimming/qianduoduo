@@ -8,6 +8,8 @@ import type {
   DecisionEntry,
   DecisionInput,
   DecisionRating,
+  DecisionYieldEvidence,
+  DecisionYieldPolicy,
   TradeTransaction,
 } from '@/types/dashboard'
 import DataTrustTraceDialog from '@/components/DataTrustTraceDialog.vue'
@@ -213,6 +215,42 @@ function statusLabel(status: string): string {
 function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: string }> {
   const meta = item.review_meta || {}
   const rows: Array<{ label: string; value: string }> = []
+  const yieldPolicy = meta.yield_policy as DecisionYieldPolicy | undefined
+  const yieldPolicyVersion = String(
+    meta.yield_policy_version || yieldPolicy?.version || '',
+  )
+  if (yieldPolicyVersion) {
+    rows.push({ label: '收益口径', value: yieldPolicyVersion })
+  }
+  const evidenceRows: Array<[string, DecisionYieldEvidence | undefined]> = [
+    ['当前收益', yieldPolicy?.current],
+    ['候选收益', yieldPolicy?.candidate],
+    ['产品收益', yieldPolicy?.product],
+  ]
+  for (const [label, evidence] of evidenceRows) {
+    if (!evidence) continue
+    const windows = evidence.available_horizons.join(' + ') || '—'
+    const weights = Object.entries(evidence.normalized_weights)
+      .map(([key, value]) => `${key} ${(Number(value) * 100).toFixed(2)}%`)
+      .join(' + ')
+    const status =
+      evidence.status === 'available'
+        ? evidence.reason === 'partial_history'
+          ? '部分历史'
+          : '可用'
+        : {
+            no_product_snapshot: '快照缺失',
+            unknown_term: '期限未知',
+            no_available_horizons: '指定窗口均缺失',
+          }[String(evidence.reason)] || '不可计算'
+    rows.push({
+      label,
+      value:
+        `${status} · ${windows}` +
+        `${weights ? ` · ${weights}` : ''}` +
+        `${evidence.yield_policy_version ? ` · ${evidence.yield_policy_version}` : ''}`,
+    })
+  }
   if (meta.candidate_name) {
     rows.push({ label: '候选', value: String(meta.candidate_name) })
   }

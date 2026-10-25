@@ -130,6 +130,7 @@ test('holding review exposes term-adjusted yield status and policy metadata', ()
     today: '2026-10-20',
   });
   assert.equal(review.yield_policy_version, 'r2-term-yield-v1');
+  assert.equal(review.review_version, 'r2-holding-review-v7');
   assert.equal(review.current.yield_pct, 3.1);
   assert.equal(review.current.yield_status, 'available');
   assert.equal(review.current.yield_reason, 'complete_history');
@@ -139,6 +140,63 @@ test('holding review exposes term-adjusted yield status and policy metadata', ()
     return_3m: 0.5,
     return_6m: 0.3,
   });
+});
+
+test('holding review distinguishes missing snapshot, partial history and unavailable yield', () => {
+  const missingSnapshot = buildHoldingReview({
+    holding: holding({ product_code: 'MISSING' }),
+    products: [],
+    universe: [],
+    today: '2026-10-20',
+  });
+  assert.equal(missingSnapshot.review_version, 'r2-holding-review-v7');
+  assert.equal(missingSnapshot.current.found, false);
+  assert.equal(missingSnapshot.current.yield_status, 'unavailable');
+  assert.equal(missingSnapshot.current.yield_reason, 'no_product_snapshot');
+  assert.deepEqual(missingSnapshot.current.yield_available_horizons, []);
+  assert.deepEqual(missingSnapshot.current.yield_normalized_weights, {});
+
+  const partialProduct = current({
+    code: 'PARTIAL',
+    return_3m: 2,
+    return_6m: null,
+    return_1y: 4,
+  });
+  const partial = buildHoldingReview({
+    holding: holding({ product_code: 'PARTIAL' }),
+    products: [],
+    universe: [partialProduct],
+    today: '2026-10-20',
+  });
+  assert.equal(partial.current.yield_status, 'available');
+  assert.equal(partial.current.yield_reason, 'partial_history');
+  assert.deepEqual(partial.current.yield_available_horizons, ['3m', '1y']);
+  assert.deepEqual(partial.current.yield_normalized_weights, {
+    return_3m: 0.7142857143,
+    return_1y: 0.2857142857,
+  });
+
+  const unavailableProduct = current({
+    code: 'NO-WINDOW',
+    return_1m: 2,
+    return_3m: null,
+    return_6m: null,
+    return_1y: null,
+  });
+  const unavailable = buildHoldingReview({
+    holding: holding({ product_code: 'NO-WINDOW' }),
+    products: [],
+    universe: [unavailableProduct],
+    today: '2026-10-20',
+  });
+  assert.equal(unavailable.current.found, true);
+  assert.equal(unavailable.current.yield_status, 'unavailable');
+  assert.equal(
+    unavailable.current.yield_reason,
+    'no_available_horizons',
+  );
+  assert.deepEqual(unavailable.current.yield_available_horizons, []);
+  assert.deepEqual(unavailable.current.yield_normalized_weights, {});
 });
 
 test('bucket comparison horizons are fixed constants', () => {

@@ -633,6 +633,21 @@ async function main() {
       .locator('.ra-product-table, .ra-empty-copy')
       .first()
       .waitFor()
+    const attributionProductRows = attributionPanel.locator(
+      '.ra-product-row:not(.is-head)',
+    )
+    if ((await attributionProductRows.count()) > 0) {
+      const firstAttributionProduct = attributionProductRows.first()
+      const referenceCell = firstAttributionProduct.locator(
+        '[data-reference-status]',
+      )
+      assert(
+        (await referenceCell.getAttribute('data-reference-policy-version')) ===
+          'r2-term-yield-v1' &&
+          ((await referenceCell.textContent()) ?? '').includes('可用窗口'),
+        '收益归因产品行没有显示收益策略版本与可用窗口',
+      )
+    }
     await assertFontFloor(page, '.return-attribution', '目标差距归因桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
     await assertNoLargeLightSurface(
@@ -648,6 +663,115 @@ async function main() {
       '目标差距归因移动端出现横向溢出',
     )
     await page.setViewportSize({ width: 1280, height: 900 })
+
+    const reasonOverviewPatch = await fetch(
+      `${base}/api/dashboard/sections?include=overview`,
+    ).then((response) => response.json())
+    const reasonTemplate =
+      reasonOverviewPatch.workspace.return_attribution.product_evidence
+        .products[0]
+    const reasonRows = [
+      {
+        reason: 'no_product_snapshot',
+        code: 'E2E-NO-SNAPSHOT',
+        label: '当前快照缺失',
+        policy: null,
+      },
+      {
+        reason: 'unknown_term',
+        code: 'E2E-UNKNOWN-TERM',
+        label: '期限无法分桶',
+        policy: 'r2-term-yield-v1',
+      },
+      {
+        reason: 'no_available_horizons',
+        code: 'E2E-NO-HORIZONS',
+        label: '指定窗口均缺失',
+        policy: 'r2-term-yield-v1',
+      },
+    ]
+    reasonOverviewPatch.workspace.return_attribution.product_evidence.products =
+      reasonRows.map((row) => ({
+        ...reasonTemplate,
+        product_code: row.code,
+        product_name: row.label,
+        reference_yield_pct: null,
+        reference_yield_status: 'unavailable',
+        reference_yield_reason: row.reason,
+        reference_available_horizons: [],
+        reference_normalized_weights: {},
+        reference_yield_policy_version: row.policy,
+        reference_data_date: null,
+        reference_pnl: null,
+        selection_estimate_pnl: null,
+        recorded_product_pnl: 0,
+        recorded_days: 0,
+      }))
+    const reasonPage = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    })
+    try {
+      await reasonPage.route(
+        '**/api/dashboard/sections?include=overview',
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(reasonOverviewPatch),
+          })
+        },
+      )
+      await reasonPage.goto(`${base}/ledger/overview`, {
+        waitUntil: 'networkidle',
+      })
+      const reasonPanel = reasonPage.locator('.return-attribution')
+      await reasonPanel.waitFor()
+      await reasonPanel.locator('.ra-products > summary').click()
+      const reasonCells = reasonPanel.locator('[data-reference-reason]')
+      assert(
+        (await reasonCells.count()) === 3,
+        '收益归因三类不可计算原因没有全部渲染',
+      )
+      const renderedReasons = await reasonCells.evaluateAll((cells) =>
+        cells.map((cell) => ({
+          reason: cell.getAttribute('data-reference-reason'),
+          policy: cell.getAttribute('data-reference-policy-version'),
+          text: cell.textContent?.replace(/\s+/g, ' ').trim() || '',
+        })),
+      )
+      for (const expected of reasonRows) {
+        const rendered = renderedReasons.find(
+          (item) => item.reason === expected.reason,
+        )
+        assert(
+          rendered?.text.includes(expected.label),
+          `收益归因原因码 ${expected.reason} 的文案不正确：${JSON.stringify(rendered)}`,
+        )
+        assert(
+          rendered.policy === (expected.policy || ''),
+          `收益归因原因码 ${expected.reason} 的策略版本不正确：${JSON.stringify(rendered)}`,
+        )
+      }
+      await assertFontFloor(
+        reasonPage,
+        '.return-attribution',
+        '收益归因原因码桌面端',
+      )
+      await reasonPage.setViewportSize({ width: 390, height: 844 })
+      await assertFontFloor(
+        reasonPage,
+        '.return-attribution',
+        '收益归因原因码移动端',
+      )
+      assert(
+        await reasonPage.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+        '收益归因原因码移动端出现横向溢出',
+      )
+    } finally {
+      await reasonPage.close()
+    }
 
     await page.goto(`${base}/investment/research`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.library-page')
@@ -1042,6 +1166,17 @@ async function main() {
             allocation_bucket: 'short',
             allocation_reason: 'E2E 短期桶目标不足',
             selection_score: 80,
+            reference_yield_pct: 2.75,
+            reference_yield_status: 'available',
+            reference_yield_reason: 'complete_history',
+            reference_available_horizons: ['1m', '3m', '6m'],
+            reference_normalized_weights: {
+              return_1m: 0.2,
+              return_3m: 0.5,
+              return_6m: 0.3,
+            },
+            yield_policy_version: 'r2-term-yield-v1',
+            data_date: '2026-10-22',
             quota_status: 'verified',
             quota_available: 3000,
             quota_verified_at: '2026-10-22',
@@ -1945,6 +2080,26 @@ async function main() {
         'E2E 资金冗余产品',
       ),
       '决策与评估页没有展示已采纳提案',
+    )
+    const proposalYieldPolicy = page
+      .locator('#proposals .proposal-card')
+      .filter({ hasText: 'E2E 资金冗余产品' })
+      .getByTestId('proposal-yield-policy')
+    assert(
+      ((await proposalYieldPolicy.textContent()) ?? '').includes(
+        'r2-term-yield-v1',
+      ) &&
+        ((await proposalYieldPolicy.textContent()) ?? '').includes('可用'),
+      '提案卡没有显示生成时的收益策略与可用窗口',
+    )
+    assert(
+      ((await page.locator('#decisions').textContent()) ?? '').includes(
+        '收益口径',
+      ) &&
+        ((await page.locator('#decisions').textContent()) ?? '').includes(
+          'r2-term-yield-v1',
+        ),
+      '采纳后的决策日志没有保留提案收益口径',
     )
     await page.setViewportSize({ width: 390, height: 844 })
     await assertFontFloor(page, '#proposals', '决策提案移动端')

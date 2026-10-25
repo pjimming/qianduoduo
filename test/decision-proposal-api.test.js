@@ -50,8 +50,22 @@ function seedProposals(repository) {
           amount: 10000,
           evidence_date: '2026-10-22',
           verify_date: '2026-11-21',
+          yield_policy_version: 'r2-term-yield-v1',
           verdict: 'replace',
           top_candidate_code: 'NEW001',
+          current: {
+            found: true,
+            yield_pct: 2.4,
+            yield_status: 'available',
+            yield_reason: 'complete_history',
+            yield_available_horizons: ['3m', '6m', '1y'],
+            yield_normalized_weights: {
+              return_3m: 0.5,
+              return_6m: 0.3,
+              return_1y: 0.2,
+            },
+            data_date: '2026-10-21',
+          },
           redemption: { redeemable_now: true },
           thresholds: { min_gain_amount: 10 },
           candidates: [
@@ -65,6 +79,16 @@ function seedProposals(repository) {
               execution_ready: true,
               min_gain_amount: 10,
               switch: { difference: 50, break_even_yield_pct: 2.1 },
+              yield_pct: 2.9,
+              yield_status: 'available',
+              yield_reason: 'partial_history',
+              yield_available_horizons: ['3m', '6m'],
+              yield_normalized_weights: {
+                return_3m: 0.625,
+                return_6m: 0.375,
+              },
+              yield_policy_version: 'r2-term-yield-v1',
+              data_date: '2026-10-21',
             },
           ],
         },
@@ -82,6 +106,17 @@ function seedProposals(repository) {
           allocation_bucket: 'short',
           allocation_reason: '短期桶目标不足',
           selection_score: 82,
+          reference_yield_pct: 2.75,
+          reference_yield_status: 'available',
+          reference_yield_reason: 'complete_history',
+          reference_available_horizons: ['1m', '3m', '6m'],
+          reference_normalized_weights: {
+            return_1m: 0.2,
+            return_3m: 0.5,
+            return_6m: 0.3,
+          },
+          yield_policy_version: 'r2-term-yield-v1',
+          data_date: '2026-10-21',
           quota_status: 'verified',
           quota_available: 8000,
           quota_verified_at: '2026-10-22',
@@ -114,6 +149,23 @@ test('proposal API adopts and rejects without creating premature decisions', asy
   const holding = workspace.decision_proposals.pending.find(
     (item) => item.proposal_type === 'holding_switch',
   );
+  assert.equal(holding.yield_policy_version, 'r2-term-yield-v1');
+  assert.equal(
+    holding.payload.yield_policy.candidate.status,
+    'available',
+  );
+  assert.equal(
+    holding.payload.yield_policy.current.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  assert.equal(
+    holding.payload.yield_policy.candidate.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  assert.deepEqual(
+    holding.payload.yield_policy.candidate.available_horizons,
+    ['3m', '6m'],
+  );
   const adoptedResponse = await postJson(
     `${base}/api/decision-proposals/${holding.id}/adopt`,
     {},
@@ -122,6 +174,14 @@ test('proposal API adopts and rejects without creating premature decisions', asy
   const adopted = await adoptedResponse.json();
   assert.equal(adopted.result.proposal.status, 'accepted');
   assert.equal(adopted.result.decision.review_meta.execution_status, 'pending');
+  assert.equal(
+    adopted.result.decision.review_meta.yield_policy_version,
+    'r2-term-yield-v1',
+  );
+  assert.equal(
+    adopted.result.decision.review_meta.yield_policy.current.status,
+    'available',
+  );
   assert.equal(repository.listDecisions().length, 1);
   assert.ok(
     adopted.dashboard.inbox_center.items.some(
@@ -134,6 +194,15 @@ test('proposal API adopts and rejects without creating premature decisions', asy
 
   const allocation = workspace.decision_proposals.pending.find(
     (item) => item.proposal_type === 'cash_allocation',
+  );
+  assert.equal(allocation.yield_policy_version, 'r2-term-yield-v1');
+  assert.deepEqual(
+    allocation.payload.yield_policy.product.normalized_weights,
+    {
+      return_1m: 0.2,
+      return_3m: 0.5,
+      return_6m: 0.3,
+    },
   );
   const rejectedResponse = await postJson(
     `${base}/api/decision-proposals/${allocation.id}/reject`,
@@ -164,6 +233,46 @@ test('proposal API adopts and rejects without creating premature decisions', asy
     ).status,
     'rejected',
   );
+});
+
+test('proposal API refuses to adopt a tampered old-policy pending item', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  seedProposals(repository);
+  const workspace = await fetch(`${base}/api/decision-proposals`).then(
+    (response) => response.json(),
+  );
+  const proposal = workspace.decision_proposals.pending.find(
+    (item) => item.proposal_type === 'cash_allocation',
+  );
+  assert.ok(proposal);
+  const row = repository.db
+    .prepare('SELECT payload_json FROM decision_proposals WHERE id = ?')
+    .get(proposal.id);
+  const payload = JSON.parse(row.payload_json);
+  payload.yield_policy.version = 'r2-term-yield-v0';
+  payload.review_meta.yield_policy_version = 'r2-term-yield-v0';
+  repository.db
+    .prepare(
+      `UPDATE decision_proposals
+       SET payload_json = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(
+      JSON.stringify(payload),
+      '2026-10-22T00:00:00.000Z',
+      proposal.id,
+    );
+
+  const response = await postJson(
+    `${base}/api/decision-proposals/${proposal.id}/adopt`,
+    {},
+  );
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.match(body.error, /收益策略已升级/);
+  const stored = repository.decisionProposalStore.getProposal(proposal.id);
+  assert.equal(stored.status, 'expired');
+  assert.equal(repository.listDecisions().length, 0);
 });
 
 test('an API-created trade automatically claims the accepted proposal and flags missing screenshot evidence', async (t) => {

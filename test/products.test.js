@@ -252,6 +252,7 @@ test('product view loads the ordinary universe and allocates dynamically', () =>
     view.all.every(
       (product) =>
         ['available', 'unavailable'].includes(product.reference_yield_status) &&
+        product.yield_policy_version === view.selection.yield_policy_version &&
         Array.isArray(product.reference_available_horizons) &&
         product.reference_normalized_weights &&
         typeof product.reference_normalized_weights === 'object',

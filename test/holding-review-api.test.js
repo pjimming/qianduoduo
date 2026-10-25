@@ -226,3 +226,90 @@ test('holding review API rejects invalid redemption settings', async (t) => {
     assert.match((await deprecated.json()).error, /已停用/);
   }
 });
+
+test('holding review API exposes snapshot, partial and unavailable reasons', async (t) => {
+  const base = await startTestServer(t);
+  const productPayload = await fetch(`${base}/api/dashboard/products`).then(
+    (response) => response.json(),
+  );
+  const partialProduct = productPayload.products.all.find(
+    (product) =>
+      product.reference_yield_status === 'available' &&
+      product.reference_yield_reason === 'partial_history',
+  );
+  const unavailableProduct = productPayload.products.all.find(
+    (product) =>
+      product.reference_yield_status === 'unavailable' &&
+      product.reference_yield_reason === 'no_available_horizons',
+  );
+  assert.ok(partialProduct);
+  assert.ok(unavailableProduct);
+
+  await postJson(`${base}/api/capital/init`, {
+    initial_principal: 30000,
+    initial_date: '2026-10-19',
+  });
+  for (const payload of [
+    tradePayload({
+      product_code: partialProduct.code,
+      product_name: partialProduct.name,
+      risk_level: partialProduct.risk_level,
+      term_days: partialProduct.term_days,
+      amount: 1000,
+    }),
+    tradePayload({
+      product_code: unavailableProduct.code,
+      product_name: unavailableProduct.name,
+      risk_level: unavailableProduct.risk_level,
+      term_days: unavailableProduct.term_days,
+      amount: 1000,
+    }),
+    tradePayload({
+      product_code: 'NOT-IN-SNAPSHOT',
+      product_name: '不在最新快照的产品',
+      term_days: 30,
+      amount: 1000,
+    }),
+  ]) {
+    const response = await postJson(`${base}/api/trades`, payload);
+    assert.equal(response.status, 201);
+  }
+
+  const dashboard = await fetch(`${base}/api/dashboard`).then((response) =>
+    response.json(),
+  );
+  const reviews = new Map(
+    dashboard.workspace.holding_reviews.map((review) => [
+      review.product_code,
+      review,
+    ]),
+  );
+  const partial = reviews.get(partialProduct.code);
+  assert.ok(partial);
+  assert.equal(partial.review_version, 'r2-holding-review-v7');
+  assert.equal(partial.current.yield_status, 'available');
+  assert.equal(partial.current.yield_reason, 'partial_history');
+  assert.ok(partial.current.yield_available_horizons.length > 0);
+  assert.ok(Object.keys(partial.current.yield_normalized_weights).length > 0);
+
+  const unavailable = reviews.get(unavailableProduct.code);
+  assert.ok(unavailable);
+  assert.equal(unavailable.current.yield_status, 'unavailable');
+  assert.equal(
+    unavailable.current.yield_reason,
+    'no_available_horizons',
+  );
+  assert.deepEqual(unavailable.current.yield_available_horizons, []);
+  assert.deepEqual(unavailable.current.yield_normalized_weights, {});
+
+  const missingSnapshot = reviews.get('NOT-IN-SNAPSHOT');
+  assert.ok(missingSnapshot);
+  assert.equal(missingSnapshot.current.found, false);
+  assert.equal(missingSnapshot.current.yield_status, 'unavailable');
+  assert.equal(
+    missingSnapshot.current.yield_reason,
+    'no_product_snapshot',
+  );
+  assert.deepEqual(missingSnapshot.current.yield_available_horizons, []);
+  assert.deepEqual(missingSnapshot.current.yield_normalized_weights, {});
+});

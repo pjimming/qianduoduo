@@ -25,6 +25,15 @@ function createProposalsService({
   function act(id, action, body) {
     let result;
     try {
+      if (
+        action === 'adopt' &&
+        proposalsRepository.expireStaleYieldPolicyProposal(id)
+      ) {
+        throw proposalError(
+          400,
+          '提案收益策略已升级，请刷新后重新生成',
+        );
+      }
       result = transactionManager.run(() =>
         action === 'adopt'
           ? proposalsRepository.adoptProposal(id, todayProvider())
