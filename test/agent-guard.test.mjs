@@ -268,11 +268,10 @@ test('nested subagent creation is denied at runtime', async () => {
   });
 });
 
-test('40%, 70%, and 80% checkpoints become visible and closeout blocks new writes', async () => {
+test('checkpoints never inject tool-call context and 80% freezes every tool', async () => {
   await withGuardRoot(async (guardRoot) => {
     await start(guardRoot);
 
-    let checkpointOne = null;
     for (let index = 1; index <= 12; index += 1) {
       const result = await handlePreToolUse(
         baseEvent({ tool_use_id: `read-${index}` }),
@@ -282,13 +281,14 @@ test('40%, 70%, and 80% checkpoints become visible and closeout blocks new write
         },
       );
       assert.equal(result.exitCode, 0);
-      if (result.output?.systemMessage) {
-        checkpointOne = result.output.systemMessage;
-      }
+      assert.equal(result.output, null);
     }
-    assert.match(checkpointOne || '', /检查点 1（40%）/u);
+    let statuses = await listGuardStatus({
+      guardRoot,
+      now: new Date(START.getTime() + 60_000),
+    });
+    assert.equal(statuses[0].stage, 'checkpoint-1');
 
-    let checkpointTwo = null;
     for (let index = 13; index <= 21; index += 1) {
       const result = await handlePreToolUse(
         baseEvent({ tool_use_id: `read-${index}` }),
@@ -298,13 +298,15 @@ test('40%, 70%, and 80% checkpoints become visible and closeout blocks new write
         },
       );
       assert.equal(result.exitCode, 0);
-      if (result.output?.systemMessage) {
-        checkpointTwo = result.output.systemMessage;
-      }
+      assert.equal(result.output, null);
     }
-    assert.match(checkpointTwo || '', /检查点 2（70%）/u);
+    statuses = await listGuardStatus({
+      guardRoot,
+      now: new Date(START.getTime() + 60_000),
+    });
+    assert.equal(statuses[0].stage, 'checkpoint-2');
 
-    for (let index = 22; index <= 24; index += 1) {
+    for (let index = 22; index <= 23; index += 1) {
       const result = await handlePreToolUse(
         baseEvent({ tool_use_id: `read-${index}` }),
         {
@@ -312,11 +314,21 @@ test('40%, 70%, and 80% checkpoints become visible and closeout blocks new write
           now: new Date(START.getTime() + 60_000),
         },
       );
-      assert.equal(decision(result), null);
-      if (index === 24) {
-        assert.match(result.output.systemMessage, /80% 收口闸门/u);
-      }
+      assert.equal(result.output, null);
     }
+
+    const closeoutRead = await handlePreToolUse(
+      baseEvent({ tool_use_id: 'read-24' }),
+      {
+        guardRoot,
+        now: new Date(START.getTime() + 60_000),
+      },
+    );
+    assert.equal(decision(closeoutRead), 'deny');
+    assert.match(
+      closeoutRead.output.hookSpecificOutput.permissionDecisionReason,
+      /全部工具冻结/u,
+    );
 
     const closeoutWrite = await handlePreToolUse(
       baseEvent({
@@ -332,7 +344,7 @@ test('40%, 70%, and 80% checkpoints become visible and closeout blocks new write
     assert.equal(decision(closeoutWrite), 'deny');
     assert.match(
       closeoutWrite.output.hookSpecificOutput.permissionDecisionReason,
-      /禁止 shell、新工作、写入、递归和外部检索/u,
+      /全部工具冻结/u,
     );
 
     const shellBypass = await handlePreToolUse(

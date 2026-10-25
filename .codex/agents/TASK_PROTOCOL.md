@@ -26,7 +26,7 @@
 | `stock_research_analyst` | 综合研究 | 45 分钟 | 120 | 第 48 次 | 第 84 次 | 第 96 次 |
 
 - 运行截止取“简报绝对硬截止”和“启动时间 + 角色墙钟预算”两者中更早者。没有有效期的已校验 reservation 时，`SubagentStart` 标记 `briefVerified=false`，`PreToolUse` 拒绝全部工具。
-- 时间或工具调用任一达到 40%/70% 时触发检查点；达到 80% 后禁止 Bash、新调研、扩大范围、写入实现、递归和外部检索，只允许使用直接只读工具整理部分结果。
+- 时间或工具调用任一达到 40%/70% 时只写入检查点状态，不在工具调用与 tool output 之间注入任何模型可见消息；主 Agent 通过 `npm run agent:status` 读取阶段。达到 80% 后冻结全部工具，Agent 只能用已有结果完成输出。
 - 工具调用超过预算或达到硬截止时间后，`PreToolUse` hook 冻结全部工具调用，Agent 只能输出收口答复。
 - 子 Agent 调用 `spawn_agent` 会直接被 `PreToolUse` hook 拒绝。确需继续拆分时，由主 Agent 建立新 `TASK_ID` 并单独派发；不得通过 `followup_task` 延长同一运行。
 - `PreToolUse` hook 发生解析、状态读取或执行异常时必须 fail-closed；任何错误都不能放行工具。
@@ -74,7 +74,7 @@
 2. 记录每个 Agent 的启动时间、硬截止时间和工具预算。
 3. 使用 `wait_agent` 做 5–10 分钟有界等待，超时后调用 `list_agents` 和 `npm run agent:status` 检查实际状态；不得无限等待最终答案。
 4. 未到截止且仍有有效进展时，继续下一轮 5–10 分钟有界等待；任务已阻塞、越界、重复失败或到达硬截止时，立即调用 `interrupt_agent`。
-5. `wait_agent` 超时只表示“本轮没等到更新”，不得据此判定 Agent 已停止。
+5. `wait_agent` 超时只表示“本轮没等到更新”，不得据此判定 Agent 已停止。检查点由主 Agent 通过 `agent:status` 观察，不在 `PreToolUse` 中向子 Agent 注入消息。
 6. 每个 Agent 完成、中断收口结束或确认异常终止后运行 `npm run agent:cleanup`，清理未经 `SubagentStop` 留下的孤立调用目录和过期 reservation。
 
 ## 中断后的收口

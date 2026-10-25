@@ -77,12 +77,6 @@ const REQUIRED_FINAL_SECTIONS = [
   ['剩余风险', /剩余风险\s*[:：]/u],
 ];
 
-const CLOSING_CONTEXT = [
-  '运行防护已进入 80% 收口闸门。',
-  '禁止启动新调研、扩大范围、写入实现或改写交付物；只允许读取现有证据并整理部分结果。',
-  '下一次可能冻结全部工具调用，请直接准备最终答复。',
-].join('');
-
 const FINAL_FORMAT_REASON = [
   '最终答复格式不合规。首行必须使用简报中的准确 TASK_ID；',
   '随后必须逐字写出“目标复述：<简报目标>”以及已完成：、未完成：、可恢复状态：、剩余风险：。',
@@ -576,7 +570,7 @@ function startContext(state) {
     `工具调用预算 ${state.toolCallBudget} 次，硬截止 ${state.hardDeadline}。`,
     `目标复述必须逐字匹配：${state.expectedGoal}`,
     '禁止调用 spawn_agent；需要继续拆分时只向主 Agent 回报，由主 Agent 使用新 TASK_ID 单独派发。',
-    '工具进度到 40% 和 70% 时会收到检查点，到 80% 进入收口，到 100% 或截止时间后工具冻结。',
+    '工具进度到 40% 和 70% 时只记录检查点状态，由主 Agent 通过 agent:status 监控；到 80% 后全部工具冻结。',
     `最终答复首行必须是 CONTEXT_OK ${state.taskId}；随后写出“目标复述：${state.expectedGoal}”及四项收口。`,
   ].join('');
 }
@@ -646,28 +640,6 @@ function isSpawnTool(toolName) {
   return /(?:^|[.:])spawn_agent$/iu.test(String(toolName || '')) || toolName === 'Agent';
 }
 
-function isAllowedDuringCloseout(toolName, toolInput) {
-  const name = String(toolName || '');
-  if (isSpawnTool(name)) {
-    return false;
-  }
-  if (/^(?:apply_patch|Edit|Write)$/iu.test(name)) {
-    return false;
-  }
-  if (name === 'Bash') {
-    return false;
-  }
-  if (/web|browser|computer|navigate|open.?url|fetch/iu.test(name)) {
-    return false;
-  }
-  if (/read|list|search|grep|glob|find|inspect|status|diff/iu.test(name)
-    && !/write|edit|patch|create|delete|remove|move|rename|spawn/iu.test(name)) {
-    return true;
-  }
-
-  return false;
-}
-
 function denyPreTool(reason) {
   return {
     exitCode: 0,
@@ -681,60 +653,17 @@ function denyPreTool(reason) {
   };
 }
 
-function allowPreTool(contexts = []) {
-  if (contexts.length === 0) {
-    return { exitCode: 0, output: null };
-  }
-
-  return {
-    exitCode: 0,
-    output: {
-      systemMessage: contexts[0],
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        additionalContext: contexts.join('\n'),
-      },
-    },
-  };
-}
-
-async function checkpointContexts(state, guardRoot, key, progress, now) {
-  const contexts = [];
-  const checkpoints = [
-    {
-      pct: 40,
-      message: [
-        '检查点 1（40%）：说明当前已获得的事实、尚未完成项和下一验证；',
-        '若剩余工作量明显超过余下预算，立即收窄到最小交付。',
-      ].join(''),
-    },
-    {
-      pct: 70,
-      message: [
-        '检查点 2（70%）：停止扩展范围，只完成必要的关键验证；',
-        '不再新增候选、模块或非核心证据。',
-      ].join(''),
-    },
-    {
-      pct: 80,
-      message: CLOSING_CONTEXT,
-    },
-  ];
-
-  for (const checkpoint of checkpoints) {
-    if (progress * 100 < checkpoint.pct) {
+async function recordCheckpoints(guardRoot, key, progress, now) {
+  for (const pct of [40, 70, 80]) {
+    if (progress * 100 < pct) {
       continue;
     }
-    const marker = path.join(checkpointsDir(guardRoot, key), `${checkpoint.pct}.json`);
-    if (await createMarker(marker, {
-      pct: checkpoint.pct,
+    const marker = path.join(checkpointsDir(guardRoot, key), `${pct}.json`);
+    await createMarker(marker, {
+      pct,
       reachedAt: now.toISOString(),
-    })) {
-      contexts.push(checkpoint.message);
-    }
+    });
   }
-
-  return contexts;
 }
 
 export async function handlePreToolUse(event, options = {}) {
@@ -799,14 +728,14 @@ export async function handlePreToolUse(event, options = {}) {
     );
   }
 
-  const contexts = await checkpointContexts(state, guardRoot, key, progress, now);
-  if (progress >= 0.8 && !isAllowedDuringCloseout(toolName, event.tool_input)) {
+  await recordCheckpoints(guardRoot, key, progress, now);
+  if (progress >= 0.8) {
     return denyPreTool(
-      `已达到 ${Math.min(100, Math.floor(progress * 100))}% 预算，进入收口。禁止 shell、新工作、写入、递归和外部检索；只能使用直接只读工具整理部分结果。`,
+      `已达到 ${Math.min(100, Math.floor(progress * 100))}% 预算，进入收口。全部工具冻结；立即用现有结果完成输出，不得继续调用工具。`,
     );
   }
 
-  return allowPreTool(contexts);
+  return { exitCode: 0, output: null };
 }
 
 function escapeRegExp(value) {
