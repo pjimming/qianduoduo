@@ -48,7 +48,7 @@
 - 持仓复核：6 条
 - 最新 stderr：0 bytes
 - `run/server.stop`：不存在
-- 交接文档 `docs/analysis/td-yield-001-handoff-2026-10-25.md` 建立时尚未提交
+- 交接文档 `docs/tasks/archive/2026/TD-YIELD-001/handoff-2026-10-25.md` 建立时尚未提交
 
 若当前数据与上述快照不同，先判断是正常快照刷新、账本变化还是异常；不能为了匹配本表而修改生产数据。
 
@@ -332,7 +332,7 @@ npm audit --omit=dev
 - 机器规格：`data/yield-observations/td-yield-002-observation-spec.json`。
 - 固定 cohort：`data/yield-observations/td-yield-002-cohort-v1.json`；689 只，哈希 `a5770790afb1aef28a7d97bcca5440828a8f14457f8a94ec557e490cec849f23`。
 - 基线：`data/cmb_r2_universe-2026-10-24.csv`，产品数据日 `2026-10-22`，文件 SHA-256 `618e6b7b63d497aa9008fe60bb97706fd5085fc20972a2cc821a4250d3795a22`。
-- 人类规格：`docs/analysis/td-yield-002-stage6-observation-spec-2026-10-25.md`。
+- 人类规格：`docs/tasks/active/TD-YIELD-002/observation-spec-2026-10-25.md`。
 - 当前复核：`0/4`、`collecting`、`formal_weight_change=false`；周台账尚无可计入的规格后样本。
 - 当前可用数据只有 `2026-10-18` 和 `2026-10-22` 两个独立产品数据日；`2026-10-23`、`2026-10-24` 文件都对应 `2026-10-22`，不能重复算样本。规格前数据不追溯计入阶段 6。
 - 首次周运行若数据日相对基线不足 5 天，返回 `not_independent` 属于正常拒样，不是任务失败。
@@ -372,7 +372,7 @@ npm audit --omit=dev
 - [ ] 修正文档中的“参考年和”等笔误。
 - [ ] 评估产品详情是否继续重复展示完全相同的兼容加权字段。
 - [ ] 更新 `README.md`、`USAGE.md`、`codex-automations/*` 和必要的 `MEMORY.md` 长期规则。
-- [ ] 决定 `td-yield-001-handoff-2026-10-25.md` 是提交归档还是作为临时交接文件清理。
+- [x] `TD-YIELD-001` 交接已归档到 `docs/tasks/archive/2026/TD-YIELD-001/handoff-2026-10-25.md`，不清理内容。
 - [ ] 核验远端是否存在回退、发布、验证三个标签。
 - [ ] 在远端推送前检查分析 JSON 中的当前持仓代码和名称是否符合仓库隐私边界。
 - [ ] 只提交本任务相关文件，不夹带股票报告、个人截图、生产数据库或其他用户改动。

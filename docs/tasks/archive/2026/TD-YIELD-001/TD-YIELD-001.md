@@ -953,6 +953,6 @@ after  = D11256702A3F76BC86813428814EF0865356ED9AED991AC99662A898170E7DF7
 - `GET /api/dashboard/products`、`/api/dashboard/overview`、`/api/dashboard/evaluation` 均正常。
 - 产品快照仍为 `2026-10-22`，数据文件为 `cmb_r2_universe-2026-10-24.csv`。
 - 本次无 schema 迁移，没有改写交易、收益、决策或历史提案。
-- 发布验收记录见 `docs/analysis/td-yield-001-stage6-release-2026-10-25.md`。
+- 发布验收记录见 `docs/tasks/archive/2026/TD-YIELD-001/release-2026-10-25.md`。
 
 阶段 6 结论：最终参数、统一计算内核、API、UI、文档和自动化任务均已发布并通过生产验收；回退标签已保留。

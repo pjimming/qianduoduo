@@ -3,8 +3,8 @@
 > 状态：已于 2026-10-23 完成生产迁移、重启和验证
 > 制定日期：2026-10-23（Asia/Shanghai）
 > 迁移 ID：`2026-10-23-data-trust-v1`
-> 设计基线：`docs/refactor/15-data-trust-lineage-design.md`
-> 执行 DDL：`docs/refactor/migrations/001-data-trust-v1.up.sql`
+> 设计基线：`docs/architecture/data-trust/lineage-design.md`
+> 执行 DDL：`server/modules/data-trust/migrations/001-data-trust-v1.up.sql`
 > 执行 DDL SHA-256：`3F6973633E4AB5BA6A9FB1A00A71A461B2B50F569F81C0584F1E43E503D4CF17`
 > 当前约束：不修改真实数据库、不迁移历史事实、不启动生产服务
 

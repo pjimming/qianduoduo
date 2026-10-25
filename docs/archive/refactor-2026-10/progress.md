@@ -1,5 +1,7 @@
 # 后端重构进度
 
+> 历史快照：本文记录当时的重构、审计或验收结果，不代表当前实现或运行状态。当前事实以代码、`TODO.md`、运行接口和 [文档地图](../../README.md) 为准。
+
 ## 当前状态
 
 - 当前阶段：阶段 0–10 与生产重启验收均已完成。
@@ -29,12 +31,12 @@
 
 交付文档：
 
-- `docs/refactor/00-audit.md`
-- `docs/refactor/01-dependency-map.md`
-- `docs/refactor/02-api-inventory.md`
-- `docs/refactor/03-database-invariants.md`
-- `docs/refactor/04-refactor-plan.md`
-- `docs/refactor/progress.md`
+- `docs/archive/refactor-2026-10/00-audit.md`
+- `docs/archive/refactor-2026-10/01-dependency-map.md`
+- `docs/archive/refactor-2026-10/02-api-inventory.md`
+- `docs/architecture/database-invariants.md`
+- `docs/archive/refactor-2026-10/04-refactor-plan.md`
+- `docs/archive/refactor-2026-10/progress.md`
 
 ### 阶段 1：建立测试保护
 
@@ -57,7 +59,7 @@
 - `test/integration/migrations-and-backup.test.js`
 - `test/integration/transaction-failure.test.js`
 - `test/unit/ocr-adapter.test.js`
-- `docs/refactor/05-test-baseline.md`
+- `docs/archive/refactor-2026-10/05-test-baseline.md`
 
 ### 阶段 2：拆分应用启动与 HTTP 基础设施
 
@@ -75,7 +77,7 @@
 
 交付：
 
-- `docs/refactor/06-http-infrastructure.md`
+- `docs/archive/refactor-2026-10/06-http-infrastructure.md`
 - `server.js`
 - `server/app.js`
 - `server/lifecycle.js`
@@ -100,7 +102,7 @@
 
 交付：
 
-- `docs/refactor/07-low-risk-modules.md`
+- `docs/archive/refactor-2026-10/07-low-risk-modules.md`
 - `server/config.js`
 - `server/modules/dashboard/*`
 - `server/modules/operations/*`
@@ -121,7 +123,7 @@
 
 交付：
 
-- `docs/refactor/08-capital-ledger-product-valuations.md`
+- `docs/archive/refactor-2026-10/08-capital-ledger-product-valuations.md`
 - `server/modules/capital/*`
 - `server/modules/ledger/*`
 - `server/modules/product-valuations/*`
@@ -144,7 +146,7 @@
 
 交付：
 
-- `docs/refactor/09-trades-holdings-ocr.md`
+- `docs/archive/refactor-2026-10/09-trades-holdings-ocr.md`
 - `server/modules/trades/*`
 - `server/infrastructure/ocr/*`
 - `server/shared/images.js`
@@ -164,7 +166,7 @@
 
 交付：
 
-- `docs/refactor/10-decisions-evaluations-reviews.md`
+- `docs/archive/refactor-2026-10/10-decisions-evaluations-reviews.md`
 - `server/infrastructure/database/transaction.js`
 - `server/modules/decisions/*`
 - `server/modules/proposals/*`
@@ -184,7 +186,7 @@
 
 交付：
 
-- `docs/refactor/11-research-static-isolation.md`
+- `docs/archive/refactor-2026-10/11-research-static-isolation.md`
 - `server/modules/research/*`
 - `test/unit/research-service.test.js`
 - `test/integration/stage7-research.test.js`
@@ -203,7 +205,7 @@
 
 交付：
 
-- `docs/refactor/12-operations-lifecycle-backup.md`
+- `docs/archive/refactor-2026-10/12-operations-lifecycle-backup.md`
 - `server/infrastructure/backup/sqlite-backup.js`
 - `server/infrastructure/logging/logger.js`
 - scheduler/lifecycle/OCR/daemon 更新
@@ -224,7 +226,7 @@
 
 交付：
 
-- `docs/refactor/13-cleanup-audit.md`
+- `docs/archive/refactor-2026-10/13-cleanup-audit.md`
 - `server/modules/income/*`
 - 路由完整性运行时校验
 
@@ -248,8 +250,8 @@
 
 交付：
 
-- `docs/refactor/final-report.md`
-- `docs/refactor/14-production-acceptance.md`
+- `docs/archive/refactor-2026-10/final-report.md`
+- `docs/archive/refactor-2026-10/14-production-acceptance.md`
 
 ## 已迁移模块
 
@@ -368,7 +370,7 @@ node --experimental-test-coverage --test
 - 运行目录无残留 stop marker。
 - 重启后再次只读检查：`quick_check=ok`、`foreign_key_check` 为空、`user_version=0`、`journal_mode=wal`、28 张业务表。
 
-详细记录见 `docs/refactor/14-production-acceptance.md`。
+详细记录见 `docs/archive/refactor-2026-10/14-production-acceptance.md`。
 
 生产验收保留事项已登记到根目录 `TODO.md`，编号为 `TD-REF-001` 至 `TD-REF-005`。
 

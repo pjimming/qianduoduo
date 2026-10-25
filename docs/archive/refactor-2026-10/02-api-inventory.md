@@ -1,5 +1,7 @@
 # API 基线清单
 
+> 历史快照：本文记录当时的重构、审计或验收结果，不代表当前实现或运行状态。当前事实以代码、`TODO.md`、运行接口和 [文档地图](../../README.md) 为准。
+
 > 阶段 2 更新：原路由实现已迁至 `server/http/legacy-app.js`；本文行号保留阶段 0 基线。当前显式 method/path 注册清单位于 `server/http/routes.js`，共 69 个模式。  
 > 阶段 3 更新：health、backups、dashboard/workspace、products、inbox、notifications 和静态资源已迁出 legacy。  
 > 阶段 4 更新：capital、records/CSV、product valuations/yield settings 已迁出 legacy。  

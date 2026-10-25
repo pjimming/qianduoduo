@@ -1,5 +1,7 @@
 # 钱多多后端渐进式重构最终报告
 
+> 历史快照：本文记录当时的重构、审计或验收结果，不代表当前实现或运行状态。当前事实以代码、`TODO.md`、运行接口和 [文档地图](../../README.md) 为准。
+
 ## 1. 最终结论
 
 阶段 0–10 已完成。
@@ -176,7 +178,7 @@ PRAGMA user_version: 0
 - 运行目录无残留 stop marker。
 - 新 Server stderr 为空，自动评估 startup 正常执行。
 
-详细记录见 `docs/refactor/14-production-acceptance.md`。
+详细记录见 `docs/archive/refactor-2026-10/14-production-acceptance.md`。
 
 生产验收保留事项已登记到 `TODO.md` 的 `TD-REF-001` 至 `TD-REF-005`。
 

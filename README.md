@@ -66,7 +66,7 @@
 - 数据库恢复使用 WAL 一致安全快照、`quick_check` 和临时文件验证。
 - 运行日志会对常见 token、password 和 API key 格式脱敏。
 - 后端 API 已全部由 `server/modules/` 的域路由接管，旧的 legacy handler 已删除。
-- 架构审计、测试与生产验收见 [后端重构最终报告](docs/refactor/final-report.md) 和 [生产重启验收](docs/refactor/14-production-acceptance.md)；尚未解决的事务、读路径和运维风险以 [TODO.md](TODO.md) 的 `TD-REF-*` 状态为准。
+- 文档分类、权威顺序和归档规则见 [文档地图](docs/README.md)；架构审计、测试与生产验收见 [后端重构最终报告](docs/archive/refactor-2026-10/final-report.md) 和 [生产重启验收](docs/archive/refactor-2026-10/14-production-acceptance.md)。尚未解决的事务、读路径和运维风险仍以 [TODO.md](TODO.md) 的 `TD-REF-*` 状态为准。
 
 前端目录：
 

@@ -916,6 +916,7 @@ Codex 巡检发现“需要用户补事实或最后确认、且平台不能自�
 ├─ README.md                 # 项目说明
 ├─ USAGE.md                  # 本手册
 ├─ SETUP.md                  # 环境初始化与分享指南
+├─ docs/                     # 文档地图、架构、活动任务、分析证据与历史归档
 └─ codex-automations/        # Codex 定时任务配置与提示词
 ```
 

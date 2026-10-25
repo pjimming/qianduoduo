@@ -9,6 +9,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { openDatabase } = require('../lib/db');
 const {
+  DDL_PATH,
   MIGRATION_ID,
   migrationStatus,
   runDataTrustMigration,
@@ -17,6 +18,21 @@ const {
 const { createTestContext, initializeCapital } = require('./helpers/test-context');
 const { startTestServer } = require('./helpers/test-context');
 const { productCsv } = require('./fixtures');
+
+test('bundled data trust migration SQL is available at runtime path', () => {
+  assert.equal(
+    DDL_PATH,
+    path.resolve(
+      __dirname,
+      '../server/modules/data-trust/migrations/001-data-trust-v1.up.sql',
+    ),
+  );
+  assert.equal(
+    fs.existsSync(DDL_PATH),
+    true,
+    `missing data trust migration SQL: ${DDL_PATH}`,
+  );
+});
 
 function createDeferredDatabase(t, seed) {
   const directory = fs.mkdtempSync(

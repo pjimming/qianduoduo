@@ -4,7 +4,7 @@
 > 完成日期：2026-10-23（Asia/Shanghai）
 > 范围：数据归属盘点、唯一写入契约、证据来源链、状态机和后续迁移约束
 > 非范围：本文件不包含 schema 实施、生产库迁移、业务逻辑修改或页面开发
-> 核实来源：`TODO.md`、`docs/refactor/03-database-invariants.md`、当前 `lib/`、`server/` 实现，以及生产 SQLite 的只读元数据检查
+> 核实来源：`TODO.md`、`docs/architecture/database-invariants.md`、当前 `lib/`、`server/` 实现，以及生产 SQLite 的只读元数据检查
 
 ## 1. 结论
 

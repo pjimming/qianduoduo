@@ -1,8 +1,8 @@
 # 数据库、事务与财务不变量
 
 > 2026-10-23：财富事实的权威载体、唯一写入用例、证据链接、修订和截图状态机设计见
-> `docs/refactor/15-data-trust-lineage-design.md`。该文件是 `TD-DATA-001` Step 1 的设计基线；
-> schema、迁移、兼容和回滚方案见 `docs/refactor/16-data-trust-schema-migration-plan.md`。
+> `docs/architecture/data-trust/lineage-design.md`。该文件是 `TD-DATA-001` Step 1 的设计基线；
+> schema、迁移、兼容和回滚方案见 `docs/architecture/data-trust/schema-migration-plan.md`。
 > 本文继续作为当前实现的数据库和事务不变量快照。
 
 ## 1. 数据库基线
