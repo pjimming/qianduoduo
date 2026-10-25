@@ -207,18 +207,18 @@
 
 阶段 3 完成证据：
 
-- 工作区提交：`01e4e62`，提交说明 `feat(r2): freeze yield policy in audit flows`。
+- 工作区提交：`01e4e62`（`feat(r2): freeze yield policy in audit flows`）与 `1df785e`（`test(r2): cover legacy yield audit metadata`）。
 - 持仓复核由后端返回 `review_version=r2-holding-review-v7`；前端不再硬编码。当前和候选均保存策略版本、参考状态、原因、可用窗口、归一化权重、数据日期和快照日期。
 - 当前持仓不在最新产品快照时返回 `no_product_snapshot`；`unknown_term` 与 `no_available_horizons` 保持独立，空窗口和空权重不回退成数值。
 - 自动配置和换仓提案同时保存顶层及嵌套收益口径；dedupe key 纳入策略版本。同 key 同策略 pending 完全冻结；旧策略 pending 在状态投影和采纳入口都会失效，不能沿用旧 prediction，也不能生成正式决策。
-- 采纳后的收益策略元数据进入正式决策；后续普通编辑即使省略 `review_meta` 中的收益字段，也会保留生成时冻结的口径。
+- 采纳后的收益策略元数据进入正式决策；后续普通编辑即使省略 `review_meta` 中的收益字段，也会保留生成时冻结的口径。新记录同时保留旧扁平字段 alias，决策日志可兼容读取历史嵌套或扁平收益口径。
 - 收益归因改为读取原始产品快照并用共享 `calculateYieldMetrics()` 派生口径，实际账户收益仍只取账本 `daily_pnl`；产品参考收益继续只做估算和对账。
-- API 契约覆盖可用历史、期限未知、指定窗口全缺失和当前快照缺失。E2E 无条件下确认三种不可计算原因、策略版本、桌面与 390px 字号下限和横向溢出，并验证提案卡及决策日志保留策略。
+- API 契约覆盖可用历史、期限未知、指定窗口全缺失和当前快照缺失。E2E 无条件下确认三种不可计算原因、策略版本、桌面与 390px 字号下限和横向溢出，并读取 Dashboard 验证手工持仓复核的当前/候选口径确实落库；另验证历史扁平字段兼容展示。
 - `npm run check`：通过。
 - `npm test`：288 项通过、0 失败。
 - `npm run build`：通过，由 `npm run test:e2e` 的预构建步骤执行。
 - `npm run test:e2e`：通过。
-- `node --experimental-test-coverage --test`：288 项通过；总覆盖率行 89.98%、分支 74.52%、函数 89.63%。
+- `node --experimental-test-coverage --test`：288 项通过；总覆盖率行 89.96%、分支 74.49%、函数 89.63%。
 - Skill Python `unittest`：27 项通过；JS↔Python 黄金校验通过，期限边界 9、参考年化 10、评分 4、舍入 6、前视扣分 4。
 - 本阶段没有新增 SQLite schema，没有修改真实账本/交易/收益/决策/冻结提案，没有重启生产或推送远端。
 
