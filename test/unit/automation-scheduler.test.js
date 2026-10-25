@@ -88,7 +88,13 @@ test('automation scheduler retries failed cycles and records final status', asyn
   });
   const first = await scheduler.run('manual');
   assert.equal(first.ok, false);
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  const deadline = Date.now() + 1000;
+  while (
+    (cycleCount < 3 || scheduler.getStatus().running) &&
+    Date.now() < deadline
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
   const status = scheduler.getStatus();
   assert.equal(cycleCount, 3);
   assert.equal(status.running, false);

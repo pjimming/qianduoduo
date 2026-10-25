@@ -356,6 +356,7 @@ function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): R
     product_code: review.product_code,
     product_name: review.product_name,
     found: review.current.found,
+    bucket: review.bucket,
     yield_policy_version: review.current.yield_policy_version,
     reference_yield_pct: review.current.yield_pct,
     status: review.current.yield_status,
@@ -368,6 +369,7 @@ function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): R
   const candidateYield = {
     product_code: candidate.code,
     product_name: candidate.name,
+    bucket: candidate.bucket,
     yield_policy_version: candidate.yield_policy_version,
     reference_yield_pct: candidate.yield_pct,
     status: candidate.yield_status,
@@ -970,7 +972,9 @@ function clearReviewFilters(): void {
                   <small>
                     <span>{{ candidate.code }}</span>
                     <span>{{ candidate.issuer }}</span>
-                    <span>{{ candidate.evidence_label }}</span>
+                    <span :data-evidence-tier="candidate.evidence_tier">
+                      {{ candidate.evidence_label }}
+                    </span>
                     <span>数据 {{ candidate.data_date || '未获取到' }}</span>
                   </small>
                 </div>

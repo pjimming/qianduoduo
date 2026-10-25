@@ -6,6 +6,9 @@ function createProposalsRepository(repository) {
     adoptProposal(id, today) {
       return repository.decisionProposalStore.adoptProposal(id, { today });
     },
+    expireInvalidCashProposal(id) {
+      return repository.decisionProposalStore.expireInvalidCashProposal(id);
+    },
     expireStaleYieldPolicyProposal(id) {
       return repository.decisionProposalStore.expireStaleYieldPolicyProposal(
         id,

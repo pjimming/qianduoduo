@@ -151,7 +151,10 @@ function oneYearLabel(product: Product): string {
             {{ bucketLabel(product.bucket) }} ·
             {{ formatTerm(product.term_days, product.bucket) }}
           </span>
-          <span class="detail-chip">
+          <span
+            class="detail-chip"
+            :data-evidence-tier="product.evidence_tier"
+          >
             历史证据 · {{ product.evidence_label }}
           </span>
           <span v-if="!inTarget" class="detail-chip is-muted">

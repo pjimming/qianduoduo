@@ -1284,6 +1284,7 @@ export interface DecisionYieldEvidence {
   product_code: string
   product_name: string
   found?: boolean
+  bucket?: ProductBucket | null
   yield_policy_version: string | null
   reference_yield_pct: number | null
   status: ReferenceYieldStatus

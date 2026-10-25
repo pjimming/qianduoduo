@@ -1347,9 +1347,16 @@ function onDialogClick(event: MouseEvent): void {
             <td>
               <span
                 class="status-pill"
-                :class="{ 'is-new': product.evidence_tier !== 'full_1y', 'is-selected': product.selected }"
+                :class="{
+                  'is-new': product.evidence_tier !== 'full_1y',
+                  'is-selected': product.selected,
+                  'is-single-window': ['three_month', 'one_month'].includes(
+                    product.evidence_tier,
+                  ),
+                }"
+                :data-evidence-tier="product.evidence_tier"
               >
-                {{ product.selected ? '精选' : product.evidence_label }}
+                {{ product.evidence_label }}{{ product.selected ? ' · 精选' : '' }}
               </span>
             </td>
           </tr>
@@ -1362,7 +1369,7 @@ function onDialogClick(event: MouseEvent): void {
       </table>
     </div>
     <p class="dialog-note">
-      这里展示人民币、公募、R2/PR2、开放中的普通可买产品。缺 1Y 或仅有 3M
+      这里展示人民币、公募、R2/PR2、开放中的普通可买产品。缺 1Y 或仅有 3M（低置信）
       的产品可以进入评分，但分别受 10% 单只、20% 合计上限约束；仅有 1M
       的新品只作观察，不自动分配。任何产品在买入前都要重新核对风险等级、实时额度、费率、赎回规则和产品说明书。
     </p>

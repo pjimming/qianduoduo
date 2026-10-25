@@ -142,6 +142,15 @@ npm run prod:restart
 npm run prod:stop
 ```
 
+收益口径只读验收：
+
+```powershell
+npm run yield:verify
+npm run yield:verify -- --json
+```
+
+该命令只执行 GET 请求并读取本地 PID、stderr 和 stop marker，不调用写接口、不打开数据库。默认检查 Health、产品、收益概览、决策评估、`r2-dynamic-v4 + r2-term-yield-v1 + B`、四桶权重、cash 排除、持仓/归因审计字段以及 Supervisor 运行状态。
+
 - 生产地址：`http://127.0.0.1:8765`
 - 守护脚本：`scripts/daemon.ps1`
 - 部署脚本：`scripts/deploy-production.ps1`

@@ -791,6 +791,7 @@ npm run research:publish
 | `npm run prod:start` | 启动生产守护 |
 | `npm run prod:stop` | 停止生产守护 |
 | `npm run prod:restart` | 重启生产服务 |
+| `npm run yield:verify` | 只读验收收益策略、产品池、持仓复核、归因、Health 与守护状态 |
 | `npm run test:daemon` | 隔离验证守护进程三种退出码与重启行为 |
 | `npm run research:publish` | 发布报告：导航、同步、构建、重启 |
 | `npm run r2:refresh-all` | 刷新招行 R2 全量/候选/观察池 |

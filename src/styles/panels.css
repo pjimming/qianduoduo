@@ -1822,6 +1822,12 @@
   font-weight: 700;
 }
 
+.status-pill.is-single-window {
+  border: 1px solid var(--amber);
+  color: var(--danger-ink);
+  font-weight: 700;
+}
+
 .dialog-note {
   margin: 18px 26px 24px;
   padding: 12px 14px;

@@ -1778,6 +1778,25 @@ async function main() {
       ),
       '候选池数据深度多选没有切换到仅 3M',
     )
+    const lowConfidenceBadges = poolDialog.locator(
+      '.status-pill[data-evidence-tier="three_month"]',
+    )
+    assert(
+      (await lowConfidenceBadges.count()) > 0,
+      '仅 3M 筛选后没有结果',
+    )
+    assert(
+      (
+        await lowConfidenceBadges.evaluateAll((badges) =>
+          badges.every(
+            (badge) =>
+              badge.textContent?.includes('低置信') &&
+              badge.classList.contains('is-single-window'),
+          ),
+        )
+      ),
+      '仅 3M 单一窗口高分缺少醒目的低置信标记',
+    )
     await poolDialog.locator('th.sortable').first().click()
     const poolFilterBefore = (
       (await poolDialog.locator('.dialog-filter-bar').textContent()) ?? ''
@@ -1932,6 +1951,108 @@ async function main() {
     await page.waitForSelector('.product-dialog:not(.product-detail-dialog)[open]', {
       state: 'detached',
     })
+
+    const selectedLowConfidencePatch = await fetch(
+      `${base}/api/dashboard/sections?include=summary,products`,
+    ).then((response) => response.json())
+    const threeMonthProduct =
+      selectedLowConfidencePatch.products.all.find(
+        (product) => product.evidence_tier === 'three_month',
+      )
+    assert(threeMonthProduct, '测试快照缺少仅 3M 产品')
+    for (const product of selectedLowConfidencePatch.products.all) {
+      product.selected = false;
+      product.selection_rank = null;
+      product.target_amount = 0;
+      product.target_pct = 0;
+    }
+    Object.assign(threeMonthProduct, {
+      selected: true,
+      selection_rank: 1,
+      target_amount: 1000,
+      target_pct: 2,
+      allocation_bucket: threeMonthProduct.bucket,
+      allocation_mode: 'new',
+      meaningful_min_amount: 1,
+    })
+    selectedLowConfidencePatch.products.watchlist = [threeMonthProduct]
+    selectedLowConfidencePatch.products.stats.selected_count = 1
+    selectedLowConfidencePatch.products.selection.selected_count = 1
+    const selectedLowConfidencePage = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    })
+    try {
+      await selectedLowConfidencePage.route(
+        /\/api\/dashboard\/sections\?include=summary(?:%2C|,)products$/,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(selectedLowConfidencePatch),
+          })
+        },
+      )
+      await selectedLowConfidencePage.goto(`${base}/ledger/products`, {
+        waitUntil: 'networkidle',
+      })
+      for (const scenario of [
+        { theme: 'light', width: 1280, height: 900, label: '桌面浅色' },
+        { theme: 'dark', width: 1280, height: 900, label: '桌面深色' },
+        { theme: 'light', width: 390, height: 844, label: '移动浅色' },
+        { theme: 'dark', width: 390, height: 844, label: '移动深色' },
+      ]) {
+        await selectedLowConfidencePage.setViewportSize({
+          width: scenario.width,
+          height: scenario.height,
+        })
+        await selectedLowConfidencePage.evaluate((theme) => {
+          localStorage.setItem('qianduoduo:theme:v1', theme)
+        }, scenario.theme)
+        await selectedLowConfidencePage.reload({ waitUntil: 'networkidle' })
+        await selectedLowConfidencePage.waitForSelector('.product-module-card')
+        await selectedLowConfidencePage
+          .getByRole('button', { name: '查看全部产品' })
+          .click()
+        const selectedDialog = selectedLowConfidencePage.locator(
+          '.product-dialog:not(.product-detail-dialog)[open]',
+        )
+        await selectedDialog.waitFor()
+        const selectedLowConfidenceBadge = selectedDialog.locator(
+          '.status-pill[data-evidence-tier="three_month"].is-selected.is-single-window',
+        )
+        assert(
+          (await selectedLowConfidenceBadge.count()) === 1,
+          `${scenario.label}没有显示已选仅 3M 低置信徽标`,
+        )
+        const selectedBadgeData = await selectedLowConfidenceBadge.evaluate(
+          (badge) => ({
+            text: badge.textContent?.replace(/\s+/g, ' ').trim() || '',
+            border: Number.parseFloat(getComputedStyle(badge).borderTopWidth),
+          }),
+        )
+        assert(
+          selectedBadgeData.text.includes('仅 3M · 低置信') &&
+            selectedBadgeData.text.includes('精选') &&
+            selectedBadgeData.border > 0,
+          `${scenario.label}低置信精选徽标不醒目：${JSON.stringify(selectedBadgeData)}`,
+        )
+        await assertFontFloor(
+          selectedLowConfidencePage,
+          '.product-dialog:not(.product-detail-dialog)[open]',
+          `仅 3M 精选徽标${scenario.label}`,
+        )
+        assert(
+          await selectedLowConfidencePage.evaluate(
+            () =>
+              document.documentElement.scrollWidth <=
+              window.innerWidth + 1,
+          ),
+          `仅 3M 精选徽标${scenario.label}出现横向溢出`,
+        )
+      }
+    } finally {
+      await selectedLowConfidencePage.close()
+    }
 
     const observationCards = page.locator('.observation-card')
     assert((await observationCards.count()) > 0, '观察名单没有可点击产品')

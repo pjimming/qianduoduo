@@ -27,6 +27,15 @@ function createProposalsService({
     try {
       if (
         action === 'adopt' &&
+        proposalsRepository.expireInvalidCashProposal(id)
+      ) {
+        throw proposalError(
+          400,
+          'cash 产品不能进入新增配置或换仓提案',
+        );
+      }
+      if (
+        action === 'adopt' &&
         proposalsRepository.expireStaleYieldPolicyProposal(id)
       ) {
         throw proposalError(

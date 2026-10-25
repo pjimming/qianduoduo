@@ -339,6 +339,7 @@ async function saveQuotas(): Promise<void> {
           :key="product.code"
           type="button"
           class="observation-card"
+          :data-evidence-tier="product.evidence_tier"
           :aria-label="`查看 ${product.name} 详情`"
           @click="openProductDetail(product)"
         >
@@ -524,7 +525,7 @@ async function saveQuotas(): Promise<void> {
         </svg>
         <span>
           目标金额由本金、已确认持仓、待确认买入、期限桶目标、短期桶下限、未来现金流、单只与底层策略上限共同计算。
-          缺 1Y 的 6M 档和仅有 3M 的新发档可参与评分，单只与同类合计上限均为 10%/20%；仅有 1M
+          缺 1Y 的 6M 档和仅有 3M（单一窗口、低置信）的新发档可参与评分，单只与同类合计上限均为 10%/20%；仅有 1M
           的产品只作人工新品观察，不自动分配。
           发行方名称和当前持仓占比只作展示，不参与产品筛选、金额分配、买入门槛、提案或自动评估。
           同桶残余资金优先补足仍可加仓的已确认持仓；首次建仓须同时达到起购金额和目标单只金额的一半，避免制造小额新仓。
