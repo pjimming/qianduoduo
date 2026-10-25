@@ -1077,10 +1077,140 @@ export interface TimelineNode {
   detail: string
 }
 
+export type ReturnAttributionQuality =
+  | 'fact'
+  | 'mixed'
+  | 'estimate'
+  | 'verified_estimate'
+  | 'unverified_estimate'
+  | 'unavailable'
+
+export interface ReturnAttributionComponent {
+  key:
+    | 'product_selection'
+    | 'product_realization'
+    | 'purchase_wait'
+    | 'redemption_wait'
+    | 'cash_unclassified'
+    | 'fee_estimate'
+  label: string
+  amount: number | null
+  annualized_equivalent_pct: number | null
+  included_in_bridge: boolean
+  quality: ReturnAttributionQuality
+  note: string
+}
+
+export interface ReturnAttributionProduct {
+  product_code: string
+  product_name: string
+  reference_yield_pct: number | null
+  reference_data_date: string | null
+  holding_days_amount: number
+  target_pnl: number
+  reference_pnl: number | null
+  selection_estimate_pnl: number | null
+  recorded_product_pnl: number
+  recorded_days: number
+}
+
+export interface ReturnAttribution {
+  schema_version: number
+  status: 'available' | 'partial' | 'insufficient'
+  quality: 'complete' | 'partial' | 'insufficient'
+  available: boolean
+  as_of_date: string | null
+  period: {
+    window_days: number
+    start_date: string | null
+    end_date: string | null
+    calendar_days: number
+    record_days: number
+    missing_record_days: number
+    coverage_pct: number
+  }
+  target: {
+    annualized_pct: number
+    observed_period_return_pct: number | null
+    observed_period_pnl: number | null
+    pnl_on_observed_principal: number | null
+    pnl_on_observed_holdings: number | null
+  }
+  actual: {
+    annualized_pct: number | null
+    observed_period_return_pct: number | null
+    observed_period_pnl: number | null
+    average_principal: number
+    average_holding_amount: number
+    sample_sufficient: boolean
+  }
+  gap: {
+    annualized_pct: number | null
+    observed_period_pnl: number | null
+  }
+  bridge: {
+    start_value: number | null
+    included_net_amount: number
+    end_value: number | null
+    reconciliation_difference: number | null
+    reconciled: boolean
+  }
+  components: ReturnAttributionComponent[]
+  main_drags: Array<{
+    key: ReturnAttributionComponent['key']
+    label: string
+    amount: number
+    annualized_equivalent_pct: number | null
+    quality: ReturnAttributionQuality
+  }>
+  deployment: {
+    purchase_wait_pnl: number
+    redemption_wait_pnl: number
+    cash_unclassified_pnl: number
+    residual_pnl: number
+  }
+  fee_estimate: {
+    available: boolean
+    amount: number | null
+    quality: ReturnAttributionQuality
+    included_in_bridge: false
+    matched_trade_count: number
+    trade_count: number
+    verified_rule_count: number
+    note: string
+  }
+  tplus_evidence: {
+    available: boolean
+    product_count: number
+    verified_product_count: number
+    unverified_product_codes: string[]
+    products: Array<{
+      product_code: string
+      redemption_days: number | null
+      arrival_days: number | null
+      purchase_confirm_days: number | null
+      verified: boolean
+      verified_at: string
+    }>
+  }
+  product_evidence: {
+    available: boolean
+    account_pnl: number
+    recorded_product_pnl: number
+    difference: number
+    reference_yield_coverage_pct: number
+    reference_yield_complete: boolean
+    products: ReturnAttributionProduct[]
+  }
+  headline: string
+  disclosures: string[]
+}
+
 export interface ReviewWorkspace {
   decisions: DecisionEntry[]
   holdings: Holding[]
   current_holdings_valuation: CurrentHoldingsValuation
+  return_attribution: ReturnAttribution
   holding_reviews: HoldingReview[]
   holding_reviews_summary: HoldingReviewsSummary
   events: ProductEvent[]

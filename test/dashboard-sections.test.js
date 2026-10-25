@@ -53,6 +53,14 @@ test('dashboard sections compose to the compatible full payload', (t) => {
     full.workspace.decisions,
   );
   assert.deepEqual(
+    query.getSection('overview').workspace.return_attribution,
+    full.workspace.return_attribution,
+  );
+  assert.deepEqual(
+    query.getSection('evaluation').workspace.return_attribution,
+    full.workspace.return_attribution,
+  );
+  assert.deepEqual(
     query.getSection('inbox').inbox_center,
     full.inbox_center,
   );

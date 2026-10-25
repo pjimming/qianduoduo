@@ -5,6 +5,7 @@ import HeroSection from '@/components/HeroSection.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import AssetChart from '@/components/AssetChart.vue'
 import PnlChart from '@/components/PnlChart.vue'
+import ReturnAttributionPanel from '@/components/r2/ReturnAttributionPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
 
 const props = defineProps<{
@@ -79,6 +80,15 @@ const shortcuts = computed(() => [
       <AssetChart :records="dashboard.records" />
       <PnlChart :records="dashboard.records" />
     </section>
+
+    <div
+      v-if="dashboard.workspace.return_attribution"
+      class="r2-overview-attribution"
+    >
+      <ReturnAttributionPanel
+        :attribution="dashboard.workspace.return_attribution"
+      />
+    </div>
 
     <section class="r2-jump-grid is-capture-only" aria-label="你只需要做什么">
       <RouterLink

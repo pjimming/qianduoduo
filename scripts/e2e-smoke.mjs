@@ -574,6 +574,80 @@ async function main() {
         Math.abs(axisZero.left - axisZero.line) < 3.01,
       `收益与收益率零轴未对齐：${JSON.stringify(axisZero)}`,
     )
+    const attributionPanel = page.locator('.return-attribution')
+    await attributionPanel.waitFor()
+    const overviewOrderAndGaps = await page.evaluate(() => {
+      const charts = document.querySelector('.r2-overview-charts')
+      const attribution = document.querySelector('.r2-overview-attribution')
+      const shortcuts = document.querySelector('.r2-jump-grid')
+      const chartPanels = Array.from(
+        document.querySelectorAll('.r2-overview-charts .chart-panel'),
+      )
+      if (!charts || !attribution || !shortcuts || chartPanels.length < 2) {
+        return null
+      }
+      const chartsRect = charts.getBoundingClientRect()
+      const attributionRect = attribution.getBoundingClientRect()
+      const shortcutsRect = shortcuts.getBoundingClientRect()
+      const firstChartRect = chartPanels[0].getBoundingClientRect()
+      const secondChartRect = chartPanels[1].getBoundingClientRect()
+      return {
+        order:
+          charts.compareDocumentPosition(attribution) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+            ? 'charts-before-attribution'
+            : 'wrong-order',
+        chartGap: secondChartRect.top - firstChartRect.bottom,
+        attributionGap: attributionRect.top - chartsRect.bottom,
+        shortcutGap: shortcutsRect.top - attributionRect.bottom,
+      }
+    })
+    assert(
+      overviewOrderAndGaps?.order === 'charts-before-attribution',
+      '3% 目标差距归因没有放在收益图表之后',
+    )
+    assert(
+      overviewOrderAndGaps.chartGap >= 17.5 &&
+        overviewOrderAndGaps.attributionGap >= 17.5 &&
+        overviewOrderAndGaps.shortcutGap >= 17.5,
+      `收益概览卡片间距不足：${JSON.stringify(overviewOrderAndGaps)}`,
+    )
+    const attributionText = (await attributionPanel.textContent()) ?? ''
+    assert(
+      attributionText.includes('3% 目标差距归因') &&
+        attributionText.includes('实际年化') &&
+        attributionText.includes('目标差距') &&
+        attributionText.includes('尺子一') &&
+        attributionText.includes('尺子二') &&
+        attributionText.includes('买入确认前等待') &&
+        attributionText.includes('费用估算'),
+      `收益概览没有渲染目标差距归因：${attributionText.slice(0, 240)}`,
+    )
+    assert(
+      attributionText.includes('样本不足') &&
+        attributionText.includes('账户收益始终以账本 daily_pnl 为准'),
+      '样本不足时归因没有显示证据边界',
+    )
+    await attributionPanel.locator('.ra-products > summary').click()
+    await attributionPanel
+      .locator('.ra-product-table, .ra-empty-copy')
+      .first()
+      .waitFor()
+    await assertFontFloor(page, '.return-attribution', '目标差距归因桌面端')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertNoLargeLightSurface(
+      page,
+      '.return-attribution',
+      '目标差距归因移动深色主题',
+    )
+    await assertFontFloor(page, '.return-attribution', '目标差距归因移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '目标差距归因移动端出现横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.goto(`${base}/investment/research`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.library-page')

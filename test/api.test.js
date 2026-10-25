@@ -41,6 +41,14 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   assert.ok(productCount > 0);
   assert.equal(dashboard.meta.target_annualized, 3);
   assert.equal(dashboard.meta.reporting_date, shiftDate(todayShanghai(), -1));
+  assert.equal(
+    dashboard.workspace.return_attribution.status,
+    'insufficient',
+  );
+  assert.equal(
+    dashboard.workspace.return_attribution.product_evidence.account_pnl,
+    0,
+  );
 
   const refreshResponse = await fetch(`${base}/api/products/refresh`, { method: 'POST' });
   assert.equal(refreshResponse.status, 200);
@@ -147,6 +155,14 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   assert.equal(created.dashboard.capital.current_principal, 550000);
   assert.equal(created.dashboard.review.current_month.month, '2026-10');
   assert.equal(created.dashboard.review.daily.month_pnl, 54);
+  assert.equal(
+    created.dashboard.workspace.return_attribution.period.record_days,
+    1,
+  );
+  assert.equal(
+    created.dashboard.workspace.return_attribution.actual.observed_period_pnl,
+    54,
+  );
 
   const withdrawResponse = await fetch(`${base}/api/capital/events`, {
     method: 'POST',

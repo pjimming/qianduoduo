@@ -14,6 +14,9 @@ const {
 } = require('../../../lib/metrics');
 const { buildProductView } = require('../../../lib/products');
 const { buildHoldingReviews } = require('../../../lib/holdings-review');
+const {
+  buildReturnAttribution,
+} = require('../../../lib/return-attribution');
 
 const DASHBOARD_SECTIONS = Object.freeze([
   'summary',
@@ -79,6 +82,7 @@ function selectDashboardSection(payload, section) {
                 summary: workspace.trades.summary,
               }
             : null,
+          return_attribution: workspace.return_attribution,
           events: workspace.events,
         },
         automation: {
@@ -141,6 +145,7 @@ function selectDashboardSection(payload, section) {
           events: workspace.events,
           timeline: workspace.timeline,
           trades: workspace.trades,
+          return_attribution: workspace.return_attribution,
         },
         automation: payload.automation,
         decision_proposals: payload.decision_proposals,
@@ -230,6 +235,17 @@ function createDashboardQueryService(repository, options = {}) {
         .listHoldingReviewSettings()
         .map((setting) => [setting.product_code, setting]),
     );
+    const windows = buildWindows(records);
+    const returnAttribution = buildReturnAttribution({
+      records,
+      trades: tradeOverview.trades,
+      products: productView.all,
+      valuations: repository.productValuationStore.listValuations(),
+      settingsByCode: holdingReviewSettings,
+      windowSummary: windows[30],
+      today,
+      targetAnnualized: TARGET_ANNUALIZED,
+    });
     const holdingReviews = buildHoldingReviews({
       holdings: tradeOverview.holdings,
       products: productView.all,
@@ -249,6 +265,7 @@ function createDashboardQueryService(repository, options = {}) {
       trades: tradeOverview,
     });
     workspace.current_holdings_valuation = currentHoldingsValuation;
+    workspace.return_attribution = returnAttribution;
     workspace.holding_reviews = holdingReviews;
     workspace.holding_reviews_summary = {
       total: holdingReviews.length,
@@ -323,7 +340,7 @@ function createDashboardQueryService(repository, options = {}) {
       },
       records,
       summary: summarize(records),
-      windows: buildWindows(records),
+      windows,
       review,
       workspace,
       automation,
