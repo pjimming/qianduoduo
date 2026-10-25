@@ -28,6 +28,7 @@ const mode = process.env.QDD_SMOKE_MODE || 'graceful';
 const pidFile = process.env.R2_SERVER_PID_FILE;
 const stopFile = process.env.R2_STOP_FILE;
 if (pidFile) fs.writeFileSync(pidFile, String(process.pid), 'ascii');
+console.error('daemon smoke: benign stderr output');
 if (mode === 'crash') {
   setTimeout(() => process.exit(17), 300);
 } else {
@@ -80,7 +81,14 @@ try {
   if ($log -notmatch 'server exited pid=\d+ code=0 ') {
     throw 'graceful exit code was not recorded as 0'
   }
+  $stderrLog = Get-ChildItem -LiteralPath (Join-Path $testRoot 'logs') -Filter 'server-*.err.log' |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+  if (-not $stderrLog -or $stderrLog.Length -eq 0) {
+    throw 'benign stderr output was not captured'
+  }
   $results.graceful = 0
+  $results.benign_stderr = 0
 
   Remove-Item -LiteralPath (Join-Path $testRoot 'logs') -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath (Join-Path $testRoot 'run') -Recurse -Force -ErrorAction SilentlyContinue

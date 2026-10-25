@@ -311,7 +311,14 @@ function Run-Supervisor {
 
       Write-DaemonLog "starting node=$nodeExe stdout=$stdoutLog"
       $env:R2_SERVER_PID_FILE = $ServerPidFile
-      & $nodeExe --no-warnings server.js 1>> $stdoutLog 2>> $stderrLog
+      $previousErrorActionPreference = $ErrorActionPreference
+      try {
+        # Native stderr is diagnostic output and must not terminate the supervisor.
+        $ErrorActionPreference = 'Continue'
+        & $nodeExe --no-warnings server.js 1>> $stdoutLog 2>> $stderrLog
+      } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+      }
       $exitCode = if ($null -eq $LASTEXITCODE) { 'unknown' } else { [int]$LASTEXITCODE }
       $serverPid = if (Test-Path -LiteralPath $ServerPidFile) {
         (Get-Content -LiteralPath $ServerPidFile -ErrorAction SilentlyContinue | Select-Object -First 1)
