@@ -218,7 +218,7 @@
 - `npm test`：288 项通过、0 失败。
 - `npm run build`：通过，由 `npm run test:e2e` 的预构建步骤执行。
 - `npm run test:e2e`：通过。
-- `node --experimental-test-coverage --test`：288 项通过；总覆盖率行 89.96%、分支 74.49%、函数 89.63%。
+- `node --experimental-test-coverage --test`：288 项通过；总覆盖率行 90.00%、分支 74.58%、函数 89.63%。
 - Skill Python `unittest`：27 项通过；JS↔Python 黄金校验通过，期限边界 9、参考年化 10、评分 4、舍入 6、前视扣分 4。
 - 本阶段没有新增 SQLite schema，没有修改真实账本/交易/收益/决策/冻结提案，没有重启生产或推送远端。
 
