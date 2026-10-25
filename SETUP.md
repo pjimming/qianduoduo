@@ -152,7 +152,7 @@ C:\Users\Administrator\.codex\skills\serenity-skill\
 
 每个目录至少要有可读的 `SKILL.md`。当前版本参考：
 
-- `r2-wealth-management`：1.4.1
+- `r2-wealth-management`：1.6.0
 - `serenity-skill`：1.1.0
 
 在 Codex 里试触发：
@@ -399,7 +399,7 @@ http://127.0.0.1:8765/investment/research
 | 应用自动化 | 目标 3.0%，hurdle 2.5/2.8/3.0%，单只 30%，流动性 30%，置信度 75%，巡检 5 分钟 |
 | 产品快照 | 2026-10-19：全量 980 / 候选 432 / 研究观察池 9 |
 | 报告数量 | 13 篇（截至 2026-10-19） |
-| skill | `r2-wealth-management` 1.4.1、`serenity-skill` 1.1.0 |
+| skill | `r2-wealth-management` 1.6.0、`serenity-skill` 1.1.0 |
 
 快照会随环境变化。分享时以本文档的步骤为准，不要把快照里的个人路径、PID 或数据当成永久配置。
 
