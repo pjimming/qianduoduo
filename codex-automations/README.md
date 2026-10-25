@@ -20,6 +20,7 @@
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每天 21:00 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
+| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 
 > `ID` 是当前机器上 `%USERPROFILE%\.codex\automations\<id>\automation.toml` 的目录名。新建任务时 Codex 可能生成不同的 ID，**以任务名称、时间、提示词和运行配置为准**，不要为了复刻 ID 去手工改 Codex 内部目录。
 >
@@ -32,6 +33,7 @@
 | `r2` | Node.js 24+、可访问招行公开接口、本地服务用于 `/api/products/refresh` |
 | `r2-2` | 本地服务 `http://127.0.0.1:8765` 正在运行，SQLite 中可能已有 Codex 判断任务 |
 | `r2-3` | 本地服务 `http://127.0.0.1:8765` 正在运行 |
+| `r2-4` | `r2` 周快照任务已生成最新 universe CSV；本地工作区含冻结观察规格和 cohort |
 
 ## 2. 每个任务做什么
 
@@ -43,7 +45,17 @@
 - 检查 `/api/dashboard/products` 的 `meta.product_csv`、`products.all.length`、`products.stats.evidence_counts`、`products.stats.observation_ready`、`products.watchlist.length` 和 `products.allocation.allocation_policy.evidence_caps`；
 - 输出数据日期、数量、期限桶分布（`1–30 / 31–100 / 101+`）、五档证据数量、期限调整参考年化/原始 1Y/3M 变化和精选代码；缺 1Y 与仅 3M 档为 10%/20%，仅 1M 不自动配置。
 
-提示词：[r2-product-snapshot.md](r2-product-snapshot.md)
+### `r2-4` — 钱多多R2样本外观察
+
+- 在周一产品快照后运行 `npm run yield:observe -- --json` 和 `npm run yield:observe:review -- --json`；
+- 使用冻结的 `td-yield-002-observation-spec.json` 与固定 689 只产品 cohort，不扩池、不替换代码、不修改阈值；
+- 同一产品数据日幂等，只有间隔 5–10 天且质量闸门通过的快照才追加为独立周样本；
+- 少于 4 个样本保持 `collecting` 并静默；4–7 个无触发时继续收集；达到 4 个且触发异常或达到 8 个里程碑时进入 `review_required`，先写消息中心再发短卡；
+- 超过 5–10 天窗口进入 `cadence_broken`，重复/质量/哈希异常进入 `ledger_invalid`；两者都必须报告，不能静默、回填或自行重置基线；
+- 分析 short 前 5% 集中度、单一窗口高分、前后三/前十稳定、换手、不可计算比例、31/101 边界和 `667828A`；
+- 披露收益只作前向代理；真实经济结果不足时不改正式权重。
+
+提示词：[r2-out-of-sample.md](r2-out-of-sample.md)
 
 ### `r2-2` — 钱多多R2每日巡检（含AI队列与消息中心）
 
@@ -180,14 +192,14 @@ cwds = ["<WORKSPACE>"]
 
 ## 7. 当前环境快照
 
-截至 2026-10-21：
+截至 2026-10-25：
 
 | 项目 | 当前值 |
 | --- | --- |
 | 工作区 | `D:\codex\钱多多财富工作台` |
 | 本地服务 | `http://127.0.0.1:8765` |
 | 时区 | `Asia/Shanghai` |
-| Codex 定时任务 | 3 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
+| Codex 定时任务 | 4 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
 | 生产守护 | Supervisor 运行中，Health OK |
 | 登录自启 | 当前用户 Startup 快捷方式，单次触发，无周期巡检 |
 | 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，短期桶下限 30%，新增日开 0%，置信度 75%，巡检 5 分钟；包含逐产品收益对账和现有日开迁移提示 |

@@ -15,7 +15,7 @@
 
 ## 用途
 
-每周刷新招行 R2 公开产品池，生成全量、普通可买候选和精选 CSV，并让本地应用立即使用新快照。它是数据维护任务，不是选品建议，也不查实时额度。
+每周刷新招行 R2 公开产品池，生成全量、普通可买候选和精选 CSV，并让本地应用立即使用新快照。脚本同时按冻结规格执行一次幂等样本外观察采集。它是数据维护任务，不是选品建议，也不查实时额度。
 
 ## 提示词（新环境模板）
 
@@ -31,7 +31,9 @@
 
 运行后检查 http://127.0.0.1:8765/api/dashboard/products 的 `meta.product_csv`、`products.all.length`、`products.stats.observation_ready`、`products.stats.evidence_counts`、`products.stats.reference_status_counts`、`products.stats.universe_median_3m/6m/1y`、`products.stats.universe_median_reference`、`products.allocation.allocation_policy.evidence_caps` 和 `products.watchlist.length`，确认五档研究池、期限调整参考年化、10%/20% 上限与观察池已生效。
 
-成功且数据正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或期限调整参考年化/原始 3M/6M/1Y 中位数显著跳变、`reference_status_counts.unavailable` 异常变化、五档证据数量或可评分数发生重要变化时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。
+脚本输出中的 `observation` 是阶段 6 样本外观察结果。`status=accepted` 表示新增一个独立周样本；`duplicate` 或 `not_independent` 不追加样本且不是失败。若 `status=error`、`disqualified`、`cadence_broken`，或复核状态为 `ledger_invalid`，必须报告失败原因；`cadence_broken` 表示观察链已超过 5–10 天窗口，不得静默跳过或自行重置基线。`sample_count < 4` 时保持 quiet collecting，不评价参数；4–7 个样本无触发时继续静默收集。达到 4 个触发异常或 8 个样本里程碑时 `review_status=review_required`，必须先通过 `POST /api/inbox/confirmations` 写入消息中心，再发一张短卡并列 `review_triggers`。`dedupe_key` 必须包含 observation_version 和触发键；持续异常附最近样本日，8 样本里程碑使用稳定键。参数复核继续使用冻结 spec/cohort，不得自动修改正式权重。下一快照的披露收益代理不能替代真实持有收益。
+
+成功且产品数据与观察状态正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或期限调整参考年化/原始 3M/6M/1Y 中位数显著跳变、`reference_status_counts.unavailable` 异常变化、五档证据数量或可评分数发生重要变化，或观察状态为 cadence_broken、ledger_invalid、异常复核/8 样本里程碑时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。需要用户处理的观察事项先写消息中心。
 
 若脚本失败，保留旧快照并报告错误，不要伪造数据。不要写买入建议、不给固定“每桶 3 只”配置；不要登录招行账户、不要抓取实时额度、不要替我下单；额度、赎回到账和实际可买状态仍需我在 App 当日核验。
 ```
@@ -56,6 +58,7 @@ npm run r2:refresh-all
 - `data/cmb_r2_all-YYYY-MM-DD.csv`
 - `data/cmb_r2_universe-YYYY-MM-DD.csv`
 - `data/cmb_r2_selected-YYYY-MM-DD.csv`
+- `data/yield-observations/td-yield-002-weekly-ledger.jsonl`（仅接受新的独立周样本）
 - `/api/dashboard` 的 `meta.product_csv` 指向最新候选池
 - 正常时无消息；异常时才有一条简短更新卡，不含买入建议
 

@@ -12,6 +12,7 @@ const {
   SELECTED_SHORT_VARIANT,
   buildParameterReviewReport,
 } = require('../lib/yield-parameter-review');
+const { productCsv } = require('./fixtures');
 
 function snapshots() {
   return fs
@@ -32,6 +33,63 @@ function snapshots() {
         },
       };
     });
+}
+
+function stage6Fixture() {
+  const observationDir = path.join(
+    __dirname,
+    '..',
+    'data',
+    'yield-observations',
+  );
+  const observationSpec = JSON.parse(
+    fs.readFileSync(
+      path.join(observationDir, 'td-yield-002-observation-spec.json'),
+      'utf8',
+    ),
+  );
+  const cohort = JSON.parse(
+    fs.readFileSync(
+      path.join(observationDir, 'td-yield-002-cohort-v1.json'),
+      'utf8',
+    ),
+  );
+  const baseProducts = loadProductsFromCsv(productCsv);
+  const dated = (date, extra = null) => {
+    const products = baseProducts.map((product) => ({
+      ...product,
+      data_date: date,
+    }));
+    if (extra) products.push(extra);
+    return {
+      label: `universe-${date}.csv`,
+      products,
+      report_date: date,
+      source: {
+        kind: 'product_csv',
+        file_name: `universe-${date}.csv`,
+        path: `data/universe-${date}.csv`,
+        row_count: products.length,
+      },
+    };
+  };
+  return {
+    observationSpec,
+    cohort,
+    snapshots: [
+      dated('2026-10-29'),
+      dated('2026-11-05', {
+        ...baseProducts[0],
+        code: 'EXTRA-NOT-IN-COHORT',
+        name: '扩池产品',
+        data_date: '2026-11-05',
+        return_1m: 99,
+        return_3m: 99,
+        return_6m: 99,
+        return_1y: 99,
+      }),
+    ],
+  };
 }
 
 test('short weight review selects 20/50/30 and improves stress metrics', () => {
@@ -108,4 +166,67 @@ test('selected parameters retain non-short weights and keep the review read-only
   assert.deepEqual(report.write_policy, REVIEW_WRITE_POLICY);
   assert.deepEqual(report.production_projection.selected.status, 'not_checked');
   assert.match(report.conclusion, /阶段 5/);
+});
+
+test('stage-six review uses neutral out-of-sample conclusions', () => {
+  const fixture = stage6Fixture();
+  const report = buildParameterReviewReport({
+    snapshots: fixture.snapshots,
+    generatedAt: '2026-10-25T00:00:00.000Z',
+    reviewContext: 'stage6',
+    observationSpec: fixture.observationSpec,
+    cohort: fixture.cohort,
+  });
+  assert.equal(report.review_context.id, 'stage6');
+  assert.equal(report.review_context.snapshot_count, 2);
+  assert.equal(
+    report.review_context.cohort.code_count,
+    fixture.cohort.code_count,
+  );
+  assert.equal(report.snapshots[1].product_count, fixture.cohort.code_count);
+  assert.equal(report.snapshots[1].cohort_quality.extra_count, 1);
+  assert.match(report.conclusion, /规格后快照/);
+  assert.doesNotMatch(report.conclusion, /阶段 5/);
+  assert.ok(
+    report.residual_risks.some((item) => /实际持有收益/.test(item)),
+  );
+  assert.equal(report.decision.short_weights.outcome, 'decision_required');
+  assert.equal(report.decision.long_frontload.outcome, 'decision_required');
+  assert.equal(report.write_policy.formal_scoring_written, false);
+});
+
+test('stage-six review rejects snapshots outside the frozen cohort coverage', () => {
+  const fixture = stage6Fixture();
+  assert.throws(
+    () =>
+      buildParameterReviewReport({
+        snapshots: snapshots(),
+        generatedAt: '2026-10-25T00:00:00.000Z',
+        reviewContext: 'stage6',
+        observationSpec: fixture.observationSpec,
+        cohort: fixture.cohort,
+      }),
+    /固定 cohort 覆盖率/,
+  );
+});
+
+test('stage-six parameter review rejects duplicate or off-cadence sample dates', () => {
+  const fixture = stage6Fixture();
+  fixture.snapshots[1].products = fixture.snapshots[1].products.map(
+    (product) => ({
+      ...product,
+      data_date: '2026-10-29',
+    }),
+  );
+  assert.throws(
+    () =>
+      buildParameterReviewReport({
+        snapshots: fixture.snapshots,
+        generatedAt: '2026-10-25T00:00:00.000Z',
+        reviewContext: 'stage6',
+        observationSpec: fixture.observationSpec,
+        cohort: fixture.cohort,
+      }),
+    /独立周样本间隔要求/,
+  );
 });

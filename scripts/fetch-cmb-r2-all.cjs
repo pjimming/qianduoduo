@@ -17,6 +17,9 @@ const {
   buildProductView,
   isProductPoolEligible,
 } = require('../lib/products');
+const {
+  captureObservationFromFile,
+} = require('../lib/yield-observation');
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
@@ -373,6 +376,18 @@ async function main() {
     writeCsv(allPath, products);
     writeCsv(universePath, universe);
     writeCsv(selectedPath, view.observation_list);
+    let observation;
+    try {
+      observation = captureObservationFromFile({
+        root: ROOT,
+        inputPath: universePath,
+      });
+    } catch (error) {
+      observation = {
+        status: 'error',
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
 
     let refresh = null;
     try {
@@ -396,6 +411,31 @@ async function main() {
           bucket_counts: view.stats.bucket_counts,
           selected_codes: view.observation_list.map((product) => product.code),
           files: { allPath, universePath, selectedPath },
+          observation: observation
+            ? {
+                status: observation.status,
+                data_date: observation.data_date || null,
+                message: observation.message || '',
+                sample_count: observation.review?.sample_count ?? null,
+                remaining_samples:
+                  observation.review?.remaining_samples ?? null,
+                remaining_preferred_samples:
+                  observation.review?.remaining_preferred_samples ?? null,
+                preferred_samples_reached:
+                  observation.review?.preferred_samples_reached ?? null,
+                review_status:
+                  observation.review?.review_status ??
+                  observation.review?.status ??
+                  null,
+                ledger_issues: observation.review?.ledger_issues || [],
+                review_triggers:
+                  observation.review?.triggers?.map((item) => ({
+                    severity: item.severity,
+                    key: item.key,
+                    summary: item.summary,
+                  })) || [],
+              }
+            : null,
           refresh,
         },
         null,

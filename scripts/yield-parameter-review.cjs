@@ -10,6 +10,9 @@ const {
   SELECTED_SHORT_VARIANT,
   buildParameterReviewReport,
 } = require('../lib/yield-parameter-review');
+const {
+  validateSpecAndCohort,
+} = require('../lib/yield-observation');
 
 const root = path.resolve(__dirname, '..');
 
@@ -20,6 +23,9 @@ function parseArgs(argv) {
     generatedAt: null,
     noApi: false,
     dryRun: false,
+    context: 'stage4',
+    spec: null,
+    cohort: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -42,14 +48,46 @@ function parseArgs(argv) {
       options.noApi = true;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
+    } else if (arg === '--context') {
+      options.context = argv[index + 1];
+      index += 1;
+    } else if (arg.startsWith('--context=')) {
+      options.context = arg.slice('--context='.length);
+    } else if (arg === '--spec') {
+      options.spec = argv[index + 1];
+      index += 1;
+    } else if (arg.startsWith('--spec=')) {
+      options.spec = arg.slice('--spec='.length);
+    } else if (arg === '--cohort') {
+      options.cohort = argv[index + 1];
+      index += 1;
+    } else if (arg.startsWith('--cohort=')) {
+      options.cohort = arg.slice('--cohort='.length);
     } else if (arg === '--help') {
       console.log(
-        '用法：node scripts/yield-parameter-review.cjs [--files a,b] [--out-dir dir] [--generated-at time] [--no-api] [--dry-run]',
+        '用法：node scripts/yield-parameter-review.cjs [--files a,b] [--context stage4|stage6] [--spec file] [--cohort file] [--out-dir dir] [--generated-at time] [--no-api] [--dry-run]',
       );
       process.exit(0);
     } else {
       throw new Error(`未知参数：${arg}`);
     }
+  }
+  if (!['stage4', 'stage6'].includes(options.context)) {
+    throw new Error(`不支持的复核上下文：${options.context}`);
+  }
+  if (options.context === 'stage6') {
+    options.spec ||= path.join(
+      root,
+      'data',
+      'yield-observations',
+      'td-yield-002-observation-spec.json',
+    );
+    options.cohort ||= path.join(
+      root,
+      'data',
+      'yield-observations',
+      'td-yield-002-cohort-v1.json',
+    );
   }
   return options;
 }
@@ -110,6 +148,8 @@ function renderSensitivityCsv(report) {
 }
 
 function renderMarkdown(report, files) {
+  const isStage6 = report.review_context.id === 'stage6';
+  const snapshotCount = report.review_context.snapshot_count;
   const original =
     report.short_weight_options.original_50_30_20;
   const selected =
@@ -118,14 +158,23 @@ function renderMarkdown(report, files) {
   const projection = report.production_projection.selected;
   const originalProjection = report.production_projection.original_candidate;
   const lines = [
-    '# TD-YIELD-001 阶段 4 参数审核与决策',
+    isStage6
+      ? '# TD-YIELD-002 阶段 6 样本外参数复核'
+      : '# TD-YIELD-001 阶段 4 参数审核与决策',
     '',
     `> 生成时间：${report.generated_at}`,
     `> 审查版本：${report.review_version}`,
+    `> 快照数：${snapshotCount}`,
+    ...(isStage6
+      ? [
+          `> 观察规格：${report.review_context.cohort.observation_version} · 冻结于 ${report.review_context.cohort.spec_frozen_at} · ${report.review_context.cohort.spec_sha256}`,
+          `> 固定 cohort：${report.review_context.cohort.cohort_version} · ${report.review_context.cohort.code_count} 只 · ${report.review_context.cohort.code_hash}`,
+        ]
+      : []),
     '',
-    '结论：short 初始 `50/30/20` 未通过稳健性审查，调整为 `20/50/30`；long 前视扣分选择 B（阈值 1.5pp）；medium、long、cash 权重保留。正式路径尚未修改。',
+    `结论：基于 ${snapshotCount} 份快照复核 short 权重与 long 前视扣分；正式路径尚未修改。`,
     '',
-    '## 最终选定参数',
+    isStage6 ? '## 当前正式参数（待样本外复核）' : '## 最终选定参数',
     '',
     '| 桶 | 1M | 3M | 6M | 1Y | 用途 |',
     '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -164,11 +213,22 @@ function renderMarkdown(report, files) {
       `旧口径 Spearman 从 ${formatNumber(original.aggregate.average_spearman_vs_old, 3)} ` +
       `升至 ${formatNumber(selected.aggregate.average_spearman_vs_old, 3)}。`,
     '',
-    '选择理由：',
+    isStage6 ? '本轮复核边界：' : '选择理由：',
     '',
-    '- 1M 仍保留 20% 的真实短期信号，但 3M 以 50% 成为 short 桶主锚点，6M 提供 30% 稳定约束。',
-    '- 50% 的 1M 权重会把 `134022A` 的 11.52% 单月值放大到 7.759 分，属于不可接受的短期噪声主导。',
-    '- 10% 或 0% 能进一步贴近旧排序，但会让最新 1M 信息失去足够权重，因此不采纳；不能把“更像旧口径”当作唯一目标。',
+  );
+  if (isStage6) {
+    lines.push(
+      '- 上表同时列出历史初始方案、当前正式方案和备选方案，不预选本轮结论。',
+      '- 是否继续 20/50/30、调参或回退，必须结合预注册异常触发和独立经济结果证据。',
+    );
+  } else {
+    lines.push(
+      '- 1M 仍保留 20% 的真实短期信号，但 3M 以 50% 成为 short 桶主锚点，6M 提供 30% 稳定约束。',
+      '- 50% 的 1M 权重会把 `134022A` 的 11.52% 单月值放大到 7.759 分，属于不可接受的短期噪声主导。',
+      '- 10% 或 0% 能进一步贴近旧排序，但会让最新 1M 信息失去足够权重，因此不采纳；不能把“更像旧口径”当作唯一目标。',
+    );
+  }
+  lines.push(
     '',
     '## long 扣分方案',
     '',
@@ -179,7 +239,7 @@ function renderMarkdown(report, files) {
     const item = report.long_frontload_options[scheme];
     lines.push(
       `| ${scheme} | ${formatNumber(item.aggregate.average_rank_changed, 2)} | ` +
-        `${item.aggregate.top3_same_as_A_snapshot_count}/3 | ` +
+        `${item.aggregate.top3_same_as_A_snapshot_count}/${snapshotCount} | ` +
         `${item.aggregate.outlier_count} | ` +
         `${item.pairwise_to_A?.changed_score_count ?? 0} | ` +
         `${formatNumber(item.pairwise_to_A?.max_positive_score_delta ?? 0)} | ` +
@@ -188,17 +248,24 @@ function renderMarkdown(report, files) {
   }
   lines.push(
     '',
-    '- A/B/C 在三份快照中的 long 前三名完全一致。',
+    `- A/B/C 的 long 前三名在 ${snapshotCount} 份快照中有 ` +
+      `${b.aggregate.top3_same_as_A_snapshot_count} 份与 A 一致。`,
     `- B 相对 A 只放宽 long 阈值：累计 ${b.pairwise_to_A?.changed_score_count ?? 0} 个分数变化，最大 ` +
-      `${formatNumber(b.pairwise_to_A?.max_positive_score_delta ?? 0)}；平均排名扰动低于 A。`,
+      `${formatNumber(b.pairwise_to_A?.max_positive_score_delta ?? 0)}；` +
+      `平均排名变化 ${formatNumber(b.aggregate.average_rank_changed, 2)}，` +
+      `A 为 ${formatNumber(report.long_frontload_options.A.aggregate.average_rank_changed, 2)}。`,
     `- C 相对 B 再影响 ${report.long_frontload_options.C.pairwise_to_B?.changed_score_count ?? 0} 个分数，` +
       `最大再提高 ${formatNumber(report.long_frontload_options.C.pairwise_to_B?.max_positive_score_delta ?? 0)}；` +
-      `但平均排名扰动更高，且前三没有变化，没有证据支持完全取消扣分。`,
-    '- 因此选择 B：保留前视惩罚，同时避免 long 桶对 1Y 较高产品过度惩罚。',
+      `平均排名变化 ${formatNumber(report.long_frontload_options.C.aggregate.average_rank_changed, 2)}。`,
+    isStage6
+      ? '- 本报告不自动决定继续、调参或回退；需要结合预注册异常触发和用户确认。'
+      : '- 因此选择 B：保留前视惩罚，同时避免 long 桶对 1Y 较高产品过度惩罚。',
     '',
     '## 其他桶',
     '',
-    '- medium 权重保留 `50/30/20`：三份快照中与旧排序 Spearman 为 `0.997–0.999`，未出现异常集中。',
+    isStage6
+      ? '- medium 权重维持 `50/30/20`；本节复核只记录样本变化，不把跨桶结果合成单一总分。'
+      : '- medium 权重保留 `50/30/20`：三份快照中与旧排序 Spearman 为 `0.997–0.999`，未出现异常集中。',
     '- long 权重保留 `20/40/40`：整体与旧排序保持高相关；单一 3M 高收益产品的风险继续通过 `three_month` 10% 单只、20% 合计上限和人工观察处理。',
     '- cash 继续仅展示，不评分、不排名、不分配、不进入候选或提案。',
     '',
@@ -209,9 +276,11 @@ function renderMarkdown(report, files) {
     `- 当前持仓参考年化变化：${projection.current_yield_changed_count ?? '未获取到'}/${projection.current_holdings?.length ?? '未获取到'}。`,
     `- 当前候选参考年化变化：${projection.candidate_yield_changed_count ?? '未获取到'}/${projection.candidate_count ?? '未获取到'}。`,
     '',
-    '这些是阶段 5 的兼容改造输入，不是当前可执行交易建议。',
+    isStage6
+      ? '这些只用于样本外参数复核，不是当前可执行交易建议。'
+      : '这些是阶段 5 的兼容改造输入，不是当前可执行交易建议。',
     '',
-    '## 留待阶段 5 的风险',
+    isStage6 ? '## 样本外复核边界' : '## 留待阶段 5 的风险',
     '',
   );
   for (const risk of report.residual_risks) {
@@ -242,6 +311,17 @@ async function fetchDashboard() {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  let observationSpec = null;
+  let cohort = null;
+  if (options.context === 'stage6') {
+    observationSpec = JSON.parse(
+      fs.readFileSync(path.resolve(options.spec), 'utf8'),
+    );
+    cohort = JSON.parse(
+      fs.readFileSync(path.resolve(options.cohort), 'utf8'),
+    );
+    validateSpecAndCohort(observationSpec, cohort);
+  }
   const inputFiles = resolveInputFiles(options.files);
   if (inputFiles.length < 2) throw new Error('至少需要两个产品快照');
   const generatedAt = options.generatedAt || new Date().toISOString();
@@ -281,8 +361,14 @@ async function main() {
     snapshots,
     productionDashboard: dashboard,
     generatedAt,
+    reviewContext: options.context,
+    cohort,
+    observationSpec,
   });
-  const stem = `td-yield-001-parameter-decision-${generatedAt.slice(0, 10)}`;
+  const stem =
+    options.context === 'stage6'
+      ? `td-yield-002-out-of-sample-parameter-review-${generatedAt.slice(0, 10)}`
+      : `td-yield-001-parameter-decision-${generatedAt.slice(0, 10)}`;
   const outDir = path.resolve(options.outDir);
   const jsonPath = path.join(outDir, `${stem}.json`);
   const markdownPath = path.join(outDir, `${stem}.md`);
@@ -302,6 +388,7 @@ async function main() {
     JSON.stringify(
       {
         mode: options.dryRun ? 'dry-run' : 'written',
+        review_context: report.review_context,
         selected_short_variant: SELECTED_SHORT_VARIANT,
         selected_long_scheme: SELECTED_LONG_SCHEME,
         selected_buckets: report.selected_parameters.buckets,
@@ -324,6 +411,7 @@ async function main() {
             report.production_projection.original_candidate
               ?.verdict_changed_count ?? null,
         },
+        conclusion: report.conclusion,
         write_policy: report.write_policy,
         files,
       },

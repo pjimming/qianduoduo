@@ -792,6 +792,8 @@ npm run research:publish
 | `npm run prod:stop` | 停止生产守护 |
 | `npm run prod:restart` | 重启生产服务 |
 | `npm run yield:verify` | 只读验收收益策略、产品池、持仓复核、归因、Health 与守护状态 |
+| `npm run yield:observe` | 用固定 cohort 追加一次幂等周样本外观察 |
+| `npm run yield:observe:review` | 检查固定 cohort 周样本、预注册异常、8 个里程碑与参数复核入口 |
 | `npm run test:daemon` | 隔离验证守护进程三种退出码与重启行为 |
 | `npm run research:publish` | 发布报告：导航、同步、构建、重启 |
 | `npm run r2:refresh-all` | 刷新招行 R2 全量/候选/观察池 |
@@ -801,6 +803,8 @@ npm run research:publish
 | `npm run db:list` | 列出数据库备份 |
 | `npm run db:backup` | 立即备份数据库 |
 | `npm run db:restore -- YYYY-MM-DD` | 恢复到指定日期备份 |
+
+阶段 6 达到复核条件后，`npm run yield:observe:review -- --json` 会生成包含 `--context stage6`、冻结 spec/cohort 和全部合格样本文件的 `yield:parameter-review` 命令。该命令只生成复核产物，不自动修改正式参数。
 
 生产 Supervisor 以 Node 自己写入的 `run/server.pid` 管理服务进程，并使用 `$LASTEXITCODE` 记录真实退出码。登录自启优先使用单次任务 `QianDuoDuo-AutoStart`，权限不足时使用当前用户的 Startup 快捷方式；它只在用户登录时启动一次服务，不包含周期触发、健康巡检或外部 Watchdog。`prod:stop` 会停用登录自启，`prod:start` 会重新启用；机器重启并完成用户登录后自动启动服务。
 
@@ -855,6 +859,7 @@ npm run prod:restart
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `deepseek-flash` | 刷新招行 R2 全量/研究池/精选 CSV；检查五档证据数量与 10%/20% 规则后刷新应用 |
 | `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每日 21:00 | `deepseek-flash` | 处理截图和 AI 队列，巡检决策提案、收益对账、到期和评估；替换候选标明证据档位及单只 10% 闸门 |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `deepseek-flash` | 检查结构、流动性和逐只替换；按五档证据、期限调整参考年和 `yield_status` 复核，6M/3M 执行 10%/20% 上限 |
+| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `deepseek-flash` | 在产品快照后追加固定 cohort 周样本；4 个触发异常或 8 个里程碑后复核，观察链/台账异常必须写消息中心 |
 
 完整提示词、模型/reasoning 配置和跨机器创建步骤见 [codex-automations/README.md](codex-automations/README.md)；从零初始化、分享清单和个人数据边界见 [SETUP.md](SETUP.md)。
 

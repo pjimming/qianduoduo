@@ -39,7 +39,15 @@ test('snapshot analysis verifies invariants, missing windows and score diagnosti
   const filePath = snapshotFiles().at(-1);
   const report = buildReport(filePath);
   const analysis = analyzeSnapshot(report, { label: path.basename(filePath) });
+  const bAnalysis = analyzeSnapshot(report, {
+    label: path.basename(filePath),
+    scoreScheme: 'B',
+  });
   assert.equal(analysis.invariants.passed, true);
+  assert.equal(analysis.score_scheme, 'A');
+  assert.equal(bAnalysis.score_scheme, 'B');
+  assert.equal(bAnalysis.buckets.long.scores.score_scheme, 'B');
+  assert.equal(bAnalysis.boundary.score_scheme, 'B');
   assert.equal(analysis.counts.products, report.rows.length);
   assert.equal(
     analysis.missing_windows.status_counts.available +
@@ -52,6 +60,34 @@ test('snapshot analysis verifies invariants, missing windows and score diagnosti
     assert.ok(analysis.buckets[bucket].ranks.A.changed_count >= 0);
   }
   assert.ok(Object.keys(analysis.boundary.exact_term_counts).includes('101'));
+  const longRows = report.rows.filter(
+    (row) => row.new_bucket === 'long' && row.new_ranking_candidate,
+  );
+  const bScores = longRows
+    .map((row) => row.selection_score_B)
+    .filter(Number.isFinite)
+    .sort((left, right) => left - right);
+  const middle = Math.floor(bScores.length / 2);
+  const medianScore =
+    bScores.length % 2
+      ? bScores[middle]
+      : (bScores[middle - 1] + bScores[middle]) / 2;
+  const excess = longRows
+    .map((row) => Math.max(0, row.selection_score_B - medianScore))
+    .sort((left, right) => right - left);
+  const totalExcess = excess.reduce((sum, value) => sum + value, 0);
+  const top5Count = Math.max(1, Math.ceil(longRows.length * 0.05));
+  const expectedTop5Share = Number(
+    (
+      excess
+        .slice(0, top5Count)
+        .reduce((sum, value) => sum + value, 0) / totalExcess
+    ).toFixed(6),
+  );
+  assert.equal(
+    bAnalysis.buckets.long.scores.top5_excess_share,
+    expectedTop5Share,
+  );
 });
 
 test('snapshot comparison distinguishes data refresh from pure universe expansion', () => {

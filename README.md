@@ -151,6 +151,15 @@ npm run yield:verify -- --json
 
 该命令只执行 GET 请求并读取本地 PID、stderr 和 stop marker，不调用写接口、不打开数据库。默认检查 Health、产品、收益概览、决策评估、`r2-dynamic-v4 + r2-term-yield-v1 + B`、四桶权重、cash 排除、持仓/归因审计字段以及 Supervisor 运行状态。
 
+样本外观察命令：
+
+```powershell
+npm run yield:observe
+npm run yield:observe:review
+```
+
+观察规格、固定 689 只产品 cohort 和周台账位于 `data/yield-observations/`。规格冻结后，只有产品数据日不同、间隔 5–10 天、固定 cohort 覆盖达标且内部不变量通过的快照才会追加为独立样本。少于 4 个保持 `collecting`，4–7 个仅在预注册异常时复核，8 个里程碑也须复核并请用户决定；超过周窗口为 `cadence_broken`，台账完整性失败为 `ledger_invalid`。参数复核继续使用同一固定 cohort，任何观察都不会自动修改正式权重、配置或提案。
+
 - 生产地址：`http://127.0.0.1:8765`
 - 守护脚本：`scripts/daemon.ps1`
 - 部署脚本：`scripts/deploy-production.ps1`

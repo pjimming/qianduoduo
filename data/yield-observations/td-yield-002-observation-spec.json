@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "observation_version": "td-yield-002-out-of-sample-v1",
+  "frozen_at": "2026-10-25T08:49:40.997Z",
+  "policy_version": "r2-term-yield-v1",
+  "selection_version": "r2-dynamic-v4",
+  "official_front_load_scheme": "B",
+  "baseline_data_date": "2026-10-22",
+  "baseline_source": {
+    "kind": "product_csv",
+    "path": "data/cmb_r2_universe-2026-10-24.csv",
+    "file_name": "cmb_r2_universe-2026-10-24.csv",
+    "file_date": "2026-10-24",
+    "data_date": "2026-10-22",
+    "sha256": "618e6b7b63d497aa9008fe60bb97706fd5085fc20972a2cc821a4250d3795a22",
+    "row_count": 689
+  },
+  "cohort_version": "td-yield-002-cohort-v1",
+  "cohort_hash": "a5770790afb1aef28a7d97bcca5440828a8f14457f8a94ec557e490cec849f23",
+  "thresholds": {
+    "min_independent_samples": 4,
+    "preferred_independent_samples": 8,
+    "min_data_date_gap_days": 5,
+    "max_data_date_gap_days": 10,
+    "min_cohort_presence_ratio": 0.9,
+    "min_reportable_cohort_ratio": 0.8,
+    "min_ranking_candidates_per_bucket": 10,
+    "short_top5_concentration": 0.5,
+    "window_samples": 4,
+    "sustained_event_count": 2,
+    "min_top3_overlap_count": 2,
+    "min_short_spearman": 0.75,
+    "min_short_top10_overlap_ratio": 0.6,
+    "max_unavailable_ratio": 0.15,
+    "max_unavailable_increase_pp": 0.05,
+    "min_boundary_per_side": 5,
+    "boundary_material_score_gap_pp": 2,
+    "spotlight_code": "667828A"
+  },
+  "metrics": [
+    "short_top5_excess_share",
+    "single_window_top5_codes",
+    "top3_by_bucket",
+    "top10_by_bucket",
+    "unavailable_ratio",
+    "rank_spearman",
+    "rank_churn_ratio",
+    "boundary_31_101",
+    "spotlight_667828A",
+    "forward_disclosed_return_proxy"
+  ],
+  "economic_outcome_policy": {
+    "proxy_only": true,
+    "proxy_field": "forward_disclosed_return_proxy",
+    "requirement_before_parameter_change": "需要独立已实现收益证据；单凭下一快照的披露年化变化不能替代真实持有收益。"
+  },
+  "write_policy": {
+    "changes_formal_weights": false,
+    "changes_formal_scores": false,
+    "changes_allocations": false,
+    "changes_proposals": false
+  }
+}
