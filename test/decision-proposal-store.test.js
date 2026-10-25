@@ -168,6 +168,14 @@ test('proposal engine creates holding-switch and cash-allocation proposals witho
     'r2-term-yield-v1',
   );
   assert.deepEqual(
+    holdingProposal.payload.review_meta.current_available_horizons,
+    holdingProposal.payload.yield_policy.current.available_horizons,
+  );
+  assert.deepEqual(
+    holdingProposal.payload.review_meta.current_normalized_weights,
+    holdingProposal.payload.yield_policy.current.normalized_weights,
+  );
+  assert.deepEqual(
     holdingProposal.payload.yield_policy.candidate.normalized_weights,
     {
       return_3m: 0.625,
@@ -177,6 +185,14 @@ test('proposal engine creates holding-switch and cash-allocation proposals witho
   assert.equal(
     holdingProposal.payload.yield_policy.candidate.yield_policy_version,
     'r2-term-yield-v1',
+  );
+  assert.deepEqual(
+    holdingProposal.payload.review_meta.candidate_available_horizons,
+    holdingProposal.payload.yield_policy.candidate.available_horizons,
+  );
+  assert.deepEqual(
+    holdingProposal.payload.review_meta.candidate_normalized_weights,
+    holdingProposal.payload.yield_policy.candidate.normalized_weights,
   );
   const cashProposal = workspace.pending.find(
     (item) => item.proposal_type === 'cash_allocation',

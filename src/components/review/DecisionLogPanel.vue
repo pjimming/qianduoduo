@@ -212,6 +212,80 @@ function statusLabel(status: string): string {
   }[status] || status
 }
 
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function legacyYieldEvidence(
+  meta: Record<string, unknown>,
+  role: 'current' | 'candidate' | 'product',
+): DecisionYieldEvidence | undefined {
+  const statusValue = meta[`${role}_yield_status`]
+  const reasonValue = meta[`${role}_yield_reason`]
+  const yieldValue = meta[`${role}_yield_pct`]
+  if (
+    statusValue === undefined &&
+    reasonValue === undefined &&
+    yieldValue === undefined
+  ) {
+    return undefined
+  }
+  const horizons =
+    meta[`${role}_available_horizons`] ??
+    meta[`${role}_yield_available_horizons`]
+  const weights =
+    meta[`${role}_normalized_weights`] ??
+    meta[`${role}_yield_normalized_weights`]
+  const productCode =
+    role === 'current'
+      ? meta.holding_code
+      : role === 'candidate'
+        ? meta.candidate_code
+        : meta.product_code
+  const productName =
+    role === 'current'
+      ? meta.holding_name
+      : role === 'candidate'
+        ? meta.candidate_name
+        : meta.product_name
+  return {
+    product_code: String(productCode || ''),
+    product_name: String(productName || ''),
+    found: role === 'current' ? meta.current_found !== false : undefined,
+    yield_policy_version:
+      String(
+        meta[`${role}_yield_policy_version`] ||
+          meta.yield_policy_version ||
+          '',
+      ) || null,
+    reference_yield_pct: numberOrNull(yieldValue),
+    status: statusValue === 'available' ? 'available' : 'unavailable',
+    reason: (reasonValue ?? null) as DecisionYieldEvidence['reason'],
+    available_horizons: Array.isArray(horizons)
+      ? horizons.map(String)
+      : [],
+    normalized_weights:
+      weights && typeof weights === 'object' && !Array.isArray(weights)
+        ? Object.fromEntries(
+            Object.entries(weights).map(([key, value]) => [
+              key,
+              Number(value),
+            ]),
+          )
+        : {},
+    data_date:
+      typeof meta[`${role}_data_date`] === 'string'
+        ? String(meta[`${role}_data_date`])
+        : null,
+    snapshot_date:
+      typeof meta.snapshot_date === 'string'
+        ? meta.snapshot_date
+        : null,
+  }
+}
+
 function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: string }> {
   const meta = item.review_meta || {}
   const rows: Array<{ label: string; value: string }> = []
@@ -223,13 +297,24 @@ function reviewMetaRows(item: DecisionEntry): Array<{ label: string; value: stri
     rows.push({ label: '收益口径', value: yieldPolicyVersion })
   }
   const evidenceRows: Array<[string, DecisionYieldEvidence | undefined]> = [
-    ['当前收益', yieldPolicy?.current],
-    ['候选收益', yieldPolicy?.candidate],
-    ['产品收益', yieldPolicy?.product],
+    [
+      '当前收益',
+      yieldPolicy?.current || legacyYieldEvidence(meta, 'current'),
+    ],
+    [
+      '候选收益',
+      yieldPolicy?.candidate || legacyYieldEvidence(meta, 'candidate'),
+    ],
+    [
+      '产品收益',
+      yieldPolicy?.product || legacyYieldEvidence(meta, 'product'),
+    ],
   ]
   for (const [label, evidence] of evidenceRows) {
     if (!evidence) continue
-    const windows = evidence.available_horizons.join(' + ') || '—'
+    const windows = Array.isArray(evidence.available_horizons)
+      ? evidence.available_horizons.join(' + ') || '—'
+      : '—'
     const weights = Object.entries(evidence.normalized_weights)
       .map(([key, value]) => `${key} ${(Number(value) * 100).toFixed(2)}%`)
       .join(' + ')

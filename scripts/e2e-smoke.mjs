@@ -2062,7 +2062,93 @@ async function main() {
         null,
         { timeout: 5000 },
       )
+      const reviewDecisionDashboard = await fetch(
+        `${base}/api/dashboard/sections?include=evaluation`,
+      ).then((response) => response.json())
+      const savedReviewDecision =
+        reviewDecisionDashboard.workspace.decisions.find(
+          (item) =>
+            item.review_meta?.holding_code === '120056A' &&
+            item.review_meta?.yield_policy?.candidate,
+        )
+      assert(savedReviewDecision, '持仓复核决策没有保存冻结收益口径')
+      const savedReviewMeta = savedReviewDecision.review_meta
+      for (const role of ['current', 'candidate']) {
+        const evidence = savedReviewMeta.yield_policy[role]
+        assert(
+          evidence?.yield_policy_version === 'r2-term-yield-v1' &&
+            evidence?.status === 'available' &&
+            Array.isArray(evidence.available_horizons) &&
+            evidence.available_horizons.length > 0 &&
+            Object.keys(evidence.normalized_weights || {}).length > 0,
+          `持仓复核 ${role} 收益口径未完整落库：${JSON.stringify(evidence)}`,
+        )
+        assert(
+          JSON.stringify(savedReviewMeta[`${role}_available_horizons`]) ===
+            JSON.stringify(evidence.available_horizons),
+          `持仓复核 ${role} 可用窗口兼容字段不一致：` +
+            `${JSON.stringify(savedReviewMeta[`${role}_available_horizons`])} != ` +
+            JSON.stringify(evidence.available_horizons),
+        )
+        assert(
+          JSON.stringify(savedReviewMeta[`${role}_normalized_weights`]) ===
+            JSON.stringify(evidence.normalized_weights),
+          `持仓复核 ${role} 归一化权重兼容字段不一致：` +
+            `${JSON.stringify(savedReviewMeta[`${role}_normalized_weights`])} != ` +
+            JSON.stringify(evidence.normalized_weights),
+        )
+      }
     }
+
+    const legacyYieldDecision = await fetch(`${base}/api/review/decisions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-10-20',
+        product_name: '旧格式收益口径兼容测试',
+        action: '观察',
+        reason: '验证历史 review_meta 扁平收益字段仍可解释',
+        expectation: '决策日志保留当前与候选收益证据',
+        invalidation_condition: '收益策略或候选证据变化时重新复核',
+        actual_result: '',
+        strategy_version: 'r2-holding-review-v6',
+        target_annualized: 3,
+        bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+        evaluation_at: ['holding', 'maturity'],
+        evidence_date: '2026-10-16',
+        verify_date: '2026-11-19',
+        review_meta: {
+          yield_policy_version: 'r2-term-yield-v1',
+          holding_code: '120026A',
+          holding_name: '旧格式当前产品',
+          candidate_code: '120056A',
+          candidate_name: '旧格式候选产品',
+          current_yield_pct: 2.4,
+          current_yield_status: 'available',
+          current_yield_reason: 'partial_history',
+          current_available_horizons: ['3m', '6m'],
+          current_normalized_weights: {
+            return_3m: 0.625,
+            return_6m: 0.375,
+          },
+          candidate_yield_pct: 2.9,
+          candidate_yield_status: 'available',
+          candidate_yield_reason: 'complete_history',
+          candidate_available_horizons: ['3m', '6m', '1y'],
+          candidate_normalized_weights: {
+            return_3m: 0.5,
+            return_6m: 0.3,
+            return_1y: 0.2,
+          },
+          snapshot_date: '2026-10-16',
+        },
+        rating: '待评估',
+      }),
+    })
+    assert(
+      legacyYieldDecision.status === 201,
+      `无法创建旧格式收益决策：${legacyYieldDecision.status}`,
+    )
 
     await page.goto(`${base}/ledger/evaluation`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#automation .rw-automation-grid')
@@ -2074,6 +2160,23 @@ async function main() {
       evaluationSectionOrder.join(',') ===
         'proposals,decisions,calibration,automation',
       `决策与评估页模块顺序不正确：${evaluationSectionOrder.join(',')}`,
+    )
+    const legacyYieldDecisionCard = page
+      .locator('#decisions .rw-decision')
+      .filter({ hasText: '旧格式收益口径兼容测试' })
+    assert(
+      (await legacyYieldDecisionCard.count()) === 1,
+      '决策日志没有渲染旧格式收益口径决策',
+    )
+    const legacyYieldDecisionText =
+      (await legacyYieldDecisionCard.textContent()) ?? ''
+    assert(
+      legacyYieldDecisionText.includes('当前收益') &&
+        legacyYieldDecisionText.includes('候选收益') &&
+        legacyYieldDecisionText.includes('部分历史') &&
+        legacyYieldDecisionText.includes('3m + 6m') &&
+        legacyYieldDecisionText.includes('r2-term-yield-v1'),
+      `旧格式收益口径没有兼容展示：${legacyYieldDecisionText.slice(0, 240)}`,
     )
     assert(
       ((await page.locator('#proposals .rw-panel-body').textContent()) ?? '').includes(
