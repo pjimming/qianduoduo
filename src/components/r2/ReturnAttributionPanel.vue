@@ -120,6 +120,14 @@ function money(value: number | null | undefined, digits = 2): string {
     : `¥${formatMoney(value, digits)}`
 }
 
+function referenceYieldLabel(
+  product: ReturnAttribution['product_evidence']['products'][number],
+): string {
+  return product.reference_yield_status === 'available'
+    ? formatPct(product.reference_yield_pct, 2)
+    : '不可计算'
+}
+
 function barStyle(component: ReturnAttributionComponent): Record<string, string> {
   const amount = component.amount ?? 0
   const width = Math.max(
@@ -307,7 +315,7 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
           <div>
             <p>
               <strong>所选产品参考收益：</strong>
-              用产品快照里的参考年化和实际持仓天数估算。低于 3% 表示选中的产品本身没有提供足够的目标收益。
+              用产品快照里的期限调整参考年化和实际持仓天数估算。低于 3% 表示选中的产品本身没有提供足够的目标收益。
             </p>
             <p>
               <strong>实际到账与参考差异：</strong>
@@ -422,7 +430,7 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
           <strong>逐产品证据与选择贡献</strong>
           <small>
             {{ attribution.product_evidence.products.length }} 只产品 ·
-            参考年化覆盖
+            期限调整参考年化覆盖
             {{ formatPct(attribution.product_evidence.reference_yield_coverage_pct, 2) }}
           </small>
         </span>
@@ -464,7 +472,7 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
         >
           <div class="ra-product-row is-head" aria-hidden="true">
             <span>产品</span>
-            <span>参考年化</span>
+            <span>期限调整参考年化</span>
             <span>选择贡献估算</span>
             <span>产品入账收益</span>
           </div>
@@ -482,9 +490,15 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
                 </template>
               </small>
             </span>
-            <span data-label="参考年化">
-              <strong>{{ formatPct(product.reference_yield_pct, 2) }}</strong>
-              <small>缺失时不按 0 补齐</small>
+            <span data-label="期限调整参考年化">
+              <strong>{{ referenceYieldLabel(product) }}</strong>
+              <small>
+                {{
+                  product.reference_yield_status === 'available'
+                    ? '缺失窗口不按 0 补齐'
+                    : '指定窗口均缺失'
+                }}
+              </small>
             </span>
             <span data-label="选择贡献估算">
               <strong :class="amountTone(product.selection_estimate_pnl)">

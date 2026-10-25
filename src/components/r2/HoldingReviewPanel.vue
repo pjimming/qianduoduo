@@ -303,6 +303,14 @@ function switchWaitLabel(candidate: HoldingReviewCandidate): string {
   }）`
 }
 
+function yieldLabel(
+  value: number | null,
+  status: 'available' | 'unavailable',
+  digits = 2,
+): string {
+  return status === 'available' ? formatPct(value, digits) : '不可计算'
+}
+
 function candidateReasonItems(candidate: HoldingReviewCandidate): string[] {
   return candidate.reasons.filter(
     (reason) =>
@@ -322,8 +330,8 @@ function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate)
   decisionForm.reason =
     `${actionableNow ? '持仓复核' : '到期后计划（锁定期内不可赎回）'} ` +
     `${review.evidence_date || props.today}：${review.product_name}（${review.product_code}）` +
-    `${candidateScopeLabel(review)}候选 ${candidate.name}（${candidate.code}）参考年化 ${formatPct(candidate.yield_pct, 2)}，` +
-    `当前 ${formatPct(currentYield, 2)}；本桶统一比较 ${candidate.comparison_days} 天、切换等待 ${switchWaitLabel(candidate)}、有效计息 ${candidate.effective_days ?? '待核'} 天，` +
+    `${candidateScopeLabel(review)}候选 ${candidate.name}（${candidate.code}）期限调整参考年化 ${yieldLabel(candidate.yield_pct, candidate.yield_status)}，` +
+    `当前 ${yieldLabel(currentYield, review.current.yield_status)}；本桶统一比较 ${candidate.comparison_days} 天、切换等待 ${switchWaitLabel(candidate)}、有效计息 ${candidate.effective_days ?? '待核'} 天，` +
     `费用 ¥${formatMoney(switchResult?.fee_drag ?? 0, 2)}，切换后预计多赚 ` +
     `¥${formatMoney(switchResult?.difference ?? 0, 2)}，盈亏平衡 ${formatPct(
       switchResult?.break_even_yield_pct,
@@ -345,7 +353,8 @@ function cancelDecision(): void {
 function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): Record<string, unknown> {
   const result = candidate.switch
   return {
-    review_version: 'r2-holding-review-v5',
+    review_version: 'r2-holding-review-v7',
+    yield_policy_version: review.yield_policy_version,
     holding_lot_id: review.lot_id,
     holding_code: review.product_code,
     holding_name: review.product_name,
@@ -367,7 +376,13 @@ function reviewMeta(review: HoldingReview, candidate: HoldingReviewCandidate): R
     min_gain_base_days: candidate.min_gain_base_days,
     min_gain_floor: candidate.min_gain_floor,
     current_yield_pct: review.current.yield_pct,
+    current_yield_status: review.current.yield_status,
+    current_yield_reason: review.current.yield_reason,
     candidate_yield_pct: candidate.yield_pct,
+    candidate_yield_status: candidate.yield_status,
+    candidate_yield_reason: candidate.yield_reason,
+    candidate_available_horizons: candidate.yield_available_horizons,
+    candidate_normalized_weights: candidate.yield_normalized_weights,
     yield_gap_pp: candidate.yield_gap_pp,
     break_even_yield_pct: result?.break_even_yield_pct ?? null,
     difference: result?.difference ?? 0,
@@ -401,7 +416,7 @@ async function saveDecision(review: HoldingReview): Promise<void> {
       invalidation_condition:
         '到验证日若实际起息、到账、费用或比较期收益未达到本次测算，或当前产品已不再锁定时，重新评估；若候选额度、风险、期限或赎回规则恶化，则取消替换。',
       actual_result: '',
-      strategy_version: 'r2-holding-review-v5',
+      strategy_version: 'r2-holding-review-v7',
       target_annualized: 3,
       bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
       evaluation_at: ['holding', 'maturity'],
@@ -671,11 +686,13 @@ function clearReviewFilters(): void {
             比较期限 <strong>{{ review.horizon_days }} 天</strong>
           </span>
           <span>
-            当前参考年化 <strong>{{ formatPct(review.current.yield_pct, 2) }}</strong>
+            当前期限调整参考年化
+            <strong>{{ yieldLabel(review.current.yield_pct, review.current.yield_status) }}</strong>
           </span>
           <span>
-            3M / 6M / 1Y
+            1M / 3M / 6M / 1Y
             <strong>
+              {{ formatPct(review.current.return_1m, 2) }} /
               {{ formatPct(review.current.return_3m, 2) }} /
               {{ formatPct(review.current.return_6m, 2) }} /
               {{ formatPct(review.current.return_1y, 2) }}
@@ -729,14 +746,15 @@ function clearReviewFilters(): void {
                 <span class="hr-compare-label">当前持仓</span>
                 <strong class="hr-compare-name">{{ review.product_name }}</strong>
                 <div class="hr-compare-yield">
-                  <span>参考年化</span>
-                  <strong>{{ formatPct(review.current.yield_pct, 2) }}</strong>
+                  <span>期限调整参考年化</span>
+                  <strong>{{ yieldLabel(review.current.yield_pct, review.current.yield_status) }}</strong>
                 </div>
                 <div class="hr-compare-bar">
                   <span :style="{ width: yieldBarWidth(review.current.yield_pct) }"></span>
                 </div>
                 <small>
                   {{ formatTerm(review.term_days, review.bucket) }} ·
+                  {{ formatPct(review.current.return_1m, 2) }} /
                   {{ formatPct(review.current.return_3m, 2) }} /
                   {{ formatPct(review.current.return_6m, 2) }} /
                   {{ formatPct(review.current.return_1y, 2) }}
@@ -755,8 +773,8 @@ function clearReviewFilters(): void {
                   {{ top.name }}
                 </button>
                 <div class="hr-compare-yield">
-                  <span>参考年化</span>
-                  <strong>{{ formatPct(top.yield_pct, 2) }}</strong>
+                  <span>期限调整参考年化</span>
+                  <strong>{{ yieldLabel(top.yield_pct, top.yield_status) }}</strong>
                   <em :class="{ 'is-positive': (top.yield_gap_pp ?? 0) > 0 }">
                     {{ formatPp(top.yield_gap_pp, 2, true) }}
                   </em>
@@ -769,6 +787,7 @@ function clearReviewFilters(): void {
                   {{ top.comparison_days }} 天 · 切换等待
                   {{ switchWaitLabel(top) }} · 有效
                   {{ top.effective_days ?? '待核' }} 天 ·
+                  {{ formatPct(top.return_1m, 2) }} /
                   {{ formatPct(top.return_3m, 2) }} /
                   {{ formatPct(top.return_6m, 2) }} /
                   {{ formatPct(top.return_1y, 2) }}
@@ -885,7 +904,7 @@ function clearReviewFilters(): void {
           <div v-else class="hr-candidate-list">
             <div class="hr-candidate-list-head">
               <strong>{{ candidateScopeLabel(review) }}候选</strong>
-              <span>同桶统一比较期限；首选置顶，其余按结论和参考年化排序；默认显示前 3 个</span>
+              <span>同桶统一比较期限；首选置顶，其余按结论和期限调整参考年化排序；默认显示前 3 个</span>
             </div>
             <article
               v-for="candidate in visibleCandidates(review)"
@@ -927,9 +946,9 @@ function clearReviewFilters(): void {
 
               <div class="hr-candidate-scoreboard">
                 <div class="hr-candidate-kpi is-yield">
-                  <span>参考年化</span>
+                  <span>期限调整参考年化</span>
                   <div>
-                    <strong>{{ formatPct(candidate.yield_pct, 2) }}</strong>
+                    <strong>{{ yieldLabel(candidate.yield_pct, candidate.yield_status) }}</strong>
                     <em :class="{ 'is-positive': (candidate.yield_gap_pp ?? 0) > 0 }">
                       {{ formatPp(candidate.yield_gap_pp, 2, true) }}
                     </em>
@@ -1004,8 +1023,9 @@ function clearReviewFilters(): void {
                   <strong>{{ formatTerm(candidate.term_days, candidate.bucket) }}</strong>
                 </span>
                 <span>
-                  <small>3M / 6M / 1Y</small>
+                  <small>1M / 3M / 6M / 1Y</small>
                   <strong>
+                    {{ formatPct(candidate.return_1m, 2) }} /
                     {{ formatPct(candidate.return_3m, 2) }} /
                     {{ formatPct(candidate.return_6m, 2) }} /
                     {{ formatPct(candidate.return_1y, 2) }}
@@ -1025,8 +1045,8 @@ function clearReviewFilters(): void {
 
               <div class="hr-mini-compare">
                 <div class="hr-mini-label is-current">
-                  <span>当前参考年化</span>
-                  <strong>{{ formatPct(review.current.yield_pct, 2) }}</strong>
+                  <span>当前期限调整参考年化</span>
+                  <strong>{{ yieldLabel(review.current.yield_pct, review.current.yield_status) }}</strong>
                 </div>
                 <div class="hr-mini-track">
                   <span
@@ -1040,8 +1060,8 @@ function clearReviewFilters(): void {
                   ></span>
                 </div>
                 <div class="hr-mini-label is-candidate">
-                  <span>候选参考年化</span>
-                  <strong>{{ formatPct(candidate.yield_pct, 2) }}</strong>
+                  <span>候选期限调整参考年化</span>
+                  <strong>{{ yieldLabel(candidate.yield_pct, candidate.yield_status) }}</strong>
                 </div>
               </div>
 

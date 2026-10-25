@@ -64,8 +64,8 @@ const productSortLabels: Record<ProductSortKey, string> = {
   return_3m: '近 3 月收益率',
   return_6m: '近 6 月收益率',
   return_1y: '近 1 年收益率',
-  reference_yield_pct: '参考年化',
-  weighted_yield_pct: '加权年化',
+  reference_yield_pct: '期限调整参考年化',
+  weighted_yield_pct: '兼容加权年化',
 }
 
 const termOptions: Array<{ value: ProductBucket; label: string }> = [
@@ -90,8 +90,9 @@ const sortColumns: Array<{
 }> = [
   {
     key: 'reference_yield_pct',
-    label: '参考年化',
-    title: '完整数据为 50% × 3M + 30% × 6M + 20% × 1Y；缺失周期按剩余权重重新归一化',
+    label: '期限调整参考年化',
+    title:
+      '期限桶权重：cash 1M70/3M30；short 1M20/3M50/6M30；medium 3M50/6M30/1Y20；long 3M20/6M40/1Y40。缺失窗口按剩余权重重归一化',
   },
   { key: 'return_1m', label: '近 1 月' },
   { key: 'return_3m', label: '近 3 月' },
@@ -1329,7 +1330,11 @@ function onDialogClick(event: MouseEvent): void {
               </button>
             </td>
             <td class="align-right money-cell">
-              {{ formatPct(product.reference_yield_pct, 2) }}
+              {{
+                product.reference_yield_status === 'available'
+                  ? formatPct(product.reference_yield_pct, 2)
+                  : '不可计算'
+              }}
             </td>
             <td class="align-right money-cell">{{ formatPct(product.return_1m, 2) }}</td>
             <td class="align-right money-cell">{{ formatPct(product.return_3m, 2) }}</td>

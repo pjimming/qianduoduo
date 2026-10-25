@@ -238,6 +238,14 @@ test('missing reference yield is unavailable rather than zero-filled', () => {
     attribution.product_evidence.products[0].reference_yield_pct,
     null,
   );
+  assert.equal(
+    attribution.product_evidence.products[0].reference_yield_status,
+    'unavailable',
+  );
+  assert.equal(
+    attribution.product_evidence.products[0].reference_yield_reason,
+    'no_available_horizons',
+  );
   assert.equal(attribution.bridge.reconciled, true);
 });
 

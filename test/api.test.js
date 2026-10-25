@@ -39,6 +39,21 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   assert.ok(dashboard.products.observation_list.length > 0);
   const productCount = dashboard.products.all.length;
   assert.ok(productCount > 0);
+  assert.equal(dashboard.products.selection.version, 'r2-dynamic-v4');
+  assert.equal(dashboard.products.selection.front_load_scheme, 'B');
+  assert.ok(
+    dashboard.products.all.every(
+      (product) =>
+        product.weighted_yield_pct === product.reference_yield_pct &&
+        ['available', 'unavailable'].includes(product.reference_yield_status) &&
+        Array.isArray(product.reference_available_horizons),
+    ),
+  );
+  assert.equal(
+    dashboard.products.stats.reference_status_counts.available +
+      dashboard.products.stats.reference_status_counts.unavailable,
+    productCount,
+  );
   assert.equal(dashboard.meta.target_annualized, 3);
   assert.equal(dashboard.meta.reporting_date, shiftDate(todayShanghai(), -1));
   assert.equal(

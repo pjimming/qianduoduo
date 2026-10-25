@@ -7,6 +7,13 @@ export type ProductEvidenceTier =
   | 'three_month'
   | 'one_month'
   | 'no_data'
+export type ReferenceYieldStatus = 'available' | 'unavailable'
+export type ReferenceYieldReason =
+  | 'complete_history'
+  | 'partial_history'
+  | 'no_available_horizons'
+  | 'unknown_term'
+  | 'no_product_snapshot'
 export type TermFilter = 'all' | ProductBucket
 export type SortDirection = 'asc' | 'desc'
 export type LedgerSortKey =
@@ -758,6 +765,11 @@ export interface HoldingReviewCandidate {
   return_1y: number | null
   return_since_inception: number | null
   yield_pct: number | null
+  yield_status: ReferenceYieldStatus
+  yield_reason: ReferenceYieldReason
+  yield_available_horizons: string[]
+  yield_normalized_weights: Record<string, number>
+  yield_policy_version: string
   yield_gap_pp: number | null
   term_gap_days: number | null
   comparison_days: number
@@ -814,6 +826,7 @@ export interface HoldingReview {
   next_redeem_open_date: string
   days_to_redeem_open: number | null
   horizon_days: number
+  yield_policy_version: string
   current: {
     found: boolean
     product_code: string
@@ -823,6 +836,11 @@ export interface HoldingReview {
     return_1y: number | null
     return_since_inception: number | null
     yield_pct: number | null
+    yield_status: ReferenceYieldStatus
+    yield_reason: ReferenceYieldReason
+    yield_available_horizons: string[]
+    yield_normalized_weights: Record<string, number>
+    yield_policy_version: string
     fee_bps: number | null
     data_date: string
     benchmark: string
@@ -1105,6 +1123,8 @@ export interface ReturnAttributionProduct {
   product_code: string
   product_name: string
   reference_yield_pct: number | null
+  reference_yield_status: ReferenceYieldStatus
+  reference_yield_reason: ReferenceYieldReason | null
   reference_data_date: string | null
   holding_days_amount: number
   target_pnl: number
@@ -1742,6 +1762,10 @@ export interface Product {
   return_3m: number | null
   return_6m: number | null
   return_1y: number | null
+  reference_yield_status: ReferenceYieldStatus
+  reference_yield_reason: ReferenceYieldReason
+  reference_available_horizons: string[]
+  reference_normalized_weights: Record<string, number>
   reference_yield_pct: number | null
   weighted_yield_pct: number | null
   return_since_inception: number | null
@@ -1762,6 +1786,9 @@ export interface Product {
   evidence_aggregate_cap_pct: number | null
   observation_score: number | null
   selection_score: number | null
+  divergence_penalty_points: number
+  front_load_penalty_points: number
+  history_bonus_points: number
   observation_ready: boolean
   selected: boolean
   selection_rank: number | null
@@ -1907,6 +1934,7 @@ export interface ProductStats {
   selected_count: number
   observation_count: number
   evidence_counts: Record<ProductEvidenceTier, number>
+  reference_status_counts: Record<ReferenceYieldStatus, number>
   scored_bucket_counts: Record<'cash' | 'short' | 'medium' | 'long', number>
   median_1y: number | null
   median_3m: number | null
@@ -1929,6 +1957,9 @@ export interface ProductView {
   allocation: ProductAllocation
   selection: {
     version: string
+    yield_policy_version: string
+    reference_weights: Record<ProductBucket, Record<string, number>>
+    front_load_scheme: 'A' | 'B' | 'C'
     per_bucket: number | null
     max_single_pct: number
     min_history_months: number

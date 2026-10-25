@@ -23,9 +23,10 @@ test('parseCsv handles quoted commas', () => {
   assert.equal(rows[2][1], 'a "quote"');
 });
 
-test('weighted annualized return requires all three horizons without renormalizing', () => {
+test('weighted annualized return aliases the term-adjusted reference yield', () => {
   assert.equal(
     weightedAnnualizedReturn({
+      term_days: 90,
       return_3m: 2,
       return_6m: 3,
       return_1y: 4,
@@ -34,14 +35,16 @@ test('weighted annualized return requires all three horizons without renormalizi
   );
   assert.equal(
     weightedAnnualizedReturn({
+      term_days: 90,
       return_3m: 2,
       return_6m: null,
       return_1y: 4,
     }),
-    null,
+    2.5714,
   );
   assert.equal(
     weightedAnnualizedReturn({
+      term_days: 90,
       return_3m: null,
       return_6m: null,
       return_1y: null,
@@ -53,6 +56,7 @@ test('weighted annualized return requires all three horizons without renormalizi
 test('reference yield renormalizes available horizons without treating missing 1Y as zero', () => {
   assert.equal(
     referenceYield({
+      term_days: 90,
       return_3m: 2.14,
       return_6m: 2.88,
       return_1y: null,
@@ -61,6 +65,7 @@ test('reference yield renormalizes available horizons without treating missing 1
   );
   assert.equal(
     referenceYield({
+      term_days: 90,
       return_3m: 3.25,
       return_6m: null,
       return_1y: null,
@@ -69,6 +74,7 @@ test('reference yield renormalizes available horizons without treating missing 1
   );
   assert.equal(
     referenceYield({
+      term_days: 90,
       return_3m: null,
       return_6m: null,
       return_1y: null,
@@ -159,18 +165,30 @@ test('product view loads the ordinary universe and allocates dynamically', () =>
   assert.ok(view.all.every((product) => product.currency_code === '10'));
   assert.ok(view.all.every((product) => product.pub_prv === 'A'));
   assert.ok(
-    view.all
-      .filter((product) => product.weighted_yield_pct !== null)
-      .every(
+    view.all.every(
       (product) =>
-        product.weighted_yield_pct ===
-        Number(
-          (
-            product.return_3m * 0.5 +
-            product.return_6m * 0.3 +
-            product.return_1y * 0.2
-          ).toFixed(4),
-        ),
+        product.weighted_yield_pct === product.reference_yield_pct,
+    ),
+  );
+  assert.ok(
+    view.all.every(
+      (product) =>
+        ['available', 'unavailable'].includes(product.reference_yield_status) &&
+        Array.isArray(product.reference_available_horizons) &&
+        product.reference_normalized_weights &&
+        typeof product.reference_normalized_weights === 'object',
+    ),
+  );
+  assert.ok(
+    view.all
+      .filter((product) => product.bucket === 'cash')
+      .every(
+        (product) =>
+          product.observation_ready === false &&
+          product.observation_score === null &&
+          product.selection_score === null,
       ),
   );
+  assert.equal(view.selection.version, 'r2-dynamic-v4');
+  assert.equal(view.selection.front_load_scheme, 'B');
 });

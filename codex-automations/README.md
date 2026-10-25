@@ -41,7 +41,7 @@
 - 生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`、`cmb_r2_selected-*.csv`；
 - 调用本地 `/api/products/refresh` 让应用使用新快照；
 - 检查 `/api/dashboard/products` 的 `meta.product_csv`、`products.all.length`、`products.stats.evidence_counts`、`products.stats.observation_ready`、`products.watchlist.length` 和 `products.allocation.allocation_policy.evidence_caps`；
-- 输出数据日期、数量、期限桶分布、五档证据数量、1Y/3M 变化和精选代码；缺 1Y 与仅 3M 档为 10%/20%，仅 1M 不自动配置。
+- 输出数据日期、数量、期限桶分布、五档证据数量、期限调整参考年化/原始 1Y/3M 变化和精选代码；缺 1Y 与仅 3M 档为 10%/20%，仅 1M 不自动配置。
 
 提示词：[r2-product-snapshot.md](r2-product-snapshot.md)
 
@@ -65,7 +65,7 @@
 ### `r2-3` — 钱多多R2周五结构巡检
 
 - 每周五 18:30 先调用 `POST /api/dashboard/refresh`，再检查本周记录完整度、逐产品个人表现、账户/产品对账、持仓结构、逐只替代复核、单只/期限桶结构、短期桶流动性、发行方展示、现有日开迁移、到期阶梯、产品事件、交易对账和下周安排；
-- 逐只替代复核读取 `workspace.holding_reviews`，输出继续持有/观察/建议替换、可得周期归一化参考年化、证据档位、比较期限、切换等待及其 `verified/estimated` 状态、有效计息、费用、复利盈亏平衡、数据缺口和验证日；6M/3M 候选执行单只 10%、同类合计 20%，估算值必须标“估算”，不能当作已核验事实；
+- 逐只替代复核读取 `workspace.holding_reviews`，输出继续持有/观察/建议替换、期限调整参考年化、`yield_status/yield_reason`、证据档位、比较期限、切换等待及其 `verified/estimated` 状态、有效计息、费用、复利盈亏平衡、数据缺口和验证日；6M/3M 候选执行单只 10%、同类合计 20%，估算值必须标“估算”，不能当作已核验事实；
 - 逐产品个人收益只作观察证据；短样本不换算稳定年化，产品收益不重复计入账户总收益；
 - 读取 `decision_proposals`，报告待采纳和待执行方案；不得代替用户采纳、拒绝或取消；
 - 读取 `GET /api/calibration/monthly?month=YYYY-MM`，把到复核日的预测命中、未命中、待验证、失效和误差来源纳入周卡；待验证和未执行不计入命中率；
@@ -136,7 +136,7 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 ### 4.4 任务本身
 
 - `r2`：手动运行后检查 `data/` 是否生成当天 CSV，`/api/dashboard/products` 是否切换快照，五档 `evidence_counts` 与 6M/3M 的 10%/20% 上限是否存在；
-- `r2-2`：最近披露收益按 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation`、`product_valuation_disclosure_policy` 与“本次未拍到”；未到产品 T+N 到账日及今日未披露均不计异常，已到到账日仍缺明细才提示补图；替换候选应显示归一化参考年化、证据档位和短历史单只上限；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
+- `r2-2`：最近披露收益按 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation`、`product_valuation_disclosure_policy` 与“本次未拍到”；未到产品 T+N 到账日及今日未披露均不计异常，已到到账日仍缺明细才提示补图；替换候选应显示期限调整参考年化、`yield_status/yield_reason`、证据档位和短历史单只上限；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
 - `r2-3`：逐产品个人表现只作观察证据，替换候选应显示证据档位与 10%/20% 限制；没有结构风险、产品对账异常或下周动作时应该“无消息”，有内容时只发一张周卡。
 
 ## 5. 常见问题

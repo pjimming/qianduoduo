@@ -349,7 +349,7 @@ async function saveQuotas(): Promise<void> {
           <span class="observation-code">{{ product.code }} · {{ product.issuer }}</span>
           <span class="observation-code">历史证据 · {{ product.evidence_label }}</span>
           <small class="observation-meta">
-            参考年化 {{ formatPct(product.reference_yield_pct, 2) }} · 评分
+            期限调整参考年化 {{ formatPct(product.reference_yield_pct, 2) }} · 评分
             {{ product.selection_score === null ? '—' : product.selection_score.toFixed(2) }}
           </small>
           <span class="observation-detail-hint">查看详情 →</span>

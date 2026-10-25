@@ -27,11 +27,11 @@
 如果自动化 shell 找不到 npm，使用本机 Node.js 24+ 的绝对路径执行：
 <NODE_EXE> <WORKSPACE>\scripts\fetch-cmb-r2-all.cjs
 
-脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买研究池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、期限可解析，并分为完整 1Y、缺 1Y 的 6M 档、仅 3M、仅 1M 新品观察和无有效收益五档）和 data/cmb_r2_selected-YYYY-MM-DD.csv（研究观察池，不含资金分配），并调用本地 /api/products/refresh 让应用立即使用新研究池。6M 档和仅 3M 档可参与自动评分，单只最多 10%、同类合计最多 20%；仅 1M 的新品只进入观察，不自动分配。实际买什么、买多少由应用按本金、持仓、待确认买入、短期桶下限和额度动态计算。本项目新增日开目标固定为 0%，target3 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实。
+脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买研究池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、期限可解析，并分为完整 1Y、缺 1Y 的 6M 档、仅 3M、仅 1M 新品观察和无有效收益五档）和 data/cmb_r2_selected-YYYY-MM-DD.csv（研究观察池，不含资金分配），并调用本地 /api/products/refresh 让应用立即使用新研究池。参考年化按期限桶计算：cash `1M70/3M30`、short `1M20/3M50/6M30`、medium `3M50/6M30/1Y20`、long `3M20/6M40/1Y40`；缺失窗口按剩余权重归一化，全部缺失时为不可计算。6M 档和仅 3M 档可参与自动评分，单只最多 10%、同类合计最多 20%；仅 1M 的新品只进入观察，不自动分配。实际买什么、买多少由应用按本金、持仓、待确认买入、短期桶下限和额度动态计算。本项目新增日开目标固定为 0%，target3 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实。
 
-运行后检查 http://127.0.0.1:8765/api/dashboard/products 的 `meta.product_csv`、`products.all.length`、`products.stats.observation_ready`、`products.stats.evidence_counts`、`products.stats.universe_median_3m/6m/1y`、`products.allocation.allocation_policy.evidence_caps` 和 `products.watchlist.length`，确认五档研究池、10%/20% 上限与观察池已生效。
+运行后检查 http://127.0.0.1:8765/api/dashboard/products 的 `meta.product_csv`、`products.all.length`、`products.stats.observation_ready`、`products.stats.evidence_counts`、`products.stats.reference_status_counts`、`products.stats.universe_median_3m/6m/1y`、`products.stats.universe_median_reference`、`products.allocation.allocation_policy.evidence_caps` 和 `products.watchlist.length`，确认五档研究池、期限调整参考年化、10%/20% 上限与观察池已生效。
 
-成功且数据正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或 3M/6M/1Y 中位数显著跳变、五档证据数量或可评分数发生重要变化时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。
+成功且数据正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或期限调整参考年化/原始 3M/6M/1Y 中位数显著跳变、`reference_status_counts.unavailable` 异常变化、五档证据数量或可评分数发生重要变化时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。
 
 若脚本失败，保留旧快照并报告错误，不要伪造数据。不要写买入建议、不给固定“每桶 3 只”配置；不要登录招行账户、不要抓取实时额度、不要替我下单；额度、赎回到账和实际可买状态仍需我在 App 当日核验。
 ```

@@ -93,11 +93,52 @@ function candidateRule(
 
 test('reference yield weights 3M/6M/1Y and ignores missing fields', () => {
   assert.equal(
-    referenceYield({ return_3m: 2, return_6m: 3, return_1y: 4 }),
+    referenceYield({
+      term_days: 90,
+      return_3m: 2,
+      return_6m: 3,
+      return_1y: 4,
+    }),
     2.7,
   );
-  assert.equal(referenceYield({ return_3m: 2, return_6m: null, return_1y: 4 }), 2.5714);
+  assert.equal(
+    referenceYield({
+      term_days: 90,
+      return_3m: 2,
+      return_6m: null,
+      return_1y: 4,
+    }),
+    2.5714,
+  );
   assert.equal(referenceYield({}), null);
+});
+
+test('holding review exposes term-adjusted yield status and policy metadata', () => {
+  const currentProduct = current({
+    term_days: 7,
+    bucket: 'short',
+    return_1m: 2,
+    return_3m: 3,
+    return_6m: 4,
+    return_1y: null,
+    history_months: 8,
+  });
+  const review = buildHoldingReview({
+    holding: holding({ term_days: 7, product_code: currentProduct.code }),
+    products: [],
+    universe: [currentProduct],
+    today: '2026-10-20',
+  });
+  assert.equal(review.yield_policy_version, 'r2-term-yield-v1');
+  assert.equal(review.current.yield_pct, 3.1);
+  assert.equal(review.current.yield_status, 'available');
+  assert.equal(review.current.yield_reason, 'complete_history');
+  assert.deepEqual(review.current.yield_available_horizons, ['1m', '3m', '6m']);
+  assert.deepEqual(review.current.yield_normalized_weights, {
+    return_1m: 0.2,
+    return_3m: 0.5,
+    return_6m: 0.3,
+  });
 });
 
 test('bucket comparison horizons are fixed constants', () => {

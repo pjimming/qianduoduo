@@ -87,6 +87,25 @@ function score(value: number | null): string {
   return value === null ? '—' : value.toFixed(2)
 }
 
+function referenceYieldLabel(product: Product): string {
+  return product.reference_yield_status === 'available'
+    ? pct(product.reference_yield_pct)
+    : '不可计算'
+}
+
+function referenceYieldHint(product: Product): string {
+  if (product.reference_yield_status === 'available') {
+    const prefix =
+      product.reference_yield_reason === 'partial_history'
+        ? '部分历史；'
+        : ''
+    return `${prefix}可用窗口 ${product.reference_available_horizons.join(' + ')}；缺失窗口不按 0 补齐`
+  }
+  return product.reference_yield_reason === 'unknown_term'
+    ? '期限无法分桶'
+    : '指定收益窗口均缺失'
+}
+
 function oneYearLabel(product: Product): string {
   if (product.return_1y !== null) return pct(product.return_1y)
   if (Number.isFinite(product.history_months) && (product.history_months ?? 0) < 12) {
@@ -156,7 +175,14 @@ function oneYearLabel(product: Product): string {
               <span>近 1 年</span><strong>{{ oneYearLabel(product) }}</strong>
             </div>
             <div class="detail-item">
-              <span>参考年化</span><strong>{{ pct(product.reference_yield_pct) }}</strong>
+              <span>期限调整参考年化</span>
+              <strong>{{ referenceYieldLabel(product) }}</strong>
+              <small>{{ referenceYieldHint(product) }}</small>
+            </div>
+            <div class="detail-item">
+              <span>兼容加权年化</span>
+              <strong>{{ referenceYieldLabel(product) }}</strong>
+              <small>字段与期限调整参考年化完全一致</small>
             </div>
             <div class="detail-item">
               <span>成立以来</span><strong>{{ pct(product.return_since_inception) }}</strong>
@@ -257,7 +283,7 @@ function oneYearLabel(product: Product): string {
               <strong>{{ inTarget ? formatPct(product.target_pct, 1) : '—' }}</strong>
             </div>
             <div class="detail-item">
-              <span>参考年化距 3%</span>
+              <span>期限调整参考年化距 3%</span>
               <strong>{{ formatPp(product.reference_target_gap_pct, 2, true) }}</strong>
             </div>
             <div class="detail-item">
@@ -377,6 +403,12 @@ function oneYearLabel(product: Product): string {
   font-family: var(--mono);
   font-size: 12.5px;
   font-weight: 650;
+}
+
+.detail-item small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .detail-reason,

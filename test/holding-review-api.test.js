@@ -73,6 +73,15 @@ test('holding review API builds candidates, stores redemption rules and links a 
   const review = dashboard.workspace.holding_reviews[0];
   assert.equal(review.product_code, '120056A');
   assert.ok(review.candidates.length > 0);
+  assert.equal(review.yield_policy_version, 'r2-term-yield-v1');
+  assert.equal(review.current.yield_status, 'available');
+  assert.ok(Array.isArray(review.current.yield_available_horizons));
+  assert.equal(review.candidates[0].yield_status, 'available');
+  assert.deepEqual(review.candidates[0].yield_normalized_weights, {
+    return_3m: 0.5,
+    return_6m: 0.3,
+    return_1y: 0.2,
+  });
   assert.equal(review.redemption.redeemable_now, false);
   assert.equal(review.verdict, 'hold');
   assert.equal(review.verdict_label, '继续持有（锁定期）');
@@ -123,7 +132,7 @@ test('holding review API builds candidates, stores redemption rules and links a 
     invalidation_condition:
       '候选额度、风险、期限或赎回规则恶化，或比较期净增益低于门槛时取消替换',
     actual_result: '',
-    strategy_version: 'r2-holding-review-v6',
+    strategy_version: 'r2-holding-review-v7',
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
     evaluation_at: ['holding', 'maturity'],
