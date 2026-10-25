@@ -431,7 +431,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
           <input v-model="form.verify_date" type="date" />
         </label>
         <label class="rw-field">
-          <span>短桶目标（%，0–30 天）</span>
+          <span>短桶目标（%，1–30 天）</span>
           <input
             v-model.number="form.bucket_plan.short"
             type="number"
@@ -453,7 +453,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
           />
         </label>
         <label class="rw-field">
-          <span>长桶目标（%，100 天以上）</span>
+          <span>长桶目标（%，101 天以上）</span>
           <input
             v-model.number="form.bucket_plan.long"
             type="number"

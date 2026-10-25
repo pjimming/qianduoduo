@@ -895,6 +895,13 @@ async function main() {
       '持仓页仍在使用有歧义的“剩余本金”名称',
     )
     assert(
+      holdingsTerminology.includes('短 1–30 天') &&
+        holdingsTerminology.includes('中 31–100 天') &&
+        holdingsTerminology.includes('长 101 天+') &&
+        holdingsTerminology.includes('短期流动性（7–30 天）'),
+      '持仓页没有区分评分期限桶和 7–30 天流动性口径',
+    )
+    assert(
       holdingsTerminology.includes('仅展示当前持仓状态') &&
         !holdingsTerminology.includes('参考上限 50%'),
       '发行方占比仍在持仓页显示限制或警示口径',
@@ -1196,6 +1203,25 @@ async function main() {
 
     await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.allocation-bucket')
+    const productGoalLocator = page.getByTestId('product-goal-text')
+    const productGoalText = (await productGoalLocator.textContent()) ?? ''
+    const productGoalMatch = productGoalText.match(
+      /可评分\s+(\d+)\s+只（短\s*1–30\s*(\d+)\s*\/\s*中\s*31–100\s*(\d+)\s*\/\s*长\s*101\+\s*(\d+)）/,
+    )
+    assert(productGoalMatch, `产品池可评分统计缺失：${productGoalText}`)
+    const [, scoreReady, scoreShort, scoreMedium, scoreLong] =
+      productGoalMatch.map(Number)
+    assert(
+      scoreShort + scoreMedium + scoreLong === scoreReady,
+      `产品池可评分总数与分桶数不一致：${productGoalText}`,
+    )
+    await assertFontFloor(page, '#products', '产品与配置桌面端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '桌面端产品与配置页出现横向溢出',
+    )
     await assertNoLargeLightSurface(page, '.app-main', '产品与配置深色主题')
     const productSectionOrder = await page
       .locator('.r2-stack > section')
@@ -1374,6 +1400,21 @@ async function main() {
     )
     await assertFontFloor(page, '#holding-reviews', '当前持仓与同桶候选桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
+    await productGoalLocator.scrollIntoViewIfNeeded()
+    await assertFontFloor(page, '.product-goal-copy', '产品池统计移动端')
+    await assertFontFloor(page, '#products', '产品与配置移动端')
+    assert(
+      await page.locator('.product-goal-copy').evaluate(
+        (element) => element.scrollWidth <= element.clientWidth + 1,
+      ),
+      '移动端产品池统计出现横向溢出',
+    )
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '移动端产品与配置页出现横向溢出',
+    )
     await holdingSearch.scrollIntoViewIfNeeded()
     await holdingSearch.click()
     await page.waitForSelector('#holding-review-search-options')
@@ -1541,7 +1582,7 @@ async function main() {
       '期限下拉再次点击没有取消全选',
     )
     await termDropdown
-      .getByRole('checkbox', { name: '短期 7–30 天' })
+      .getByRole('checkbox', { name: '短期 1–30 天' })
       .check()
     await termDropdown
       .getByRole('checkbox', { name: '中期 31–100 天' })
@@ -1554,9 +1595,24 @@ async function main() {
     const termSummaryText =
       (await termDropdown.locator('summary').textContent())?.trim() ?? ''
     assert(
-      termSummaryText.includes('短期 7–30 天') &&
+      termSummaryText.includes('短期 1–30 天') &&
         termSummaryText.includes('中期 31–100 天'),
       `期限多选没有保留两个选项：${termSummaryText}`,
+    )
+    const hundredDayBadges = poolDialog.locator('[data-term-days="100"]')
+    assert(
+      (await hundredDayBadges.count()) > 0,
+      '当前产品池没有可用于验证 100 天边界的样本',
+    )
+    assert(
+      await hundredDayBadges.evaluateAll((badges) =>
+        badges.every((badge) => badge.getAttribute('data-term-bucket') === 'medium'),
+      ),
+      '100 天产品没有归入中期 31–100 天筛选',
+    )
+    assert(
+      (await termDropdown.locator('label').filter({ hasText: '长期 101 天+' }).count()) === 1,
+      '期限筛选缺少长期 101 天+ 标签',
     )
 
     const evidenceDropdown = poolDialog.locator(
@@ -1671,7 +1727,7 @@ async function main() {
       (await poolDialog.locator('.dialog-sort-bar strong').textContent())?.trim() ?? ''
     assert(
       ((await poolDialog.locator('details[data-filter="term"] summary').textContent()) ??
-        '').includes('短期 7–30 天'),
+        '').includes('短期 1–30 天'),
       '关闭详情后候选池期限筛选没有保留',
     )
     assert(

@@ -104,7 +104,7 @@ const goalTitle = computed(() => {
 
 const goalText = computed(() => {
   const value = allocation.value
-  const counts = stats.value.bucket_counts
+  const counts = stats.value.scored_bucket_counts
   return `本金 ¥${formatMoney(value.principal, 0)} · 已确认持仓 ¥${formatMoney(
     value.holdings.amount,
     0,
@@ -116,9 +116,9 @@ const goalText = computed(() => {
     0,
   )} · 未分配 ¥${formatMoney(value.unallocated_amount, 0)} · 可研究 ${
     stats.value.total
-  } 只 / 可评分 ${stats.value.observation_ready} 只（短 ${counts.short} / 中 ${
+  } 只 / 可评分 ${stats.value.observation_ready} 只（短 1–30 ${counts.short} / 中 31–100 ${
     counts.medium
-  } / 长 ${counts.long}）`
+  } / 长 101+ ${counts.long}）`
 })
 
 const progressStyle = computed(() => ({
@@ -264,7 +264,7 @@ async function saveQuotas(): Promise<void> {
             <span class="goal-dot"></span>
             <div>
               <strong>{{ goalTitle }}</strong>
-              <p>{{ goalText }}</p>
+              <p data-testid="product-goal-text">{{ goalText }}</p>
             </div>
           </div>
           <div class="pool-progress" aria-hidden="true">

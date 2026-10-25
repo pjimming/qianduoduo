@@ -70,9 +70,9 @@ const productSortLabels: Record<ProductSortKey, string> = {
 
 const termOptions: Array<{ value: ProductBucket; label: string }> = [
   { value: 'cash', label: '日开（非配置目标）' },
-  { value: 'short', label: '短期 7–30 天' },
+  { value: 'short', label: '短期 1–30 天' },
   { value: 'medium', label: '中期 31–100 天' },
-  { value: 'long', label: '长期 100 天+' },
+  { value: 'long', label: '长期 101 天+' },
 ]
 
 const evidenceOptions: Array<{ value: ProductEvidenceTier; label: string }> = [
@@ -1314,7 +1314,11 @@ function onDialogClick(event: MouseEvent): void {
         <tbody>
           <tr v-for="product in sortedProducts" :key="product.code">
             <td>
-              <span class="term-badge">{{ formatTerm(product.term_days, product.bucket) }}</span>
+              <span
+                class="term-badge"
+                :data-term-bucket="product.bucket"
+                :data-term-days="product.term_days ?? ''"
+              >{{ formatTerm(product.term_days, product.bucket) }}</span>
             </td>
             <td class="product-name-cell">
               <button

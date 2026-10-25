@@ -28,7 +28,7 @@
 - GET /api/automation/workspace：Codex 判断队列、待确认评估、提醒、复盘草稿、调度状态。
 - GET /api/calibration/monthly?month=YYYY-MM：到复核日的预测校准、置信度分层、误差来源和逐条证据。
 - GET /api/dashboard：`meta.today`、`meta.reporting_date`、`meta.reporting_lag_days`、`meta.has_reporting_record`、每日收益记录、本金、收益汇总、`decision_proposals`，以及 `workspace.product_valuation_summary`、`workspace.product_valuation_summaries`、`workspace.product_valuation_reconciliation` 和 `workspace.income_inbox`。
-- GET /api/dashboard 的 `workspace.holdings_summary`：分开读取短期 7–30 天占比和现有日开占比。本项目新增日开额度固定为 0%；现有日开持仓是迁移事实，不作为短桶流动性达标依据。
+- GET /api/dashboard 的 `workspace.holdings_summary`：区分 `short_bucket_ratio_pct`（评分桶 1–30 天）、`short_ratio_pct`/`short_liquidity_ratio_pct`（流动性子集 7–30 天）和现有日开占比。本项目新增日开额度固定为 0%；现有日开持仓是迁移事实，不作为 7–30 天流动性达标依据。
 - GET /api/review/workspace：决策、交易流水、收件箱、持仓、产品事件、时间轴。
 如果 8765 无法连接，只报告“本地服务未运行，巡检未执行”，不要猜测账本数据，也不要反复重试。
 

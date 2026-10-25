@@ -82,6 +82,10 @@ test('holdings compute maturity, buckets and ladder', (t) => {
   assert.equal(summary.buckets.medium, 100000);
   assert.equal(summary.buckets.liquid, 50000);
   assert.equal(summary.liquidity_ratio_pct, 33.33);
+  assert.equal(summary.short_bucket_amount, 0);
+  assert.equal(summary.short_bucket_ratio_pct, 0);
+  assert.equal(summary.short_liquidity_amount, 0);
+  assert.equal(summary.short_liquidity_ratio_pct, 0);
   assert.equal(summary.short_ratio_pct, 0);
   assert.equal(summary.daily_open_ratio_pct, 33.33);
   assert.equal(summary.max_product.amount, 100000);
@@ -96,6 +100,57 @@ test('holdings compute maturity, buckets and ladder', (t) => {
     summary.alerts.some((alert) => alert.code === 'issuer-concentration'),
     false,
   );
+});
+
+test('short scoring bucket is 1–30 days while liquidity prefers 7–30 days', () => {
+  const summary = buildHoldingsSummary(
+    [
+      {
+        product_name: '5天短产品',
+        product_code: 'SHORT5',
+        amount: 10000,
+        term_days: 5,
+      },
+      {
+        product_name: '7天短产品',
+        product_code: 'SHORT7',
+        amount: 7000,
+        term_days: 7,
+      },
+      {
+        product_name: '30天短产品',
+        product_code: 'SHORT30',
+        amount: 13000,
+        term_days: 30,
+      },
+      {
+        product_name: '31天中产品',
+        product_code: 'MEDIUM31',
+        amount: 31000,
+        term_days: 31,
+      },
+      {
+        product_name: '历史日开',
+        product_code: 'CASH',
+        amount: 5000,
+        term_days: 0,
+      },
+    ],
+    '2026-10-25',
+  );
+
+  assert.equal(summary.total_amount, 66000);
+  assert.equal(summary.buckets.short, 30000);
+  assert.equal(summary.buckets.medium, 31000);
+  assert.equal(summary.bucket_pct.short, 45.45);
+  assert.equal(summary.short_bucket_amount, 30000);
+  assert.equal(summary.short_bucket_ratio_pct, 45.45);
+  assert.equal(summary.short_liquidity_amount, 20000);
+  assert.equal(summary.short_liquidity_ratio_pct, 30.3);
+  assert.equal(summary.short_ratio_pct, 30.3);
+  assert.equal(summary.liquidity_amount, 35000);
+  assert.equal(summary.liquidity_ratio_pct, 53.03);
+  assert.equal(summary.daily_open_ratio_pct, 7.58);
 });
 
 test('legacy holding review settings rebuild without losing verified facts', (t) => {

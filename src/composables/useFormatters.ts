@@ -100,11 +100,11 @@ export function formatTerm(termDays: number | null, bucket: ProductBucketLike): 
 type ProductBucketLike = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
 
 export function bucketLabel(bucket: ProductBucketLike): string {
-  if (bucket === 'cash') return '现金管理'
-  if (bucket === 'short') return '短期限'
-  if (bucket === 'medium') return '中期限'
-  if (bucket === 'long') return '长期限'
-  return '观察'
+  if (bucket === 'cash') return '日开（仅展示）'
+  if (bucket === 'short') return '短期 1–30 天'
+  if (bucket === 'medium') return '中期 31–100 天'
+  if (bucket === 'long') return '长期 101 天+'
+  return '期限未知'
 }
 
 export function rangeRecords<T extends { date: string }>(

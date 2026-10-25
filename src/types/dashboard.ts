@@ -1,6 +1,7 @@
 export type LedgerAction = '无操作' | '买入' | '赎回' | '切换'
 export type CapitalEventType = 'deposit' | 'withdraw'
 export type ProductBucket = 'cash' | 'short' | 'medium' | 'long' | 'unknown'
+export type WeightedProductBucket = Exclude<ProductBucket, 'unknown'>
 export type ProductEvidenceTier =
   | 'full_1y'
   | 'six_month'
@@ -1071,6 +1072,10 @@ export interface HoldingsSummary {
   bucket_pct: Record<'liquid' | 'short' | 'medium' | 'long' | 'unknown', number | null>
   liquidity_amount: number
   liquidity_ratio_pct: number | null
+  short_bucket_amount: number
+  short_bucket_ratio_pct: number | null
+  short_liquidity_amount: number
+  short_liquidity_ratio_pct: number | null
   short_ratio_pct: number | null
   daily_open_ratio_pct: number | null
   max_product: HoldingConcentration | null
@@ -1342,6 +1347,8 @@ export interface EvaluationEvidence {
   target_progress_pct?: number | null
   monthly?: MonthlyReview | null
   liquidity_ratio_pct?: number | null
+  short_bucket_ratio_pct?: number | null
+  previous_short_bucket_ratio_pct?: number | null
   short_ratio_pct?: number | null
   previous_short_ratio_pct?: number | null
   daily_open_ratio_pct?: number | null
@@ -1958,7 +1965,7 @@ export interface ProductView {
   selection: {
     version: string
     yield_policy_version: string
-    reference_weights: Record<ProductBucket, Record<string, number>>
+    reference_weights: Record<WeightedProductBucket, Record<string, number>>
     front_load_scheme: 'A' | 'B' | 'C'
     per_bucket: number | null
     max_single_pct: number

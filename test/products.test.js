@@ -130,6 +130,84 @@ test('evidence tiers separate full, 6M, 3M, 1M and insufficient data products', 
   );
 });
 
+test('product pool rejects invalid term-day encodings and keeps 0/100 boundaries', () => {
+  const base = {
+    id: 1,
+    name: '普通固收产品',
+    short_name: '',
+    code: 'BOUNDARY',
+    issuer: '示例理财',
+    risk_level: 'R2',
+    currency_code: '10',
+    pub_prv: 'A',
+    status: '开放中',
+    capacity: null,
+    min_amount: 1000,
+    annualized_yield: 3,
+    return_1m: 2,
+    return_3m: 3,
+    return_6m: 4,
+    return_1y: 5,
+    history_months: 18,
+    data_date: '2026-10-22',
+    source: 'test',
+    fee_bps: 0,
+    next_open_date: '',
+  };
+  const invalidTerms = [
+    undefined,
+    null,
+    -1,
+    1.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.MAX_SAFE_INTEGER + 1,
+  ];
+  for (const term_days of invalidTerms) {
+    const product = { ...base, id: String(term_days), code: `BAD-${String(term_days)}`, term_days };
+    assert.equal(isProductPoolEligible(product), false, `term_days=${String(term_days)}`);
+  }
+
+  const cash = { ...base, id: 2, code: 'CASH0', term_days: 0 };
+  const medium = { ...base, id: 3, code: 'MEDIUM100', term_days: 100 };
+  const invalidProducts = invalidTerms.map((term_days, index) => ({
+    ...base,
+    id: 10 + index,
+    code: `INVALID${index}`,
+    term_days,
+  }));
+  const view = buildProductView([...invalidProducts, cash, medium], {
+    principal: 30000,
+    holdings: [],
+    pending_trades: [],
+  });
+
+  assert.deepEqual(
+    view.all.map((product) => product.code),
+    ['CASH0', 'MEDIUM100'],
+  );
+  assert.equal(view.all.find((product) => product.code === 'CASH0').bucket, 'cash');
+  assert.equal(
+    view.all.find((product) => product.code === 'CASH0').evidence_automatic,
+    false,
+  );
+  assert.equal(view.all.find((product) => product.code === 'MEDIUM100').bucket, 'medium');
+  assert.equal(view.stats.total, 2);
+  assert.equal(view.stats.bucket_counts.cash, 1);
+  assert.equal(view.stats.bucket_counts.medium, 1);
+  assert.equal(
+    Object.values(view.stats.scored_bucket_counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    view.stats.observation_ready,
+  );
+  assert.deepEqual(
+    Object.keys(view.selection.reference_weights).sort(),
+    ['cash', 'long', 'medium', 'short'],
+  );
+});
+
 test('product view loads the ordinary universe and allocates dynamically', () => {
   const products = loadProductsFromCsv(csvPath);
   const view = buildProductView(products, { principal: 30000 });

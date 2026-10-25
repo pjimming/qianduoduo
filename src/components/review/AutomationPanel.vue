@@ -338,7 +338,7 @@ function nextUpdateLabel(run: EvaluationRun): string {
       </div>
       <p class="rw-form-hint">
         3% 作为组合进取目标，不当作保本承诺；单只到期/赎回按期限 hurdle 判断结果好坏。
-        本项目新增日开额度固定为 0%，现有日开持仓只作为迁移事实；流动性由短期 7–30 天桶承担。
+        本项目新增日开额度固定为 0%，现有日开持仓只作为迁移事实；短期评分桶为 1–30 天，流动性优先 7–30 天或 T+1 可赎回产品。
         置信度低于门槛时不覆盖手工评价，由 AI/平台继续补充证据。
       </p>
       <div class="rw-form-actions">

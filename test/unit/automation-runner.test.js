@@ -127,7 +127,7 @@ test('automation runner can start a fresh cycle after a timeout', async (t) => {
   let attempt = 0;
   const runner = createAutomationRunner({
     repository,
-    timeoutMs: 30,
+    timeoutMs: 500,
     workerFactory: () => {
       attempt += 1;
       if (attempt === 1) {

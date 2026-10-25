@@ -289,10 +289,10 @@ function openDetail(product: Product): void {
 
 function candidateScopeLabel(review: HoldingReview): string {
   if (review.term_days === 0 || review.bucket === 'short' || review.bucket === 'cash') {
-    return '短期限'
+    return '短期 1–30 天'
   }
-  if (review.bucket === 'medium') return '中期限'
-  if (review.bucket === 'long') return '长期限'
+  if (review.bucket === 'medium') return '中期 31–100 天'
+  if (review.bucket === 'long') return '长期 101 天+'
   return '同桶'
 }
 

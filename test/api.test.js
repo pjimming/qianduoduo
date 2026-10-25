@@ -54,6 +54,26 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
       dashboard.products.stats.reference_status_counts.unavailable,
     productCount,
   );
+  assert.ok(
+    dashboard.products.all.every(
+      (product) =>
+        Number.isSafeInteger(product.term_days) && product.term_days >= 0,
+    ),
+  );
+  assert.equal(
+    Object.values(dashboard.products.stats.scored_bucket_counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    dashboard.products.stats.observation_ready,
+  );
+  assert.equal(
+    Object.values(dashboard.products.stats.bucket_counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    productCount,
+  );
   assert.equal(dashboard.meta.target_annualized, 3);
   assert.equal(dashboard.meta.reporting_date, shiftDate(todayShanghai(), -1));
   assert.equal(

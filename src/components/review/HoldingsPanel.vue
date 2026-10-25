@@ -23,9 +23,9 @@ const ladderMax = computed(() =>
 const bucketRows = computed(() => {
   const rows = [
     { label: '日开', pct: props.summary.bucket_pct.liquid, amount: props.summary.buckets.liquid },
-    { label: '7–30 天', pct: props.summary.bucket_pct.short, amount: props.summary.buckets.short },
-    { label: '31–100 天', pct: props.summary.bucket_pct.medium, amount: props.summary.buckets.medium },
-    { label: '100 天以上', pct: props.summary.bucket_pct.long, amount: props.summary.buckets.long },
+    { label: '短 1–30 天', pct: props.summary.bucket_pct.short, amount: props.summary.buckets.short },
+    { label: '中 31–100 天', pct: props.summary.bucket_pct.medium, amount: props.summary.buckets.medium },
+    { label: '长 101 天+', pct: props.summary.bucket_pct.long, amount: props.summary.buckets.long },
   ]
   if (props.summary.buckets.unknown > 0) {
     rows.push({
@@ -82,8 +82,8 @@ function barWidth(value: number | null): string {
         <strong>{{ formatPct(summary.max_product?.pct, 1) }}</strong>
       </span>
       <span class="rw-stat-chip">
-        短期 7–30 天占比
-        <strong>{{ formatPct(summary.short_ratio_pct, 1) }}</strong>
+        短期流动性（7–30 天）
+        <strong>{{ formatPct(summary.short_liquidity_ratio_pct, 1) }}</strong>
       </span>
       <span class="rw-stat-chip" :class="{ 'is-warn': summary.daily_open_ratio_pct !== null }">
         现有日开
@@ -154,7 +154,7 @@ function barWidth(value: number | null): string {
     <section class="rw-subpanel">
       <div class="rw-subhead">
         <strong>未赎回成本的产品期限分布</strong>
-        <span>短期 7–30 天建议不低于 30%；新增日开目标固定 0%</span>
+        <span>评分桶短 1–30 天；流动性优先 7–30 天或 T+1；新增日开目标固定 0%</span>
       </div>
       <div class="rw-bucket-grid">
         <div v-for="bucket in bucketRows" :key="bucket.label" class="rw-bucket">

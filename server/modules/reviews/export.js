@@ -195,7 +195,16 @@ function buildMonthlyReviewMarkdown({
     }`,
   );
   lines.push(
-    `- 短期 7–30 天成本占比：${pctText(holdingsSummary.short_ratio_pct, 1)}`,
+    `- 短期评分桶（1–30 天）成本占比：${pctText(
+      holdingsSummary.short_bucket_ratio_pct,
+      1,
+    )}`,
+  );
+  lines.push(
+    `- 短期流动性子集（7–30 天）成本占比：${pctText(
+      holdingsSummary.short_liquidity_ratio_pct,
+      1,
+    )}`,
   );
   lines.push(
     `- 现有日开金额与占比：${moneyText(holdingsSummary.buckets.liquid)}，${pctText(
