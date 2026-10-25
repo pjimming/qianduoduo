@@ -2,7 +2,7 @@
 
 > 本文件是 `TD-YIELD-002` 的专属实施规格和验收清单。
 >
-> 当前状态：阶段 0–4 已完成，阶段 5–7 待执行（2026-10-25）。
+> 当前状态：阶段 0–5 已完成，阶段 6–7 待执行（2026-10-25）。
 > 上游任务：`TD-YIELD-001` 阶段 0–6 已完成并发布。
 > 工作区总待办索引见 `TODO.md`。
 
@@ -265,7 +265,7 @@ npm audit --omit=dev
 - 跨模块黄金案例覆盖原始收益 → 短期桶 → 参考年化 → 产品排序 → 持仓复核 → 收益归因 → 自动换仓提案，并核对冻结窗口、权重和策略版本。
 - “仅 3M”显示为单一窗口低置信标记；已选产品仍保留“低置信 · 精选”文字和警示样式。E2E 覆盖浅色/深色、桌面/390px、12px 字号下限和横向溢出。
 - 修正原有自动化调度测试的固定 20ms 时序竞态，改为最长 1 秒的有界轮询；连续运行 5 次均通过。
-- 当前代码隔离服务 `npm run yield:verify` 通过；当前生产未重启，仍运行阶段 3 前构建，实测 452/496 通过，剩余 44 项仅是未部署的新审计字段、产品策略版本和 cash 排除状态，留待阶段 5 发布后复验。
+- 阶段 4 完成时代码隔离服务 `npm run yield:verify` 通过；当时生产尚未重启，仍运行阶段 3 前构建，实测 452/496 通过，剩余 44 项仅是未部署的新审计字段、产品策略版本和 cash 排除状态，已在阶段 5 发布后复验为 496/496。
 - `npm run check`：通过。
 - `npm test`：295 项通过、0 失败。
 - `npm run build`：通过。
@@ -277,17 +277,32 @@ npm audit --omit=dev
 
 只有代码、测试和文档全部通过后进入本阶段。
 
-- [ ] 检查 `TODO.md` 和本文件状态。
-- [ ] 检查工作树，只包含本任务预期修改。
-- [ ] 检查生产数据库备份和最新产品快照。
-- [ ] 检查三个实际 Codex 自动化任务仍为原名称、时间、模型、reasoning、项目和目录。
-- [ ] 需要生产重启时先取得明确授权。
-- [ ] 执行发布后运行 `npm run prod:status`、Health、`npm run yield:verify`。
-- [ ] 抽查关键产品 API、持仓复核、收益归因和提案。
-- [ ] 检查最新 stderr 和 stop marker。
-- [ ] 确认没有改写账本事实、历史提案或 schema。
+- [x] 检查 `TODO.md` 和本文件状态。
+- [x] 检查工作树，只包含本任务预期修改。
+- [x] 检查生产数据库备份和最新产品快照。
+- [x] 检查三个实际 Codex 自动化任务仍为原名称、时间、模型、reasoning、项目和目录。
+- [x] 需要生产重启时先取得明确授权。
+- [x] 执行发布后运行 `npm run prod:status`、Health、`npm run yield:verify`。
+- [x] 抽查关键产品 API、持仓复核、收益归因和提案。
+- [x] 检查最新 stderr 和 stop marker。
+- [x] 确认没有改写账本事实、历史提案或 schema。
 
 若出现异常，优先停止发布并保留现场；只有数据库损坏或非预期迁移影响时才考虑恢复备份。
+
+阶段 5 完成证据：
+
+- 发布前新增只读修复提交：`8603a5a`，提交说明 `fix(r2): keep portfolio reads immutable`。`getPortfolio()` 改为纯内存重算，不再在读取时删除/重建 `trade_allocations`；写操作仍负责原子重建分配。
+- 阶段 5 验收前备份：`data/backups/pre-td-yield-002-stage5-final-20261025T084346.sqlite`，已通过 SQLite 完整性校验。
+- 三个 Codex 自动化任务保持原配置：`r2` 每周一 08:30、`r2-2` 每日 21:00、`r2-3` 每周五 18:30；均为 `deepseek-flash`、`high`、同一项目 ID 和 `D:\codex\钱多多财富工作台`，状态均为 `ACTIVE`。
+- 用户已通过阶段 5 目标明确授权生产发布。`npm run prod:restart` 完成，生产 Supervisor `23796`、Server `17840` 启动，Health OK，auto-start enabled。
+- `npm run yield:verify`：496/496 通过、0 失败；产品 689 只、可评分 587 只、持仓复核 6 条、归因产品证据 6 个。
+- 产品五档证据计数为 `full_1y 425 / six_month 131 / three_month 48 / one_month 63 / no_data 22`；参考状态 `available 626 / unavailable 63`。
+- 持仓复核全部使用 `r2-holding-review-v7` 和 `r2-term-yield-v1`；收益归因状态为 `insufficient`，6 个产品证据全部携带 `r2-term-yield-v1`；提案汇总为 pending 0、accepted 0、executed 3、rejected 0、expired 1。
+- 最新 stderr 为 `server-20261025-164401375.err.log`，0 bytes；`run/server.stop`、`run/daemon.stop` 均不存在。
+- 与发布前备份逐表比对：`capital_settings`、`capital_events`、`daily_records`、`trade_transactions`、`trade_allocations`、`product_daily_valuations`、`product_daily_valuation_audit`、`decision_proposals`、`holding_review_settings` 全部一致；schema hash 一致。
+- 连续 3 轮读取 products、overview、evaluation 前后，`daily_records`、`trade_transactions`、`trade_allocations`、`product_daily_valuations`、`decision_proposals` 的计数和哈希全部不变。
+- `npm run check`、296 项 `npm test`、生产构建、完整 E2E 全部通过；覆盖率行 89.88%、分支 74.61%、函数 89.46%。
+- 本轮没有新增 schema、生产依赖或真实账本写入；没有远端推送。并行产生的股票报告及其生成物保留在工作区，但未纳入 `TD-YIELD-002` 提交。
 
 ### 阶段 6 — 样本外观察与参数复核入口
 
