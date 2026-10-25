@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股机器人产业链（上下游）｜主题调研｜2026-10-25</title>
+<!-- rpnav-tag: 机器人 -->
+<!-- rpnav-summary: 机器人产业有量，A股利润仍严重分层：研究先看雷赛智能、汇川技术的订单与份额兑现，再看双环传动、绿的谐波的高端传动利润质量，并以宇树科技跟踪整机量产；10月23日的大涨更接近超跌后的事件交易。 -->
+<!-- rpnav-keywords: 机器人 人形机器人 具身智能 工业机器人 协作机器人 AGV AMR 减速器 谐波减速器 RV减速器 行星滚柱丝杠 执行器 伺服 运动控制 灵巧手 六维力 3D视觉 688836 300124 002979 002472 688017 300607 002747 688306 003021 603728 603662 688322 002050 601689 -->
+<!-- rpnav-priority: 高 -->
+<!-- rpnav-priority-detail: 产业链研究优先级高：需求、量产和部分订单已可核验；但证券层面的机器人收入、利润、现金流和估值分化很大，研究优先级不是买入排序。 -->
+<style>
+:root{
+  --ink:#18232b;--muted:#61707c;--line:#d9e1e4;--paper:#eef2f1;--card:#fff;
+  --navy:#102d3d;--navy2:#24566c;--teal:#087b6c;--teal-soft:#e4f4ef;
+  --amber:#a86812;--amber-soft:#fff2d9;--red:#9a3e35;--red-soft:#fae8e4;
+  --blue:#345f99;--blue-soft:#e9f0fa;--slate-soft:#edf2f4;
+  --shadow:0 14px 38px rgba(27,50,63,.08)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.72 "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif}
+a{color:#176f82;text-decoration:none;border-bottom:1px solid rgba(23,111,130,.28)}
+a:hover{border-bottom-color:currentColor}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 22px 72px}
+.hero{display:block!important;background:linear-gradient(135deg,#0b2839,#17475b 57%,#126d66);color:#fff;border-radius:22px;padding:42px 44px 34px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-120px;top:-170px;border:1px solid rgba(255,255,255,.12);box-shadow:0 0 0 60px rgba(255,255,255,.025),0 0 0 120px rgba(255,255,255,.018)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#aee0d8;font-weight:800}
+h1{font-size:34px;line-height:1.3;margin:10px 0 12px;max-width:980px}
+.sub{font-size:17px;line-height:1.75;color:#e8f1f3;max-width:1020px;margin:0 0 22px}
+.meta{display:flex;flex-wrap:wrap;gap:9px;position:relative;z-index:1}
+.chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:#eaf4f5;font-size:12px;border:1px solid rgba(255,255,255,.14)}
+.section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 30px;margin-top:22px;box-shadow:0 5px 20px rgba(29,52,68,.04)}
+.chapter-no{color:var(--teal);font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+h2{font-size:25px;line-height:1.35;margin:5px 0 12px;color:var(--navy)}
+h3{font-size:18px;line-height:1.45;margin:26px 0 10px;color:var(--navy2)}
+h4{font-size:15px;margin:18px 0 8px;color:var(--navy2)}
+p{margin:9px 0}
+.takeaway{background:linear-gradient(90deg,var(--teal-soft),#f8fbfa);border-left:4px solid var(--teal);padding:12px 15px;border-radius:9px;margin:3px 0 18px;color:#204d48;font-weight:650}
+.verdict{background:linear-gradient(135deg,#fff8e9,#fffdf8);border:1px solid #e5bf73;border-radius:14px;padding:18px 20px;margin:14px 0 18px}
+.verdict strong{color:#7f4b00}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fbfcfc}
+.kpi .v{font-size:23px;font-weight:850;color:var(--navy);line-height:1.25;font-variant-numeric:tabular-nums}
+.kpi .k{font-size:12px;color:var(--muted);margin-top:4px;font-weight:700}
+.kpi .s{font-size:12px;color:#68747c;margin-top:7px}
+.callout{border:1px solid #cfdde2;background:#f7fbfb;border-radius:12px;padding:14px 16px;margin:14px 0}
+.risk{border-color:#edc9c3;background:var(--red-soft)}
+.warn{border-color:#e7cf9a;background:var(--amber-soft)}
+.goodbox{border-color:#b9dfd5;background:var(--teal-soft)}
+.table-wrap{overflow-x:auto;margin:12px 0 18px;border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:760px;background:#fff;font-size:12.5px}
+th,td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#edf3f5;color:#203e4e;font-weight:800;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.center{text-align:center}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+.high{background:#dff3ed;color:#096858}
+.mid{background:#fff0cf;color:#855700}
+.low{background:#edf1f3;color:#65727c}
+.bad{background:#f9e1dd;color:#8b322a}
+.good{background:#e6f4f0;color:#0b6b5c}
+.neutral{background:#e9f0fa;color:#315f9c}
+.src,.note{font-size:12px;color:var(--muted);line-height:1.62}
+.chain{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:16px 0}
+.chain .node{border:1px solid #cbd9df;background:#f8fbfc;border-radius:12px;padding:14px;position:relative;min-height:160px}
+.chain .node:not(:last-child)::after{content:"→";position:absolute;right:-10px;top:46%;font-size:18px;color:#72919f;z-index:2}
+.chain b{display:block;color:var(--navy);margin-bottom:5px}
+.chain span{font-size:12px;color:var(--muted)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.mini-card{border:1px solid var(--line);background:#fbfcfc;border-radius:12px;padding:15px}
+.mini-card h4{margin-top:2px}
+.mini-card .big{font-size:25px;font-weight:850;color:var(--navy);font-variant-numeric:tabular-nums}
+.stock-card{border:1px solid var(--line);border-radius:14px;padding:17px 18px;background:#fcfdfd}
+.stock-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;margin-bottom:8px}
+.stock-head b{font-size:17px;color:var(--navy)}
+.stock-head .px{font-variant-numeric:tabular-nums;color:var(--navy2);font-weight:800;font-size:12.5px;text-align:right}
+.compact li{margin:5px 0}
+.signal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0}
+.signal{border:1px solid #d4dfe3;border-radius:12px;background:#f9fbfb;padding:13px}
+.signal b{display:block;font-size:12px;color:var(--muted);font-weight:700}
+.signal strong{display:block;font-size:20px;color:var(--navy);margin-top:3px;font-variant-numeric:tabular-nums}
+.signal span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.bar-list{margin:12px 0}
+.bar-row{display:grid;grid-template-columns:130px 1fr 76px;gap:10px;align-items:center;margin:9px 0;font-size:12px}
+.bar-track{height:10px;background:#e7edef;border-radius:999px;overflow:hidden}
+.bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#2f8f84,#76c1b5)}
+.bar.amber{background:linear-gradient(90deg,#bb7b20,#e4b65d)}
+.bar.blue{background:linear-gradient(90deg,#416fa9,#87a9d4)}
+.bar-val{text-align:right;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.source-list{padding-left:20px}
+.source-list li{margin:7px 0}
+.foot{margin-top:22px;padding:22px 24px;border-radius:16px;background:#e7eeec;color:#4e5f68;font-size:12px}
+@media(max-width:980px){
+  .chain{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .chain .node:nth-child(3)::after{display:none}
+  .kpis,.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .three-col{grid-template-columns:1fr}
+}
+@media(max-width:680px){
+  .wrap{padding:12px 10px 50px}
+  .hero{padding:28px 21px;border-radius:16px}
+  h1{font-size:26px}
+  .sub{font-size:15px}
+  .section{padding:21px 16px;border-radius:14px}
+  .chain{grid-template-columns:1fr}
+  .chain .node{min-height:auto}
+  .chain .node::after{display:none!important}
+  .two-col{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .signal-grid{grid-template-columns:1fr 1fr}
+  .stock-head{display:block}
+  .stock-head .px{text-align:left;margin-top:4px}
+  .bar-row{grid-template-columns:105px 1fr 70px}
+}
+@media print{
+  body{background:#fff}
+  .wrap{max-width:none;padding:0}
+  .section,.hero{box-shadow:none}
+  .section{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">A-share Robotics · Value Chain Research</div>
+  <h1>A股机器人产业链：从工业机器人复苏到人形机器人验证</h1>
+  <p class="sub">机器人产业有量，A股利润仍严重分层：研究先看雷赛智能、汇川技术的订单与份额兑现，再看双环传动、绿的谐波的高端传动利润质量，并以宇树科技跟踪整机量产；10月23日的大涨更接近超跌后的事件交易，而不是板块盈利确认。</p>
+  <div class="meta">
+    <span class="chip">调研日期 2026-10-25</span>
+    <span class="chip">数据截止 2026-10-25 17:30</span>
+    <span class="chip">行情 2026-10-23 收盘</span>
+    <span class="chip">财务：2026Q3 / 2026H1</span>
+    <span class="chip">币种 CNY</span>
+    <span class="chip">方法：Serenity 产业链瓶颈分析 + 市场叙事与资金结构 + 五红灯财务快筛 + 退出条件</span>
+  </div>
+</header>
+
+<section class="section" id="summary">
+  <div class="chapter-no">Section 01 · One-page view</div>
+  <h2>一、一页结论：先看“能交付并收到钱”，再看“人形机器人纯度”</h2>
+  <p class="takeaway">核心判断：工业机器人、核心运控和部分精密传动已有真实订单与收入；人形机器人已进入万台级生产和场景验证，但多数上市公司尚未形成可单独核验的人形收入、利润和现金流。</p>
+
+  <div class="verdict">
+    <p><strong>产业链研究优先级：</strong>精密传动／执行器与运动控制 ＞ 力／触觉／视觉感知 ＞ 人形整机 ＞ 系统集成与通用结构件。判断依据是“物理卡点 × 客户认证 × 能否收费”，而不是概念热度。</p>
+    <p><strong>公司研究优先级：</strong><span class="tag high">雷赛智能</span> <span class="tag high">汇川技术</span> <span class="tag mid">双环传动</span> <span class="tag mid">绿的谐波</span> <span class="tag mid">宇树科技-W</span>。前两家偏“已验证业务继续穿透”，后三家分别回答传动、纯度和整机量产三个关键问题。</p>
+    <p><strong>市场阶段：</strong>超跌后的强事件驱动反弹，边际资金正在交易“人形纯度、量产预期和小流通盘弹性”，但中期涨幅广度仍弱，尚未切换为板块级业绩行情。<strong>研究优先级不是买入排序。</strong></p>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">+29.1%</div><div class="k">2026前三季度工业机器人产量同比</div><div class="s">产量是供给侧事实，不等于销量或利润 <a href="#s1">[S1]</a></div></div>
+    <div class="kpi"><div class="v">&gt;4万台</div><div class="k">2026H1中国人形机器人产量</div><div class="s">工信部预计全年突破10万台 <a href="#s2">[S2]</a></div></div>
+    <div class="kpi"><div class="v">+86.8%</div><div class="k">雷赛智能前三季度归母净利同比</div><div class="s">同期经营现金流 −0.52亿元，需看回款 <a href="#s6">[S6]</a></div></div>
+    <div class="kpi"><div class="v">39 / 39</div><div class="k">10月23日固定样本上涨家数</div><div class="s">当日中位数 +8.49%；年内中位数仍 −18.38% <a href="#s21">[S21]</a></div></div>
+  </div>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>必须回答的问题</th><th>当前判断</th><th>证据 / 反证</th><th>下一核验</th></tr></thead>
+    <tbody>
+      <tr><td>机器人需求是否真实？</td><td>工业端真实增长；人形从试制转向小批部署</td><td>工业机器人产量+29.1%；H1人形产量超4万台；但多为“产量/下线”，销量、验收和复购披露不足</td><td>Q3／年报中的机器人收入、订单转收入、客户续购</td></tr>
+      <tr><td>最难的产业环节是什么？</td><td>高精度传动、执行器与运动控制的批量一致性</td><td>柔轮/刚轮、滚道、预紧、寿命与标定决定良率；绿的谐波2025年理论产能64万台、利用率仅67.76%，说明稀缺的是“可认证的高端产能”</td><td>客户二供进度、ASP、毛利率、良率与寿命数据</td></tr>
+      <tr><td>A股谁更接近利润？</td><td>汇川、雷赛的工业自动化底盘更扎实；双环有现金流；绿的纯度最高但治理需折价；宇树整机商业化领先</td><td>雷赛Q3利润高增；汇川机器人份额9.2%；双环减速器及其他收入4.40亿元；绿的机器人零部件约占2025年主营74%；宇树2025年人形收入8.68亿元</td><td>单独披露人形收入与毛利；经营现金流；再融资摊薄</td></tr>
+      <tr><td>当前市场在交易什么？</td><td>交易纯度、远期量产和筹码弹性，不是全面利润</td><td>兆威机器人收入不足H1营收1%，公司提示无新增大客户/订单，但5日仍涨50.11%；宇树流通盘仅7.44%</td><td>高位换手后的承接、5日广度、10日主力资金</td></tr>
+      <tr><td>最可能改变判断的事实？</td><td>复购与现金流，而不是又一场发布会</td><td>人形价格和毛利已经随放量下降；供应商扩产可能快于终端需求</td><td>2026Q4—2027H1的重复采购、单机利用率、回款与维保成本</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="section" id="chain">
+  <div class="chapter-no">Section 02 · Industry &amp; bottleneck</div>
+  <h2>二、产业事实与瓶颈地图：价值量高，不等于利润一定归上游</h2>
+  <p class="takeaway">机器人不是单一产品，而是一套“动力—传动—控制—感知—数据—场景”的系统。当前最值得研究的是高端制造一致性与工程交付，而不是价格竞争最充分的通用结构件。</p>
+
+  <div class="chain">
+    <div class="node"><b>材料与基础件</b><span>磁材、特殊钢、轴承、密封、线束。供应面较广；只有通过机器人专用认证和寿命验证，才可能形成溢价。</span></div>
+    <div class="node"><b>动力与感知</b><span>无框力矩电机、空心杯、编码器、六维力、触觉、3D视觉。价值量上升，但单机用量、客户份额与收入拆分仍不透明。</span></div>
+    <div class="node"><b>精密传动与执行器</b><span>谐波、RV、行星、摆线、滚柱丝杠、关节模组、灵巧手。核心卡点是精度、寿命、噪声、重量和批量一致性。</span></div>
+    <div class="node"><b>控制与软件</b><span>伺服、驱动、PLC、实时总线、功能安全、物理AI/VLA与数据闭环。硬件Know-how与现场数据决定可复制性。</span></div>
+    <div class="node"><b>整机与集成</b><span>工业/协作机器人、轮式/双足人形、AGV/AMR、自动化产线。商业模式从卖设备到卖系统、租赁和结果服务。</span></div>
+    <div class="node"><b>下游场景</b><span>3C/半导体、汽车/锂电、物流、商业服务、家庭照护。重复作业和可计量的ROI先落地，通用家庭场景更晚。</span></div>
+  </div>
+  <p class="note">产业链图表达价值流，不代表资金会沿链条平均分配。每个环节的议价权还会被客户自研、双供、规模扩产和终端降本重新分配。</p>
+
+  <h3>Serenity 层级优先级</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>层级</th><th>研究优先级</th><th>真正的卡点</th><th>替代路线 / 供给扩张</th><th>会改变排序的证据</th></tr></thead>
+    <tbody>
+      <tr><td>精密传动与执行器</td><td><span class="tag high">高</span></td><td>柔轮/刚轮、RV齿轮、螺纹磨削、预紧装配、寿命一致性；决定关节精度、噪声和可靠性</td><td>谐波、RV、行星、摆线、滚珠/行星滚柱丝杠、连杆/腱绳；名义产能并不稀缺</td><td>客户快速认证二供、良率提升、ASP下降快于成本；或订单持续超过扩产</td></tr>
+      <tr><td>运动控制与伺服</td><td><span class="tag high">高</span></td><td>实时控制、编码器、驱动、热管理、功能安全与关节标定；必须与客户工艺共同迭代</td><td>海外品牌、国产替代、分体驱动与集成关节并存</td><td>国产高端场景持续失效或价格战吞噬毛利；或客户复购与份额同步提升</td></tr>
+      <tr><td>力／触觉／视觉感知</td><td><span class="tag mid">中高</span></td><td>六维力标定、温漂和长期漂移、触觉阵列与多传感器融合</td><td>关节力矩、电流估计、视觉辅助可以替代部分额外传感器</td><td>客户批量采购、传感器数量与机器人产量同步；否则只是研发线索</td></tr>
+      <tr><td>物理AI / 数据闭环</td><td><span class="tag mid">中高</span></td><td>任务泛化、异常恢复、跨场景复制和训练成本；比单次演示更关键</td><td>端到端模型、分层模型、仿真+真机数据、云端数据服务</td><td>模型带来可计量的人工替代或良率提升；否则难形成A股公司利润</td></tr>
+      <tr><td>人形整机</td><td><span class="tag mid">中</span></td><td>可靠性、维护、零部件供应、客户复购与单位作业成本</td><td>轮式双臂、专用机器人、工业机械臂+移动底盘可能先于通用双足</td><td>连续运行、重复采购和第三方验收形成；返修率与停机时间下降</td></tr>
+      <tr><td>系统集成</td><td><span class="tag low">中低</span></td><td>订单规模大，但验收、应收、存货和项目毛利波动；收入不等于利润</td><td>标准化工作站、软件订阅、设备租赁</td><td>标准化产品占比提升、毛利和现金流同时改善</td></tr>
+      <tr><td>通用结构件与组装</td><td><span class="tag low">低</span></td><td>资本与工程门槛较低，容易被扩产与年降压缩回报</td><td>就近配套、规模制造、客户联合开发</td><td>形成独家材料、核心工艺或显著成本壁垒</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>需求侧：工业需求已有量，人形仍在从“下线”到“上岗”</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>指标</th><th>最新数据</th><th>能证明什么</th><th>不能证明什么</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td>中国工业机器人产量</td><td class="num">2026前三季度同比 +29.1%</td><td>制造活动与自动化供给扩张较强，设备制造链有真实拉动力</td><td>销量、ASP、利润与回款；产量也可能形成库存</td><td>国家统计局，2026-10-19 <a href="#s1">[S1]</a></td></tr>
+      <tr><td>中国工业机器人销量</td><td class="num">2026H1 18.9万台，同比 +15.8%</td><td>终端采购仍有增长，内资份额约58%</td><td>各公司机器人业务利润；不同下游景气并不一致</td><td>汇川半年报引用睿工业，2026-08-29 <a href="#s5">[S5]</a></td></tr>
+      <tr><td>中国人形机器人整机</td><td class="num">H1 400余款、产量 &gt;4万台；全年预期 &gt;10万台</td><td>制造端从样机走向小批生产，供应链开始获得验证场景</td><td>已售出、已验收、已形成重复收入和利润</td><td>国新办发布会 / 工信部，2026-10-19 <a href="#s2">[S2]</a></td></tr>
+      <tr><td>上海进厂目标</td><td class="num">到2028年推动8,000台人形机器人进工厂，工业机器人密度600台/万人</td><td>有明确的地方应用牵引和中长期需求方向</td><td>采购主体、预算、验收标准和盈利模式已经确定</td><td>上海市政府，2026-10-13 <a href="#s3">[S3]</a></td></tr>
+      <tr><td>具身智能机器人消费</td><td class="num">2026前三季度重点平台销售额 +22.6%</td><td>商业服务与消费端出现真实交易需求</td><td>工厂级重复作业ROI；消费展示与一次性采购的占比</td><td>商务部数据转述，2026-10-23 <a href="#s21">[S21]</a></td></tr>
+      <tr><td>特斯拉 Optimus</td><td>2026Q3披露已开始早期生产，仍处爬坡</td><td>海外链主开始把机器人从演示推进到制造</td><td>外部客户销量、A股供应商订单、ASP或收入贡献</td><td>Tesla SEC 10-Q/业绩材料，2026-10-22 <a href="#s22">[S22]</a></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>从“台数”到“利润”：三个必须防的断层</h3>
+  <div class="three-col">
+    <div class="mini-card">
+      <h4>1. 放量伴随降价</h4>
+      <div class="big">16.64万</div>
+      <p>宇树2025年人形机器人平均售价已降至16.64万元；毛利率从2023年的87.67%降至2025年的63.18%。价格下降扩大市场，但销量、成本与复购必须跑得更快，利润才不会被稀释。<a href="#s13">[S13]</a></p>
+    </div>
+    <div class="mini-card">
+      <h4>2. 下线不等于销售</h4>
+      <div class="big">5.25%</div>
+      <p>均普智能2026H1下线900台具身机器人，相关收入6,452.36万元、占营收5.25%，但公司仍亏损2,557.35万元。“制造业务有量”与“集团利润转正”是两件事。<a href="#s18">[S18]</a></p>
+    </div>
+    <div class="mini-card">
+      <h4>3. 自动化收入不等于高毛利</h4>
+      <div class="big">−10.46pp</div>
+      <p>拓斯达H1工业机器人及自动化应用收入同比+121.62%，但该分部毛利率同比下降10.46个百分点。订单恢复若以价格和项目结构换来的，股东收益会被抵消。<a href="#s19">[S19]</a></p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>最强反方理由：</strong>零部件技术重要，不代表供给永远稀缺。绿的谐波2025年理论产能64万台、产能利用率仅67.76%；行业又在扩产。若高端良率快速提升、客户二供增加，优势会从“有没有产能”转向“谁能在降价中保持毛利和现金流”。<a href="#s11">[S11]</a></p>
+  </div>
+</section>
+
+<section class="section" id="candidates">
+  <div class="chapter-no">Section 03 · Evidence ladder</div>
+  <h2>三、候选公司与证据阶梯：五家公司，五种不同的验证题</h2>
+  <p class="takeaway">这五家公司不是同一种投资逻辑：雷赛看机器人订单能否变成现金流；汇川看工业机器人份额与平台复用；双环看传动业务的利润稳定性；绿的看纯度与治理折价；宇树看整机商业化和供给释放。研究次序不是买入次序。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>公司</th><th>产业链角色 / 实际产品</th><th>已确认商业阶段</th><th>最新财务与机器人穿透</th><th>证据强度</th><th>研究优先级</th><th>最关键缺口</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>雷赛智能 002979</strong></td>
+        <td>运动控制、伺服、步进、PLC、控制卡；机器人无框电机、关节模组、灵巧手</td>
+        <td>工业控制已规模销售；机器人部件批量交付；灵巧手小批交付</td>
+        <td>2026Q3累计营收19.09亿元/+46.77%，归母2.99亿元/+86.80%，CFO −0.52亿元。公司预计全年机器人相关订单2—3亿元、机器人收入约占整体营收十分之一，覆盖80%以上人形整机厂。<a href="#s6">[S6]</a><a href="#s7">[S7]</a></td>
+        <td><span class="tag good">中强</span><br>订单、客户覆盖和财务增长均有披露</td>
+        <td><span class="tag high">高</span></td>
+        <td>人形收入未单独披露；回款与存货；再融资摊薄</td>
+      </tr>
+      <tr>
+        <td><strong>汇川技术 300124</strong></td>
+        <td>伺服、PLC、驱动、工业机器人、视觉、人形关节/仿生臂</td>
+        <td>工业机器人和自动化已规模收入；人形零部件研发、送样和场景验证</td>
+        <td>2026H1营收246.75亿元/+20.31%，归母28.10亿元/−5.35%，CFO 19.75亿元。工业机器人国内份额9.2%、SCARA约25%；新兴产业收入14.67亿元/+96.29%，但包含储能，不等于人形收入。<a href="#s5">[S5]</a></td>
+        <td><span class="tag good">强</span><br>份额、客户和现金流可验证</td>
+        <td><span class="tag high">高</span></td>
+        <td>人形业务收入与价值量未单列；利润率受汽车与公允价值影响</td>
+      </tr>
+      <tr>
+        <td><strong>双环传动 002472</strong></td>
+        <td>精密齿轮、工业机器人RV减速器等，“减速器及其他”包含多类产品</td>
+        <td>工业机器人减速器已量产并形成收入；人形客户与收入未拆分</td>
+        <td>2026H1营收45.59亿元/+7.80%，归母5.87亿元/+1.65%，扣非约−3.8%；CFO 11.12亿元。减速器及其他收入4.40亿元/+26.18%、占9.67%。<a href="#s9">[S9]</a></td>
+        <td><span class="tag good">中强</span><br>收入与现金流强，主题纯度有限</td>
+        <td><span class="tag mid">中高</span></td>
+        <td>机器人/人形细分拆分；高资本开支回报；客户份额</td>
+      </tr>
+      <tr>
+        <td><strong>绿的谐波 688017</strong></td>
+        <td>谐波减速器、行星滚柱丝杠、机电一体化；机器人零部件纯度最高之一</td>
+        <td>谐波减速器规模量产；滚柱丝杠仍研发/导入；2026H1机器人业务大幅增长</td>
+        <td>2026H1营收3.49亿元/+38.64%，归母0.70亿元/+31.25%，CFO −0.17亿元；2025年工业及具身机器人零部件4.23亿元、占主营约74%、新签订单7.05亿元。<a href="#s10">[S10]</a><a href="#s11">[S11]</a></td>
+        <td><span class="tag mid">强主题 / 中财务</span><br>收入纯度高，治理与现金流需折价</td>
+        <td><span class="tag mid">中高</span></td>
+        <td>客户订单真实性、H股融资、项目进度、CFO</td>
+      </tr>
+      <tr>
+        <td><strong>宇树科技-W 688836</strong></td>
+        <td>人形、四足整机及机器人组件；A股稀缺的整机纯度标的</td>
+        <td>规模销售；2025年人形收入8.68亿元、占主营51.78%，销量5,215台、出货5,511台</td>
+        <td>2026H1营收11.52亿元/+48.54%，归母2.74亿元；扣非2.44亿元/−19.34%，CFO 2.32亿元/−32.53%。增收仍伴随降利和现金流下滑。<a href="#s13">[S13]</a><a href="#s14">[S14]</a></td>
+        <td><span class="tag mid">中</span><br>产品与销量清楚，利润质量与客户结构仍待穿透</td>
+        <td><span class="tag mid">中高</span></td>
+        <td>人形/四足拆分、复购、ASP与毛利、7.44%流通盘</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>证据怎么排序</h3>
+  <div class="two-col">
+    <div class="mini-card">
+      <h4>证据强，且接近利润</h4>
+      <ul class="compact">
+        <li><strong>雷赛：</strong>Q3实际增长、机器人客户与订单口径清楚；但要验证订单转收入和现金流。</li>
+        <li><strong>汇川：</strong>已有工业机器人份额、客户和现金流，研究的是“机器人业务在集团内是否足够大”。</li>
+        <li><strong>双环：</strong>真实工业减速器收入和强现金流，研究的是人形增量是否足以改变集团增长斜率。</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>产业重要，但财务穿透不足</h4>
+      <ul class="compact">
+        <li><strong>绿的：</strong>纯度最高，但“高主题占比 + 关联方核查/年报更正 + CFO为负”需要更高证据门槛。</li>
+        <li><strong>宇树：</strong>整机商业化领先，但扣非下降、价格下降、研发费用上升、流通盘只有7.44%；量产不等于股东利润。</li>
+        <li><strong>传感器、灵巧手、丝杠：</strong>技术路线未收敛，送样与展品必须和批量交付分开。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>边缘候选的反证：不要把主题标签当收入</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>公司</th><th>最新可核验事实</th><th>为什么没有进入本轮五个核心</th><th>重新上调的条件</th></tr></thead>
+    <tbody>
+      <tr><td>柯力传感 603662</td><td>H1六维力传感器销售超2,000只、超过2025全年，向90多家机器人企业送样，部分客户已有批量订单。<a href="#s24">[S24]</a></td><td>机器人收入未单列；客户与份额、ASP、毛利缺少量化</td><td>连续两季单独披露机器人收入且回款覆盖利润</td></tr>
+      <tr><td>拓斯达 300607</td><td>H1工业机器人及自动化应用收入7.07亿元/+121.62%；签单约6,800台、出货约5,500台；人形“小拓”为小批验证。<a href="#s19">[S19]</a></td><td>收入包含自动化系统，H1分部毛利率同比下降10.46pp；人形收入未单列</td><td>毛利率止跌、3C客户复购、H股融资用途和摊薄明确</td></tr>
+      <tr><td>均普智能 688306</td><td>H1下线900台，具身机器人收入0.645亿元、占5.25%；归母仍亏0.256亿元；定增新增股份占发行后10.49%。<a href="#s18">[S18]</a></td><td>下线≠销售，客户复购和分部毛利不透明；集团仍亏损</td><td>销量、验收、复购、机器人毛利连续改善</td></tr>
+      <tr><td>兆威机电 003021</td><td>官方10月24日公告：人形机器人收入不超过H1营收1%，近期未新增该领域大客户，也未获取或预计获取大额订单；5日股价涨50.11%。<a href="#s16">[S16]</a></td><td>灵巧手产品清晰，但财务贡献极低，价格已先交易远期预期</td><td>Q3/年报单列机器人收入并出现可验证订单</td></tr>
+      <tr><td>鸣志电器 603728</td><td>官方称机器人（含人形）相关应用约占H1营收9%，预计2026年不构成重大影响；10/23 PE约351.5倍。<a href="#s17">[S17]</a></td><td>业务确有关联，但占比和利润贡献仍低；高估值缺少收入锚</td><td>机器人收入增速、客户集中度和毛利持续披露</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">“边缘”是财务传导尚未达到核心研究的门槛，不代表公司技术不重要。柯力、拓斯达等应继续跟踪，但不能把行业需求直接映射为单家公司利润。</p>
+
+  <h3>五红灯财务快筛（只覆盖3家核心公司）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>公司</th><th>利润与现金流</th><th>应收与存货</th><th>利润质量</th><th>治理与股东行为</th><th>融资与资产负债表</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>汇川技术</strong></td>
+        <td><span class="tag mid">需关注</span><br>归母−5.35%，CFO同比−34.60%，但仍为正19.75亿元</td>
+        <td><span class="tag mid">需关注</span><br>应收较年初+28.0%、存货+24.5%，快于H1收入+20.3%</td>
+        <td><span class="tag good">未见异常</span><br>扣非+3.15%，研发投入22.26亿元费用化</td>
+        <td><span class="tag good">未见异常</span><br>已查半年报与主要公告未见重大处罚事项</td>
+        <td><span class="tag good">未见异常</span><br>经营现金流仍强，净流出主要来自还款、分红和回购</td>
+      </tr>
+      <tr>
+        <td><strong>雷赛智能</strong></td>
+        <td><span class="tag mid">需关注</span><br>9M归母+86.80%，但CFO −0.515亿元、同比−127.01%</td>
+        <td><span class="tag mid">需关注</span><br>存货6.24亿元、较年初+33.22%，公司说明为策略备货</td>
+        <td><span class="tag good">未见异常</span><br>扣非+87.81%，非经常性损益仅0.077亿元</td>
+        <td><span class="tag good">未见异常</span><br>已查公告未见重大治理异常</td>
+        <td><span class="tag mid">需关注</span><br>定增拟募资不超11.44亿元，发行数量上限为发行前股本30%</td>
+      </tr>
+      <tr>
+        <td><strong>绿的谐波</strong></td>
+        <td><span class="tag mid">需关注</span><br>归母+31.25%，CFO由上年同期+0.47亿元转至−0.17亿元</td>
+        <td><span class="tag good">未见异常</span><br>应收、存货增幅低于H1收入+38.64%；仍需看库龄</td>
+        <td><span class="tag mid">需关注</span><br>H1非经常性收益约0.12亿元，约占归母17%</td>
+        <td><span class="tag mid">需关注</span><br>2025年报更正及问询涉及订单、客户和关联方资金往来；未认定造假</td>
+        <td><span class="tag mid">需关注</span><br>既有募投项目进度仅6.08%并延期至2028年底；另有H股筹划</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <p><strong>解读：</strong>三家公司均未出现“两项以上红灯”的直接否决信号，但雷赛的现金流／摊薄、绿的的治理／募投效率、汇川的应收／毛利率都需要成为后续研究的硬闸门。高估值只提高验证门槛，不能单独写成退出结论。</p>
+  </div>
+</section>
+
+<section class="section" id="market">
+  <div class="chapter-no">Section 04 · Narrative, price &amp; funds</div>
+  <h2>四、市场叙事与拥挤度：强反弹发生在弱中期趋势里</h2>
+  <p class="takeaway">10月23日是近乎饱和的短周期普涨，但固定样本年内中位数仍为负。市场正在给“未来人形利润的期权”更高弹性，对已有工业利润的公司给较低倍数；这是纯度交易，不是全面业绩交易。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>类型</th><th>已确认事实</th><th>解释边界</th></tr></thead>
+    <tbody>
+      <tr><td><strong>官方事实</strong></td><td>工业机器人前三季度产量+29.1%；H1人形整机超400款、产量超4万台；上海提出2028年8,000台进厂；首批6项国家标准发布并于2027-04-01实施。<a href="#s1">[S1]</a><a href="#s2">[S2]</a><a href="#s3">[S3]</a><a href="#s4">[S4]</a></td><td>证明产业进入生产和场景验证，不证明任何具体公司已取得大额订单、利润或高回报。</td></tr>
+      <tr><td><strong>公司披露</strong></td><td>雷赛预计机器人订单2—3亿元；汇川工业机器人份额9.2%；宇树2025年人形收入8.68亿元；兆威提示人形收入不足H1营收1%；均普机器人收入占5.25%但仍亏损。</td><td>必须保留“预计、占比、批量、下线、确认收入”的区别。</td></tr>
+      <tr><td><strong>媒体／卖方解释</strong></td><td>券商将行情归因于超跌修复、特斯拉量产准备、OpenAI/物理AI进展、政策与标准催化；部分观点判断机器人是四季度主线。</td><td>这是市场解释和策略观点，不能替代客户采购与公司财报。</td></tr>
+      <tr><td><strong>未证实传播</strong></td><td>关于“某北美客户已向具体A股公司追加订单/独家定点”的传播，本次未取得公司公告、客户确认或可核验金额。</td><td>不纳入定价事实；后续只认公告或客户文件。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>广度、相对强弱与资金</h3>
+  <div class="signal-grid">
+    <div class="signal"><b>10月23日固定样本</b><strong>39 / 39 上涨</strong><span>中位数 +8.49%</span></div>
+    <div class="signal"><b>近5日中位数</b><strong>+19.64%</strong><span>38 / 39 上涨</span></div>
+    <div class="signal"><b>年内中位数</b><strong>−18.38%</strong><span>仅 12 / 39 上涨</span></div>
+    <div class="signal"><b>位于20日均线上方</b><strong>34 / 39</strong><span>短期结构转强，但不是长期广度</span></div>
+  </div>
+  <p class="src">固定样本由前一版科技图谱35家与中游代表补充至40只，剔除复权历史不足的鼎智科技后为39只；上涨家数、5日和年内收益、20日均线位置均由2026-10-23行情计算。该样本用于观察板块结构，不等同于全部122只概念股，也不构成指数收益。</p>
+  <div class="bar-list">
+    <div class="bar-row"><span>人形机器人 10/23</span><div class="bar-track"><div class="bar" style="width:66%"></div></div><span class="bar-val">+4.92%</span></div>
+    <div class="bar-row"><span>创业板指 10/23</span><div class="bar-track"><div class="bar blue" style="width:55%"></div></div><span class="bar-val">+4.16%</span></div>
+    <div class="bar-row"><span>机器人概念 10/23</span><div class="bar-track"><div class="bar blue" style="width:50%"></div></div><span class="bar-val">+3.72%</span></div>
+    <div class="bar-row"><span>上证指数 10/23</span><div class="bar-track"><div class="bar amber" style="width:12%"></div></div><span class="bar-val">+0.89%</span></div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>市场指标（2026-10-23收盘）</th><th>机器人概念 BK1090</th><th>人形机器人 BK1184</th><th>解释</th></tr></thead>
+    <tbody>
+      <tr><td>成交额 / 换手率 / 量比</td><td class="num">约3,440.7亿元 / 2.66% / 1.57</td><td class="num">约2,041.6亿元 / 3.82% / 1.67</td><td>人形弹性更强，成交和换手更拥挤</td></tr>
+      <tr><td>当日主力净流入</td><td class="num">+59.91亿元</td><td class="num">+71.43亿元</td><td>脉冲式回流，不能直接外推为持续增仓</td></tr>
+      <tr><td>5日 / 10日主力净额</td><td class="num">−47.75亿元 / —</td><td class="num">+11.04亿元 / −82.32亿元</td><td>短中期资金方向不一致；人形10日仍大幅流出</td></tr>
+      <tr><td>60日 / 年初至今涨跌</td><td class="num">+3.70% / −10.36%</td><td class="num">+4.12% / −12.85%</td><td>相对创业板显著更强：同期创业板60日−24.93%、年初至今−16.20%</td></tr>
+      <tr><td>当周ETF资金</td><td colspan="2">机器人ETF易方达、博时分别净流入约12.45亿元、7.59亿元</td><td>被动资金在承接，但主动高弹性资金和ETF并非同一逻辑</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">板块成交与资金来自东方财富板块页，ETF资金来自媒体统计；口径可能因样本与统计时间而不同，本报告不将不同指数拼接成一个“总资金”。<a href="#s21">[S21]</a></p>
+
+  <h3>市场正在交易“纯度、稀缺和弹性”</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>公司</th><th>2026-10-23收盘价</th><th>当日涨跌</th><th>总市值</th><th>PE TTM</th><th>为什么是当前价格样本</th></tr></thead>
+    <tbody>
+      <tr><td>雷赛智能 002979</td><td class="num">54.15元</td><td class="num">+9.99%</td><td class="num">171.13亿元</td><td class="num">46.96×</td><td>机器人订单与Q3业绩同时被交易</td></tr>
+      <tr><td>汇川技术 300124</td><td class="num">53.50元</td><td class="num">+7.19%</td><td class="num">1,449.78亿元</td><td class="num">29.64×</td><td>真实工业机器人份额，但主题纯度被大集团稀释</td></tr>
+      <tr><td>双环传动 002472</td><td class="num">41.03元</td><td class="num">+7.21%</td><td class="num">348.75亿元</td><td class="num">27.44×</td><td>减速器向上，但汽车齿轮仍是更大基本盘</td></tr>
+      <tr><td>绿的谐波 688017</td><td class="num">290.00元</td><td class="num">+12.05%</td><td class="num">531.66亿元</td><td class="num">376.90×</td><td>谐波减速器纯度高，价格支付了远期增长</td></tr>
+      <tr><td>宇树科技-W 688836</td><td class="num">624.00元</td><td class="num">+20.00%</td><td class="num">2,523.86亿元</td><td class="num">431.99×</td><td>整机龙头＋仅7.44%的初始流通盘，价格弹性最大</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">价格、涨幅、市值和PE为2026-10-23收盘的行情快照；PE为行情商口径，可能与公司公告采用的中证指数时点不同。股价不是研究评级。<a href="#s23">[S23]</a></p>
+
+  <div class="callout risk">
+    <p><strong>这轮反弹的脆弱点：</strong>公司公告已经直接反驳部分“纯度”叙事。兆威在机器人收入不足H1营收1%时，5个交易日仍涨50.11%；宇树在PE约432倍、流通盘仅7.44%的状态下单日涨20%；鸣志机器人相关收入占比约9%，PE约351倍。价格的短期弹性远快于财报验证，追涨风险与产业方向是否正确是两个问题。<a href="#s15">[S15]</a><a href="#s16">[S16]</a><a href="#s17">[S17]</a></p>
+  </div>
+</section>
+
+<section class="section" id="catalysts">
+  <div class="chapter-no">Section 05 · Catalysts &amp; verification</div>
+  <h2>五、催化剂与验证登记：Q3是筛掉概念、筛选兑现的第一个窗口</h2>
+  <p class="takeaway">未来几天最重要的不是新增发布会，而是三季报能不能把订单变成收入、把收入变成利润和现金流。政策目标和海外链主进展只能改变预期，不能替代A股公司披露。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>日期 / 状态</th><th>事件</th><th>类型</th><th>验证阈值与先行指标</th><th>判断如何变化</th></tr></thead>
+    <tbody>
+      <tr><td>2026-10-27<br><span class="src">已确认</span></td><td>汇川技术Q3报告及15:00业绩说明会；双环、拓斯达、奥普特、奥比中光等预约披露</td><td>已确认日程</td><td>汇川累计收入增速≥15%、新兴产业保持较快增长且CFO降幅收窄；双环“减速器及其他”仍≥20%且现金流覆盖净利；拓斯达分部毛利率停止恶化</td><td>若只有收入增长、毛利率和CFO继续恶化，维持“研究而非兑现”；若利润与现金流同步改善，上调证据级别 <a href="#s5">[S5]</a><a href="#s19">[S19]</a></td></tr>
+      <tr><td>2026-10-29<br><span class="src">预约，可能调整</span></td><td>宇树、兆威、三花、今天国际、新松等预约披露</td><td>条件性日程</td><td>宇树扣非与CFO是否修复；兆威机器人业务是否单列；今天国际机器人毛利能否改善</td><td>继续增收不增利则降低“整机已商业化”的财务权重；出现单列收入与订单则上调 <a href="#s14">[S14]</a><a href="#s16">[S16]</a></td></tr>
+      <tr><td>2026-10-30<br><span class="src">预约，可能调整</span></td><td>拓普、埃斯顿、柯力等预约披露</td><td>条件性日程</td><td>拓普执行器收入是否超过H1的0.14亿元；柯力机器人传感器能否由销量转成单列收入；埃斯顿国内收入和CFO</td><td>机器人收入占比跨过5%且毛利稳定，才从边缘候选升至核心研究</td></tr>
+      <tr><td>2026-10-31<br><span class="src">预约，可能调整</span></td><td>绿的谐波Q3</td><td>条件性日程</td><td>累计收入增速≥30%、Q3单季收入≥1.75亿元、CFO不再恶化；更新募投与H股进度</td><td>收入、订单和现金流同时改善可缓和治理折价；若仍只有增速没有回款，维持中高研究、低财务置信</td></tr>
+      <tr><td>2026Q4<br><span class="src">官方预期</span></td><td>人形机器人全年产量冲击10万台；实景实训项目进入阶段交付</td><td>产业目标</td><td>同时核验产量、销量、验收、连续运行时率、维护成本和复购；不把“下线”写成“销售”</td><td>产量达标但多数闲置或未验收，需求叙事降级；重复采购与维保成本下降，证据上调 <a href="#s2">[S2]</a></td></tr>
+      <tr><td>2027-04-01<br><span class="src">已确认生效</span></td><td>首批6项人形机器人国家标准实施</td><td>规则催化</td><td>标准认证是否带动新增采购；测试、本体和零部件企业能否形成收费项目</td><td>标准提高门槛，利好可验证的一致性供给；若仅是合规成本，短期不形成收入 <a href="#s4">[S4]</a></td></tr>
+      <tr><td>到2028年<br><span class="src">政策目标</span></td><td>上海推动8,000台人形机器人进工厂</td><td>条件性事件</td><td>公开招标、采购主体、验收结果、复购和单位作业成本</td><td>若长期停留在目标与展演，下游ROI证伪；若出现标准合同与复购，整机与零部件同步受益 <a href="#s3">[S3]</a></td></tr>
+      <tr><td>约2027年末<br><span class="src">公司前瞻</span></td><td>特斯拉Optimus对外交付目标</td><td>条件性事件</td><td>外部客户、销量、ASP、BOM供应商、售后与安全记录</td><td>只有真实交付才可能形成A股供应商订单；当前“早期生产”不足以证明采购量 <a href="#s22">[S22]</a></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>本报告的核验阈值</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>对象</th><th>关键基线</th><th>使研究排序上调</th><th>使研究排序下调</th></tr></thead>
+    <tbody>
+      <tr><td>雷赛智能</td><td>全年机器人订单预计2—3亿元；机器人收入约占全年营收十分之一</td><td>Q4机器人收入接近订单规模、CFO转正；定增资金按项目落地且摊薄可控</td><td>订单未转收入、存货和应收继续快增、CFO连续为负或发行比例接近上限</td></tr>
+      <tr><td>汇川技术</td><td>H1工业机器人份额9.2%、新兴产业收入14.67亿元</td><td>Q3收入≥15%、新兴业务增长与现金流同步；人形开始单独披露</td><td>国内机器人份额下降、新兴产业增速回落、应收/存货快于收入且CFO恶化</td></tr>
+      <tr><td>双环传动</td><td>H1减速器及其他4.40亿元、同比+26.18%</td><td>H2同类收入≥4.4亿元、毛利稳定、应收存货慢于收入，资本开支转固效率改善</td><td>扣非继续下降、长期借款和在建工程扩张而未形成收入、机器人客户仍不可穿透</td></tr>
+      <tr><td>绿的谐波</td><td>H1收入3.49亿元、归母0.70亿元、CFO −0.17亿元</td><td>Q3单季收入≥1.75亿元、CFO转正；订单、客户和产能利用率同步改善</td><td>收入高增长但CFO持续为负、募投继续延期、H股融资造成新增供给、治理事项再出现</td></tr>
+      <tr><td>宇树科技-W</td><td>2025人形收入8.68亿元；H1扣非2.44亿元/−19.34%、CFO 2.32亿元/−32.53%</td><td>H2扣非恢复增长、CFO改善、客户复购和人类生产任务收入占比提升</td><td>增收继续不增利、ASP下降快于成本、返修/停机数据恶化、限售供给增加</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="section" id="exit">
+  <div class="chapter-no">Section 06 · Exit &amp; monitoring</div>
+  <h2>六、退出与监控：分别判断产业、价格和治理，不把高估写成唯一理由</h2>
+  <p class="takeaway">主题投资最容易犯的错误，是用“产业方向确定”替代“公司利润确定”，又用“估值高”替代“基本面失效”。本报告把四类失效分开记录。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>失效类型</th><th>具体监控</th><th>触发条件</th><th>解释</th></tr></thead>
+    <tbody>
+      <tr><td><strong>基本面失效</strong></td><td>机器人收入、订单、ASP、毛利率、经营现金流、库存和应收</td><td>连续两个报告期只有订单/送样无收入；收入增长但毛利率和CFO同步恶化；降价快于成本下降</td><td>技术有进展不等于商业化成功；订单只有转化为现金才有股东价值</td></tr>
+      <tr><td><strong>叙事失效</strong></td><td>客户复购、连续运行、工厂验收、特斯拉外部交付、上海采购</td><td>持续演示/试点却无复购；终端闲置、维护成本高；客户明确不做规模部署</td><td>“万台下线”不能替代“万台在岗”；本报告更看重运行时率和单位任务成本</td></tr>
+      <tr><td><strong>价格与资金失效</strong></td><td>5日上涨广度、20日均线上方比例、成交/换手、主力净额、相对强弱</td><td>5日广度跌破50%；20日均线上方比例跌破40%；10日主力净流出扩大；高位换手后无法维持</td><td>这是交易结构风险，不是产业结论；适合作为跟踪触发，不作为单独基本面判断</td></tr>
+      <tr><td><strong>治理／融资／筹码失效</strong></td><td>再融资、H股、转债、解禁、减持、质押、年报更正、关联交易</td><td>融资摊薄与收入兑现不匹配；募投延期；关联方或订单口径再次被问询；低流通盘叠加高换手</td><td>治理折价是真实风险溢价，但需以公告事实为准，不能把问询直接等同于违规</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>五个核心候选的专属退出线</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>公司</th><th>基本面失效</th><th>资金结构失效</th></tr></thead>
+    <tbody>
+      <tr><td><strong>雷赛智能</strong></td><td>全年机器人订单没有转化为收入；Q4库存和应收继续快于收入；经营现金流连续为负，且机器人业务毛利率下降</td><td>定增按接近30%股本上限发行、发行后CFO仍未改善；高位换手放大但相对强弱掉队</td></tr>
+      <tr><td><strong>汇川技术</strong></td><td>工业机器人份额跌破9%或国内机器人需求转弱；新兴产业发展增速低于70%且集团利润、CFO继续下滑</td><td>核心自动化持仓拥挤，ETF净流出、板块下跌时汇川持续跑输；资本开支或应收再次显著快于收入</td></tr>
+      <tr><td><strong>双环传动</strong></td><td>H2减速器及其他收入低于4.4亿元；扣非继续下降；在建工程/长期借款扩张但产能利用率不升</td><td>资本开支与债务扩张快于现金流；收入增速和资金相对强弱同时回落</td></tr>
+      <tr><td><strong>绿的谐波</strong></td><td>Q3单季收入低于1.75亿元、CFO仍为负；订单/客户口径再次被问询；H股或募投新增供给不能对应订单</td><td>高PE叠加H股摊薄或募投延期；成交萎缩后股价跌破关键区间，且10日主力净流出扩大</td></tr>
+      <tr><td><strong>宇树科技-W</strong></td><td>H2扣非继续下降；ASP下降快于成本；生产型客户复购和验收不足；返修/停机数据无法改善</td><td>仅7.44%流通盘造成的高换手无法延续；新增限售供给接近；公司继续用高估值交易但现金流和扣非背离</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>最终研究判断</h3>
+  <div class="two-col">
+    <div class="mini-card">
+      <h4>如果只选一个下一步研究问题</h4>
+      <p>先查<strong>雷赛智能</strong>的订单、回款和再融资资金用途，因为它同时具备“真实增长、机器人订单和现金流反证”，最容易用公开数据验证或推翻。</p>
+      <p>如果更关注平台稳健性，则先查<strong>汇川技术</strong>的Q3机器人份额、集团利润率和人形收入披露；如果关注产业纯度，则跟进<strong>绿的谐波</strong>的订单、治理和现金流。</p>
+    </div>
+    <div class="mini-card">
+      <h4>结论的置信度</h4>
+      <p><span class="tag good">产业方向：较高</span> 工业机器人生产、人形小批生产和政策场景均有可核验证据。</p>
+      <p><span class="tag mid">公司利润：中等</span> 多数公司仍不拆分机器人收入；不能用行业产量补公司数据。</p>
+      <p><span class="tag mid">市场持续性：中等偏低</span> 当日和5日广度极强，但中期广度和资金净额不同步。</p>
+    </div>
+  </div>
+
+  <div class="callout goodbox">
+    <p><strong>一句话收口：</strong>机器人是真实产业趋势，但A股当前的确定性主要来自工业机器人、运控和精密传动的现有业务，人形机器人仍是“可见量产、未见普遍利润”的第二曲线。真正值得研究的是能把订单、ASP、毛利和现金流连成一条线的公司。</p>
+  </div>
+
+  <div class="foot">
+    <p><strong>方法与限制：</strong>本报告使用 Serenity 产业链瓶颈分析、市场叙事与资金结构、五红灯财务快筛和退出条件；不做DCF、EPV、EVA、WACC、目标价或收益预测。财务数据分别采用2026Q3、2026H1和公司公告口径；宇树2026H1为上市公告书披露的未经审计数据。行情为2026-10-23收盘，研究截止2026-10-25。未获取到多数公司的客户名称、机器人专属收入、ASP、订单取消率和完整解禁时间表，均保留为“未获取到”，不以推测补齐。</p>
+    <p><strong>免责声明：</strong>本文用于研究，不构成投资建议、收益承诺或个性化配置建议。研究优先级不是买卖排序；请独立核对公司公告、交易所文件、产品交付和自身风险承受能力。</p>
+  </div>
+</section>
+
+<section class="section" id="sources">
+  <div class="chapter-no">Appendix · Sources</div>
+  <h2>来源与时间戳</h2>
+  <p class="note">以下链接优先使用公司公告、交易所、部委或可访问的公告镜像。PDF页码为主文提供的核对线索，页面渲染可能因版本不同而变化。</p>
+  <ol class="source-list">
+    <li id="s1"><strong>国家统计局</strong>《前三季度经济运行总体平稳 高质量发展取得新成效》，2026-10-19，工业机器人产品产量同比+29.1%。<a href="https://www.stats.gov.cn/sj/zxfb/202610/t20261019_1965618.html">原始页面</a></li>
+    <li id="s2"><strong>国务院新闻办公室 / 工业和信息化部</strong>，2026-10-19发布会：H1人形机器人整机产品超400款、产量超4万台，预计全年超10万台，300多个重点场景。<a href="https://finance.eastmoney.com/a/202610193900245723.html">公开转述</a>。发布会直链本次自动核验返回521，因此保留可访问的转述链接，并明确标为官方口径转述。</li>
+    <li id="s3"><strong>上海市政府</strong>，2026-10-13：到2028年推动8,000台人形机器人进工厂、工业机器人密度600台/万人。<a href="https://www.shanghai.gov.cn/nw4411/20261013/361be69ddd6843c9933e1800d43ab20c.html">政策报道</a></li>
+    <li id="s4"><strong>中国日报财经</strong>，2026-10-16：首批6项人形机器人国家标准发布，2027-04-01实施。<a href="https://caijing.chinadaily.com.cn/a/202610/16/WS6ad19c17e4b09a165c78f98b.html">标准报道</a></li>
+    <li id="s5"><strong>汇川技术2026年半年度报告</strong>，2026-08-29，PDF第8、13、18、20、26–29页；2026Q3业绩说明会公告，2026-10-19。<a href="https://static.cninfo.com.cn/finalpage/2026-08-29/1225524610.PDF">半年报</a>；<a href="https://data.eastmoney.com/notices/detail/300124/AN202610191830681908.html">Q3说明会公告</a></li>
+    <li id="s6"><strong>雷赛智能2026年三季度报告</strong>，公告日期2026-10-23：累计营收19.09亿元、归母2.99亿元、扣非2.91亿元、CFO −0.52亿元；Q3单季营收6.61亿元、归母1.06亿元。<a href="https://data.eastmoney.com/notices/detail/002979/AN202610221830798852.html">公告</a></li>
+    <li id="s7"><strong>雷赛智能投资者关系活动记录表</strong>，2026-10-16：机器人业务约占全年营收十分之一，全年机器人相关订单预计2—3亿元；无框力矩电机在手订单超100万台；关节模组在手上单超6万台。<a href="https://pdf.dfcfw.com/pdf/H2_AN202610161830587780_1.pdf">原始记录</a></li>
+    <li id="s8"><strong>雷赛智能向特定对象发行股票募集说明书（注册稿）</strong>，2026-10-09：拟募集不超过11.44亿元，发行数量不超过发行前总股本30%。<a href="https://data.eastmoney.com/notices/detail/002979/AN202610081830211791.html">公告</a></li>
+    <li id="s9"><strong>双环传动2026年半年度报告</strong>，2026-08-26，第2–3、7、10、14–16、25、35页：减速器及其他收入4.40亿元、同比+26.18%、占9.67%；CFO 11.12亿元。<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225504495.PDF">原始PDF</a></li>
+    <li id="s10"><strong>绿的谐波2026年半年度报告</strong>，2026-08-27，第1–3、6、8–11、18–25页：营收3.49亿元、归母0.70亿元、CFO −0.17亿元；谐波、丝杠、机电一体化产品与产能扩张。<a href="https://static.cninfo.com.cn/finalpage/2026-08-27/1225513912.PDF">原始PDF</a></li>
+    <li id="s11"><strong>绿的谐波2025年年度报告（更正后）及问询回复</strong>，2026-07-10：机器人零部件收入4.23亿元、占比约74%；新签订单7.05亿元；理论产能64万台、利用率67.76%；年报更正、订单口径与关联方资金往来核查。<a href="https://static.cninfo.com.cn/finalpage/2026-07-10/1225418036.PDF">年报</a>；<a href="https://static.cninfo.com.cn/finalpage/2026-07-10/1225418044.PDF">问询回复</a></li>
+    <li id="s12"><strong>绿的谐波H股筹划及募投延期公告</strong>，2026-07-10、2026-08-27：A股募投投入进度、延期至2028年底及H股上市筹划。<a href="https://data.eastmoney.com/notices/detail/688017/AN202607091826851661.html">募投公告</a>；<a href="https://data.eastmoney.com/notices/detail/688017/AN202608261828493082.html">H股筹划</a></li>
+    <li id="s13"><strong>宇树科技招股说明书</strong>，2026-08-14：2025年人形机器人收入8.68亿元、占主营51.78%，销量5,215台、出货5,511台；平均售价由59.34万元降至16.64万元，毛利率由87.67%降至63.18%；境外收入与进口供应风险。<a href="https://static.cninfo.com.cn/finalpage/2026-08-14/1225472621.PDF">招股书</a></li>
+    <li id="s14"><strong>宇树科技上市公告书</strong>，2026-08-18：2026H1实际（未经审计）营收11.52亿元、归母2.74亿元、扣非2.44亿元/−19.34%、CFO 2.32亿元/−32.53%；发行后总股本4.0446亿股、初始流通3,008.77万股、仅7.44%。<a href="https://pdf.dfcfw.com/pdf/H2_AN202608171828062024_1.pdf">原始公告</a></li>
+    <li id="s15"><strong>宇树科技股票交易异常波动公告</strong>，2026-10-21：10月20日PE 388.25倍，高于通用设备行业39.51倍；公司提示人形商业化早期与估值回归风险。<a href="https://data.eastmoney.com/notices/detail/688836/AN202610201830723863.html">公告</a></li>
+    <li id="s16"><strong>兆威机电股票交易异常波动公告</strong>，2026-10-24：人形机器人收入不超过2026H1营收1%，近期无新增该领域大客户或大额订单；10月22–23日累计涨幅偏离超20%。<a href="https://data.eastmoney.com/notices/detail/003021/AN202610231830845865.html">公告</a></li>
+    <li id="s17"><strong>鸣志电器异动回应（媒体转述公司公告）</strong>，2026-10-24：机器人（含人形）应用约H1营收9%，预计2026年不构成重大影响。<a href="https://finance.eastmoney.com/a/202610233906555415.html">公开转述</a></li>
+    <li id="s18"><strong>均普智能2026年半年度报告</strong>，2026-08-27，第4、6、20–28、43–47页：900台具身机器人下线、收入6,452.36万元/占5.25%、归母亏损2,557.35万元；定增结果公告2026-10-24。<a href="https://static.cninfo.com.cn/finalpage/2026-08-27/1225512292.PDF">半年报</a>；<a href="https://pdf.dfcfw.com/pdf/H2_AN202610231830847014_1.pdf">定增结果</a></li>
+    <li id="s19"><strong>拓斯达2026年半年度报告</strong>，2026-08-21，第8–9、20–25、34页：工业机器人及自动化应用收入7.07亿元/+121.62%，分部毛利率下降10.46pp；人形“小拓”小批验证。<a href="https://static.cninfo.com.cn/finalpage/2026-08-21/1225486558.PDF">原始PDF</a></li>
+    <li id="s20"><strong>拓普集团2026年半年度报告</strong>，2026-08-28，第8、12、14、16页：机器人执行器收入1,405万元、占营收0.1%，仍为小批量；集团汽车业务利润承压。<a href="https://static.cninfo.com.cn/finalpage/2026-08-28/1225521853.PDF">原始PDF</a></li>
+    <li id="s21"><strong>东方财富行情/资金与公开市场转述</strong>，2026-10-23收盘：机器人概念、人形机器人板块涨跌、成交、换手、主力净额；ETF资金、商务部具身智能消费数据与Q3预约日期。行情入口：<a href="https://quote.eastmoney.com/bk/90.BK1090.html">机器人概念</a>、<a href="https://quote.eastmoney.com/bk/90.BK1184.html">人形机器人</a>；<a href="https://finance.eastmoney.com/a/202610243907128885.html">中国证券报市场拆解</a>；<a href="https://finance.eastmoney.com/a/202610233906038990.html">商务部数据转述</a></li>
+    <li id="s22"><strong>Tesla 2026 Q3 10-Q及业绩材料</strong>，2026-10-22：Optimus早期生产与量产准备；未披露外部销量、客户采购量或A股订单。<a href="https://www.sec.gov/Archives/edgar/data/1318605/000162828026066775/tsla-20260930.htm">SEC 10-Q</a>；<a href="https://www.sec.gov/Archives/edgar/data/1318605/000162828026066738/exhibit9914.htm">业绩材料</a></li>
+    <li id="s23"><strong>腾讯证券行情接口</strong>，2026-10-23收盘：五家公司收盘价、涨跌幅、总市值与PE TTM；仅用于日期化市场背景。<a href="https://qt.gtimg.cn/q=sz300124,sz002472,sh688017,sz003021,sh601689,sz002050,sh688306,sz002747,sz300607,sh688836,sz002979">行情快照</a></li>
+    <li id="s24"><strong>柯力传感2026年半年度报告</strong>，2026-08-28，第5、8–13页：六维力传感器H1销售超2,000只、超过2025全年，已向90多家机器人企业送样并取得部分批量订单。<a href="https://static.cninfo.com.cn/finalpage/2026-08-28/1225518537.PDF">原始PDF</a></li>
+  </ol>
+</section>
+
+</main>
+
+<!-- ↓ 报告导航（通用组件，自动挂载；新增报告无需修改本文件） -->
+<script src="../scripts/report-nav.js" defer></script>
+</body>
+</html>
