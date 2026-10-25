@@ -134,6 +134,41 @@ test('partial redemption matches FIFO lots and computes realized pnl', (t) => {
   assert.equal(restored.allocations.length, 0);
 });
 
+test('portfolio reads do not rewrite persisted trade allocations', (t) => {
+  const { repository, store } = openTemp(t);
+  buy(store, { amount: 4000 });
+  buy(store, {
+    amount: 6000,
+    trade_date: '2026-10-02',
+    confirm_date: '2026-10-02',
+  });
+  store.createTrade({
+    trade_date: '2026-10-10',
+    confirm_date: '2026-10-10',
+    trade_type: 'redeem',
+    status: 'confirmed',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 5000,
+    settlement_amount: 5050,
+    source: 'manual',
+    notes: '',
+  });
+  const selectAllocations = repository.db.prepare(
+    'SELECT * FROM trade_allocations ORDER BY id',
+  );
+  const before = selectAllocations.all();
+  assert.equal(before.length, 2);
+
+  store.getPortfolio();
+  store.getOverview('2026-10-19');
+  store.getPortfolio();
+
+  assert.deepEqual(selectAllocations.all(), before);
+});
+
 test('switch redeems source lot and creates target lot', (t) => {
   const { store } = openTemp(t);
   buy(store, { amount: 10000 });
