@@ -1,3 +1,35 @@
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 3
+interrupt_message = true
+
+[features]
+hooks = true
+
+[[hooks.SubagentStart]]
+
+[[hooks.SubagentStart.hooks]]
+type = "command"
+command = 'node "D:/codex/钱多多财富工作台/scripts/agent-guard.mjs" hook subagent-start'
+command_windows = 'node "D:/codex/钱多多财富工作台/scripts/agent-guard.mjs" hook subagent-start'
+timeout = 5
+statusMessage = "建立子 Agent 运行预算"
+additionalContextLimit = 1200
+
+[[hooks.PreToolUse]]
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'node "D:/codex/钱多多财富工作台/scripts/agent-guard.mjs" hook pre-tool-use'
+command_windows = 'node "D:/codex/钱多多财富工作台/scripts/agent-guard.mjs" hook pre-tool-use'
+timeout = 5
+statusMessage = "检查子 Agent 截止时间与工具预算"
+
+[[hooks.SubagentStop]]
+
+[[hooks.SubagentStop.hooks]]
+type = "command"
+command = 'node "D:/codex/钱多多财富工作台/scripts/agent-guard.mjs" hook subagent-stop'
+command_windows = 'node "D:/codex/钱多多财富工作台/scripts/agent-guard.mjs" hook subagent-stop'
+timeout = 5
+statusMessage = "检查子 Agent 收口格式"

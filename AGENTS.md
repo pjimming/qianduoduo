@@ -22,8 +22,13 @@
 - 所有子 Agent 继承并遵守本文件、相关 Skill 和权限约束。主 Agent 必须汇总所需结果，核对事实、冲突和文件状态，并完成统一验证后交付，不得把未经核验的子 Agent 结论直接作为最终结果。
 - 多 Agent 协作不得扩大用户明确限定的范围，也不得改变 R2 与股票研究的数据隔离、财务事务边界和报告发布约束。
 - 子 Agent 派发必须遵守 [.codex/agents/TASK_PROTOCOL.md](.codex/agents/TASK_PROTOCOL.md)：每次使用唯一 `TASK_ID`，在 `run/agent-briefs/<TASK_ID>.md` 写入完整任务契约，再直接调用 `spawn_agent`；需要当前会话上下文的任务必须显式使用 `fork_turns="all"`，禁止使用 `fork_turns="none"`。
+- 任务简报必须先运行 `npm run agent:brief -- run/agent-briefs/<TASK_ID>.md` 校验。校验通过会建立仅 2 分钟有效的 reservation，主 Agent 必须立即派发；同一 Agent 类型只允许一个待派发 reservation，未派发时可执行 `npm run agent:reservation:cancel -- <TASK_ID>` 取消。简报必须包含带时区硬截止、运行防护元数据、40%/70% 检查点、80% 收口、工具调用预算和 `recursion_allowed=false`。
+- `.codex/config.toml` 的 `SubagentStart`、`PreToolUse` 和 `SubagentStop` hooks 由 `scripts/agent-guard.mjs` 执行运行时防护：探索 10 分钟/30 次、实现 30 分钟/80 次、审查 20 分钟/50 次、综合研究 45 分钟/120 次；运行截止取简报绝对截止与角色预算中更早者。没有有效 reservation 时 fail-closed；达到 80% 后禁止 Bash 且只允许直接用只读工具整理结果，达到预算或截止时间后冻结工具，并直接拒绝子 Agent 的 `spawn_agent`。
 - 需要上下文的任务不得通过批量工具包装器创建子 Agent。应逐个直接创建，让各子 Agent 在后台并行运行；唯一任务简报和完整会话继承同时存在，不能只依赖临时提示词。
-- 子 Agent 最终答复首行必须是 `CONTEXT_OK <TASK_ID>`，并复述任务目标；缺失、错 ID、沿用旧任务或要求重新提供已知目标时，一律判定为上下文失败，停止该 Agent 并重新派发。不要用 `followup_task` 修补已经上下文失败的任务。
+- 每次派发后 30 秒内必须用 `npm run agent:status -- --json --require-task <TASK_ID>` 确认同一 `taskId`、同一角色且 `briefVerified=true`；命令非零退出或未出现时立即中断并判定当前 Codex 会话未加载 hooks，重启后使用新 `TASK_ID`。主 Agent 必须使用 `wait_agent` 做 5–10 分钟有界等待，超时后检查 `list_agents` 与运行状态，不得无限等待；任务阻塞、重复失败或到硬截止时立即调用 `interrupt_agent`。
+- 中断后只允许一次禁止调用工具的 5 分钟收口请求；答复必须逐字写出“目标复述：<简报目标>”和四项状态，仍不合格即结束，不继续追问。每次完成、中断或确认异常终止后运行 `npm run agent:cleanup`，清理未经过 `SubagentStop` 的孤立运行目录和过期 reservation。
+- 子 Agent 需要继续拆分时不得自行递归，必须在最终状态中回报，由主 Agent 使用新 `TASK_ID`、新简报和新预算单独派发；旧 Agent 的剩余时间与工具预算不得结转。
+- 子 Agent 最终答复首行必须使用准确 `CONTEXT_OK <TASK_ID>`，随后逐字写出“目标复述：<简报目标>”及“已完成 / 未完成 / 可恢复状态 / 剩余风险”；缺失、错 ID、改写目标、沿用旧任务或要求重新提供已知目标时，一律判定为上下文失败，停止该 Agent 并重新派发。不要用 `followup_task` 修补已经上下文失败的任务。
 
 ### 记忆维护（强制）
 
