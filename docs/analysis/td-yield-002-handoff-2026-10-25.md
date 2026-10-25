@@ -1,0 +1,261 @@
+# TD-YIELD-002 阶段 6 会话交接（2026-10-25）
+
+## 结论先行
+
+`TD-YIELD-002` 的阶段 0–5 已完成，阶段 6 的代码、自动化、观察规格和参数复核入口也已落地并提交。
+
+但阶段 6 整体尚未完成：真实规格后独立样本仍为 `0/4`，优先目标为 `8`，观察台账为空。当前必须等待后续周快照，不能用规格前暖身数据、同一数据日的多份文件或测试数据补足样本。
+
+因此：
+
+- 不要宣称阶段 6 已完成；
+- 不要进入阶段 7 的正式交付闭环；
+- 不要因为等待样本而修改四桶权重、B 方案、正式排名、目标金额或提案；
+- 自动采集仍会按周运行，真实样本出现后再恢复目标并开展参数复核。
+
+当前目标框架状态：`blocked`，阻塞原因是未来真实周样本尚未产生，而不是代码或服务故障。
+
+## 当前版本
+
+- 当前分支：`main`
+- 阶段 6 基础设施提交：`b4bd08b`
+- 阶段 6 提交说明：`feat(r2): add stage-six out-of-sample observation`
+- 该阶段 6 提交已进入 `origin/main` 历史。
+- 交接文档建立时，远端后续已有 `0fe513d`（`research: add A-share robotics value-chain report`）；该股票报告提交属于并行工作，不属于 `TD-YIELD-002`。
+- 交接文档建立时，本地 `main` 与 `origin/main` 同步在 `0fe513d`。
+- 尚未创建 PR。
+- 未发现 `td-yield-002*` 本地标签。
+- 本次提交包含 25 个与阶段 6 相关的文件，不含生产数据库、个人截图或股票调研文件。
+
+股票报告及其导航生成物属于并行工作，不属于 `TD-YIELD-002`，不要擅自回退、混入阶段 6 后续提交或清理。
+
+`docs/analysis/td-yield-001-handoff-2026-10-25.md` 仍未跟踪。是否归档应在阶段 7 单独决定，不要夹带到阶段 6 提交。
+
+本交接文档应单独提交，只包含交接内容，不夹带代码、自动化、股票报告或生产数据。
+
+## 生产状态
+
+- URL：`http://127.0.0.1:8765`
+- Health：`OK`
+- Supervisor：running
+- Server：running
+- 自动启动：Startup shortcut enabled
+- 最新 stderr：0 bytes
+- `run/server.stop`、`run/daemon.stop`：不存在
+- `npm run yield:verify`：496/496 通过
+
+Server/Supervisor PID 是易变运行值，后续只通过 `npm run prod:status` 查询，不要把 PID 写入长期文档。
+
+阶段 6 的采集和复核由本地 CLI 执行。生产服务需要保持运行，以便达到复核条件后把事项写入消息中心。
+
+## 阶段 6 当前事实
+
+| 项目 | 当前值 |
+| --- | --- |
+| 观察版本 | `td-yield-002-out-of-sample-v1` |
+| cohort 版本 | `td-yield-002-cohort-v1` |
+| cohort 数量 | 689 |
+| cohort 哈希 | `a5770790afb1aef28a7d97bcca5440828a8f14457f8a94ec557e490cec849f23` |
+| 基线文件 | `data/cmb_r2_universe-2026-10-24.csv` |
+| 基线产品数据日 | `2026-10-22` |
+| 基线 SHA-256 | `618e6b7b63d497aa9008fe60bb97706fd5085fc20972a2cc821a4250d3795a22` |
+| 合格样本 | `0 / 4` |
+| 优先样本目标 | `8` |
+| 周台账 | 0 行 |
+| 复核状态 | `collecting` |
+| 正式权重已修改 | `false` |
+| 经济结果状态 | `proxy_only_pending_realized` |
+
+已有产品文件：
+
+| 文件 | 产品数据日 | 是否计入规格后样本 |
+| --- | --- | --- |
+| `data/cmb_r2_universe-2026-10-19.csv` | `2026-10-18` | 否，规格前暖身数据 |
+| `data/cmb_r2_universe-2026-10-23.csv` | `2026-10-22` | 否，与下一文件共用数据日 |
+| `data/cmb_r2_universe-2026-10-24.csv` | `2026-10-22` | 否，基线 |
+
+公开产品快照中各产品可能具有不同 `data_date`。当前规格把固定 cohort 内非空 `data_date` 的最大值作为该次样本的数据日，并在样本中保存完整日期分布；不得把分布改写成单一日期。
+
+## 已完成内容
+
+### 1. 冻结观察规格
+
+- 机器规格：`data/yield-observations/td-yield-002-observation-spec.json`
+- 固定 cohort：`data/yield-observations/td-yield-002-cohort-v1.json`
+- 空台账：`data/yield-observations/td-yield-002-weekly-ledger.jsonl`
+- 人类可读规格：`docs/analysis/td-yield-002-stage6-observation-spec-2026-10-25.md`
+
+冻结内容包括：
+
+- 固定产品代码集合；
+- 5–10 天独立周窗口；
+- cohort 原始存在率至少 90%；
+- 可评分覆盖率至少 80%；
+- short/medium/long 每桶至少 10 个排名候选；
+- 内部不变量、cash 排除、归一化权重和不可计算语义检查；
+- short 前 5% 集中度、单一窗口高分、top1/top3/top10、排名换手；
+- 31/101 天边界；
+- `667828A` 单一窗口观察；
+- 4/8 样本门槛和预注册异常阈值。
+
+不要覆盖或重新生成已经冻结的 spec/cohort。策略版本、cohort 或观察口径变化时，必须新建观察版本。
+
+### 2. 采集与复核引擎
+
+关键文件：
+
+- `lib/yield-observation.js`
+- `lib/rank-correlation.js`
+- `scripts/yield-observe.cjs`
+- `test/yield-observation.test.js`
+- `test/rank-correlation.test.js`
+
+已实现：
+
+- 同一产品数据日幂等；
+- 独占锁和临时文件原子替换；
+- 扩池产品过滤；
+- cohort 代码清单与哈希复验；
+- 低覆盖、分桶不足和内部不变量失败拒样；
+- `cadence_broken` 和 `ledger_invalid`；
+- 4–7 个样本静默收集；
+- 达到 8 个样本时产生稳定的 `preferred_sample_count_reached` 里程碑；
+- 稀疏排名 Spearman 在共同代码上重新排序；
+- 前向披露收益 coverage 只统计有限值；
+- 观察流程永不修改正式权重、评分、目标、预算或提案。
+
+独立只读审计发现并修复了 8 项缺口，包括参数复核绕过固定 cohort、漏周后永久静默、比较窗口取错、Spearman 失真、台账质量盲信、阶段 6 报告残留预选结论、非法日期通过和前向收益 coverage 错计。
+
+### 3. 参数复核入口
+
+关键文件：
+
+- `lib/yield-parameter-review.js`
+- `scripts/yield-parameter-review.cjs`
+- `test/yield-parameter-review.test.js`
+
+阶段 6 参数复核会：
+
+- 强制读取冻结 spec/cohort；
+- 按 cohort 代码过滤每个快照，排除扩池产品；
+- 重复执行 90% 原始覆盖、80% 可评分覆盖和每桶候选数闸门；
+- 校验样本数据日不重复且符合 5–10 天间隔；
+- 在报告中记录 observation version、spec 哈希、cohort 版本、数量与哈希；
+- 输出中性复核结论，不预选“继续、调参或回退”。
+
+`yield:observe:review -- --json` 在样本足够后会给出完整的 `yield:parameter-review -- --context stage6 ...` 命令。
+
+### 4. 自动化接线
+
+| ID | 名称 | 时间 | 状态 |
+| --- | --- | --- | --- |
+| `r2` | R2产品快照每周更新 | 周一 08:30 | `ACTIVE` |
+| `r2-4` | 钱多多R2样本外观察 | 周一 08:45 | `ACTIVE` |
+
+两个任务均使用：
+
+- 模型：`deepseek-flash`
+- Reasoning：`high`
+- 项目：`e951eb9b-2b4e-4ee6-acad-a4f8cc3840af`
+- 工作目录：`D:\codex\钱多多财富工作台`
+
+本机实际提示词已同步：
+
+- `scripts/fetch-cmb-r2-all.cjs` 在产品 CSV 写入后自动尝试观察采集，并在随后刷新应用；
+- `r2-4` 在 `r2` 后 15 分钟再次幂等调用采集与复核，正常情况下会得到 `duplicate`；
+- `accepted`：追加一个独立样本；
+- `duplicate` / `not_independent`：不追加样本，不是失败；
+- `disqualified` / `error`：报告失败，不计入样本；
+- `cadence_broken`：报告并写消息中心，不自动重置基线；
+- `ledger_invalid`：报告并写消息中心，不手改 JSONL；
+- 4–7 个样本无触发：继续静默收集；
+- 4 个以上且触发异常，或达到 8 个里程碑：先写 `POST /api/inbox/confirmations`，再发短卡；
+- 消息深链：`/ledger/inbox`；
+- 里程碑使用稳定 dedupe key，不因重复运行再次堆叠。
+
+## 阶段 6 尚未完成
+
+以下项目必须等待真实时间和真实数据：
+
+- [ ] 至少 4 个、最好 8 个规格后独立周样本；
+- [ ] 基于实际样本评估 short 集中度、单一窗口高分和排名稳定性；
+- [ ] 记录 31/101 天真实边界首次出现时的分布；
+- [ ] 对照后续已实现收益，区分排名稳定性与经济结果；
+- [ ] 对 `667828A` 形成最终观察结论；
+- [ ] 达到预注册条件后执行独立参数复核；
+- [ ] 由用户决定继续、调参或回退。
+
+达到 4 个样本只表示“允许开始复核”，不表示必须改参数。任何实际改参还需要独立已实现收益证据，包括真实持有期、费用、到账空档和实际到账收益。
+
+## 下一会话接手顺序
+
+1. 阅读本文件、`TODO.md`、`TODO-TD-YIELD-002.md` 和阶段 6 人类规格。
+2. 运行 `git status --short --branch`。不要处理或提交并行产生的股票报告及其导航生成物。
+3. 运行 `npm run prod:status`，确认 Health、Supervisor、Server、stderr 和 stop marker。
+4. 运行：
+
+   ```powershell
+   npm run yield:observe:review -- --json
+   ```
+
+5. 检查最新 `data/cmb_r2_universe-*.csv` 的产品数据日；文件名日期不等于产品数据日。
+6. 若 `sample_count` 仍少于 4，不做参数结论，等待下一次周采集。
+7. 若新样本被接受，不要手改台账；下一次任务会继续累计。
+8. 若返回 `cadence_broken`，不要静默跳过或重置。由用户决定是否新建观察版本和基线。
+9. 若返回 `ledger_invalid`，不得直接修改 JSONL。先按 `ledger_issues` 修复根因。
+10. 达到 4 个以上且有异常触发，或达到 8 个里程碑时，使用 review 输出生成的 stage 6 参数复核命令。
+11. 写消息中心成功后再给用户短卡；不得自动改正式权重、排名、目标或提案。
+12. 阶段 7 只能在阶段 6 完成后正式开始。可以提前做无副作用的文档准备，但不得勾选阶段 7 或提前打标签、推送。
+
+## 常用只读命令
+
+```powershell
+git status --short --branch
+npm run prod:status
+npm run yield:verify
+npm run yield:observe:review -- --json
+npm run yield:observe -- --input data/cmb_r2_universe-2026-10-24.csv --dry-run --json
+```
+
+当前基线 dry-run 应返回 `not_independent`，因为数据日与冻结基线相同，间隔为 0 天。这是预期拒样。
+
+## 完整验证快照
+
+本次阶段 6 基础设施提交前已完成：
+
+- `npm run check`：通过
+- `npm test`：312 项通过、0 失败
+- `npm run build`：通过
+- `npm run test:e2e`：通过
+- `node --experimental-test-coverage --test`：312 项通过
+- 总覆盖率：行 89.67%、分支 75.02%、函数 89.82%
+- `lib/yield-observation.js`：行 92.18%、函数 98.96%
+- `lib/rank-correlation.js`：行/函数 100%
+- `npm run yield:verify`：496/496 通过
+
+以上是本次提交时的验证快照，不替代后续每次周采集的健康检查。
+
+## 明确禁止
+
+- 不得用 `2026-10-18`、`2026-10-22` 或同一数据日的重复文件补足 4/8 样本。
+- 不得用测试数据、扩池产品或手工构造记录作为真实观察样本。
+- 不得修改冻结 spec/cohort、阈值或观察版本。
+- 不得手改周台账、伪造 `accepted` 样本或自动重置基线。
+- 不得把下一快照披露 1M 年化写成真实持有收益。
+- 不得因单日或单次排名变化改四桶权重或 B 方案。
+- 不得自动采纳、下单、赎回或切换。
+- 不得把股票报告写入 R2 数据、候选池或本任务提交。
+
+## 阶段 7 门禁
+
+阶段 7 的文档、标签、远端推送、PR 和最终交付闭环应等待阶段 6 完成。
+
+可以提前准备但不勾选：
+
+- 文档笔误清单；
+- 兼容加权字段重复展示的取舍；
+- 隐私边界检查；
+- 远端标签核验；
+- 交接文档归档方式。
+
+远端推送、PR 和标签推送仍需单独授权。
