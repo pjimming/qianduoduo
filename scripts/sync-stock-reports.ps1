@@ -149,18 +149,32 @@ foreach ($report in $sourceReports) {
 
   $priority = $null
   $priorityDetail = $null
-  $verdictMatch = [regex]::Match($html, '<span class="verdict">(?<v>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-  if ($verdictMatch.Success) {
-    $priorityDetail = Get-CleanText $verdictMatch.Groups['v'].Value 120
-  } else {
-    $priorityMatch = [regex]::Match($html, '研究优先级[：:]\s*(?<v>[^<\r\n]{1,60})', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-    if ($priorityMatch.Success) { $priorityDetail = Get-CleanText ('研究优先级：' + $priorityMatch.Groups['v'].Value) 120 }
+  $priorityMetaMatch = [regex]::Match($html, '<!--\s*rpnav-priority:\s*(?<v>.*?)\s*-->', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+  $priorityDetailMetaMatch = [regex]::Match($html, '<!--\s*rpnav-priority-detail:\s*(?<v>.*?)\s*-->', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+  if ($priorityMetaMatch.Success) {
+    $priority = Get-CleanText $priorityMetaMatch.Groups['v'].Value 12
+  }
+  if ($priorityDetailMetaMatch.Success) {
+    $priorityDetail = Get-CleanText $priorityDetailMetaMatch.Groups['v'].Value 120
+  }
+  if ([string]::IsNullOrWhiteSpace($priorityDetail)) {
+    $verdictMatch = [regex]::Match($html, '<span class="verdict">(?<v>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($verdictMatch.Success) {
+      $priorityDetail = Get-CleanText $verdictMatch.Groups['v'].Value 120
+    } else {
+      $priorityMatch = [regex]::Match($html, '研究优先级[：:]\s*(?<v>[^<\r\n]{1,60})', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+      if ($priorityMatch.Success) { $priorityDetail = Get-CleanText ('研究优先级：' + $priorityMatch.Groups['v'].Value) 120 }
+    }
   }
   if (-not [string]::IsNullOrWhiteSpace($priorityDetail)) {
-    $label = $priorityDetail -replace '^研究优先级[：:]\s*', ''
-    $label = ($label -split '[（(，,。；;]')[0].Trim()
-    if ($label.Length -gt 12) { $label = $label.Substring(0, 12) }
-    if (-not [string]::IsNullOrWhiteSpace($label)) { $priority = $label }
+    if ([string]::IsNullOrWhiteSpace($priority)) {
+      $label = $priorityDetail -replace '^研究优先级[：:]\s*', ''
+      $label = ($label -split '[（(，,。；;]')[0].Trim()
+      if ($label.Length -gt 12) { $label = $label.Substring(0, 12) }
+      if (-not [string]::IsNullOrWhiteSpace($label)) { $priority = $label }
+    }
+  } elseif (-not [string]::IsNullOrWhiteSpace($priority)) {
+    $priorityDetail = '研究优先级：' + $priority
   }
 
   $records.Add([ordered]@{

@@ -266,7 +266,11 @@ Serenity 闸门：
 <!-- rpnav-title: 自定义标题 -->
 <!-- rpnav-summary: 报告库卡片上的一句话摘要 -->
 <!-- rpnav-keywords: 额外的检索关键词 -->
+<!-- rpnav-priority: 高 -->
+<!-- rpnav-priority-detail: 研究优先级：高；说明当前证据、商业阶段与主要限制 -->
 ```
+
+`rpnav-priority` 用于报告库卡片的“优先级”标签；未填写时，同步脚本会回退到报告中的 `<span class="verdict">…</span>`，或正文中的“研究优先级：…”。`rpnav-priority-detail` 作为鼠标悬停说明。
 
 ### 独立报告库 research/index.html
 
