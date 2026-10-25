@@ -207,7 +207,7 @@
 
 阶段 3 完成证据：
 
-- 工作区提交：`01e4e62`（`feat(r2): freeze yield policy in audit flows`）与 `1df785e`（`test(r2): cover legacy yield audit metadata`）。
+- 工作区提交：`01e4e62`（`feat(r2): freeze yield policy in audit flows`）、`1df785e`（`test(r2): cover legacy yield audit metadata`）与 `816a0bd`（`test(r2): require holding audit path`）。
 - 持仓复核由后端返回 `review_version=r2-holding-review-v7`；前端不再硬编码。当前和候选均保存策略版本、参考状态、原因、可用窗口、归一化权重、数据日期和快照日期。
 - 当前持仓不在最新产品快照时返回 `no_product_snapshot`；`unknown_term` 与 `no_available_horizons` 保持独立，空窗口和空权重不回退成数值。
 - 自动配置和换仓提案同时保存顶层及嵌套收益口径；dedupe key 纳入策略版本。同 key 同策略 pending 完全冻结；旧策略 pending 在状态投影和采纳入口都会失效，不能沿用旧 prediction，也不能生成正式决策。
