@@ -2050,54 +2050,56 @@ async function main() {
     )
     const planButton = reviewCard.getByRole('button', { name: '记录到期计划' })
     const replaceButton = reviewCard.getByRole('button', { name: '记录替换决策' })
+    assert(
+      (await planButton.count()) > 0 || (await replaceButton.count()) > 0,
+      '持仓复核没有可写入决策日志的入口',
+    )
     const actionButton =
       (await planButton.count()) > 0 ? planButton.first() : replaceButton.first()
-    if ((await planButton.count()) > 0 || (await replaceButton.count()) > 0) {
-      await actionButton.click()
-      await reviewCard.locator('.hr-decision-form').waitFor()
-      await reviewCard.getByRole('button', { name: '写入决策日志' }).click()
-      await page.waitForFunction(
-        () =>
-          document.querySelector('.toast')?.textContent?.includes('已写入决策日志'),
-        null,
-        { timeout: 5000 },
+    await actionButton.click()
+    await reviewCard.locator('.hr-decision-form').waitFor()
+    await reviewCard.getByRole('button', { name: '写入决策日志' }).click()
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.toast')?.textContent?.includes('已写入决策日志'),
+      null,
+      { timeout: 5000 },
+    )
+    const reviewDecisionDashboard = await fetch(
+      `${base}/api/dashboard/sections?include=evaluation`,
+    ).then((response) => response.json())
+    const savedReviewDecision =
+      reviewDecisionDashboard.workspace.decisions.find(
+        (item) =>
+          item.review_meta?.holding_code === '120056A' &&
+          item.review_meta?.yield_policy?.candidate,
       )
-      const reviewDecisionDashboard = await fetch(
-        `${base}/api/dashboard/sections?include=evaluation`,
-      ).then((response) => response.json())
-      const savedReviewDecision =
-        reviewDecisionDashboard.workspace.decisions.find(
-          (item) =>
-            item.review_meta?.holding_code === '120056A' &&
-            item.review_meta?.yield_policy?.candidate,
-        )
-      assert(savedReviewDecision, '持仓复核决策没有保存冻结收益口径')
-      const savedReviewMeta = savedReviewDecision.review_meta
-      for (const role of ['current', 'candidate']) {
-        const evidence = savedReviewMeta.yield_policy[role]
-        assert(
-          evidence?.yield_policy_version === 'r2-term-yield-v1' &&
-            evidence?.status === 'available' &&
-            Array.isArray(evidence.available_horizons) &&
-            evidence.available_horizons.length > 0 &&
-            Object.keys(evidence.normalized_weights || {}).length > 0,
-          `持仓复核 ${role} 收益口径未完整落库：${JSON.stringify(evidence)}`,
-        )
-        assert(
-          JSON.stringify(savedReviewMeta[`${role}_available_horizons`]) ===
-            JSON.stringify(evidence.available_horizons),
-          `持仓复核 ${role} 可用窗口兼容字段不一致：` +
-            `${JSON.stringify(savedReviewMeta[`${role}_available_horizons`])} != ` +
-            JSON.stringify(evidence.available_horizons),
-        )
-        assert(
-          JSON.stringify(savedReviewMeta[`${role}_normalized_weights`]) ===
-            JSON.stringify(evidence.normalized_weights),
-          `持仓复核 ${role} 归一化权重兼容字段不一致：` +
-            `${JSON.stringify(savedReviewMeta[`${role}_normalized_weights`])} != ` +
-            JSON.stringify(evidence.normalized_weights),
-        )
-      }
+    assert(savedReviewDecision, '持仓复核决策没有保存冻结收益口径')
+    const savedReviewMeta = savedReviewDecision.review_meta
+    for (const role of ['current', 'candidate']) {
+      const evidence = savedReviewMeta.yield_policy[role]
+      assert(
+        evidence?.yield_policy_version === 'r2-term-yield-v1' &&
+          evidence?.status === 'available' &&
+          Array.isArray(evidence.available_horizons) &&
+          evidence.available_horizons.length > 0 &&
+          Object.keys(evidence.normalized_weights || {}).length > 0,
+        `持仓复核 ${role} 收益口径未完整落库：${JSON.stringify(evidence)}`,
+      )
+      assert(
+        JSON.stringify(savedReviewMeta[`${role}_available_horizons`]) ===
+          JSON.stringify(evidence.available_horizons),
+        `持仓复核 ${role} 可用窗口兼容字段不一致：` +
+          `${JSON.stringify(savedReviewMeta[`${role}_available_horizons`])} != ` +
+          JSON.stringify(evidence.available_horizons),
+      )
+      assert(
+        JSON.stringify(savedReviewMeta[`${role}_normalized_weights`]) ===
+          JSON.stringify(evidence.normalized_weights),
+        `持仓复核 ${role} 归一化权重兼容字段不一致：` +
+          `${JSON.stringify(savedReviewMeta[`${role}_normalized_weights`])} != ` +
+          JSON.stringify(evidence.normalized_weights),
+      )
     }
 
     const legacyYieldDecision = await fetch(`${base}/api/review/decisions`, {
