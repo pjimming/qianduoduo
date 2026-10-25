@@ -9,7 +9,7 @@
 - R2 账本与投资研究严格隔离：股票调研报告不得写入 `data/r2_ledger.sqlite`，不得进入产品池排序或选品结论。
 - 股票调研的源文件固定放在 `report/`；应用内副本由 `scripts/sync-stock-reports.ps1` 生成到 `public/research/stocks/`，不要直接编辑副本。
 - 应用内入口为 `/investment/research`（报告库）和 `/investment/tech-map`（A股科技图谱）；独立报告库归档页为 `research/index.html`。
-- 新增或修改报告后，在工作区根目录执行 `npm run research:publish`。该命令会更新导航清单、同步应用内副本和 `src/data/stockReports.json`，然后构建并重启本地生产服务。
+- 新增或修改报告后，在工作区根目录执行 `npm run research:publish`。该命令会更新导航清单、同步应用内副本和 `src/data/stockReports.json`，然后构建并重启本地生产服务；发布验收通过后还必须按第 5 节自动选择性提交并推送报告相关变更。
 - R2 理财的记账口径、数据库位置和运行方式以 `MEMORY.md` 与 `README.md` 为准；具体选品方法以 `r2-wealth-management` skill 为准。
 - 旧路径 `D:\codex\R2理财` 已停用（仅剩 Codex 占用的 `.git` 元数据）；如果 Codex 仍显示旧路径，请重新打开 `D:\codex\钱多多财富工作台`。迁移前副本归档在 `D:\codex\_archive\R2理财-pre-rename-2026-10-18`。
 
@@ -136,7 +136,7 @@ Serenity 负责：
 
 股票研究不再维护 DCF、EPV、EVA、WACC、估值假设或财务模型模板。报告发布继续使用 `scripts/update-nav.ps1`、`scripts/sync-stock-reports.ps1` 和 `scripts/build-report-docs.mjs`。
 
-### 5. 生成报告后发布到两个入口
+### 5. 生成报告后发布、提交并推送
 
 每份报告都必须挂载 `scripts/` 目录下的通用导航组件，使任意一篇报告都能跳转到其他报告。**每次股票调研生成报告后，都在工作区根目录执行一次完整发布**：
 
@@ -149,7 +149,15 @@ npm run research:publish
 - 随后自动执行 `npm run build` 和 `npm run prod:restart`，刷新 `http://127.0.0.1:8765`。
 - 独立报告库 `research/index.html` 和应用内入口 `/investment/research` 都会读取同一批报告。
 - **不要**逐篇修改既有报告来维护导航，也不要直接编辑 `public/research/stocks/` 或 `src/data/stockReports.json`；它们都是生成物。
-- 固定收尾顺序：**生成报告 → 删除中间文件 → `npm run research:publish`**。
+- 固定收尾顺序：**生成报告 → 删除中间文件 → `npm run research:publish` → 发布后验收 → 选择性提交 → 推送到当前分支 upstream**。
+- 报告发布并通过验收后，必须自动提交并推送相关变更，无需再次询问用户：
+  1. 提交前运行 `git status --short` 和 `git diff --cached`，识别任务开始前已经存在的脏文件；不得覆盖、回退或误提交他人的改动。
+  2. 只显式暂存本次报告直接产生的路径：`report/<本次报告>.html`、`public/research/stocks/<本次报告>.html`、`scripts/report-nav.js`、`public/research/scripts/report-nav.js` 和 `src/data/stockReports.json`；如果本次确实修改了发布脚本或报告样式源文件，再单独暂存对应文件。
+  3. 禁止使用 `git add -A`、`git add .`，禁止把 `data/r2_ledger.sqlite`、数据库备份、`TODO.md`、`MEMORY.md`、本次报告无关的报告副本或其他未授权改动混入提交。
+  4. 共享生成物必须只包含本次报告或本批次报告的预期变化。若 `scripts/report-nav.js`、`public/research/scripts/report-nav.js` 或 `src/data/stockReports.json` 混有无法归属到本次任务的其他改动，停止提交并明确报告冲突，不得把这些改动一并推送。
+  5. 检查暂存差异后使用明确的报告提交信息，例如 `research: publish <报告标题> (<YYYY-MM-DD>)`；随后推送到当前分支已配置的 upstream。
+  6. 禁止强制推送。若 upstream、网络或认证失败，保留本地提交并报告提交哈希与失败原因；不得把“仅本地提交”表述为已推送。
+- 多份报告并行生成时，发布、提交和推送必须串行执行，避免共享导航与清单生成物交叉覆盖。
 
 ### 6. 成稿前的质量闸门
 
