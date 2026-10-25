@@ -1,0 +1,136 @@
+# TD-YIELD-001 会话交接（2026-10-25）
+
+> 历史交接说明：本文记录 `TD-YIELD-001` 当时的完成状态。后续的 `TD-YIELD-002` 已进入样本外观察阶段；下一会话应同时阅读 `td-yield-002-handoff-2026-10-25.md`，不要把本文中的“无需继续”理解为后续任务已经完成。
+
+## 结论先行
+
+`TD-YIELD-001` 的阶段 0–6 已全部完成，代码已提交、生产已重启并通过验收。
+
+下一会话默认不需要继续开发或再次发布。除非用户提出新的需求，否则只做必要的运行状态抽查，不要重复应用改造、重建提交或恢复数据库。
+
+## 当前版本
+
+- 当前分支：`main`
+- 当前 HEAD：`d62d136f43ec539e57245f05dd0c06495050a5f3`
+- 发布代码提交：`1e30bafc9d82a399fc42fbe1da48776a5c94e11f`
+- 当前提交说明：`docs(r2): record stage-six yield release verification`
+- 本地领先 `origin/main` 2 个提交。
+- 本地标签尚未推送：
+  - 回退：`rollback-td-yield-001-20261025` → `01456dc`
+  - 发布：`td-yield-001-release-20261025` → `1e30baf`
+  - 已验证：`td-yield-001-verified-20261025` → `d62d136`
+
+## 生产状态
+
+- URL：`http://127.0.0.1:8765`
+- Health：`OK`
+- Supervisor：running
+- Server：running
+- 自动启动：Startup shortcut enabled
+- 产品选择版本：`r2-dynamic-v4`
+- long 前视扣分方案：`B`
+- 产品数：689
+- 可进入评分：587
+- 参考年化可用 / 不可用：626 / 63
+- `weighted_yield_pct` 与参考年化不一致：0
+- cash 评分或排名泄漏：0
+- 持仓复核：6 条
+- 持仓状态字段缺失：0
+- 收益归因：`insufficient`（当前账本仅 3 个记录日，不是代码错误）
+- 提案：待采纳 0、已采纳 0、已执行 3
+- 最新 stderr：0 bytes
+- `run/server.stop`：不存在
+
+Server/Supervisor PID 是易变运行值，只查 `npm run prod:status`，不要把当前 PID 写入长期文档。
+
+## 已上线口径
+
+| 期限桶 | 参考年化权重 |
+| --- | --- |
+| cash | 1M 70% + 3M 30% |
+| short | 1M 20% + 3M 50% + 6M 30% |
+| medium | 3M 50% + 6M 30% + 1Y 20% |
+| long | 3M 20% + 6M 40% + 1Y 40% |
+
+其他规则：
+
+- 仅使用各桶指定窗口；缺失窗口按剩余权重重新归一化。
+- 所有指定窗口缺失时不可计算，不能按 0 补齐。
+- cash 仅展示，不评分、不排名、不分配、不进入候选或提案。
+- `weighted_yield_pct` 是 `reference_yield_pct` 的兼容别名。
+- 1M/3M 发散扣 `0.08` 评分点。
+- short/medium 前视阈值 `1pp`；long 阈值 `1.5pp`；斜率 `0.15`、封顶 `0.25`。
+- 输出保留 4 位小数，采用半值远离 0。
+
+## 关键代码与文档
+
+- 统一计算内核：`lib/yield-policy.js`
+- 产品池：`lib/products.js`，版本 `r2-dynamic-v4`
+- 持仓复核：`lib/holdings-review.js`，版本 `r2-holding-review-v7`
+- 收益归因：`lib/return-attribution.js`
+- 决策提案：`lib/decision-proposal-store.js`
+- API 类型：`src/types/dashboard.ts`
+- UI：`ProductDetailDialog.vue`、`ProductDialog.vue`、`ProductsSection.vue`、`HoldingReviewPanel.vue`、`ReturnAttributionPanel.vue`
+- 参数决策：`docs/analysis/td-yield-001-parameter-decision-2026-10-25.md`
+- 回测与异常归因：`docs/analysis/td-yield-001-backtest-2026-10-25.md`
+- 阶段 6 发布验收：`docs/analysis/td-yield-001-stage6-release-2026-10-25.md`
+- 完整实施记录：`TODO-TD-YIELD-001.md`
+
+## 自动化
+
+三个本机自动化任务均已更新，保持原名称、时间、模型、reasoning、项目和目录：
+
+| ID | 名称 | 时间 | 状态 |
+| --- | --- | --- | --- |
+| `r2` | R2产品快照每周更新 | 周一 08:30 | `ACTIVE` |
+| `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每日 21:00 | `ACTIVE` |
+| `r2-3` | 钱多多R2周五结构巡检 | 周五 18:30 | `ACTIVE` |
+
+提示词已同步期限调整参考年化、`yield_status/yield_reason` 和最终参数。
+
+## 验证证据
+
+- `npm run check`：通过
+- `npm test`：277 项通过、0 失败
+- `npm run build`：通过
+- `npm run test:e2e`：通过
+- `node --experimental-test-coverage --test`：277 项通过
+- 总覆盖率：行 `89.98%`、分支 `74.35%`、函数 `89.63%`
+- `lib/yield-policy.js`：行 `100%`、分支 `98.81%`、函数 `100%`
+
+## 数据库与回退
+
+- 今日备份：`data/backups/r2_ledger-2026-10-25.sqlite`
+- 备份大小：1,728,512 bytes
+- 备份 SHA-256：`B90F05BC74E4A35E6F3D1E9E217BF05A6F1EBD4670720F9CBFE0C37D9FE5FA52`
+- 本次没有 schema 迁移。
+- 没有改写历史交易、收益、决策或已冻结提案。
+
+若确需回退：
+
+1. 执行 `npm run prod:stop`。
+2. `git switch --detach rollback-td-yield-001-20261025`
+3. `npm run build`
+4. `npm run prod:start`
+5. 检查 `prod:status`、Health、旧版 API、stderr 和 stop marker。
+6. 只有数据库损坏或非预期迁移影响时才恢复备份；恢复前先创建 safety snapshot。
+7. 处理完成后切回 `main`。
+
+## 下一会话接手顺序
+
+1. 阅读 `TODO.md` 与 `TODO-TD-YIELD-001.md`；当前正式 TODO 为空。
+2. 运行 `git status --short --branch`，确认工作树状态。
+3. 运行 `npm run prod:status` 和 Health 接口。
+4. 抽查 `/api/dashboard/products` 的版本、计数、参考状态和 cash 排除。
+5. 查看最新 stderr，确认 `run/server.stop` 不存在。
+6. 若无新需求，到此为止，不要再次重启或重复发布。
+
+## 需要新授权才能做的事
+
+- 创建远端 PR 或推送标签。
+- 修改生产数据。
+- 创建数据库迁移。
+- 回退生产版本。
+- 再次重启生产。
+
+本 handoff 文件已按用户授权随 `main` 的文档提交归档；该授权不包含标签推送、创建 PR、修改生产数据或重启生产。
