@@ -912,6 +912,7 @@ html[data-theme='dark'] body {
   .chart,
   .foot,
   .takeaway,
+  .signal,
   .layer .lh,
   .anchor-nav a,
   .meta span,
@@ -959,7 +960,7 @@ html[data-theme='dark'] body {
   color: var(--bad);
 }
 
-:root[data-theme='dark'] .rp-doc .range-track {
+:root[data-theme='dark'] .rp-doc :is(.range-track, .bar-track) {
   background: var(--line);
 }
 
