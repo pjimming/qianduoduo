@@ -782,6 +782,30 @@ npm run research:publish
 生成报告 → 删除中间文件 → npm run research:publish
 ```
 
+### 12.8 GitHub Pages 公开归档
+
+公开站点只发布 A 股科技图谱与全部投资报告：
+
+```powershell
+npm run pages:build
+```
+
+本地产物写入 `run/pages-site/`，固定包含：
+
+```text
+research/index.html
+scripts/report-nav.js
+report/*.html
+public/research/techmap/index.html
+public/research/techmap/tree.html
+public/research/techmap/table.html
+.nojekyll
+```
+
+将相关文件提交并推送到 `main` 后，`.github/workflows/deploy-pages.yml` 自动部署。公开入口预期为 `https://pjimming.github.io/qianduoduo/research/`。
+
+Pages Artifact 不得包含 `data/`、R2 账本、个人截图、API/服务端代码、Vue 构建物或白名单外文件。报告库中的科技图谱入口使用 `../public/research/techmap/index.html`，该相对路径同时适用于本地 `file://` 与 Pages 子路径。
+
 ---
 
 ## 13. 常用命令速查

@@ -7,6 +7,7 @@
 - **账本与研究隔离**：R2 账本数据保存在 `data/r2_ledger.sqlite`，用于 R2 记账、对账和资金管理；股票研究使用 `report/` 和股票研究数据，输出独立的调研报告与研究结论。
 - **报告来源**：股票报告的原始 HTML 在 `report/` 编辑，是唯一可编辑源文件。运行 `npm run research:publish`，由脚本更新独立报告库导航、`src/data/stockReports.json`、`src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`；不再生成或托管 `public/research/stocks/` 与 `public/research/scripts/report-nav.js`。
 - **应用入口**：报告库为 `/investment/research`，A 股科技图谱为 `/investment/tech-map`，独立归档页为 `research/index.html`。
+- **GitHub Pages**：公开静态站点只允许发布独立报告库、全部 `report/*.html` 和 A 股科技图谱三个静态视图；构建与部署由 `npm run pages:build` 和 `.github/workflows/deploy-pages.yml` 完成。不得发布 R2 数据、账户事实、截图、API/服务端代码或 Vue 应用构建物。
 - **专题规则来源**：R2 记账口径与运行方式遵循 `MEMORY.md`、`README.md` 和 `r2-wealth-management` skill；股票研究遵循 `serenity-skill`。
 - **任务状态来源**：后端工作开始前先检查 `TODO.md`。任务状态、优先级、阻塞项和剩余事项从 `TODO.md`、代码、Git、数据库、API 和当次测试结果读取。
 
@@ -206,6 +207,14 @@ Serenity 完成技术或需求变化、系统拆解、瓶颈识别、产业链�
 - 使用明确的提交信息，例如 `research: publish <报告标题> (<YYYY-MM-DD>)`，随后推送到当前分支 upstream。
 - upstream、网络或认证遇到问题时，保留本地提交并报告提交哈希和具体原因。
 - 多份报告并行生成时，发布、提交和推送按顺序串行执行。
+
+### 6.7 GitHub Pages 公开归档
+
+- 公开入口为 `https://pjimming.github.io/qianduoduo/research/`，页面中的科技图谱入口为 `../public/research/techmap/index.html`。
+- `scripts/build-pages-site.mjs` 使用严格白名单，只生成 `research/index.html`、`scripts/report-nav.js`、`report/*.html`、科技图谱 `index/tree/table.html` 和 `.nojekyll`。
+- Pages Artifact 必须逐文件与 `stockReports.json` 清单核对；出现 `data/`、`src/`、`server/`、`dist/`、SQLite、图片、R2 标记或白名单外文件时必须失败。
+- 修改报告、报告导航、独立报告库、科技图谱或 Pages 工作流后，运行 `npm run pages:build` 并检查 `run/pages-site/`；推送 `main` 后由 GitHub Actions 部署并复核实际站点。
+- GitHub Pages 只承载公开研究内容，不改变本机 R2 账本的数据存储、API 或运行方式。
 
 ## 7. 界面可读性与最小字号（强制）
 

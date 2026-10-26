@@ -271,6 +271,8 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - 应用内文档：`src/data/reportDocs/<slug>.json` 保存正文与作用域化 CSS，`src/data/reportSearch.json` 是正文检索索引，`public/research/media/` 存放从报告里外置并转为 WebP 的图片；三者都由 `scripts/build-report-docs.mjs` 生成，不要手工编辑。
 - 静态边界：应用不生成、不托管也不支持 `public/research/stocks/`、`public/research/scripts/report-nav.js` 或 `/research/stocks/*`；报告只通过 Vue 阅读页访问。`research/index.html` 保留为可直接打开的本地归档页，使用工作区源导航。
 - 发布：新增或修改报告后，在根目录运行 `npm run research:publish`。该命令会更新独立归档导航、重建应用报告清单与 Vue 文档，并完成构建和本地生产服务重启。
+- GitHub Pages：`npm run pages:build` 生成严格白名单站点，只包含独立报告库、全部 `report/*.html`、报告导航和科技图谱脑图/树状/表格三版。入口为 `https://pjimming.github.io/qianduoduo/research/`；页面中的科技图谱相对路径同时兼容本地 `file://` 和 Pages 子路径。
+- 公开边界：Pages Artifact 不包含 `data/`、R2 账本或截图、API/服务端代码、Vue 构建物和未列入白名单的科技图谱文件。`.github/workflows/deploy-pages.yml` 在 `main` 更新相关文件时自动部署并复核白名单。
 - 边界：报告内容为公开信息研究整理，不构成投资建议，也不进入 R2 收益账本、产品池排序或选品结论。
 
 **新增一篇报告的成本与约束**

@@ -12,6 +12,7 @@
     "build": "node scripts/build-report-docs.mjs && vue-tsc --noEmit && vite build",
     "research:docs": "node scripts/build-report-docs.mjs",
     "research:index": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build-stock-index.ps1",
+    "pages:build": "node scripts/build-pages-site.mjs run/pages-site",
     "agent:brief:init": "node scripts/agent-guard.mjs init-brief",
     "agent:brief": "node scripts/agent-guard.mjs validate-brief",
     "agent:reservation:cancel": "node scripts/agent-guard.mjs cancel-reservation",

@@ -85,7 +85,7 @@
 | 对象 | 稳定标识 | 示例 |
 | --- | --- | --- |
 | 原始证据 | `evidence_assets.id` | `42` |
-| 事实 | `fact_type + fact_key` | `account_income:2026-10-22` |
+| 事实 | `fact_type + fact_key` | `account_income:YYYY-MM-DD` |
 | 修订 | `fact_revisions.id` | `103` |
 | 解释事件 | `evidence_events.id` | `501` |
 | 证据链接 | `fact_evidence_links.id` | `88` |
@@ -207,7 +207,7 @@
 - `evidence_id`
 - `evidence_event_id`：采用的具体解释版本
 - `role`：`primary`、`corroborating`、`superseded`、`derived-input`
-- `field_paths_json`：例如 `["daily_pnl", "products[120056A].daily_pnl"]`
+- `field_paths_json`：例如 `["daily_pnl", "products[<product_code>].daily_pnl"]`
 - `confidence`
 - `link_status`
 - `created_at`
@@ -225,18 +225,16 @@
 ### 3.3 来源链示例
 
 ```text
-evidence_assets#42
-  -> evidence_events#301 received
-  -> evidence_events#302 ocr_completed
-  -> evidence_events#303 machine_parsed (confidence 71)
-  -> evidence_events#304 human_corrected (金额 ¥12.34，原因：OCR 将 3 识别为 8)
-  -> evidence_events#305 version_selected
-  -> fact_evidence_links#881 -> account_income:2026-10-22, field=["daily_pnl"]
-  -> fact_evidence_links#882 -> product_income:120056A:2026-10-22, field=["daily_pnl"]
-  -> fact_evidence_links#883 -> product_income:107320A:2026-10-22, field=["daily_pnl"]
-  -> fact_revisions#901 -> 账户收益创建
-  -> fact_revisions#902..#904 -> 产品收益创建
-  -> evidence_events#306 posted
+evidence_assets#<evidence_id>
+  -> evidence_events#<received_event_id> received
+  -> evidence_events#<ocr_event_id> ocr_completed
+  -> evidence_events#<parsed_event_id> machine_parsed (confidence <pct>)
+  -> evidence_events#<correction_event_id> human_corrected (金额已脱敏，原因：OCR 数字识别校正)
+  -> evidence_events#<selected_event_id> version_selected
+  -> fact_evidence_links#<link_id> -> account_income:YYYY-MM-DD, field=["daily_pnl"]
+  -> fact_evidence_links#<link_id> -> product_income:<product_code>:YYYY-MM-DD, field=["daily_pnl"]
+  -> fact_revisions#<revision_id> -> 账户收益与产品收益创建
+  -> evidence_events#<posted_event_id> posted
 ```
 
 ## 4. 截图状态机

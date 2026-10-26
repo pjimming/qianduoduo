@@ -4,6 +4,9 @@ data/*.sqlite-shm
 data/backups/
 data/trade-inbox/
 data/income-inbox/
+data/holding-valuation-evidence/
+docs/analysis/td-yield-001-backtest-2026-10-25.json
+docs/analysis/td-yield-001-parameter-decision-2026-10-25.json
 node_modules/
 dist/
 .env

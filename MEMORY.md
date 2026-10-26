@@ -11,7 +11,7 @@
 - 只处理银行 R2/PR2 理财，不碰股票、基金、杠杆、借款和信用卡资金。
 - 应急金必须在 R2 资金之外；年化 3% 是进取目标，不是保本或收益承诺。
 - 单只产品 25%–30% 以内，新品单只不超过 10%；无流动性仓时短桶不低于 30%。
-- 本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%。现有 `107320A` 等日开持仓只保留为真实持仓和迁移事实，不追溯删除、不补记为 0，也不作为短桶流动性达标依据；`r2-wealth-management` skill 的通用可选 `--cash-pct` 能力保留，但本工作区不启用。
+- 本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%。现有日开持仓只保留为真实持仓和迁移事实，不追溯删除、不补记为 0，也不作为短桶流动性达标依据；`r2-wealth-management` skill 的通用可选 `--cash-pct` 能力保留，但本工作区不启用。
 - 不替用户下单；额度、费率、风险等级和赎回规则以招行 App 与产品说明书为准。
 - 交易、决策与截图必须完整绑定：任何买入、赎回、切换交易（包括待确认、手工录入和截图入账）都必须关联 `decision_id` 和能够证明该笔业务的原始交易截图 `screenshot_id`；决策至少包含原因、预期、策略及期限口径、证据日期、验证日期和失效条件。提交前预览页不算成交截图，只记交易流水、持仓或本金变化也不算完成。一张图包含多笔订单时，必须先拆分单笔截图、逐笔核对并分别绑定，禁止把同一张多笔总览图直接绑定到多笔交易；原总览图只保留历史证据，必须标记为 `ignored` 并清空 `trade_id`、`duplicate_of`，不参与逐笔对账。
 - 持有起点统一使用交易确认日 `confirm_date`：买入/切换在状态变为“已确认”后才进入持仓；未确认交易只占额度，不算持有。持仓批次、持有天数、期限、到期日和逐产品归档均不得从发起交易的 `trade_date` 起算；赎回持有终点同样优先使用赎回确认日。
@@ -77,6 +77,8 @@
 - 报告库按 `publishedAt`（发布/更新到报告库的时间）倒序，调研日期作为次级排序；更新时间优先取报告中的 `<!-- rpnav-published: YYYY-MM-DD HH:mm -->`，缺失时沿用已生成导航清单中的发布时间，再回退文件修改时间。
 - 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库、可搜索切换器和打印按钮，不再提供“原文”或静态 HTML 出口；左侧目录可折叠并高亮当前章节，无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。应用静态层只托管 `/research/media/` 与 `/research/techmap/`，`/research/stocks/*` 和 `/research/scripts/*` 不受支持。
 - 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；索引随报告数增长，达到 50 篇以上需重新评估拆分方式，实际体积和耗时只查构建输出。
+- GitHub Pages 公开归档只发布 `research/index.html`、`scripts/report-nav.js`、全部 `report/*.html` 和 `public/research/techmap/{index,tree,table}.html`，由 `scripts/build-pages-site.mjs` 白名单构建并通过 `.github/workflows/deploy-pages.yml` 部署。公开入口预期为 `https://pjimming.github.io/qianduoduo/research/`。
+- Pages Artifact 必须拒绝 `data/`、R2 账本/截图、账户事实、API/服务端代码、Vue 构建物和白名单外文件；个人估值证据目录属于本机数据，不进入 Git。
 - 股票研究不维护 DCF、估值假设、财务模型或专用检查器；HTML 源文件只沿用独立归档导航、清单和 Vue 文档构建脚本。历史报告保留为旧方法档案，不用新规则回写。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
 - 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。

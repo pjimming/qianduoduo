@@ -44,7 +44,7 @@
 
 用 Git 仓库或压缩包，排除上面的个人数据。如果使用 Git，先提交当前版本，再让对方 clone；如果使用压缩包，手动确认没有把 `data/*.sqlite`、`data/backups/`、`data/trade-inbox/` 打进去。
 
-项目 `.gitignore` 已经忽略 SQLite、备份、截图、`node_modules`、`dist`、`run`、`logs`，以及 `src/data/reportDocs/`、`src/data/reportSearch.json`、`public/research/media/` 这些报告构建产物。压缩包不会自动遵守 `.gitignore`，需要你手动检查。
+项目 `.gitignore` 已经忽略 SQLite、备份、交易/收益收件箱、持仓估值证据截图、`node_modules`、`dist`、`run`、`logs`，以及 `src/data/reportDocs/`、`src/data/reportSearch.json`、`public/research/media/` 这些报告构建产物。压缩包不会自动遵守 `.gitignore`，需要你手动检查。
 
 ### 1.4 分享前必须脱敏
 

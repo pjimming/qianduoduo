@@ -451,11 +451,11 @@ test('non-replace holding review still creates a review-window reminder', () => 
   assert.equal(item.due_at, '2026-11-05');
 });
 
-test('JX040210 suppresses its replacement reminder after maturity when the candidate loses money', () => {
+test('a loss-making switch suppresses the duplicate reminder after maturity', () => {
   const review = {
-    lot_id: '7:JX040210',
-    product_name: '建信理财嘉鑫固收类最低持有7天产品第6期',
-    product_code: 'JX040210',
+    lot_id: 'sample-holding',
+    product_name: '样本持仓',
+    product_code: 'HOLD-SAMPLE',
     maturity_date: '2026-10-30',
     verdict: 'hold',
     verdict_label: '继续持有（锁定期）',
@@ -464,11 +464,11 @@ test('JX040210 suppresses its replacement reminder after maturity when the candi
       text: '已到期 1 天，需处理赎回或续作',
     },
     horizon_days: 30,
-    top_candidate_code: 'JX040213',
+    top_candidate_code: 'CAND-SAMPLE',
     candidates: [
       {
-        code: 'JX040213',
-        name: '建信理财嘉鑫固收类最低持有30天产品第9期',
+        code: 'CAND-SAMPLE',
+        name: '样本候选',
         switch: { difference: -1.51 },
       },
     ],
