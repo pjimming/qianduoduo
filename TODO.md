@@ -26,6 +26,15 @@
 
 ## 近期完成（2026-10）
 
+- **2026-10-27 GitHub Pages 公开归档与 R2 当前数据清理**
+  - 新增 `.github/workflows/deploy-pages.yml` 与 `scripts/build-pages-site.mjs`；Pages 仅构建 `research/index.html`、`scripts/report-nav.js`、全部 25 篇 `report/*.html`、科技图谱脑图/树状/表格三版和 `.nojekyll`，共 31 个文件。
+  - 构建器和 6 项 Pages 测试会拒绝白名单外文件、`data/`、R2 标记、SQLite、截图、应用源码和未列出的科技图谱文件；部署前执行 `npm ci`、生产构建和 335 项回归测试。
+  - 仓库 Pages 发布源已设为 GitHub Actions。首次运行因 CI 缺少 `dist` 导致两项静态集成测试失败；调整为构建后再测试，第二次运行 `40369788713` 的 build 与 deploy 均成功。
+  - 公开站点：`https://pjimming.github.io/qianduoduo/research/`；科技图谱：`https://pjimming.github.io/qianduoduo/public/research/techmap/index.html`。生产站点实测 25 篇报告、3 个科技图谱视图和首篇报告均为 200，`data/` 与 SQLite 路径为 404。
+  - 当前 Git 移除 1 张个人持仓估值截图和 2 份含当前持仓/候选映射的分析 JSON，三者均保留本机并加入 `.gitignore`；文档中的账户金额、持仓数量、产品映射和来源链示例已脱敏。
+  - 移除生产代码中单只产品硬编码，改为“已到期且候选切换预计亏损时抑制重复复核提醒”的通用规则；独立到期通知仍由自动化扫描产生。
+  - 提交：`cc8b2f4`、`15f2443`、`c287fb5`。按用户要求不重写 Git 历史，旧提交中的个人数据仍可能通过历史访问；公开产品 CSV 与策略观察规格作为非个人研究数据保留。
+
 - **2026-10-27 `TD-RESEARCH-001` 移除静态报告副本与“原文”入口**
   - `report/*.html` 保持唯一报告源；删除全部 25 份 `public/research/stocks/*.html` 与 `public/research/scripts/report-nav.js`，并从版本控制和 production `dist` 中退出。
   - 发布链改为“更新独立归档导航 → 只生成 `src/data/stockReports.json` → 构建 Vue 文档/搜索索引/媒体 → 构建 → 重启”，不再复制静态报告或导航。独立 `research/index.html` 继续作为可直接打开的本地归档，使用工作区源导航。
