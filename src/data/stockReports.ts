@@ -39,10 +39,6 @@ export function reportBySlug(slug: string | undefined | null): StockReport | und
   return stockReports.find((report) => report.slug === slug)
 }
 
-export function reportUrl(file: string): string {
-  return `/research/stocks/${encodeURIComponent(file)}`
-}
-
 export const stockReportStats = {
   count: stockReports.length,
   latest: stockReports[0]?.publishedAt ?? stockReports[0]?.date ?? '',

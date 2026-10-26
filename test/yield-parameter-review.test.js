@@ -12,12 +12,21 @@ const {
   SELECTED_SHORT_VARIANT,
   buildParameterReviewReport,
 } = require('../lib/yield-parameter-review');
-const { productCsv } = require('./fixtures');
+const policyReviewProductCsv = path.join(
+  __dirname,
+  '..',
+  'data',
+  'cmb_r2_universe-2026-10-24.csv',
+);
 
 function snapshots() {
   return fs
     .readdirSync(path.join(__dirname, '..', 'data'))
-    .filter((name) => /^cmb_r2_universe.*\.csv$/i.test(name))
+    .filter(
+      (name) =>
+        /^cmb_r2_universe.*\.csv$/i.test(name) &&
+        name <= 'cmb_r2_universe-2026-10-24.csv',
+    )
     .sort()
     .map((name) => {
       const filePath = path.join(__dirname, '..', 'data', name);
@@ -54,7 +63,7 @@ function stage6Fixture() {
       'utf8',
     ),
   );
-  const baseProducts = loadProductsFromCsv(productCsv);
+  const baseProducts = loadProductsFromCsv(policyReviewProductCsv);
   const dated = (date, extra = null) => {
     const products = baseProducts.map((product) => ({
       ...product,

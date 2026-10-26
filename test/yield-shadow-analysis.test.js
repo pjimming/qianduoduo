@@ -91,7 +91,10 @@ test('snapshot analysis verifies invariants, missing windows and score diagnosti
 });
 
 test('snapshot comparison distinguishes data refresh from pure universe expansion', () => {
-  const files = snapshotFiles();
+  const files = snapshotFiles().filter((file) =>
+    /cmb_r2_universe-2026-10-(23|24)\.csv$/u.test(file),
+  );
+  assert.equal(files.length, 2);
   const reports = files.map((file) => ({
     label: path.basename(file),
     report: buildReport(file),

@@ -175,6 +175,12 @@ async function main() {
       cards === expectedReports,
       `报告库应有 ${expectedReports} 张卡片，实际 ${cards}`,
     )
+    const legacyReport = await fetch(
+      `${base}/research/stocks/${encodeURIComponent(reportManifest.reports[0].file)}`,
+    )
+    assert(legacyReport.status === 404, '旧静态报告地址仍然可访问')
+    const legacyNav = await fetch(`${base}/research/scripts/report-nav.js`)
+    assert(legacyNav.status === 404, '旧静态报告导航仍然可访问')
 
     await page.fill('.library-search input', '合同负债')
     await page.waitForSelector('.body-hit', { timeout: 15000 })
@@ -196,6 +202,43 @@ async function main() {
       (await page.locator('style[data-report-doc]').count()) === 1,
       '报告样式没有按篇挂载',
     )
+    assert(
+      (await page
+        .locator('.reader-topbar-actions a[href*="/research/stocks/"]')
+        .count()) === 0,
+      '报告阅读页仍存在静态原文入口',
+    )
+    assert(
+      !(await page.locator('.reader-topbar-actions').innerText()).includes('原文'),
+      '报告顶部操作区仍显示“原文”',
+    )
+
+    const reportMobilePage = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    })
+    reportMobilePage.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text())
+    })
+    reportMobilePage.on('pageerror', (error) => consoleErrors.push(error.message))
+    try {
+      await reportMobilePage.goto(page.url(), { waitUntil: 'networkidle' })
+      await reportMobilePage.waitForSelector('.rp-doc')
+      assert(
+        (await reportMobilePage
+          .locator('.reader-topbar-actions a[href*="/research/stocks/"]')
+          .count()) === 0,
+        '移动端报告阅读页仍存在静态原文入口',
+      )
+      await assertFontFloor(reportMobilePage, '.reader-topbar', '报告阅读页移动端')
+      assert(
+        await reportMobilePage.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+        '报告阅读页移动端出现横向溢出',
+      )
+    } finally {
+      await reportMobilePage.close()
+    }
 
     const firstSlug = await page.locator('.rp-doc').getAttribute('data-report-slug')
     await page.waitForSelector('.reader-outline-rail')
@@ -1148,9 +1191,10 @@ async function main() {
       '待确认金额没有正确显示',
     )
 
+    const proposalToday = new Date().toISOString().slice(0, 10)
     repository.decisionProposalStore.sync({
       meta: {
-        today: '2026-10-22',
+        today: proposalToday,
         product_snapshot_date: '2026-10-21',
       },
       workspace: { holding_reviews: [] },
@@ -1179,7 +1223,7 @@ async function main() {
             data_date: '2026-10-22',
             quota_status: 'verified',
             quota_available: 3000,
-            quota_verified_at: '2026-10-22',
+            quota_verified_at: proposalToday,
           },
         ],
       },
@@ -2445,7 +2489,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

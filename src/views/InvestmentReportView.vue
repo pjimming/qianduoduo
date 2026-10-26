@@ -5,7 +5,6 @@ import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportSwitcher from '@/components/report/ReportSwitcher.vue'
 import {
   reportBySlug,
-  reportUrl,
   stockReports,
 } from '@/data/stockReports'
 import type { ReportDoc } from '@/data/reportDocs'
@@ -40,9 +39,6 @@ const nextReport = computed(() => {
   const index = currentIndex.value
   return index >= 0 && index < stockReports.length - 1 ? stockReports[index + 1] : null
 })
-const originalUrl = computed(() =>
-  currentReport.value ? reportUrl(currentReport.value.file) : '',
-)
 
 watch(
   currentReport,
@@ -259,16 +255,6 @@ onBeforeUnmount(() => {
           <span aria-hidden="true">⎙</span>
           <span class="reader-topbar-label">打印</span>
         </button>
-        <a
-          class="reader-topbar-button"
-          :href="originalUrl"
-          target="_blank"
-          rel="noopener"
-          title="在新窗口打开独立 HTML"
-        >
-          <span aria-hidden="true">↗</span>
-          <span class="reader-topbar-label">原文</span>
-        </a>
         <button
           class="reader-topbar-button"
           type="button"

@@ -26,6 +26,14 @@
 
 ## 近期完成（2026-10）
 
+- **2026-10-27 `TD-RESEARCH-001` 移除静态报告副本与“原文”入口**
+  - `report/*.html` 保持唯一报告源；删除全部 25 份 `public/research/stocks/*.html` 与 `public/research/scripts/report-nav.js`，并从版本控制和 production `dist` 中退出。
+  - 发布链改为“更新独立归档导航 → 只生成 `src/data/stockReports.json` → 构建 Vue 文档/搜索索引/媒体 → 构建 → 重启”，不再复制静态报告或导航。独立 `research/index.html` 继续作为可直接打开的本地归档，使用工作区源导航。
+  - Vue 阅读页移除“原文”外链、`reportUrl()` 及相关静态 URL；报告库、切换器、目录、打印、深色主题、搜索和正文媒体继续由 Vue 文档提供。
+  - 静态服务只归属 `/research/media/` 与 `/research/techmap/`；`/research/stocks/*`、`/research/scripts/*` 返回 404。测试改为校验源报告、唯一清单、Vue 文档、搜索索引和旧路径退出，不再验证静态副本相等性。
+  - 固定历史 R2 策略测试的时钟与快照基线，消除最新数据日期带来的 8 项基线漂移；`npm run check`、329/329 `npm test`、`npm run build`、完整 `npm run test:e2e` 全部通过。
+  - `npm run research:publish` 发布成功；生产 Supervisor/Server/Health 正常，Vue 报告库与 25 篇唯一清单可读，旧静态报告和导航为 404，科技图谱与 WebP 媒体为 200，最新 stderr 为 0 字节且无 stop marker。
+
 - **2026-10-25 `TD-YIELD-001` 期限桶收益与评分改造**
   - 正式采用 cash `70/30`、short `20/50/30`、medium `50/30/20`、long `20/40/40`；long 前视扣分采用 B 方案。
   - 产品池、持仓复核、收益归因和决策提案统一使用 `lib/yield-policy.js`；`weighted_yield_pct` 成为 `reference_yield_pct` 的兼容别名。

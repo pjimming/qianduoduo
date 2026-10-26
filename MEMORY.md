@@ -71,13 +71,13 @@
 - 替换决策写入决策日志时必须带：证据日期、事后验证日期、当前/候选代码、快照日期、当前/候选 `yield_status` 与可用窗口、桶统一比较期限、切换等待天数、有效计息天数、到期续作0天空档、费用、盈亏平衡、预计差额和理由；产品页“记录替换决策”会生成 `review_meta`，决策日志展示并可按验证日复核。
 - `calculateSwitch()` 已统一为复利折算，当前收益、候选净收益、切换差额和盈亏平衡使用同一日数口径；若 `H-W<=0`，盈亏平衡为空且不给出可执行替换结论。页面、决策日志和消息中心保留等待天数、`verified/estimated` 状态与来源。
 - 投资模块默认进入股票调研报告库 `/investment/research`；A股科技图谱在 `/investment/tech-map`，旧地址 `/research/tech-map` 自动跳转；图谱数据日期只查图谱数据源。
-- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用内副本在 `public/research/stocks/`，报告清单在 `src/data/stockReports.json`；报告数量和日期以发布清单为准。
-- 股票、个股、主题、产业链、候选公司对比和公司事件研究默认直接生成 HTML 报告；快速扫描和事件更新也不例外，不再以对话文本作为默认最终交付物。每次新增或修改报告后执行 `npm run research:publish`，更新导航、同步副本与清单、构建并重启生产服务；用户明确要求“只分析、不要生成文件”时除外。旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
+- 股票调研已并入本工作区：源报告在 `report/`，独立报告库归档页在 `research/index.html`，应用报告清单在 `src/data/stockReports.json`；报告数量和日期以发布清单为准。`public/research/stocks/` 与 `public/research/scripts/report-nav.js` 已退役，不得重新生成或托管。
+- 股票、个股、主题、产业链、候选公司对比和公司事件研究默认直接生成 HTML 报告；快速扫描和事件更新也不例外，不再以对话文本作为默认最终交付物。每次新增或修改报告后执行 `npm run research:publish`，更新独立归档导航与报告清单、构建 Vue 文档并重启生产服务；用户明确要求“只分析、不要生成文件”时除外。旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
 - 股票、主题和产业链研究只使用 `serenity-skill`。标准报告固定为六段：一页结论、产业链与瓶颈地图、候选公司与证据阶梯、市场叙事与拥挤度、催化剂与验证登记、退出与监控；价格资金结构放在市场叙事章内，五个财务红灯附在候选证据末尾。股票研究不运行 DCF、EPV、EVA、PVGO、M-Score 或目标价，不以“高估”自动作为退出结论。
 - 报告库按 `publishedAt`（发布/更新到报告库的时间）倒序，调研日期作为次级排序；更新时间优先取报告中的 `<!-- rpnav-published: YYYY-MM-DD HH:mm -->`，缺失时沿用已生成导航清单中的发布时间，再回退文件修改时间。
-- 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库和可搜索切换器，左侧目录可折叠并高亮当前章节；无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。
+- 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库、可搜索切换器和打印按钮，不再提供“原文”或静态 HTML 出口；左侧目录可折叠并高亮当前章节，无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。应用静态层只托管 `/research/media/` 与 `/research/techmap/`，`/research/stocks/*` 和 `/research/scripts/*` 不受支持。
 - 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；索引随报告数增长，达到 50 篇以上需重新评估拆分方式，实际体积和耗时只查构建输出。
-- 股票研究不维护 DCF、估值假设、财务模型或专用检查器；HTML 归档只沿用通用导航、同步和构建脚本。历史报告保留为旧方法档案，不用新规则回写。
+- 股票研究不维护 DCF、估值假设、财务模型或专用检查器；HTML 源文件只沿用独立归档导航、清单和 Vue 文档构建脚本。历史报告保留为旧方法档案，不用新规则回写。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。
 - 股票调研报告与 A 股科技资料必须与 R2 账本隔离：不进入收益账本、产品池排序或选品结论，不构成投资建议。
 - `r2-wealth-management` skill 的唯一权威目录、运行目录和 Git 工作树均为 `C:\Users\Administrator\.codex\skills\r2-wealth-management`，不再维护 D 盘或其他镜像。远程为 `https://github.com/pjimming/r2-wealth-management.git`；版本以 `SKILL.md` 为准，维护说明见该目录 `README.md`。上传时排除 `scripts/__pycache__/` 和 `.pyc`，并在该目录直接提交、推送；应用仓库不内嵌 skill。

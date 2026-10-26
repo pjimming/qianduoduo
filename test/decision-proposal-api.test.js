@@ -35,6 +35,13 @@ function postJson(url, body, method = 'POST') {
   });
 }
 
+function freezeProposalClock(t) {
+  t.mock.timers.enable({
+    apis: ['Date'],
+    now: new Date('2026-10-22T08:00:00+08:00'),
+  });
+}
+
 function seedProposals(repository) {
   repository.decisionProposalStore.sync({
     meta: {
@@ -127,6 +134,7 @@ function seedProposals(repository) {
 }
 
 test('proposal API adopts and rejects without creating premature decisions', async (t) => {
+  freezeProposalClock(t);
   const { base, repository } = await startTestServer(t);
   seedProposals(repository);
   await fetch(`${base}/api/dashboard/refresh`, {
@@ -276,6 +284,7 @@ test('proposal API refuses to adopt a tampered old-policy pending item', async (
 });
 
 test('an API-created trade automatically claims the accepted proposal and flags missing screenshot evidence', async (t) => {
+  freezeProposalClock(t);
   const { base, repository } = await startTestServer(t);
   seedProposals(repository);
   const proposal = repository.decisionProposalStore
@@ -315,6 +324,7 @@ test('an API-created trade automatically claims the accepted proposal and flags 
 });
 
 test('trade inbox apply uses the same proposal matching path', async (t) => {
+  freezeProposalClock(t);
   const { base, repository } = await startTestServer(t);
   seedProposals(repository);
   const proposal = repository.decisionProposalStore

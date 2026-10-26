@@ -324,9 +324,9 @@ npm run r2:refresh-all
 - 打开报告直接阅读，不使用 iframe；
 - 左侧目录随滚动高亮；
 - `←/→` 切换报告；
-- 打印或打开独立 HTML。
+- 打印当前 Vue 阅读页。
 
-报告源文件统一在 `report/`；`research/index.html` 是可双击打开的独立归档页。
+报告源文件统一在 `report/`；`research/index.html` 是可双击打开的独立归档页。应用内不提供“原文”或静态 HTML 出口，`/research/stocks/*` 不再受支持。
 
 ### 6.2 A 股科技图谱
 
@@ -681,7 +681,6 @@ report/
 不要直接改：
 
 ```text
-public/research/stocks/
 src/data/stockReports.json
 src/data/reportDocs/
 src/data/reportSearch.json
@@ -689,6 +688,13 @@ public/research/media/
 ```
 
 这些都是生成物。
+
+以下旧路径已退役，不得重新生成或恢复：
+
+```text
+public/research/stocks/
+public/research/scripts/report-nav.js
+```
 
 ### 12.2 文件命名与头部
 
@@ -747,8 +753,8 @@ npm run research:publish
 这条命令会依次：
 
 1. 扫描 `report/*.html`，重写 `scripts/report-nav.js` 清单；
-2. 同步应用内副本和 `src/data/stockReports.json`；
-3. 构建报告文档、检索索引和图片；
+2. 只从 `report/*.html` 重建 `src/data/stockReports.json`，不复制静态报告或导航副本；
+3. 从源报告构建 Vue 文档、检索索引和图片；
 4. 执行 `npm run build`；
 5. 重启本地生产服务。
 
@@ -757,6 +763,7 @@ npm run research:publish
 - 独立报告库 `research/index.html` 能看到新卡片；
 - `/investment/research` 能搜到标题、摘要和章节；
 - 打开详情页，目录、正文、图片正常；
+- 阅读页顶部没有“原文”入口，旧 `/research/stocks/*` 返回 404；
 - `←/→` 能切换报告；
 - 科技图谱能按代码关联；
 - 控制台没有构建或样式报错。
@@ -908,7 +915,7 @@ Codex 巡检发现“需要用户补事实或最后确认、且平台不能自�
 ├─ research/index.html       # 独立报告库归档页
 ├─ scripts/                  # 构建、发布、同步、抓取、备份、守护
 ├─ data/                     # SQLite、备份、产品 CSV、交易截图
-├─ public/research/          # 报告副本、导航、图片（生成物）
+├─ public/research/          # Vue 报告图片与科技图谱静态归档（不含报告副本/导航副本）
 ├─ test/                     # 单元/API/静态检查
 ├─ AGENTS.md                 # 工作区硬性约定
 ├─ MEMORY.md                 # 长期架构与数据口径
@@ -959,7 +966,7 @@ Codex 巡检发现“需要用户补事实或最后确认、且平台不能自�
 - [ ] 自带 `<style>`
 - [ ] 挂载 `report-nav.js`
 - [ ] `npm run research:publish` 成功
-- [ ] 两个入口都能看到
+- [ ] 应用报告库能看到，并能从 Vue 阅读页打开
 - [ ] 中间文件已清理
 
 ---

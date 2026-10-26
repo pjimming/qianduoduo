@@ -9,7 +9,7 @@ const {
   startTestServer,
 } = require('../helpers/test-context');
 
-test('research reports and generated indexes remain isolated static assets', async (t) => {
+test('research library uses Vue documents and no longer serves archived report copies', async (t) => {
   const context = await startTestServer(t);
   const manifest = JSON.parse(
     fs.readFileSync(
@@ -23,16 +23,22 @@ test('research reports and generated indexes remain isolated static assets', asy
   assert.equal(libraryRoute.status, 200);
   assert.match(libraryRoute.headers.get('content-type'), /^text\/html/);
 
-  const reportAsset = await fetch(
+  const reportPage = await fetch(
+    `${context.baseUrl}/investment/research/${encodeURIComponent(report.slug)}`,
+  );
+  assert.equal(reportPage.status, 200);
+  assert.match(reportPage.headers.get('content-type'), /^text\/html/);
+  assert.match(await reportPage.text(), /<div id="app"><\/div>/);
+
+  const legacyReportAsset = await fetch(
     `${context.baseUrl}/research/stocks/${encodeURIComponent(report.file)}`,
   );
-  assert.equal(reportAsset.status, 200);
-  assert.match(reportAsset.headers.get('content-type'), /^text\/html/);
-  assert.equal((await reportAsset.text()).length > 1000, true);
+  assert.equal(legacyReportAsset.status, 404);
 
-  const nav = await fetch(`${context.baseUrl}/research/scripts/report-nav.js`);
-  assert.equal(nav.status, 200);
-  assert.match(nav.headers.get('content-type'), /javascript/);
+  const legacyNavigation = await fetch(
+    `${context.baseUrl}/research/scripts/report-nav.js`,
+  );
+  assert.equal(legacyNavigation.status, 404);
 
   const techMap = await fetch(`${context.baseUrl}/research/techmap/index.html`);
   assert.equal(techMap.status, 200);

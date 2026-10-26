@@ -1,9 +1,7 @@
 'use strict';
 
 const ASSET_PREFIXES = Object.freeze([
-  '/research/stocks/',
   '/research/media/',
-  '/research/scripts/',
   '/research/techmap/',
 ]);
 

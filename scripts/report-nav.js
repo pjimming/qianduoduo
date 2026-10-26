@@ -52,7 +52,7 @@
   /* 清单生成时间（同样由 update-nav.ps1 写入） */
   var NAV_META = {
     //>META:BEGIN
-    generated: "2026-10-27 00:30"
+    generated: "2026-10-27 00:56"
     //>META:END
   };
 

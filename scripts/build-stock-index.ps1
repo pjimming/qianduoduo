@@ -6,9 +6,6 @@ $ErrorActionPreference = 'Stop'
 
 $sourceReportDir = Join-Path $ProjectRoot 'report'
 $sourceNavPath = Join-Path $ProjectRoot 'scripts\report-nav.js'
-$targetReportDir = Join-Path $ProjectRoot 'public\research\stocks'
-$targetNavDir = Join-Path $ProjectRoot 'public\research\scripts'
-$targetNavPath = Join-Path $targetNavDir 'report-nav.js'
 $manifestPath = Join-Path $ProjectRoot 'src\data\stockReports.json'
 
 foreach ($required in @($sourceReportDir, $sourceNavPath)) {
@@ -17,27 +14,14 @@ foreach ($required in @($sourceReportDir, $sourceNavPath)) {
   }
 }
 
-New-Item -ItemType Directory -Force -Path $targetReportDir, $targetNavDir | Out-Null
-
 $sourceReports = @(Get-ChildItem -LiteralPath $sourceReportDir -Filter '*.html' -File | Sort-Object Name)
 if ($sourceReports.Count -eq 0) {
   throw "来源目录没有 HTML 报告：$sourceReportDir"
 }
 
-foreach ($report in $sourceReports) {
-  Copy-Item -LiteralPath $report.FullName -Destination (Join-Path $targetReportDir $report.Name) -Force
-}
-
-# 本工作区 report/ 是调研源文件；public/research/stocks/ 是应用内副本。
-# 报告页从 /research/stocks/ 加载 ../scripts/report-nav.js；相对该脚本，
-# 应用内清单必须指向 ../stocks/ 而不是工作区的 ../report/。
+# report/ 是唯一报告源。本脚本只生成 Vue 报告库清单，不复制 HTML 报告或导航脚本。
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $navText = [System.IO.File]::ReadAllText($sourceNavPath, [System.Text.Encoding]::UTF8)
-$updatedNav = $navText.Replace('var REPORTS_BASE = "report/";', 'var REPORTS_BASE = "../stocks/";')
-if ($updatedNav -eq $navText) {
-  throw '未能改写 report-nav.js 的 REPORTS_BASE，请检查来源脚本格式。'
-}
-[System.IO.File]::WriteAllText($targetNavPath, $updatedNav, $utf8)
 
 function ConvertFrom-JsString {
   param([string]$Value)
@@ -208,5 +192,4 @@ $manifest = [ordered]@{
 $json = $manifest | ConvertTo-Json -Depth 6
 [System.IO.File]::WriteAllText($manifestPath, $json, $utf8)
 
-Write-Host ("已同步 {0} 篇报告 -> {1}" -f $sorted.Count, $targetReportDir)
-Write-Host ("已生成清单 -> {0}" -f $manifestPath)
+Write-Host ("已从 report/ 生成 {0} 篇报告清单 -> {1}" -f $sorted.Count, $manifestPath)

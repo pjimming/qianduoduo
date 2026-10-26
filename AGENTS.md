@@ -5,7 +5,7 @@
 本工作区 `D:\codex\钱多多财富工作台` 是钱多多的统一工作区，R2 理财、投资资料、股票调研和报告发布都在这里完成。除特别说明外，所有命令均在工作区根目录执行；分享到其他机器时，将下面的绝对路径替换为实际项目根目录。
 
 - **账本与研究隔离**：R2 账本数据保存在 `data/r2_ledger.sqlite`，用于 R2 记账、对账和资金管理；股票研究使用 `report/` 和股票研究数据，输出独立的调研报告与研究结论。
-- **报告来源**：股票报告的原始 HTML 在 `report/` 编辑。运行 `npm run research:publish`，由脚本更新 `public/research/stocks/`、报告导航、`src/data/stockReports.json`、`src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`。
+- **报告来源**：股票报告的原始 HTML 在 `report/` 编辑，是唯一可编辑源文件。运行 `npm run research:publish`，由脚本更新独立报告库导航、`src/data/stockReports.json`、`src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`；不再生成或托管 `public/research/stocks/` 与 `public/research/scripts/report-nav.js`。
 - **应用入口**：报告库为 `/investment/research`，A 股科技图谱为 `/investment/tech-map`，独立归档页为 `research/index.html`。
 - **专题规则来源**：R2 记账口径与运行方式遵循 `MEMORY.md`、`README.md` 和 `r2-wealth-management` skill；股票研究遵循 `serenity-skill`。
 - **任务状态来源**：后端工作开始前先检查 `TODO.md`。任务状态、优先级、阻塞项和剩余事项从 `TODO.md`、代码、Git、数据库、API 和当次测试结果读取。
@@ -142,6 +142,7 @@ Serenity 完成技术或需求变化、系统拆解、瓶颈识别、产业链�
 - 科技图谱联动使用搜索关键词。关键词来自标题、小节标题和表格首列；正文段落中的代码通过 `<!-- rpnav-keywords: 002414 -->` 加入关键词。
 - 检索索引随报告数线性增长；达到 50 篇以上时评估拆分索引或服务端检索，当前数量、索引体积和构建耗时从发布清单与实际构建输出读取。
 - `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/` 由 `scripts/build-report-docs.mjs` 生成，属于忽略文件，并随构建刷新。
+- 应用内报告只通过 Vue 阅读页 `/investment/research/:slug` 访问。`public/research/stocks/`、`public/research/scripts/report-nav.js` 和 `/research/stocks/*` 均为已退役路径，发布链和服务路由不得恢复这些静态副本。
 
 每轮调研结束时清理 Markdown 草稿、抓取缓存和临时目录。
 
@@ -194,12 +195,12 @@ Serenity 完成技术或需求变化、系统拆解、瓶颈识别、产业链�
 5. 暂存本次报告相关变更。
 6. 提交并推送到当前分支 upstream。
 
-`npm run research:publish` 会依次执行导航更新、应用副本与清单同步、`npm run build` 和 `npm run prod:restart`，并刷新 `http://127.0.0.1:8765`。报告发布属于当前任务的授权操作；发布后检查 `prod:status`、健康接口、关键 API、stderr 和残留 stop marker。
+`npm run research:publish` 会依次更新独立报告库源导航、从 `report/*.html` 重建报告清单、生成 Vue 文档/检索索引/媒体、执行 `npm run build` 和 `npm run prod:restart`，并刷新 `http://127.0.0.1:8765`。它不复制静态报告或导航副本。报告发布属于当前任务的授权操作；发布后检查 `prod:status`、健康接口、关键 API、Vue 报告库与阅读页、stderr 和残留 stop marker。
 
 发布后按以下规则提交：
 
 - 提交前运行 `git status --short`，识别任务开始前已有的工作区改动，将其保留在本次提交之外。
-- 按路径显式暂存本次变更：`report/<本次报告>.html`、`public/research/stocks/<本次报告>.html`、`scripts/report-nav.js`、`public/research/scripts/report-nav.js` 和 `src/data/stockReports.json`。本次修改了发布脚本或报告样式源文件时，同时暂存对应源文件。
+- 按路径显式暂存本次变更：`report/<本次报告>.html`、`scripts/report-nav.js` 和 `src/data/stockReports.json`。本次修改了发布脚本或报告样式源文件时，同时暂存对应源文件；不得暂存或恢复 `public/research/stocks/`、`public/research/scripts/report-nav.js`。
 - 暂存后检查 `git diff --cached`，确认暂存内容只属于本批次报告和预期生成物。
 - 共享导航与清单包含本批次报告的可归属变化，方可进入提交。
 - 使用明确的提交信息，例如 `research: publish <报告标题> (<YYYY-MM-DD>)`，随后推送到当前分支 upstream。

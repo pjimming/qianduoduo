@@ -263,14 +263,14 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 ### 股票调研报告库
 
 - 入口：`/investment/research`，是左侧“投资”的默认页面；`/investment` 也会跳转到这里。
-- 内容：19 篇股票、产业链与板块调研报告，按发布时间倒序排列；支持元数据筛选、正文全文检索（命中后跳到对应章节）、研究优先级标签。
-- 详情：`/investment/research/:slug`，报告由 Vue 直接渲染（无 iframe），打开即为报告正文；顶部提供返回报告库和可搜索的报告切换器，左侧目录可折叠并随滚动高亮当前章节，另支持阅读进度、`←/→` 切换报告、打印和打开独立 HTML。
+- 内容：25 篇股票、产业链与板块调研报告，按发布时间倒序排列；支持元数据筛选、正文全文检索（命中后跳到对应章节）、研究优先级标签。
+- 详情：`/investment/research/:slug`，报告由 Vue 直接渲染（无 iframe），打开即为报告正文；顶部提供返回报告库和可搜索的报告切换器，左侧目录可折叠并随滚动高亮当前章节，另支持阅读进度、`←/→` 切换报告和打印。
 - 源文件：报告统一放在本工作区 `report/`；独立报告库归档页为 `research/index.html`。
 - 工作流：股票、主题、产业链、候选公司对比和事件研究默认直接生成 HTML 报告并发布；快速扫描和事件更新同样进入报告库，除非用户明确要求只做分析、不生成文件。
-- 数据：`src/data/stockReports.json` 由同步脚本从 `report/` 生成，包含标题、日期、分类、摘要、关键词和研究优先级。
+- 数据：`src/data/stockReports.json` 由清单脚本从 `report/` 生成，包含标题、日期、分类、摘要、关键词和研究优先级。
 - 应用内文档：`src/data/reportDocs/<slug>.json` 保存正文与作用域化 CSS，`src/data/reportSearch.json` 是正文检索索引，`public/research/media/` 存放从报告里外置并转为 WebP 的图片；三者都由 `scripts/build-report-docs.mjs` 生成，不要手工编辑。
-- 归档：独立 HTML 副本在 `public/research/stocks/`，报告导航脚本在 `public/research/scripts/report-nav.js`；同样是生成物。
-- 发布：新增或修改报告后，在根目录运行 `npm run research:publish`。该命令会更新导航清单、同步应用副本与清单，并完成构建和本地生产服务重启。
+- 静态边界：应用不生成、不托管也不支持 `public/research/stocks/`、`public/research/scripts/report-nav.js` 或 `/research/stocks/*`；报告只通过 Vue 阅读页访问。`research/index.html` 保留为可直接打开的本地归档页，使用工作区源导航。
+- 发布：新增或修改报告后，在根目录运行 `npm run research:publish`。该命令会更新独立归档导航、重建应用报告清单与 Vue 文档，并完成构建和本地生产服务重启。
 - 边界：报告内容为公开信息研究整理，不构成投资建议，也不进入 R2 收益账本、产品池排序或选品结论。
 
 **新增一篇报告的成本与约束**

@@ -364,4 +364,4 @@ foreach ($r in $ordered) {
         Write-Host ("               ! 未取到摘要（建议在报告中加 <!-- rpnav-summary: … -->）")
     }
 }
-Write-Host ("[update-nav] 独立报告库 research/{0} 直接读取该清单；应用内报告库请再执行 npm run sync:reports。" -f $IndexFile)
+Write-Host ("[update-nav] 独立报告库 research/{0} 直接读取该清单；应用清单与 Vue 文档由 npm run research:publish 统一更新。" -f $IndexFile)

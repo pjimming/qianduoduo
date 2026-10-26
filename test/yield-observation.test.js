@@ -20,11 +20,17 @@ const {
   readObservationLedger,
   reviewObservationLedger,
 } = require('../lib/yield-observation');
-const { productCsv } = require('./fixtures');
 const {
   parseArgs,
   reviewFromStore,
 } = require('../scripts/yield-observe.cjs');
+
+const observationProductCsv = path.join(
+  __dirname,
+  '..',
+  'data',
+  'cmb_r2_universe-2026-10-24.csv',
+);
 
 const BUCKETS = [
   { name: 'short', termDays: 7, return1m: 2, return3m: 2.2, return6m: 2.4 },
@@ -610,7 +616,7 @@ test('initialized observation spec and cohort cannot be overwritten', (t) => {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const initialized = initializeObservationStore({
     root,
-    inputPath: productCsv,
+    inputPath: observationProductCsv,
     generatedAt: '2026-10-25T00:00:00.000Z',
   });
   assert.equal(initialized.cohort.baseline_data_date, '2026-10-22');
@@ -623,7 +629,7 @@ test('initialized observation spec and cohort cannot be overwritten', (t) => {
     () =>
       initializeObservationStore({
         root,
-        inputPath: productCsv,
+        inputPath: observationProductCsv,
         generatedAt: '2026-10-26T00:00:00.000Z',
       }),
     /不覆盖已冻结文件/,
@@ -634,7 +640,7 @@ test('initialized observation spec and cohort cannot be overwritten', (t) => {
   const options = parseArgs([
     'capture',
     '--input',
-    productCsv,
+    observationProductCsv,
     '--root',
     root,
     '--dry-run',
@@ -654,14 +660,14 @@ test('capture is serialized and dry-run never appends a sample', (t) => {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const initialized = initializeObservationStore({
     root,
-    inputPath: productCsv,
+    inputPath: observationProductCsv,
     generatedAt: '2026-10-25T00:00:00.000Z',
   });
   const laterCsv = path.join(root, 'universe-2026-10-29.csv');
   fs.writeFileSync(
     laterCsv,
     fs
-      .readFileSync(productCsv, 'utf8')
+      .readFileSync(observationProductCsv, 'utf8')
       .replaceAll('2026-10-22', '2026-10-29'),
     'utf8',
   );

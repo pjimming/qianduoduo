@@ -8,7 +8,7 @@ const {
   createResearchService,
 } = require('../../server/modules/research/service');
 
-test('research service reads the static index and owns only report asset paths', () => {
+test('research service reads the report index and owns only media and tech map assets', () => {
   const served = [];
   const service = createResearchService({
     rootDir: ROOT,
@@ -24,13 +24,14 @@ test('research service reads the static index and owns only report asset paths',
   assert.equal(library.count, library.reports.length);
   assert.equal(library.count > 0, true);
   assert.equal(techMap.groups > 0, true);
-  assert.equal(service.ownsAsset('/research/stocks/example.html'), true);
   assert.equal(service.ownsAsset('/research/media/example.webp'), true);
   assert.equal(service.ownsAsset('/research/techmap/index.html'), true);
+  assert.equal(service.ownsAsset('/research/stocks/example.html'), false);
+  assert.equal(service.ownsAsset('/research/scripts/report-nav.js'), false);
   assert.equal(service.ownsAsset('/research/tech-map'), false);
   assert.equal(service.ownsAsset('/investment/research'), false);
 
-  service.serveAsset({}, {}, '/research/scripts/report-nav.js');
-  assert.deepEqual(served, ['/research/scripts/report-nav.js']);
+  service.serveAsset({}, {}, '/research/media/example.webp');
+  assert.deepEqual(served, ['/research/media/example.webp']);
   assert.equal(path.basename(service.librarySummary().reports[0].file).endsWith('.html'), true);
 });

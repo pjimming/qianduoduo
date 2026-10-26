@@ -1,14 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { scopeReportCss } from '../scripts/build-report-docs.mjs'
 
 const library = JSON.parse(
   readFileSync(new URL('../src/data/stockReports.json', import.meta.url), 'utf8'),
 )
 const sourceRoot = new URL('../report/', import.meta.url)
-const reportRoot = new URL('../public/research/stocks/', import.meta.url)
-const navPath = new URL('../public/research/scripts/report-nav.js', import.meta.url)
+const documentRoot = new URL('../src/data/reportDocs/', import.meta.url)
+const searchIndex = JSON.parse(
+  readFileSync(new URL('../src/data/reportSearch.json', import.meta.url), 'utf8'),
+)
 
 test('stock report manifest keeps unique, dated entries', () => {
   assert.ok(library.reports.length > 0)
@@ -28,27 +30,41 @@ test('stock report manifest keeps unique, dated entries', () => {
   }
 })
 
-test('every stock report file is archived and self-contained', () => {
-  for (const report of library.reports) {
-    const sourceUrl = new URL(encodeURIComponent(report.file), sourceRoot)
-    const fileUrl = new URL(encodeURIComponent(report.file), reportRoot)
-    assert.ok(existsSync(sourceUrl), `缺少源报告：${report.file}`)
-    assert.ok(existsSync(fileUrl), `缺少报告文件：${report.file}`)
+test('source reports and the Vue library manifest contain the same complete file set', () => {
+  const sourceFiles = readdirSync(sourceRoot)
+    .filter((file) => file.toLowerCase().endsWith('.html'))
+    .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+  const manifestFiles = library.reports
+    .map((report) => report.file)
+    .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
 
-    const sourceHtml = readFileSync(sourceUrl, 'utf8')
-    const html = readFileSync(fileUrl, 'utf8')
-    assert.equal(html, sourceHtml, `源报告与应用副本不一致：${report.file}`)
+  assert.deepEqual(manifestFiles, sourceFiles)
+
+  for (const report of library.reports) {
+    const sourceUrl = new URL(report.file, sourceRoot)
+    assert.ok(existsSync(sourceUrl), `缺少源报告：${report.file}`)
+
+    const html = readFileSync(sourceUrl, 'utf8')
     assert.match(html, /<html[\s>]/i)
     assert.match(html, /<\/html>/i)
     assert.match(html, /<title>/i)
+    assert.match(html, /<style[\s>]/i)
+    assert.match(html, /<body[\s>]/i)
     assert.match(html, /report-nav\.js/)
   }
 })
 
-test('embedded report navigation resolves back to the archived reports', () => {
-  assert.ok(existsSync(navPath), '缺少报告导航脚本')
-  const nav = readFileSync(navPath, 'utf8')
-  assert.match(nav, /var REPORTS_BASE = "\.\.\/stocks\/";/)
+test('public report copies and their static navigation are not versioned', () => {
+  assert.equal(
+    existsSync(new URL('../public/research/stocks/', import.meta.url)),
+    false,
+    'public/research/stocks 不应继续存在',
+  )
+  assert.equal(
+    existsSync(new URL('../public/research/scripts/report-nav.js', import.meta.url)),
+    false,
+    'public/research/scripts/report-nav.js 不应继续存在',
+  )
 })
 
 test('standalone research library loads the shared navigation from the workspace root', () => {
@@ -78,11 +94,19 @@ test('report CSS is scoped into the reader root', () => {
 })
 
 test('every stock report has a generated Vue document', () => {
+  const documentFiles = readdirSync(documentRoot)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => file.replace(/\.json$/i, ''))
+    .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+  const reportSlugs = library.reports
+    .map((report) => report.slug)
+    .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+
+  assert.deepEqual(documentFiles, reportSlugs)
+  assert.equal(searchIndex.length, library.reports.length)
+
   for (const report of library.reports) {
-    const docPath = new URL(
-      `../src/data/reportDocs/${report.slug}.json`,
-      import.meta.url,
-    )
+    const docPath = new URL(`${report.slug}.json`, documentRoot)
     assert.ok(existsSync(docPath), `缺少 Vue 文档：${report.slug}`)
 
     const doc = JSON.parse(readFileSync(docPath, 'utf8'))
@@ -97,5 +121,11 @@ test('every stock report has a generated Vue document', () => {
       /(^|})\s*(body|html|:root)\s*[,{]/,
       `${report.slug} 存在未作用域化的全局样式`,
     )
+
+    const searchDoc = searchIndex.find((item) => item.slug === report.slug)
+    assert.ok(searchDoc, `缺少正文检索索引：${report.slug}`)
+    assert.equal(searchDoc.file, report.file)
+    assert.equal(searchDoc.title, report.title)
+    assert.ok(searchDoc.sections.length > 0, `${report.slug} 没有可检索正文`)
   }
 })
