@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股AI应用与AI软件板块（主题组合）｜主题深度｜2026-10-26</title>
+<!-- rpnav-tag: AI应用与软件 -->
+<!-- rpnav-summary: AI收入已经开始被部分公司单列，但利润和现金流没有同步兑现；首轮研究放在能科科技、汉得信息、金山办公、焦点科技和同花顺，而不是泛化“智能体概念”。 -->
+<!-- rpnav-keywords: AI应用 AI软件 人工智能 智能体 Agent 工业AI 财税AI 外贸AI 办公软件 金融信息服务 603859 300170 688111 002315 300033 600588 603171 300378 688615 002230 -->
+<!-- rpnav-priority: 高 -->
+<!-- rpnav-priority-detail: 研究优先级高，因为已有可核验的AI收入和客户付费，但仍需验证利润、回款、续费和被模型平台替代的风险。 -->
+<style>
+:root{
+  --ink:#16222d;--muted:#61717c;--line:#dce5e8;--paper:#f1f5f4;--card:#fff;
+  --navy:#0f2c3d;--navy2:#1f5268;--teal:#0d8173;--teal-soft:#e5f4ef;
+  --gold:#aa6a12;--gold-soft:#fff4df;--red:#9d4036;--red-soft:#fbe9e6;
+  --blue:#315f9a;--blue-soft:#eaf1fb;--shadow:0 12px 32px rgba(28,50,65,.08)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.72 "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif}
+a{color:#176f82;text-decoration:none;border-bottom:1px solid rgba(23,111,130,.28)}
+a:hover{border-bottom-color:currentColor}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 22px 72px}
+.hero{background:linear-gradient(135deg,#0d293a 0%,#173f54 56%,#176b67 100%);color:#fff;border-radius:22px;padding:42px 44px 34px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-105px;top:-165px;border:1px solid rgba(255,255,255,.12);box-shadow:0 0 0 62px rgba(255,255,255,.025),0 0 0 124px rgba(255,255,255,.018)}
+.eyebrow{font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:#a9d8d3;font-weight:700}
+h1{font-size:34px;line-height:1.3;margin:10px 0 12px;max-width:930px}
+.sub{font-size:17px;line-height:1.75;color:#e7f0f3;max-width:980px;margin:0 0 22px}
+.meta{display:flex;flex-wrap:wrap;gap:9px;position:relative;z-index:2}
+.chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:#eaf4f5;font-size:12px;border:1px solid rgba(255,255,255,.13)}
+.section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 30px;margin-top:22px;box-shadow:0 5px 20px rgba(28,50,65,.04)}
+.section>.chapter-no{color:var(--teal);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+h2{font-size:25px;line-height:1.35;margin:5px 0 12px;color:var(--navy)}
+h3{font-size:18px;line-height:1.45;margin:26px 0 10px;color:var(--navy2)}
+h4{font-size:15px;margin:20px 0 8px;color:var(--navy2)}
+p{margin:9px 0}
+.takeaway{background:linear-gradient(90deg,var(--teal-soft),#f8fbfa);border-left:4px solid var(--teal);padding:12px 15px;border-radius:9px;margin:2px 0 18px;color:#204d48;font-weight:650}
+.verdict{background:linear-gradient(135deg,#fff8e9,#fffdf8);border:1px solid #e9c27b;border-radius:14px;padding:18px 20px;margin:14px 0 18px}
+.verdict strong{color:#824b00}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fbfcfc}
+.kpi .v{font-size:23px;font-weight:800;color:var(--navy);line-height:1.25}
+.kpi .k{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .s{font-size:12px;color:#6d7b85;margin-top:7px}
+.callout{border:1px solid #cfdde2;background:#f7fbfb;border-radius:12px;padding:14px 16px;margin:14px 0}
+.risk{border-color:#edc9c3;background:var(--red-soft)}
+.warn{border-color:#e7cf9a;background:var(--gold-soft)}
+.goodbox{border-color:#a8d7cd;background:var(--teal-soft)}
+.table-wrap{overflow-x:auto;margin:12px 0 18px;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:760px;background:#fff;font-size:12.5px}
+th,td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#edf3f5;color:#203e4e;font-weight:750}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.center{text-align:center}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.high{background:#dff3ed;color:#0a6a5b}.mid{background:#fff0cf;color:#8b5a00}.low{background:#eef1f3;color:#65727c}
+.bad{background:#f9e1dd;color:#8b322a}.good{background:#e6f4f0;color:#0b6b5c}.neutral{background:#e9f0fa;color:#315f9c}
+.src,.note{font-size:12px;color:var(--muted);line-height:1.6}
+.chain{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}
+.chain .node{border:1px solid #cbd9df;background:#f8fbfc;border-radius:12px;padding:14px;position:relative;min-height:168px}
+.chain .node:not(:last-child):after{content:"→";position:absolute;right:-13px;top:47%;font-size:20px;color:#72919f;z-index:2}
+.chain .node.bottleneck{border-color:#d9ae60;background:#fff5df}
+.chain b{display:block;color:var(--navy);margin-bottom:5px}
+.chain span{font-size:12px;color:var(--muted)}
+.stock-card{border:1px solid var(--line);border-radius:14px;padding:17px 18px;margin:13px 0;background:#fcfdfd}
+.stock-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}
+.stock-head b{font-size:17px;color:var(--navy)}
+.stock-head .px{font-variant-numeric:tabular-nums;color:var(--navy2);font-weight:750}
+.compact li{margin:6px 0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mini-card{border:1px solid var(--line);background:#fbfcfc;border-radius:12px;padding:15px}
+.mini-card .big{font-size:25px;font-weight:800;color:var(--navy)}
+.mini-card .cap{font-size:12px;color:var(--muted)}
+.breadth-bar{display:grid;grid-template-columns:170px 1fr 120px;gap:12px;align-items:center;margin:9px 0;font-size:12px}
+.bar-track{height:10px;border-radius:999px;background:#e5eaec;overflow:hidden;display:flex}
+.bar-up{background:#2b9a78}.bar-down{background:#c86254}
+.bar-text{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.source-list li{margin:6px 0}
+.foot{margin-top:22px;padding:22px 24px;border-radius:16px;background:#e9efee;color:#4e5f68;font-size:12px}
+.foot strong{color:var(--navy)}
+.mono{font-variant-numeric:tabular-nums;white-space:nowrap}
+.plain-list{list-style:none;padding:0;margin:0}
+.plain-list li{border-bottom:1px solid var(--line);padding:9px 0}
+.plain-list li:last-child{border-bottom:none}
+@media(max-width:900px){
+  .grid,.grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .chain{grid-template-columns:1fr 1fr}
+  .chain .node:not(:last-child):after{display:none}
+  .two-col{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .wrap{padding:12px 10px 50px}
+  .hero{padding:28px 21px;border-radius:16px}
+  h1{font-size:26px}.sub{font-size:15px}
+  .section{padding:21px 16px;border-radius:14px}
+  .grid,.grid.three{grid-template-columns:1fr 1fr}
+  .chain{grid-template-columns:1fr}
+  .stock-head{display:block}
+  .breadth-bar{grid-template-columns:105px 1fr 82px}
+}
+@media print{
+  body{background:#fff}.wrap{max-width:none;padding:0}.section,.hero{box-shadow:none}.section{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Theme Research · A-share AI Applications &amp; Software</div>
+  <h1>A股AI应用与AI软件：收入开始兑现，利润兑现仍稀缺</h1>
+  <p class="sub">板块已经出现可核验的AI收入样本，但真正稀缺的已不是模型接口，而是能把AI收入转成利润和现金的业务闭环：首轮研究优先能科科技、汉得信息、金山办公、焦点科技与同花顺，不能把智能体数量或签约额直接当成盈利。</p>
+  <div class="meta">
+    <span class="chip">调研日期 2026-10-26</span>
+    <span class="chip">财务主口径 2026H1 / 已披露2026Q3</span>
+    <span class="chip">行情截止 2026-10-23 收盘</span>
+    <span class="chip">10月26日盘中反应仅作事件参考</span>
+    <span class="chip">币种 CNY</span>
+    <span class="chip">方法：Serenity 产业链瓶颈分析 + 市场叙事与资金结构 + 五红灯财务快筛 + 退出条件</span>
+  </div>
+</header>
+
+<section class="section" id="chapter-1">
+  <div class="chapter-no">Chapter 01</div>
+  <h2>一、一页结论</h2>
+  <div class="takeaway">主判断：AI应用从“能否收费”进入“收费后能否留下利润”的验证期。当前最值得继续研究的是同时拥有业务系统、可信数据和持续收费入口的公司，而不是拥有最多聊天窗口或智能体数量的公司。</div>
+
+  <div class="verdict">
+    <p><strong>研究优先级：</strong>能科科技、汉得信息、金山办公、焦点科技为高；同花顺为中高。</p>
+    <p><strong>市场阶段：</strong>主题退潮后的基本面分化修复期。20只代表公司近20日有16只上涨，但年初至今仅2只上涨，板块反弹尚未获得全面盈利上修和放量确认。</p>
+    <p><strong>核心预期差：</strong>市场已经开始交易“AI收入可量化”，但行业利润总额仅同比增长1.3%。能科、汉得已有明确AI收入，却分别出现经营现金流为负和应收扩张；金山、同花顺的AI已进入核心工作流，却没有单列AI收入。收入证据、利润证据和证券定价必须分开判断。</p>
+    <p><strong>下一催化：</strong>2026年10月31日前是三季报集中验证窗口；2026Q4—2027Q1观察企业年末续约和2027年预算。</p>
+    <p><strong>核心里程碑：</strong>能科、汉得把AI收入增速转成正向经营现金流；金山、焦点把AI能力转成可量化的付费、用量或AI收入占比；同花顺在成交活跃度回落时仍保持合同负债和收入韧性。</p>
+    <p><strong>退出信号：</strong>AI收入继续增长，但扣非利润、经营现金流和应收质量连续两期同步恶化；或AI只增加功能与签约，无法提升续费、客单价和现金回款。</p>
+  </div>
+
+  <div class="grid">
+    <div class="kpi"><div class="v">+8.8% / +1.3%</div><div class="k">2026年1—8月软件业务收入 / 利润增速</div><div class="s">收入有增长，但行业利润几乎没有同步扩张</div></div>
+    <div class="kpi"><div class="v">2.94亿元</div><div class="k">能科科技2026H1 AI产品与服务收入</div><div class="s">同比+39.15%，占公司营收约39.7%</div></div>
+    <div class="kpi"><div class="v">约2.2亿元</div><div class="k">汉得信息2026H1 AI智能化应用收入</div><div class="s">同比超过100%，约占总收入13.2%</div></div>
+    <div class="kpi"><div class="v">3,840万元</div><div class="k">焦点科技2026H1 AI业务收入</div><div class="s">同比+76.61%，占收入3.64%；现金收入增速为37.56%</div></div>
+  </div>
+
+  <h3>先把“AI收入”按证据强度分层</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>证据层</th><th>能证明什么</th><th>公司与事实</th><th>仍不能证明</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag high">A 正式披露的业务收入</span></td><td>定期报告或管理层业务分类中可计算收入；除焦点为分产品行外，并不等于经审计的独立财务分部。</td><td><strong>能科科技</strong>H1 AI产品与服务2.94亿元；<strong>汉得信息</strong>H1 AI智能化应用约2.2亿元；<strong>用友网络</strong>H1 AI相关收入4.64亿元；<strong>焦点科技</strong>H1 AI业务收入3,839.99万元。</td><td>各公司AI收入与成本的严格配比、续费率、客户集中度和完整毛利。</td></tr>
+        <tr><td><span class="tag mid">B 现金收入或回款</span></td><td>客户已支付现金，但会计收入可能递延或采用不同确认时点</td><td><strong>焦点科技</strong>前三季度AI麦可现金收入7,284.94万元；<strong>税友股份</strong>2025年AI产品及业务回款4.21亿元，占数智财税业务回款28%。</td><td>不能把现金收入直接等同当期确认收入或利润。</td></tr>
+        <tr><td><span class="tag neutral">C 合同、签约或共创</span></td><td>商业需求存在，未来可能转成收入</td><td><strong>用友网络</strong>H1 AI相关合同签约9.06亿元；<strong>鼎捷数智</strong>H1 AI相关签约近2亿元；<strong>金山办公</strong>WPS Comate已有数百家企业共创意向。</td><td>不能把签约额、意向数或智能体数量当成已确认收入。</td></tr>
+        <tr><td><span class="tag low">D 产品发布或技术演示</span></td><td>产品能力与方向</td><td>各类AIOS、文档智能体、知识库、MCP与Agent Store。</td><td>客户是否付费、是否复购、是否能在毛利和现金流中留下价值。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">口径说明：按公司原始定期报告和正式公告整理；“现金收入”“回款”“签约额”“确认收入”不作同义词处理。</p>
+
+  <h3>本轮研究最先回答什么问题</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>核心对象</th><th>研究优先级</th><th>为什么先研究</th><th>最关键的未决问题</th></tr></thead>
+      <tbody>
+        <tr><td><strong>能科科技 603859</strong></td><td><span class="tag high">高</span></td><td>AI已成为第一大业务，规模和毛利率都能从正式报告中核验。</td><td>AI收入能否覆盖销售、交付与回款压力，并让整体扣非和经营现金流转好？</td></tr>
+        <tr><td><strong>汉得信息 300170</strong></td><td><span class="tag high">高</span></td><td>AI智能化应用收入约2.2亿元、同比翻倍，是A股少见的规模化企业AI收入。</td><td>项目型收入能否改善毛利率与现金流，还是只扩大“收入—应收—采购”链条？</td></tr>
+        <tr><td><strong>金山办公 688111</strong></td><td><span class="tag high">高</span></td><td>办公软件是最接近高频任务执行的入口，WPS 365增速和客户案例均强。</td><td>AI是否能形成独立付费、用量收入或提价，而不是只增强既有订阅？</td></tr>
+        <tr><td><strong>焦点科技 002315</strong></td><td><span class="tag high">高</span></td><td>同时披露AI收入、AI现金收入和付费会员，收费口径最完整。</td><td>AI收入能否从3.64%升至5%以上，并在合同负债下降时保持现金转化？</td></tr>
+        <tr><td><strong>同花顺 300033</strong></td><td><span class="tag mid">中高</span></td><td>前三季度利润和经营现金流最强，AI已进入金融数据与智能体工作流。</td><td>增长有多少来自资本市场活跃度，多少来自AI带来的定价或留存？</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" id="chapter-2">
+  <div class="chapter-no">Chapter 02</div>
+  <h2>二、产业事实与瓶颈地图</h2>
+  <div class="takeaway">系统变化不是“软件里多一个聊天框”，而是软件从记录业务走向执行任务。价值上移的前提从模型能力变成了业务上下文、系统权限、结果责任、交付复制和收费权。</div>
+
+  <div class="callout goodbox">
+    <p><strong>官方产业事实：</strong>工信部披露，2026年1—8月软件业务收入102,820亿元，同比增长8.8%；利润总额11,837亿元，同比增长1.3%。软件产品收入同比增长6.0%，信息技术服务收入同比增长9.6%，其中云计算和大数据服务收入同比增长11.1%，信息安全产品和服务收入同比增长5.7%。</p>
+    <p class="src">来源：<a href="https://www.miit.gov.cn/jgsj/yxj/xxfb/art/2026/art_f77c0fabc2f34461b8ce96892998419d.html">工信部《2026年1—8月份软件业运行情况》</a>，2026-09-30。</p>
+  </div>
+
+  <div class="chain">
+    <div class="node"><b>1. 模型与算力</b><span>模型能力与Token价格快速平权，单纯提供通用对话或API很难形成长期超额利润。</span></div>
+    <div class="node"><b>2. 业务系统</b><span>办公、ERP、财税、金融信息、工业软件掌握工作流和席位，是AI进入任务执行的入口。</span></div>
+    <div class="node bottleneck"><b>3. 数据、权限与责任</b><span>企业文档、交易、供应链和工业数据能否合规调用，错误执行由谁承担，是第一真实卡点。</span></div>
+    <div class="node bottleneck"><b>4. Agent编排与交付</b><span>工具调用、记忆、审计、人工复核与FDE实施决定项目能否规模化复制，而不是停留在演示。</span></div>
+    <div class="node bottleneck"><b>5. 收费、毛利与现金</b><span>席位、用量、项目、结果分成最终都必须经过毛利率、合同负债、应收和经营现金流检验。</span></div>
+  </div>
+
+  <h3>产业链层级优先级</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>层级</th><th>研究优先级</th><th>为什么</th><th>代表方向</th><th>会改变排序的证据</th></tr></thead>
+      <tbody>
+        <tr><td>高频工作流与交易系统</td><td><span class="tag high">高</span></td><td>已有席位、数据、权限与业务闭环，AI可直接从“建议”进入“执行”。</td><td>办公、ERP、财税、金融信息、外贸B2B</td><td>AI只增加功能，续费、客单价、合同负债和毛利不改善。</td></tr>
+        <tr><td>可独立计量的企业AI服务</td><td><span class="tag high">高</span></td><td>已经能单列收入，可直接核验需求与商业化，但项目制属性可能吞噬利润。</td><td>工业AI、企业AI实施、垂直Agent</td><td>AI收入连续增长，但扣非利润与经营现金流持续恶化。</td></tr>
+        <tr><td>文档、数据库与数据平台</td><td><span class="tag mid">中高</span></td><td>掌握非结构化数据、数据治理或国产数据库入口；但AI功能多为增量，收入难单独剥离。</td><td>文档智能、数据库、数据治理</td><td>AI功能带来独立提价、用量收入或数据库替换加速。</td></tr>
+        <tr><td>端侧AIOS与开发平台</td><td><span class="tag mid">中</span></td><td>系统适配和端侧部署有门槛，但软硬一体、研发投入与客户项目会压低经营杠杆。</td><td>智能汽车、IoT、AI眼镜、机器人平台</td><td>标准化授权收入占比提高，现金流和扣非利润同步改善。</td></tr>
+        <tr><td>通用助手与轻量套壳</td><td><span class="tag low">低</span></td><td>切换成本低，模型厂商或操作系统可以直接吞并功能价值。</td><td>通用问答、简单写作、无独占数据工具</td><td>形成独占数据、网络效应或强分发，且可独立收费。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two-col">
+    <div class="mini-card">
+      <h4>替代路线：客户会怎样绕过A股软件公司</h4>
+      <ul class="compact">
+        <li><strong>基础模型厂商直接进入企业工作流：</strong>用企业知识库、MCP与Agent平台直接连接ERP、文档和数据库。</li>
+        <li><strong>云厂商一体化交付：</strong>把模型、数据、算力和行业套件打包，压缩独立软件商的议价空间。</li>
+        <li><strong>客户自建：</strong>大型央国企内部数科公司使用开源模型和Agent框架，自建核心流程。</li>
+        <li><strong>低价FDE与项目商：</strong>以人力交付替代可复制软件，抢项目但不一定创造高利润。</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>供给扩张：哪些壁垒会变薄，哪些不会</h4>
+      <ul class="compact">
+        <li><strong>会变薄：</strong>基础生成、通用问答、简单RAG、低代码Agent搭建，随着模型能力和开源工具提升快速商品化。</li>
+        <li><strong>不会快速变薄：</strong>企业数据授权、历史流程、权限、审计责任、行业Know-how和客户验证。</li>
+        <li><strong>真正稀缺：</strong>能够安全写入业务系统并把执行结果纳入KPI的系统记录商。</li>
+        <li><strong>最大反方：</strong>如果模型厂商把企业记忆、权限与工具调用做成原生能力，软件公司只剩低毛利实施服务。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="chapter-3">
+  <div class="chapter-no">Chapter 03</div>
+  <h2>三、候选公司与证据阶梯</h2>
+  <div class="takeaway">这里先排“谁更接近真实收入”，再排“谁能把收入留下”。AI收入已经不再是完全空白，但从收入到利润之间还隔着毛利、交付、应收、研发和现金回款。</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th>工作流位置</th><th>最新AI证据</th><th>最新财务与现金流</th><th>最强反方</th><th>研究优先级</th></tr></thead>
+      <tbody>
+        <tr><td><strong>能科科技<br>603859</strong></td><td>工业研发、生产、数据治理和Agent交付</td><td>AI产品与服务H1收入2.94亿元，同比+39.15%，占营收约39.7%；毛利率53.40%；AI客户累计超过100家。</td><td>H1总收入7.40亿元、同比+0.29%；归母净利0.947亿元、同比−14.38%；扣非−22.86%；经营现金流−1.185亿元。</td><td>AI收入增长尚未覆盖销售、组织与回款成本，整体利润和现金流先恶化。</td><td><span class="tag high">高</span></td></tr>
+        <tr><td><strong>汉得信息<br>300170</strong></td><td>企业数字化底座、AI智能化应用与实施</td><td>H1 AI智能化应用收入约2.2亿元、同比超过100%，约占总收入13.2%；Q2单季约1.4亿元。</td><td>H1营收16.70亿元、同比+6.07%；归母净利0.944亿元、同比+11.01%；扣非−21.01%；经营现金流−2.003亿元。</td><td>项目采购与应收占用把收入增长转成现金流压力，AI业务毛利与续费未披露。</td><td><span class="tag high">高</span></td></tr>
+        <tr><td><strong>金山办公<br>688111</strong></td><td>办公记录系统、组织协同与个人生产力入口</td><td>WPS 365 H1收入4.97亿元、同比+60.84%；WPS Comate覆盖11个领域、26个典型专家场景；已取得数百家企业共创意向。</td><td>H1营收33.13亿元、同比+24.69%；经调整净利10.87亿元、同比+28.29%；经营现金流6.43亿元；无有息借款。</td><td>“共创意向”不等于订单或收入；AI贡献没有单列，投资收益放大了报表净利。</td><td><span class="tag high">高</span></td></tr>
+        <tr><td><strong>焦点科技<br>002315</strong></td><td>外贸B2B交易、营销与履约工作流</td><td>H1 AI业务收入3,839.99万元、同比+76.61%，占3.64%；前三季度AI麦可现金收入7,284.94万元，在约会员15,718位。</td><td>前三季度营收16.01亿元、同比+14.12%；归母净利4.28亿元、同比+2.76%；剔除股份支付后净利5.16亿元、同比+16.57%；经营现金流5.16亿元。</td><td>AI收入规模仍小，合同负债较年末下降，股份支付压制报表利润。</td><td><span class="tag high">高</span></td></tr>
+        <tr><td><strong>同花顺<br>300033</strong></td><td>个人与机构金融信息、数据与投研工作流</td><td>问财与iFinD MCP进入金融数据、研究、跟踪和复盘；公司称以人工智能持续推进产品升级。</td><td>前三季度营收47.94亿元、同比+47.01%；归母净利20.37亿元、同比+68.86%；经营现金流31.75亿元；合同负债30.91亿元、较年末+74.68%。</td><td>公司未单列AI收入；高增长同时受资本市场活跃度、增值电信和广告业务推动。</td><td><span class="tag mid">中高</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>不是同样口径：</strong>能科、汉得的AI收入是业务分类；焦点是正式报表的分产品收入；同花顺的AI是嵌入原有金融信息服务产品的能力。把三家公司用同一个“AI收入倍数”横比会产生错误。</p>
+  </div>
+
+  <h3>3.1 能科科技：AI收入最直接，但利润和现金先亮红灯</h3>
+  <div class="stock-card">
+    <div class="stock-head"><b>能科科技（603859）｜工业AI与“灵系列”Agent</b><span class="px">研究优先级：高；财务证据不足</span></div>
+    <p><strong>公司实际卖什么：</strong>围绕工业AI与具身智能，提供算力管理、模型管理、数据治理、垂域模型训推和场景Agent开发部署，并以FDE团队完成客户现场交付。它不是单纯卖通用大模型，也不是只做传统系统集成。</p>
+    <p><strong>已确认的商业化：</strong>2026H1 AI产品与服务收入2.94亿元，同比+39.15%，Q2单季1.80亿元、环比+58.28%；毛利率53.40%，同比提高6.03个百分点；收入占比提升至近40%，AI客户累计超过100家，H1新增收入客户20余家。</p>
+    <p><strong>问题不在AI收入有没有：</strong>H1总收入仅增长0.29%，归母净利下降14.38%，扣非下降22.86%，经营现金流从上年同期+0.364亿元转为−1.185亿元。公司解释为销售、管理投入和客户回款节奏，但投资上必须等现金回款和整体利润率证明。</p>
+    <p><strong>下一个验证点：</strong>三季报或年报是否披露AI收入继续增长、AI毛利率维持50%以上，同时整体扣非恢复增长、经营现金流收窄；应收账款增速是否能回到收入增速附近。</p>
+    <p class="src">来源：<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225506508.PDF">能科科技2026年半年度报告</a>，2026-08-26，第6、9—14页。</p>
+  </div>
+
+  <h3>3.2 汉得信息：规模化AI收入已经出现，但先牺牲了现金流</h3>
+  <div class="stock-card">
+    <div class="stock-head"><b>汉得信息（300170）｜企业AI实施与“得·灵”能力体系</b><span class="px">研究优先级：高；现金流需验证</span></div>
+    <p><strong>公司实际卖什么：</strong>以近三十年的ERP、财务、供应链和制造数字化经验为底座，帮助客户建设“AI Ready”的数据、流程和知识基础，再交付企业AI智能体及实施服务。</p>
+    <p><strong>已确认的商业化：</strong>2026H1 AI智能化应用收入约2.2亿元，同比增长超过100%；Q1为0.81亿元、Q2约1.4亿元；按H1总收入16.70亿元计算，约占总收入13.2%。客户基础超过8,000家企业，客户留存率超过80%。</p>
+    <p><strong>核心矛盾：</strong>H1归母净利0.944亿元、同比+11.01%，但扣非净利下降21.01%，经营现金流为−2.003亿元，较上年同期−0.155亿元显著恶化。公司解释包括项目采购支付、股权激励税金及保理业务资金支出。</p>
+    <p><strong>下一个验证点：</strong>AI收入是否在H2保持70%以上增长并接近全年5亿元；AI毛利率、回款周期和客户集中度能否拆分；经营现金流能否随项目验收恢复。若AI收入继续增长而应收增速更高、现金流更差，只能维持研究观察。</p>
+    <p class="src">来源：<a href="https://static.cninfo.com.cn/finalpage/2026-08-28/1225515987.PDF">汉得信息2026年半年度报告</a>，2026-08-28，第2、9、13、25—27页。</p>
+  </div>
+
+  <h3>3.3 金山办公：系统记录层位置最好，AI收入仍需剥离</h3>
+  <div class="stock-card">
+    <div class="stock-head"><b>金山办公（688111）｜办公记录系统与组织级AI入口</b><span class="px">研究优先级：高；AI变现待量化</span></div>
+    <p><strong>公司实际卖什么：</strong>个人订阅、WPS 365组织级订阅、WPS软件授权与服务；AI产品包括个人办公助理“灵犀”和面向组织客户的WPS Comate。</p>
+    <p><strong>已确认的商业化：</strong>WPS 365在H1实现收入4.97亿元、同比+60.84%；WPS个人业务20.14亿元、同比+15.20%；累计年度付费个人用户4,825万、同比+15.44%。WPS Comate已在人力、行政、财务、法务、营销、产研等11个领域落地26个典型专家场景，并取得数百家企业的共创意向；公司探索“订阅+AI用量”。</p>
+    <p><strong>利润怎么读：</strong>H1归母净利25.18亿元，同比增长236.94%，但投资收益为19.14亿元；公司披露经调整净利10.87亿元、同比+28.29%。经营现金流6.43亿元，同比下降12.96%。因此不能把报表净利增速当成AI业务利润增速。</p>
+    <p><strong>下一个验证点：</strong>WPS 365能否连续两个季度保持45%以上增长；合同负债是否继续增加；个人和组织AI付费渗透、AI用量收入或ARPU增量能否从年报中剥离。只有产品功能、客户意向或模型能力，不足以完成验证。</p>
+    <p class="src">来源：<a href="https://static.cninfo.com.cn/finalpage/2026-08-20/1225482678.PDF">金山办公2026年半年度报告</a>，2026-08-20，第9—15、28—29、55—56页。</p>
+  </div>
+
+  <h3>3.4 焦点科技：收费口径最完整，规模仍小</h3>
+  <div class="stock-card">
+    <div class="stock-head"><b>焦点科技（002315）｜外贸B2B交易与营销操作系统</b><span class="px">研究优先级：高；规模待放大</span></div>
+    <p><strong>公司实际卖什么：</strong>中国制造网会员与认证服务、外贸AI应用、跨境与保险代理。AI产品包括AI麦可、Sourcing AI、贸探、Doba Pilot和Mentarc，直接嵌入商机发现、内容生成、客服、选品、建店和运营。</p>
+    <p><strong>已确认的商业化：</strong>2026H1 AI业务收入3,839.99万元，同比+76.61%，占营收3.64%；AI麦可现金收入4,776.73万元，同比+37.56%。截至2026-09-30，累计购买AI麦可会员25,200位、在约会员15,718位，前三季度AI麦可现金收入7,284.94万元，同比+33.34%。</p>
+    <p><strong>为什么值得继续研究：</strong>这是五家里收入口径最完整的样本：同时有确认收入、现金收入和付费会员。前三季度经营现金流5.16亿元，同比+23.58%，应收账款从年初1,495万元降至1,113万元，说明整体现金质量较好。主要缺点是AI业务仍只占3.64%，且合同负债从年初13.61亿元降至12.30亿元。</p>
+    <p><strong>下一个验证点：</strong>全年AI收入占比能否升至5%左右；在约会员与现金收入是否继续增长；合同负债能否止跌；股份支付10,058.62万元（前三季度）对利润的影响何时减轻。</p>
+    <p class="src">来源：<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225501362.PDF">焦点科技2026年半年度报告</a>，2026-08-26，第15、18页；<a href="https://static.cninfo.com.cn/finalpage/2026-10-24/1225617976.PDF">焦点科技2026年第三季度报告</a>，2026-10-24，第1—7页。</p>
+  </div>
+
+  <h3>3.5 同花顺：财务质量最强，AI Alpha尚未剥离</h3>
+  <div class="stock-card">
+    <div class="stock-head"><b>同花顺（300033）｜金融信息与投研工作流</b><span class="px">研究优先级：中高；市场Beta待剥离</span></div>
+    <p><strong>公司实际卖什么：</strong>个人投资者金融信息服务、券商与机构数据终端、广告与互联网推广。问财、iFinD MCP等AI产品嵌入数据、研究、跟踪和复盘流程。</p>
+    <p><strong>最新财务：</strong>2026前三季度营收47.94亿元、同比+47.01%；归母净利20.37亿元、同比+68.86%；扣非净利20.09亿元、同比+71.60%；经营现金流31.75亿元、同比+44.60%。合同负债30.91亿元，较上年度末增加74.68%。资产负债表中无短期借款、长期借款和应付债券。</p>
+    <p><strong>为什么不是第一位：</strong>公司解释收入增长主要来自业务规模扩大、增值电信业务及广告与互联网推广业务；AI被视为产品升级和服务效率的重要驱动，但没有单列AI收入，无法证明多少净利润来自AI增量而不是资本市场活跃度。</p>
+    <p><strong>下一个验证点：</strong>当市场成交活跃度回落时，收入与合同负债是否仍有韧性；AI产品能否产生独立价格、套餐或用户付费增量；如果只能依靠行情周期，研究优先级应下调。</p>
+    <p class="src">来源：<a href="https://static.cninfo.com.cn/finalpage/2026-10-23/1225616007.PDF">同花顺2026年第三季度报告</a>，2026-10-23，第2—3、6—10页。</p>
+  </div>
+
+  <h3>3.6 观察层：有AI规模或产品，但财务/口径尚未过关</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th>可核验事实</th><th>主要缺口</th><th>当前处理</th></tr></thead>
+      <tbody>
+        <tr><td><strong>用友网络 600588</strong></td><td>H1 AI相关收入4.64亿元、AI相关合同签约9.06亿元；订阅合同负债30.50亿元、同比+26.5%；云服务ARR 28.65亿元、同比+8.2%。</td><td>H1归母净利−9.28亿元、扣非−9.47亿元、经营现金流−10.01亿元；短期借款42.02亿元。</td><td><span class="tag mid">中</span> 规模化AI收入与亏损并存，先等现金流和亏损收窄。</td></tr>
+        <tr><td><strong>税友股份 603171</strong></td><td>2025年AI产品及业务回款4.21亿元，占数智财税业务回款28%、同比+60%；Q3称AI驱动经营效率提升。</td><td>AI未作为利润表收入单列；前三季度归母净利包含0.837亿元非经常性损益，经营现金流−1.759亿元，应收账款较年初翻倍。</td><td><span class="tag mid">中低</span> AI有回款线索，但利润与现金口径需要先拆清。</td></tr>
+        <tr><td><strong>合合信息 688615</strong></td><td>扫描、名片、启信宝和TextIn、Docflow形成C端订阅与B端文档智能；H1营收10.31亿元、同比+22.28%，经营现金流2.74亿元。</td><td>TextIn、Docflow及AI功能没有独立收入和毛利披露；扣非同比−1.43%。</td><td><span class="tag mid">中高</span> 数据和文档入口真实，等待AI增量单列。</td></tr>
+        <tr><td><strong>鼎捷数智 300378</strong></td><td>H1 AI相关签约近2亿元，400余个智能体，EIOSpace在中国台湾取得近百家客户签约；工业数据和OT连接有差异化。</td><td>AI未单列确认收入；H1归母净利含1.514亿元投资收益，扣非−36.25%，经营现金流−0.986亿元，60日涨幅和换手率均高。</td><td><span class="tag mid">中</span> 产业位置强，但财务证据与拥挤度不适合提升到第一梯队。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.7 软件基础设施层：入口真实，但AI收入更难拆分</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th>实际卡位</th><th>最新经营事实</th><th>为什么暂不进入第一梯队</th></tr></thead>
+      <tbody>
+        <tr><td><strong>合合信息 688615</strong></td><td>扫描、名片、启信宝及TextIn、Docflow等文档智能</td><td>H1营收10.31亿元、同比+22.28%；归母净利2.47亿元、同比+4.81%；经营现金流2.74亿元。C端智能文字识别收入8.69亿元、占84.2%，毛利率90.1%；B端产品及服务收入1.31亿元、同比+8.69%。</td><td>文档入口和现金流强，但TextIn、Docflow及AI功能未单列收入，B端增速也低于C端。</td></tr>
+        <tr><td><strong>达梦数据 688692</strong></td><td>国产数据库、集群、图/向量与多模数据能力</td><td>H1营收7.13亿元、同比+36.27%；归母净利2.21亿元、同比+7.99%；软件许可收入6.57亿元、占92.1%。经营现金流仅0.045亿元，应收周转约140天。</td><td>增长主要由数据库和国产替代驱动，AI为增量能力但不是独立收入；现金流与利润不匹配。</td></tr>
+        <tr><td><strong>中科创达 300496</strong></td><td>AIOS、AgentOS、智能汽车与IoT端侧系统</td><td>H1营收43.05亿元、同比+30.46%；归母净利2.46亿元、同比+54.97%；经营现金流−0.64亿元。智能物联网占43.4%、毛利率14.4%，智能汽车占32.8%，智能软件占23.8%。</td><td>软硬一体和低毛利IoT稀释经营质量；研发资本化与项目回款仍需跟踪。</td></tr>
+        <tr><td><strong>虹软科技 688088</strong></td><td>手机视觉算法、车载视觉、AI眼镜和机器人视觉</td><td>H1营收4.40亿元、同比+7.19%；归母净利0.77亿元、同比−12.87%；扣非−21.93%；经营现金流−0.10亿元。移动终端收入占81.6%，车载AI占16.4%。</td><td>端侧AI技术卡位真实，但手机依赖仍高，车载与AI眼镜尚未形成足以主导利润的单列收入。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">这四家公司更接近Serenity意义上的“数据/端侧接口”而非纯应用壳，但AI分部收入、毛利和续费均未充分单列，因此保留为基础设施观察层。</p>
+
+  <h3>五红灯财务快筛（仅核心三家）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>检查项</th><th>能科科技<br><a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225506508.PDF">2026H1；报告2026-08-26</a></th><th>汉得信息<br><a href="https://static.cninfo.com.cn/finalpage/2026-08-28/1225515987.PDF">2026H1；报告2026-08-28</a></th><th>焦点科技<br><a href="https://static.cninfo.com.cn/finalpage/2026-10-24/1225617976.PDF">2026Q3；报告2026-10-24</a></th></tr></thead>
+      <tbody>
+        <tr><td>利润与现金流</td><td><span class="tag bad">红灯</span> 经营现金流−1.185亿元，扣非同比−22.86%；AI收入增长尚未覆盖组织与回款成本。</td><td><span class="tag bad">红灯</span> 经营现金流−2.003亿元，扣非同比−21.01%；利润与现金背离。</td><td><span class="tag good">未见异常</span> 前三季度经营现金流5.16亿元，高于归母净利4.28亿元。</td></tr>
+        <tr><td>应收与存货</td><td><span class="tag mid">需关注</span> 应收账款较年初+19.45%，明显快于总收入+0.29%；存货下降是正面。</td><td><span class="tag mid">需关注</span> 应收账款约17.40亿元，约为H1收入的1.04倍；回款周期需继续核验。</td><td><span class="tag good">未见异常</span> 应收账款从1,495万元降至1,113万元，存货仅283万元。</td></tr>
+        <tr><td>利润质量</td><td><span class="tag mid">需关注</span> AI业务毛利率53.40%为正，但整体利润下滑；研发投入1.91亿元、同比+10.4%，需观察资本化。</td><td><span class="tag mid">需关注</span> 汇兑损失5,666万元和股份支付影响利润；剔除后归母净利改善，但现金流未同步。</td><td><span class="tag mid">需关注</span> 前三季度股份支付约1.006亿元，是净利增速仅2.76%的重要原因；剔除后净利+16.57%。</td></tr>
+        <tr><td>治理与股东行为</td><td><span class="tag good">未见异常</span> 本次已查范围内未见重大处罚或异常减持披露。</td><td><span class="tag mid">需关注</span> 10月有392万股限制性股票归属上市，需跟踪后续摊薄与减持。</td><td><span class="tag good">未见异常</span> 已完成股份激励首期部分行权，控股股东质押比例较低；仍需持续跟踪。</td></tr>
+        <tr><td>融资与资产负债表</td><td><span class="tag mid">需关注</span> 2026年7月完成约10亿元定增，资金增强流动性，也增加股份供给。</td><td><span class="tag mid">需关注</span> 短期借款5.73亿元；经营现金流为负时融资依赖会压缩容错空间。</td><td><span class="tag good">未见异常</span> 无有息借款，现金及交易性金融资产较充足，中期分红已实施。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">规则：两项以上红灯只降低研究优先级或标记“财务证据不足”，不在本报告中扩写完整估值；高估值本身不构成退出结论。</p>
+</section>
+
+<section class="section" id="chapter-4">
+  <div class="chapter-no">Chapter 04</div>
+  <h2>四、市场叙事与拥挤度</h2>
+  <div class="takeaway">市场在交易“AI收入可量化”和“工业/财税Agent落地”，但板块只是从深度回撤中修复，不是全面主升。上涨家数好、成交未全面放大、年内收益仍差，说明资金在做业绩与事件筛选。</div>
+
+  <h3>4.1 官方事实、媒体解释与未证实传播分开</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>层级</th><th>内容</th><th>本报告处理</th></tr></thead>
+      <tbody>
+        <tr><td><strong>官方事实</strong></td><td>工信部：1—8月软件业务收入+8.8%、利润+1.3%；公司报告披露能科AI收入2.94亿元、汉得AI收入约2.2亿元、焦点AI收入3,840万元。</td><td>可作为产业和公司事实；不能直接外推整个板块已完成盈利兑现。</td></tr>
+        <tr><td><strong>媒体解释</strong></td><td>界面新闻2025-12-28发布的“A股2026投资策略”将2026年概括为AI应用从概念进入“业绩验证年”，并以办公、工业、财税等垂直应用作为兑现候选。<a href="https://www.jiemian.com/article/13813389.html">原文</a>。</td><td>作为市场叙事与关注方向，不作为公司收入证据；公司数字仍需回到定期报告。</td></tr>
+        <tr><td><strong>未证实传播</strong></td><td>网络上关于部分工业AI公司“大额订单”“独家客户”的传播，未找到对应交易所原始公告。</td><td>不纳入候选证据阶梯；没有可点击原文的订单和客户关系不写。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>4.2 20只代表公司的定量温度计</h3>
+  <p>样本为金山办公、用友网络、鼎捷数智、同花顺、焦点科技、科大讯飞、万兴科技、虹软科技、合合信息、福昕软件、拓尔思、中科创达、汉得信息、彩讯股份、深信服、星环科技、达梦数据、安恒信息、恒生电子、每日互动；等权统计，不构成指数。</p>
+  <div class="grid">
+    <div class="kpi"><div class="v">16 / 20</div><div class="k">近20日上涨家数</div><div class="s">中位数+7.17%</div></div>
+    <div class="kpi"><div class="v">2 / 20</div><div class="k">年初至今上涨家数</div><div class="s">中位数−22.72%，仍是深度回撤</div></div>
+    <div class="kpi"><div class="v">13 / 20</div><div class="k">近60日上涨家数</div><div class="s">中位数+6.03%，强于沪深300的−13.17%</div></div>
+    <div class="kpi"><div class="v">97.6%</div><div class="k">近20日均量 / 前20日均量</div><div class="s">反弹没有伴随全样本放量，属于结构性修复</div></div>
+  </div>
+  <p class="src">行情口径：腾讯证券前复权日线，截至2026-10-23收盘；成交量为算术平均，不对流值加权。沪深300同期近20日−7.96%、近60日−13.17%、年初至今−11.33%。</p>
+
+  <h3>4.3 龙头、广度、相对强弱与事件反应</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th class="num">10/23收盘</th><th class="num">近20日</th><th class="num">近60日</th><th class="num">年初至今</th><th class="num">近20日均量/前20日</th><th>市场含义</th></tr></thead>
+      <tbody>
+        <tr><td><strong>能科科技</strong></td><td class="num">43.56元</td><td class="num">+14.75%</td><td class="num">+21.95%</td><td class="num">+3.81%</td><td class="num">146.3%</td><td>工业AI收入加速，价格与量能同步，拥挤度上升</td></tr>
+        <tr><td><strong>汉得信息</strong></td><td class="num">16.03元</td><td class="num">+7.58%</td><td class="num">+9.05%</td><td class="num">−15.21%</td><td class="num">91.5%</td><td>接近板块修复，现金流问题尚未被价格完全定价</td></tr>
+        <tr><td><strong>金山办公</strong></td><td class="num">248.96元</td><td class="num">+11.62%</td><td class="num">+4.43%</td><td class="num">−18.59%</td><td class="num">88.1%</td><td>办公AI交易活跃，但成交没有放大，尚未形成趋势确认</td></tr>
+        <tr><td><strong>焦点科技</strong></td><td class="num">26.40元</td><td class="num">+9.27%</td><td class="num">+10.55%</td><td class="num">−22.72%</td><td class="num">149.7%</td><td>事件前后量能上升，市场正在交易AI收入与三季报</td></tr>
+        <tr><td><strong>同花顺</strong></td><td class="num">213.85元</td><td class="num">+6.48%</td><td class="num">−6.26%</td><td class="num">−5.50%</td><td class="num">76.2%</td><td>财务强但成交缩减，市场对行情Beta和预期已有分歧</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">事件反应补充：2026-10-26约13:26盘中，焦点科技约+7.65%、能科科技约+6.08%、金山办公约+2.83%、同花顺约−1.78%。盘中价格不是收盘价，仅用于观察披露后的即时反应。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>盘中交易强度</th><th class="num">最新价</th><th class="num">当日涨跌</th><th class="num">换手率</th><th class="num">成交额</th><th class="num">量比</th></tr></thead>
+      <tbody>
+        <tr><td>能科科技</td><td class="num">46.20元</td><td class="num">+6.06%</td><td class="num">10.79%</td><td class="num">12.18亿元</td><td class="num">2.30</td></tr>
+        <tr><td>汉得信息</td><td class="num">16.13元</td><td class="num">+0.62%</td><td class="num">5.34%</td><td class="num">8.52亿元</td><td class="num">1.40</td></tr>
+        <tr><td>金山办公</td><td class="num">255.40元</td><td class="num">+2.59%</td><td class="num">1.15%</td><td class="num">13.45亿元</td><td class="num">1.45</td></tr>
+        <tr><td>焦点科技</td><td class="num">28.48元</td><td class="num">+7.88%</td><td class="num">9.86%</td><td class="num">7.24亿元</td><td class="num">3.07</td></tr>
+        <tr><td>同花顺</td><td class="num">209.39元</td><td class="num">−2.09%</td><td class="num">2.17%</td><td class="num">19.95亿元</td><td class="num">1.21</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">盘中快照时间：2026-10-26 13:42:21左右；数据来自腾讯证券行情接口，不是收盘口径。高换手和高成交额只说明交易拥挤与事件关注度，不构成收益判断。</p>
+
+  <div class="breadth-bar"><span>近20日上涨</span><div class="bar-track"><i class="bar-up" style="width:80%"></i><i class="bar-down" style="width:20%"></i></div><span class="bar-text">16 / 20</span></div>
+  <div class="breadth-bar"><span>近60日上涨</span><div class="bar-track"><i class="bar-up" style="width:65%"></i><i class="bar-down" style="width:35%"></i></div><span class="bar-text">13 / 20</span></div>
+  <div class="breadth-bar"><span>年初至今上涨</span><div class="bar-track"><i class="bar-up" style="width:10%"></i><i class="bar-down" style="width:90%"></i></div><span class="bar-text">2 / 20</span></div>
+
+  <h3>市场正在交易什么</h3>
+  <ul class="compact">
+    <li><strong>交易“AI收入首次可量化”：</strong>能科、汉得、焦点、用友均有正式或管理层表述的AI收入/合同，市场从“有没有AI”转向“AI占比是否上升”。</li>
+    <li><strong>交易“工业/财税Agent落地”：</strong>近20日鼎捷+22.51%、能科+14.75%、税友+26.02%，显著强于中位数；但部分事件伴随高换手和盘后披露，不能证明因果。</li>
+    <li><strong>还没有交易“行业全面利润改善”：</strong>行业利润仅+1.3%，20只样本年内仍仅2只上涨，且反弹没有全样本放量。</li>
+    <li><strong>纯概念与工作量叙事不再是唯一主线：</strong>星环科技近20日−16.61%、达梦数据−8.37%，显示资金并不按“AI软件标签”无差别买入。</li>
+  </ul>
+
+  <h3>融资与筹码压力</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>对象</th><th>已确认事项</th><th>对判断的影响</th></tr></thead>
+      <tbody>
+<tr><td><strong>能科科技</strong></td><td><a href="https://static.cninfo.com.cn/finalpage/2026-07-14/1225421769.PDF">2026年7月完成2,170.14万股定增</a>，发行价46.08元，募资约10亿元。</td><td>资金增强，但股份供给和募投兑现需要跟踪；不把融资完成当作经营改善。</td></tr>
+<tr><td><strong>汉得信息</strong></td><td><a href="https://static.cninfo.com.cn/finalpage/2026-10-12/1225601891.PDF">10月14日392万股限制性股票归属上市</a>；短期借款约5.73亿元。</td><td>激励与融资同时存在，后续看摊薄、减持和现金流。</td></tr>
+        <tr><td><strong>焦点科技</strong></td><td>截至9月30日，因期权行权新增968,957股；前三季度股份支付费用约1.006亿元。</td><td>低比例摊薄，但利润表被股份支付显著压低。</td></tr>
+        <tr><td><strong>同花顺</strong></td><td>三季报无短期借款、长期借款和应付债券；合同负债30.91亿元、较年末+74.68%。</td><td>资产负债表最强，主要风险是行情Beta而非融资。</td></tr>
+<tr><td><strong>观察层</strong></td><td>用友短期借款42.02亿元并<a href="https://data.eastmoney.com/notices/detail/600588/AN202610231830845680.html">发行5亿元科创债</a>；鼎捷存在<a href="https://static.cninfo.com.cn/finalpage/2026-05-12/1225291323.PDF">H股申请</a>和转债转股；科大讯飞有<a href="https://static.cninfo.com.cn/finalpage/2026-10-21/1225612340.PDF">8,346.49万股定增限售股</a>于10月26日流通。</td><td>融资和筹码是第二阶段风险；只有与经营或拥挤度同时恶化时才下调研究优先级。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" id="chapter-5">
+  <div class="chapter-no">Chapter 05</div>
+  <h2>五、催化剂与验证登记</h2>
+  <div class="takeaway">未来一到两个月，最重要的不是再发布一个模型，而是三季报和年报能否把AI收入、扣非利润、经营现金流和应收连接起来。已发生事件与待验证事件必须区分。</div>
+
+  <h3>5.1 时间表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>时间 / 状态</th><th>事件</th><th>多空方向</th><th>为什么重要</th><th>确认状态</th></tr></thead>
+      <tbody>
+        <tr><td>已发生：10月23日</td><td>同花顺披露三季报</td><td>偏多但需剥离Beta</td><td>收入+47.01%、净利+68.86%、经营现金流31.75亿元。</td><td>公司正式报告，已确认。</td></tr>
+        <tr><td>已发生：10月24日</td><td>焦点科技、税友股份披露三季报</td><td>偏多，但分化</td><td>焦点AI收入/现金会员继续增长；税友归母增速含房产处置收益。</td><td>公司正式报告，已确认。</td></tr>
+<tr><td>2026-10-27</td><td>虹软科技预约披露三季报</td><td>双向</td><td>检验端侧视觉、AI眼镜和车载AI能否从产品进展转为利润。</td><td>预约披露；<a href="https://data.eastmoney.com/bbsj/yjbb.html">三季报日历</a>，具体以公司公告为准。</td></tr>
+<tr><td>2026-10-28</td><td>中科创达预约披露三季报</td><td>双向</td><td>检验AIOS和智能软件占比、低毛利IoT拖累及经营现金流。</td><td>预约披露；<a href="https://data.eastmoney.com/bbsj/yjbb.html">三季报日历</a>，具体以公司公告为准。</td></tr>
+<tr><td>2026-10-30</td><td>合合信息、达梦数据、福昕软件预约披露三季报</td><td>双向</td><td>检验文档AI、数据库和订阅文档平台的增速、扣非和回款。</td><td>预约披露；<a href="https://data.eastmoney.com/bbsj/yjbb.html">三季报日历</a>，具体以公司公告为准。</td></tr>
+        <tr><td>2026-10-31前</td><td>金山办公、用友网络、汉得信息、能科科技、鼎捷数智、恒生电子等三季报法定窗口</td><td>双向</td><td>本报告最关键的一轮证据验证。</td><td>法定披露窗口，具体日期待公告。</td></tr>
+        <tr><td>2026Q4—2027Q1</td><td>年末续约、2027年企业预算、AI项目验收</td><td>条件性</td><td>决定合同负债、续费、客单价和2027订单能否出现。</td><td>市场与经营预测，不是已确认订单。</td></tr>
+        <tr><td>2027-04-30前</td><td>2026年报</td><td>双向</td><td>首次观察完整年度的AI收入、毛利率、客户集中度、现金流与融资。</td><td>法定年度披露窗口。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.2 核心验证阈值</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>对象</th><th>当前基线</th><th>上调研究优先级需要看到</th><th>下调 / 失效条件</th></tr></thead>
+      <tbody>
+        <tr><td><strong>能科科技</strong></td><td>AI收入2.94亿元、占比39.7%、毛利率53.40%；CFO −1.185亿元；应收较年初+19.45%。</td><td>全年AI收入继续双位数增长，整体扣非恢复增长，9M/全年经营现金流明显收窄，应收增速低于收入。</td><td>AI占比继续升但整体扣非和CFO连续两期恶化；客户仍为一次性项目且复购没有证据。</td></tr>
+        <tr><td><strong>汉得信息</strong></td><td>H1 AI收入约2.2亿元、占比13.2%；CFO −2.003亿元；应收17.40亿元。</td><td>全年AI收入超过5亿元、占比接近15%，经营现金流收窄，AI业务毛利和客户复用开始披露。</td><td>AI收入增速跌破30%，应收继续快于收入，经营现金流持续为大额负数。</td></tr>
+        <tr><td><strong>金山办公</strong></td><td>WPS 365收入4.97亿元、同比+60.84%；经调整净利10.87亿元、同比+28.29%。</td><td>WPS 365连续两季增长≥45%；合同负债增长；“订阅+AI用量”或个人AI付费首次量化。</td><td>WPS 365增速跌破30%，AI不能改善续费、客单价或用量；只披露共创意向和功能数量。</td></tr>
+        <tr><td><strong>焦点科技</strong></td><td>H1 AI收入占比3.64%；前三季度AI麦可现金收入7,284.94万元；在约会员15,718位。</td><td>全年AI收入占比达到5%左右；AI麦可在约会员和现金收入继续增长；合同负债止跌。</td><td>AI收入占比长期停在4%以下，AI麦可会员减少，或现金收入增速低于20%。</td></tr>
+        <tr><td><strong>同花顺</strong></td><td>9M收入+47.01%、净利+68.86%、CFO 31.75亿元；AI收入未单列。</td><td>在资本市场活跃度回落时，收入、合同负债和付费留存仍有韧性；AI产品形成独立价格或可量化付费增量。</td><td>成交活跃度下降后收入同步转负，且公司仍无法解释AI对定价、续费或留存的实际贡献。</td></tr>
+        <tr><td><strong>观察层</strong></td><td>用友AI收入4.64亿元但亏损；税友AI回款4.21亿元但CFO负；鼎捷AI签约近2亿元但利润质量弱。</td><td>AI收入单列或毛利拆分，亏损/CFO/应收连续改善，并且合同转收入而非只增签约。</td><td>只增AI合同或签约，不增确认收入、不增回款，不提高毛利率或不降低应收。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p><strong>验证原则：</strong>先看“AI收入/现金收入”是否真实，再看“毛利—合同负债—现金流—应收”是否同向，最后才讨论市场阶段。单一智能体数量、客户名单、发布会议或一天高换手都不能替代这四步。</p>
+  </div>
+</section>
+
+<section class="section" id="chapter-6">
+  <div class="chapter-no">Chapter 06</div>
+  <h2>六、退出与监控</h2>
+  <div class="takeaway">退出不是“股价涨多了”或“估值高”，而是证据链断裂：AI收入不能变利润，工作流被模型平台绕过，资金结构从验证转为拥挤，或融资与筹码开始侵蚀股东回报。</div>
+
+  <h3>6.1 四类退出条件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>失效类别</th><th>可观察事实</th><th>受影响对象</th><th>验证日期</th></tr></thead>
+      <tbody>
+        <tr><td><strong>基本面失效</strong></td><td>AI收入连续增长，但整体扣非利润、经营现金流和应收质量同时恶化；合同负债转换为收入的速度下降。</td><td>能科、汉得、用友、鼎捷；焦点看AI占比和会员</td><td>2026Q3、2026年报</td></tr>
+        <tr><td><strong>叙事失效</strong></td><td>智能体数量、开发者数、合作意向继续增加，却没有AI收入、续费、客单价、毛利改善；通用模型直接覆盖主要工作流。</td><td>金山、同花顺、鼎捷、合合及平台层公司</td><td>每次产品发布后看下一次财报</td></tr>
+        <tr><td><strong>价格与资金失效</strong></td><td>20日相对软件ETF/沪深300转负，同时换手和成交额放大但没有新披露；业绩日冲高后5—10个交易日回吐全部涨幅。</td><td>能科、焦点、鼎捷等事件型强势股</td><td>业绩后5—10个交易日</td></tr>
+        <tr><td><strong>治理、融资与筹码失效</strong></td><td>定增解禁叠加减持、可转债/H股稀释、质押上升；经营现金流为负却继续扩大短期借款或高成本融资。</td><td>能科、汉得、用友、鼎捷、税友；金山关注回购和激励净摊薄</td><td>公告发生后即时核查</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.2 每个核心候选的最小退出条件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>核心候选</th><th>基本面失效</th><th>价格与资金结构失效</th><th>治理、融资或筹码失效</th></tr></thead>
+      <tbody>
+        <tr><td><strong>能科科技</strong></td><td>AI收入继续增长，但整体扣非和经营现金流连续两个报告期恶化；应收增速持续高于收入。</td><td>20日相对强弱转负，同时换手维持10%以上但没有新的AI订单、回款或利润证据，形成放量滞涨。</td><td>定增股份解禁后出现主要股东减持，或募投及AI交付进度落后而仍需新融资。</td></tr>
+        <tr><td><strong>汉得信息</strong></td><td>AI收入增速降至30%以下，扣非转负或经营现金流继续大幅流出，应收增速高于收入。</td><td>业绩日冲高后5—10个交易日回吐全部涨幅，且相对软件ETF继续落后。</td><td>限制性股票归属后出现集中减持，或短期借款继续上升而现金流未恢复。</td></tr>
+        <tr><td><strong>金山办公</strong></td><td>WPS 365增速跌破30%，AI没有提高付费、续费、席位或用量收入；投资收益再次成为主要利润来源。</td><td>产品发布不能带来合同负债或收入上修，价格上涨后成交缩减并持续跑输软件ETF。</td><td>激励、回购与潜在股份供给出现净摊薄，或为AI投入显著恶化资产负债表。</td></tr>
+        <tr><td><strong>焦点科技</strong></td><td>AI收入占比长期停在4%以下，AI麦可在约会员或现金收入下降，合同负债继续下跌。</td><td>三季报事件后5—10个交易日全部回吐，同时换手高于近期常态但没有后续披露。</td><td>期权行权与股份支付持续压低利润，并出现主要股东减持或新的高比例融资摊薄。</td></tr>
+        <tr><td><strong>同花顺</strong></td><td>资本市场成交活跃度回落时收入同步转负，合同负债不再领先收入，且AI无法形成可量化定价。</td><td>高Beta导致板块上涨时相对强弱亮眼、板块回落时跌幅显著扩大；成交额放大但合同负债和收入预期下修。</td><td>未来若新增大规模股权激励、可转债或其他融资导致明显摊薄，需重新评估资金结构；当前无有息借款并不等于永久免疫。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 监控清单</h3>
+  <ul class="plain-list compact">
+    <li><strong>行业：</strong>软件业务收入与利润增速差是否收窄。若收入仍接近8%—10%，但利润连续两个月低于3%，说明AI投入没有形成行业经营杠杆。</li>
+    <li><strong>能科：</strong>AI产品与服务收入占比和毛利率保持，同时整体扣非、经营现金流和应收账款三者在同一方向改善；若只有AI占比上升，维持“财务证据不足”。</li>
+    <li><strong>汉得：</strong>全年AI收入是否接近5亿元、经营现金流是否收窄；AI项目回款和应收周期不披露时，不能仅用收入翻倍升级研究优先级。</li>
+    <li><strong>金山：</strong>WPS 365连续两季≥45%、合同负债增长、AI用量收入或付费渗透可量化；投资收益不能继续主导报表净利。</li>
+    <li><strong>焦点：</strong>AI收入占比提升至5%左右，AI麦可在约会员和现金收入增长，合同负债止跌；AI业务的毛利和续费是下一步必问项。</li>
+    <li><strong>同花顺：</strong>当成交活跃度下降时，收入、合同负债和付费留存能否维持；只有能剥离市场Beta，AI研究优先级才上调。</li>
+    <li><strong>观察层：</strong>用友看亏损/CFO收窄，税友看Q4回款与应收账龄，合合看TextIn/B端增量，鼎捷看AI收入单列与现金流。</li>
+  </ul>
+
+  <div class="callout risk">
+    <p><strong>最强反方：</strong>基础模型、云平台和客户自建Agent可能把外层应用压成低毛利实施商。如果未来两个报告期出现“AI功能用户增加、但软件席位和项目毛利下降”，应用层的工作流壁垒就要重新定价。</p>
+  </div>
+
+  <div class="verdict">
+    <p><strong>最终判断：</strong>当前研究优先级不是“买什么”，而是“先核验哪条证据链”。能科和汉得证明AI收入可以规模化，金山和焦点证明工作流可以收费，同花顺证明强势财务可以与AI叙事同时存在；但没有任何一家同时完成“AI收入—毛利—现金流—利润”四段闭环。</p>
+    <p><strong>下一检查：</strong>三季报窗口内，先核验能科/汉得/金山/用友/鼎捷的AI收入与CFO，再看年报是否能披露AI毛利、续费和客户留存。若只剩产品发布而收入、合同负债和现金流不改善，主题将从“业绩兑现”退回“事件轮动”。</p>
+  </div>
+</section>
+
+<section class="section" id="appendix">
+  <div class="chapter-no">Appendix</div>
+  <h2>附录：来源、口径与限制</h2>
+
+  <h3>原始公司披露</h3>
+  <ul class="source-list">
+    <li><strong>能科科技2026年半年度报告</strong>，2026-08-26，AI产品与服务收入、毛利率、客户和应收现金流在第6、9—14页。<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225506508.PDF">巨潮原始PDF</a></li>
+    <li><strong>汉得信息2026年半年度报告</strong>，2026-08-28，AI智能化应用收入、客户基础、毛利率和经营现金流在第2、9、13、25—27页。<a href="https://static.cninfo.com.cn/finalpage/2026-08-28/1225515987.PDF">巨潮原始PDF</a></li>
+    <li><strong>金山办公2026年半年度报告</strong>，2026-08-20，WPS 365、WPS Comate、经调整净利与合同负债在第9—15、28—29、55—56页。<a href="https://static.cninfo.com.cn/finalpage/2026-08-20/1225482678.PDF">巨潮原始PDF</a></li>
+    <li><strong>焦点科技2026年半年度报告</strong>，2026-08-26，AI业务收入、AI麦可现金收入和会员数据在第15、18页。<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225501362.PDF">巨潮原始PDF</a></li>
+    <li><strong>焦点科技2026年第三季度报告</strong>，2026-10-24，前三季度财务、AI麦可更新和资产负债表在第1—8页。<a href="https://static.cninfo.com.cn/finalpage/2026-10-24/1225617976.PDF">巨潮原始PDF</a></li>
+    <li><strong>同花顺2026年第三季度报告</strong>，2026-10-23，主要财务数据、合同负债和现金流在第2—3、6—10页。<a href="https://static.cninfo.com.cn/finalpage/2026-10-23/1225616007.PDF">巨潮原始PDF</a></li>
+    <li><strong>用友网络2026年半年度报告</strong>，2026-08-22，AI相关合同/收入、BIP 6、云订阅和主要财务在第6—19页。<a href="https://static.cninfo.com.cn/finalpage/2026-08-22/1225490345.PDF">巨潮原始PDF</a></li>
+    <li><strong>税友股份2026年第三季度报告</strong>，2026-10-24，主要财务、非经常性损益、应收和合同负债在第1—7页。<a href="https://static.cninfo.com.cn/finalpage/2026-10-24/1225618144.PDF">巨潮原始PDF</a></li>
+    <li><strong>鼎捷数智2026年半年度报告</strong>，2026-08-28，AI签约、EIOSpace、智能体与财务在第8、10—26、56—60页。<a href="https://static.cninfo.com.cn/finalpage/2026-08-28/1225521518.PDF">巨潮原始PDF</a></li>
+    <li><strong>合合信息2026年半年度报告</strong>，2026-08-20，文档智能、TextIn/Docflow和财务。<a href="https://static.cninfo.com.cn/finalpage/2026-08-20/1225482685.PDF">巨潮原始PDF</a></li>
+    <li><strong>达梦数据2026年半年度报告</strong>，2026-08-26，软件许可、数据库与财务。<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225506671.PDF">巨潮原始PDF</a></li>
+    <li><strong>中科创达2026年半年度报告</strong>，2026-08-26，AIOS、智能软件/汽车/IoT分部与财务。<a href="https://static.cninfo.com.cn/finalpage/2026-08-26/1225504619.PDF">巨潮原始PDF</a></li>
+    <li><strong>虹软科技2026年半年度报告</strong>，2026-08-25，移动终端、车载AI与端侧视觉业务。<a href="https://static.cninfo.com.cn/finalpage/2026-08-25/1225499233.PDF">巨潮原始PDF</a></li>
+  </ul>
+
+  <h3>政策、行业与市场叙事</h3>
+  <ul class="source-list">
+    <li><strong>工信部《2026年1—8月份软件业运行情况》</strong>，2026-09-30：软件收入102,820亿元、同比+8.8%，利润总额11,837亿元、同比+1.3%，信息技术服务、云计算与大数据、信息安全分项。<a href="https://www.miit.gov.cn/jgsj/yxj/xxfb/art/2026/art_f77c0fabc2f34461b8ce96892998419d.html">官方页面</a></li>
+    <li><strong>国务院《关于深入实施“人工智能+”行动的意见》</strong>，2025-08-26：六大行动与八项基础支撑能力。<a href="https://www.gov.cn/yaowen/liebiao/202508/content_7037868.htm">中国政府网</a></li>
+    <li><strong>界面新闻《从概念到盈利，AI应用端迎来价值重估》</strong>，2025-12-28：仅作为媒体叙事和市场解释，不作为公司收入事实。<a href="https://www.jiemian.com/article/13813389.html">原文</a></li>
+    <li><strong>三季报预约日历</strong>：虹软科技10月27日、中科创达10月28日、合合信息/达梦数据/福昕软件10月30日的预约为抓取时的东方财富日历数据，最终以公司公告为准。<a href="https://data.eastmoney.com/bbsj/yjbb.html">2026年三季报业绩大全</a></li>
+    <li><strong>能科科技定增结果</strong>，2026-07-14：2,170.14万股、发行价46.08元、募资约10亿元。<a href="https://static.cninfo.com.cn/finalpage/2026-07-14/1225421769.PDF">巨潮原始PDF</a></li>
+    <li><strong>汉得信息限制性股票归属上市</strong>，2026-10-12：392万股于2026-10-14上市流通。<a href="https://static.cninfo.com.cn/finalpage/2026-10-12/1225601891.PDF">巨潮原始PDF</a></li>
+    <li><strong>用友网络科创债发行结果</strong>，2026-10-23：5亿元、5年期、票面利率1.98%。<a href="https://data.eastmoney.com/notices/detail/600588/AN202610231830845680.html">公告正文</a></li>
+    <li><strong>鼎捷数智H股申请</strong>，2026-05-12；可转债转股情况见公司2026年第三季度公告。<a href="https://static.cninfo.com.cn/finalpage/2026-05-12/1225291323.PDF">H股申请原始PDF</a>、<a href="https://static.cninfo.com.cn/finalpage/2026-10-09/1225597966.PDF">转债转股公告</a></li>
+<li><strong>科大讯飞限售股上市流通</strong>，2026-10-21：8,346.49万股于10月26日流通。<a href="https://static.cninfo.com.cn/finalpage/2026-10-21/1225612340.PDF">巨潮原始PDF</a></li>
+    <li><strong>市场行情：</strong>腾讯证券前复权日线接口，2026-10-23收盘；20只样本等权计算，10月26日盘中快照仅用于事件反应。<a href="https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh000300,day,2025-12-01,2026-10-23,260,qfq">沪深300日线入口</a>。成交额、换手率与实时价格来自腾讯证券行情接口。</li>
+  </ul>
+
+  <h3>未获取到与限制</h3>
+  <ul class="source-list">
+    <li>能科、汉得、焦点、金山、同花顺尚未取得统一的AI业务NRR、续费率、客户集中度和完整AI毛利拆分；不能自行假设这些指标。</li>
+    <li>金山办公、用友网络、汉得信息、能科科技、鼎捷数智等的2026Q3报告在数据截止时尚未全部披露，报告中的三季度验证点为待观察。</li>
+    <li>东方财富或媒体披露的预约日期只作为计划，最终以公司公告为准；未打开原文的“大额订单”“独家客户”不进入证据表。</li>
+    <li>10月26日行情为盘中快照，不是收盘价；机器可复核的复权日线、成交量和融资数据仅说明交易状态，不构成收益预测。</li>
+    <li>本报告不提供绝对估值结论、收益承诺或个性化配置建议；研究优先级只表示下一步核实证据的顺序。</li>
+  </ul>
+
+  <div class="callout warn">
+    <p><strong>免责声明：</strong>本报告用于产业链与公司研究，不构成投资建议、交易执行、收益承诺或个性化配置建议。AI收入、合同、回款、利润和现金流会随定期报告、客户验收与市场变化更新，交易决策前应复核公司公告和最新市场数据。</p>
+  </div>
+</section>
+
+<div class="foot">
+  <p><strong>报告结论：</strong>AI应用的下一阶段不是寻找“谁最像AI”，而是寻找“谁能把AI写进系统、把任务执行成结果、把结果变成可持续收入和现金”。当前能科、汉得提供收入证据，金山、焦点提供工作流与收费入口，同花顺提供财务强度与金融Beta；四段证据闭环仍未由任何单一公司完整证明。</p>
+</div>
+
+</main>
+
+<!-- ↓ 报告导航（通用组件，自动挂载；新增报告无需修改本文件） -->
+<script src="../scripts/report-nav.js" defer></script>
+</body>
+</html>
