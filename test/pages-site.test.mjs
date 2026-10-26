@@ -114,7 +114,12 @@ test('Pages workflow delegates to the allowlisted builder with Pages permissions
   assert.match(workflow, /id-token:\s*write/u)
   assert.match(workflow, /actions\/setup-node@v4/u)
   assert.match(workflow, /npm ci/u)
+  assert.match(workflow, /npm run build/u)
   assert.match(workflow, /npm test/u)
+  assert.ok(
+    workflow.indexOf("npm run build") < workflow.indexOf("npm test"),
+    "GitHub Pages workflow must build production static files before integration tests",
+  )
   assert.match(workflow, /node scripts\/build-pages-site\.mjs/u)
   assert.match(workflow, /actions\/upload-pages-artifact@v3/u)
   assert.match(workflow, /actions\/deploy-pages@v4/u)
