@@ -4,13 +4,6 @@
 
 ## 待办
 
-- **`TD-RESEARCH-002` 报告正文和科技图谱支持返回首页 index（进行中，本地实现与回归完成，待生产与 Pages 发布）**
-  - 在全部 `report/*.html` 正文和科技图谱 `index.html`、`tree.html`、`table.html` 三版中提供清晰、常驻的“返回首页”原生命令链接，不依赖应用路由或动态脚本。
-  - 当前首页目标按独立报告库 `research/index.html` 处理：报告使用 `../research/index.html`，科技图谱使用 `../../../research/index.html`；若后续要求返回 GitHub Pages 站点根 `/`，则同步新增根 `index.html` 并调整链接。
-  - 返回入口必须同时兼容本地 `file://`、本地相对路径和 GitHub Pages 项目子路径，保留现有报告导航与科技图谱版本切换，不造成循环跳转。
-  - 桌面和移动端均需保证入口可见、可键盘聚焦、信息文字不低于 12px 且无横向溢出；构建 Pages Artifact 后逐类验证报告正文与三个科技图谱视图的返回链接均为 200。
-  - 验收：`npm run pages:build`、相关静态测试和完整回归通过，部署后从报告正文及科技图谱均可一键返回首页。
-
 - **`TD-OPS-002` 生产独立托管与故障自恢复**
   - 将钱多多生产服务从 Codex 会话进程树中迁出，由独立 Windows 计划任务或 Windows 服务托管，确保 Codex 会话退出、重新启动或清理终端子进程时不会连带停止生产服务。
   - 增加持续健康检查与失败重启：Supervisor 或 Server 消失、健康接口失败时能够自动恢复；同时保留防重复实例、退避重启、停止标记和受控发布能力。
@@ -32,6 +25,14 @@
   - 完整规格：[TD-YIELD-002 完整规格](docs/tasks/active/TD-YIELD-002/TD-YIELD-002.md)
 
 ## 近期完成（2026-10）
+
+- **2026-10-28 `TD-RESEARCH-002` 报告正文和科技图谱支持返回首页**
+  - 25 篇 `report/*.html` 全部加入唯一 `data-report-page-home` 原生链接，使用 `../research/index.html`，固定左下、13px，与右下角报告导航并存；科技图谱三版在现有 `#vn` 工具条加入 `data-research-home`，统一使用正确的 `../../../research/index.html`，保留脑图、树状、表格切换和 `aria-current`。
+  - `scripts/build-report-docs.mjs` 从 Vue 正文剥离页面级首页链接，避免与阅读器顶部报告库入口重复；应用服务把 `/research/index.html` 以 302 重定向到 `/investment/research`，`file://`、本地相对路径和 GitHub Pages 子路径均正确解析。
+  - Pages 测试实际启动临时静态服务，请求全部 25 篇报告、三个科技图谱视图及其首页目标并校验 200；E2E 覆盖桌面与 390px 的可见性、键盘聚焦、13px 字号、无横向溢出和真实点击返回。
+  - 验证：`npm run check`、374/374 `npm test`、`npm run build`、`npm run pages:build`、完整 `npm run test:e2e` 全部通过。生产发布与重启后 Health/Server/Supervisor 正常，最新 stderr 为 0 字节且无 stop marker。
+  - GitHub Actions `40550142035` 的 build 与 deploy 均成功；公开站点逐页实测 25 篇报告 + 3 个科技图谱均为 200，三类页面首页链接均唯一且目标返回 200。
+  - 提交：`3ec9597`、`cffbcc5`、`d4ad180`。
 
 - **2026-10-28 `TD-R2-INBOX-002` 产品收益缺口消息自动重算、合并与关闭**
   - 产品收益新增显式 `covered_yield_dates` 契约：合并收益只记最后归属日，覆盖日期仅消除来源缺口，不为前几日补 0、均分或复制金额；兼容现有“覆盖10月24日至26日”备注，并支持 `clear_coverage=true` 撤回及重新打开缺口。
