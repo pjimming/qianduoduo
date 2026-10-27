@@ -75,9 +75,11 @@
 - 股票、个股、主题、产业链、候选公司对比和公司事件研究默认直接生成 HTML 报告；快速扫描和事件更新也不例外，不再以对话文本作为默认最终交付物。每次新增或修改报告后执行 `npm run research:publish`，更新独立归档导航与报告清单、构建 Vue 文档并重启生产服务；用户明确要求“只分析、不要生成文件”时除外。旧目录 `D:\codex\股票调研serenity` 已归档，不再使用。
 - 股票、主题和产业链研究只使用 `serenity-skill`。标准报告固定为六段：一页结论、产业链与瓶颈地图、候选公司与证据阶梯、市场叙事与拥挤度、催化剂与验证登记、退出与监控；价格资金结构放在市场叙事章内，五个财务红灯附在候选证据末尾。股票研究不运行 DCF、EPV、EVA、PVGO、M-Score 或目标价，不以“高估”自动作为退出结论。
 - 报告库按 `publishedAt`（发布/更新到报告库的时间）倒序，调研日期作为次级排序；更新时间优先取报告中的 `<!-- rpnav-published: YYYY-MM-DD HH:mm -->`，缺失时沿用已生成导航清单中的发布时间，再回退文件修改时间。
-- 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库、可搜索切换器和打印按钮，不再提供“原文”或静态 HTML 出口；左侧目录可折叠并高亮当前章节，无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。应用静态层只托管 `/research/media/` 与 `/research/techmap/`，`/research/stocks/*` 和 `/research/scripts/*` 不受支持。
+- 报告详情路由为 `/investment/research/:slug`（不带 `.html`）；报告由 Vue 直接渲染，无 iframe。`scripts/build-report-docs.mjs` 会生成 `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`，这些都是构建产物，不要手工编辑。阅读页顶部有返回报告库、可搜索切换器和打印按钮，不再提供“原文”或静态 HTML 出口；左侧目录可折叠并高亮当前章节，无底部悬浮条，另支持阅读进度、`←/→` 切换报告和正文全文检索。应用静态层只托管 `/research/media/`、`/research/techmap/`，并将 `/research/index.html` 以 302 重定向到 `/investment/research`；`/research/stocks/*` 和 `/research/scripts/*` 不受支持。
 - 报告新增约束：只允许静态 HTML（禁止脚本、内联事件、`javascript:`）；每篇必须自带 `<style>`；图片在构建期转 WebP；股票代码需进入 `keywords` 才能联动科技图谱；索引随报告数增长，达到 50 篇以上需重新评估拆分方式，实际体积和耗时只查构建输出。
+- 静态报告在 `<body>` 后固定保留 `data-report-page-home` 原生首页链接，路径为 `../research/index.html`，桌面与移动端均固定左下且字号不低于 12px；`scripts/build-report-docs.mjs` 将该链接从 Vue 文档剥离，避免与顶部报告库入口重复。
 - GitHub Pages 公开归档只发布 `research/index.html`、`scripts/report-nav.js`、全部 `report/*.html` 和 `public/research/techmap/{index,tree,table}.html`，由 `scripts/build-pages-site.mjs` 白名单构建并通过 `.github/workflows/deploy-pages.yml` 部署。公开入口预期为 `https://pjimming.github.io/qianduoduo/research/`。
+- 报告与三个科技图谱静态视图均提供原生返回首页链接；科技图谱统一使用 `../../../research/index.html`，并在现有 `#vn` 工具条内保留脑图、树状、表格切换。Pages 测试必须实际解析并请求每个首页链接，不能只做字符串匹配。
 - Pages Artifact 必须拒绝 `data/`、R2 账本/截图、账户事实、API/服务端代码、Vue 构建物和白名单外文件；个人估值证据目录属于本机数据，不进入 Git。
 - 股票研究不维护 DCF、估值假设、财务模型或专用检查器；HTML 源文件只沿用独立归档导航、清单和 Vue 文档构建脚本。历史报告保留为旧方法档案，不用新规则回写。
 - 科技图谱数据和组件：`src/data/techmap.json`、`src/data/techmap.ts`、`src/components/techmap/`、`src/styles/techmap.css`。`public/research/techmap/` 只作原始静态资料归档。

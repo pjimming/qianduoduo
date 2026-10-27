@@ -269,9 +269,9 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - 工作流：股票、主题、产业链、候选公司对比和事件研究默认直接生成 HTML 报告并发布；快速扫描和事件更新同样进入报告库，除非用户明确要求只做分析、不生成文件。
 - 数据：`src/data/stockReports.json` 由清单脚本从 `report/` 生成，包含标题、日期、分类、摘要、关键词和研究优先级。
 - 应用内文档：`src/data/reportDocs/<slug>.json` 保存正文与作用域化 CSS，`src/data/reportSearch.json` 是正文检索索引，`public/research/media/` 存放从报告里外置并转为 WebP 的图片；三者都由 `scripts/build-report-docs.mjs` 生成，不要手工编辑。
-- 静态边界：应用不生成、不托管也不支持 `public/research/stocks/`、`public/research/scripts/report-nav.js` 或 `/research/stocks/*`；报告只通过 Vue 阅读页访问。`research/index.html` 保留为可直接打开的本地归档页，使用工作区源导航。
+- 静态边界：应用不生成、不托管也不支持 `public/research/stocks/`、`public/research/scripts/report-nav.js` 或 `/research/stocks/*`；报告只通过 Vue 阅读页访问。`research/index.html` 保留为可直接打开的本地归档页，使用工作区源导航；应用服务收到该路径时重定向到 `/investment/research`。
 - 发布：新增或修改报告后，在根目录运行 `npm run research:publish`。该命令会更新独立归档导航、重建应用报告清单与 Vue 文档，并完成构建和本地生产服务重启。
-- GitHub Pages：`npm run pages:build` 生成严格白名单站点，只包含独立报告库、全部 `report/*.html`、报告导航和科技图谱脑图/树状/表格三版。入口为 `https://pjimming.github.io/qianduoduo/research/`；页面中的科技图谱相对路径同时兼容本地 `file://` 和 Pages 子路径。
+- GitHub Pages：`npm run pages:build` 生成严格白名单站点，只包含独立报告库、全部 `report/*.html`、报告导航和科技图谱脑图/树状/表格三版。入口为 `https://pjimming.github.io/qianduoduo/research/`；每篇报告和三版科技图谱都有原生返回首页链接，相对路径同时兼容本地 `file://` 和 Pages 子路径。
 - 公开边界：Pages Artifact 不包含 `data/`、R2 账本或截图、API/服务端代码、Vue 构建物和未列入白名单的科技图谱文件。`.github/workflows/deploy-pages.yml` 在 `main` 更新相关文件时自动部署并复核白名单。
 - 边界：报告内容为公开信息研究整理，不构成投资建议，也不进入 R2 收益账本、产品池排序或选品结论。
 
@@ -291,7 +291,7 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 - 交互：脑图支持滚轮/按钮缩放、拖拽、逐级展开、搜索定位和适应屏幕；树状支持逐级折叠、全部展开和只留骨架；表格支持门类筛选、方向/公司搜索。三种视图均支持打印当前视图，页面支持全屏查看和 `?view=canvas|tree|table` 视图切换。
 - 布局：采用紧凑标题、顶部视图切换栏和全高内容区；桌面端三种视图填满剩余视口，移动端树状与表格使用页面自然滚动。
 - 边界：该模块是 A 股产业资料，不属于 R2 理财产品，不进入收益账本、产品池排序或选品结论，也不构成投资建议。
-- 归档：`public/research/techmap/` 保留原始静态 HTML，仅作资料来源归档，运行时不加载。
+- 归档：`public/research/techmap/` 保留原始静态 HTML，仅作资料来源归档；三版固定工具条保留原生“返回首页”入口和脑图/树状/表格切换。
 - 更新：更新 `src/data/techmap.json` 中的快照，并同步核对类型、统计和 `test/techmap.test.mjs` 的数量断言；数据日期与风险边界不得随意改变。
 
 ## 数据与接口

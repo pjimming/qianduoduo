@@ -572,15 +572,19 @@ var DATA = {"date":"2026-09-16","colors":{"semi":"#2f6fed","pcb":"#0f9d76","comm
 </script>
 
 <style>
-  #vn{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;gap:6px;align-items:center;
+  #vn{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;gap:6px;row-gap:4px;align-items:center;flex-wrap:wrap;
+    max-width:calc(100vw - 28px);box-sizing:border-box;
     background:rgba(255,255,255,.95);border:1px solid #dde3ea;border-radius:999px;padding:6px 8px;
-    box-shadow:0 2px 10px rgba(16,24,40,.10);font:12px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    box-shadow:0 2px 10px rgba(16,24,40,.10);font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
   #vn b{color:#5d6b7a;font-weight:500;padding:0 6px 0 4px}
   #vn a{color:#161b22;text-decoration:none;padding:4px 10px;border-radius:999px;border:1px solid #dde3ea}
   #vn a:hover{background:#f4f6f9}
+  #vn a:focus-visible{outline:3px solid rgba(47,111,237,.38);outline-offset:2px}
   #vn a[aria-current="page"]{background:#161b22;border-color:#161b22;color:#fff}
+  #vn .home-link{color:#2a5480;font-weight:700;border-color:#b9cce0;background:#f5f9fd}
+  #vn .home-link:hover{background:#e9f2fb;border-color:#8eabc8}
   @media print{#vn{display:none}}
 </style>
-<div id="vn" class="no-print"><b>版本</b><a href="./index.html" aria-current="page">脑图版</a><a href="./tree.html">树状版</a><a href="./table.html">表格版</a></div>
+<div id="vn" class="no-print"><a class="home-link" data-research-home href="../../../research/index.html" aria-label="返回股票调研报告首页">← 返回首页</a><b>版本</b><a href="./index.html" aria-current="page">脑图版</a><a href="./tree.html">树状版</a><a href="./table.html">表格版</a></div>
 </body>
 </html>

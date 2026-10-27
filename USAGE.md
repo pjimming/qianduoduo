@@ -326,7 +326,7 @@ npm run r2:refresh-all
 - `←/→` 切换报告；
 - 打印当前 Vue 阅读页。
 
-报告源文件统一在 `report/`；`research/index.html` 是可双击打开的独立归档页。应用内不提供“原文”或静态 HTML 出口，`/research/stocks/*` 不再受支持。
+报告源文件统一在 `report/`；`research/index.html` 是可双击打开的独立归档页。每篇静态报告都有固定左下的原生“返回首页”入口，Vue 阅读正文会剥离该页面级链接并使用顶部报告库按钮。应用内不提供“原文”或静态 HTML 出口，`/research/stocks/*` 不再受支持；应用服务收到 `/research/index.html` 时重定向到 `/investment/research`。
 
 ### 6.2 A 股科技图谱
 
@@ -804,7 +804,7 @@ public/research/techmap/table.html
 
 将相关文件提交并推送到 `main` 后，`.github/workflows/deploy-pages.yml` 自动部署。公开入口预期为 `https://pjimming.github.io/qianduoduo/research/`。
 
-Pages Artifact 不得包含 `data/`、R2 账本、个人截图、API/服务端代码、Vue 构建物或白名单外文件。报告库中的科技图谱入口使用 `../public/research/techmap/index.html`，该相对路径同时适用于本地 `file://` 与 Pages 子路径。
+Pages Artifact 不得包含 `data/`、R2 账本、个人截图、API/服务端代码、Vue 构建物或白名单外文件。报告库中的科技图谱入口使用 `../public/research/techmap/index.html`；该相对路径同时适用于本地 `file://` 与 Pages 子路径。全部报告使用 `../research/index.html` 返回首页，科技图谱三版统一使用 `../../../research/index.html`，并保留脑图、树状、表格切换。
 
 ---
 

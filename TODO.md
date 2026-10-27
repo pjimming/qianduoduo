@@ -4,9 +4,9 @@
 
 ## 待办
 
-- **`TD-RESEARCH-002` 报告正文和科技图谱支持返回首页 index**
+- **`TD-RESEARCH-002` 报告正文和科技图谱支持返回首页 index（进行中，本地实现与回归完成，待生产与 Pages 发布）**
   - 在全部 `report/*.html` 正文和科技图谱 `index.html`、`tree.html`、`table.html` 三版中提供清晰、常驻的“返回首页”原生命令链接，不依赖应用路由或动态脚本。
-  - 当前首页目标按独立报告库 `research/index.html` 处理：报告使用 `../research/index.html`，科技图谱使用 `../../research/index.html`；若后续要求返回 GitHub Pages 站点根 `/`，则同步新增根 `index.html` 并调整链接。
+  - 当前首页目标按独立报告库 `research/index.html` 处理：报告使用 `../research/index.html`，科技图谱使用 `../../../research/index.html`；若后续要求返回 GitHub Pages 站点根 `/`，则同步新增根 `index.html` 并调整链接。
   - 返回入口必须同时兼容本地 `file://`、本地相对路径和 GitHub Pages 项目子路径，保留现有报告导航与科技图谱版本切换，不造成循环跳转。
   - 桌面和移动端均需保证入口可见、可键盘聚焦、信息文字不低于 12px 且无横向溢出；构建 Pages Artifact 后逐类验证报告正文与三个科技图谱视图的返回链接均为 200。
   - 验收：`npm run pages:build`、相关静态测试和完整回归通过，部署后从报告正文及科技图谱均可一键返回首页。

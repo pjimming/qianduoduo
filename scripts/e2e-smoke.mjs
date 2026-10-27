@@ -19,7 +19,7 @@ import {
 } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { createServer } = require('../server.js')
@@ -72,6 +72,40 @@ async function assertFontFloor(page, selector, label) {
   assert(
     offenders.length === 0,
     `${label}存在低于 12px 的信息文字：${JSON.stringify(offenders)}`,
+  )
+}
+
+async function assertResponsiveHomeLink(page, selector, expectedHref, label) {
+  const link = page.locator(selector)
+  assert((await link.count()) === 1, `${label}应有且仅有一个首页链接`)
+  assert(await link.isVisible(), `${label}的首页链接不可见`)
+  assert(
+    (await link.getAttribute('href')) === expectedHref,
+    `${label}的首页链接路径不正确`,
+  )
+
+  await link.focus()
+  const state = await link.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return {
+      focused: document.activeElement === element,
+      fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+      insideViewport:
+        rect.left >= -1 &&
+        rect.top >= -1 &&
+        rect.right <= window.innerWidth + 1 &&
+        rect.bottom <= window.innerHeight + 1,
+    }
+  })
+  assert(state.focused, `${label}的首页链接不可键盘聚焦`)
+  assert(state.fontSize >= 12, `${label}的首页链接字号低于 12px`)
+  assert(state.insideViewport, `${label}的首页链接超出当前视口`)
+
+  assert(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+    `${label}出现横向溢出`,
   )
 }
 
@@ -207,6 +241,10 @@ async function main() {
       '报告样式没有按篇挂载',
     )
     assert(
+      (await page.locator('.rp-doc [data-report-page-home]').count()) === 0,
+      '应用内报告正文重复显示静态首页链接',
+    )
+    assert(
       (await page
         .locator('.reader-topbar-actions a[href*="/research/stocks/"]')
         .count()) === 0,
@@ -242,6 +280,105 @@ async function main() {
       )
     } finally {
       await reportMobilePage.close()
+    }
+
+    const staticReportPage = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    })
+    staticReportPage.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text())
+    })
+    staticReportPage.on('pageerror', (error) => consoleErrors.push(error.message))
+    try {
+      const staticReportUrl = pathToFileURL(
+        path.join(root, 'report', reportManifest.reports[0].file),
+      ).href
+      await staticReportPage.goto(staticReportUrl, { waitUntil: 'load' })
+      await assertResponsiveHomeLink(
+        staticReportPage,
+        '[data-report-page-home]',
+        '../research/index.html',
+        '桌面端静态报告',
+      )
+      await staticReportPage.setViewportSize({ width: 390, height: 844 })
+      await staticReportPage.reload({ waitUntil: 'load' })
+      await assertResponsiveHomeLink(
+        staticReportPage,
+        '[data-report-page-home]',
+        '../research/index.html',
+        '移动端静态报告',
+      )
+      await Promise.all([
+        staticReportPage.waitForURL(/\/research\/index\.html$/u),
+        staticReportPage.locator('[data-report-page-home]').click(),
+      ])
+      await staticReportPage.waitForSelector('.grid')
+      assert(
+        (await staticReportPage.title()).includes('股票调研报告库'),
+        '静态报告返回首页后没有进入独立报告库',
+      )
+    } finally {
+      await staticReportPage.close()
+    }
+
+    const techMapPage = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    })
+    techMapPage.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text())
+    })
+    techMapPage.on('pageerror', (error) => consoleErrors.push(error.message))
+    try {
+      for (const viewport of [
+        { width: 1280, height: 900, label: '桌面端' },
+        { width: 390, height: 844, label: '移动端' },
+      ]) {
+        await techMapPage.setViewportSize(viewport)
+        for (const view of ['index.html', 'tree.html', 'table.html']) {
+          await techMapPage.goto(
+            pathToFileURL(
+              path.join(root, 'public', 'research', 'techmap', view),
+            ).href,
+            { waitUntil: 'load' },
+          )
+          await techMapPage.waitForSelector('#vn')
+          await assertResponsiveHomeLink(
+            techMapPage,
+            '#vn [data-research-home]',
+            '../../../research/index.html',
+            `${viewport.label}科技图谱 ${view}`,
+          )
+          assert(
+            (await techMapPage
+              .locator('#vn a:not([data-research-home])')
+              .count()) === 3,
+            `${viewport.label}科技图谱 ${view} 的版本切换不完整`,
+          )
+          assert(
+            (await techMapPage.locator('#vn a[aria-current="page"]').count()) === 1,
+            `${viewport.label}科技图谱 ${view} 缺少当前版本标记`,
+          )
+          await assertFontFloor(techMapPage, '#vn', `科技图谱 ${view}`)
+        }
+      }
+
+      await techMapPage.goto(
+        pathToFileURL(
+          path.join(root, 'public', 'research', 'techmap', 'index.html'),
+        ).href,
+        { waitUntil: 'load' },
+      )
+      await Promise.all([
+        techMapPage.waitForURL(/\/research\/index\.html$/u),
+        techMapPage.locator('#vn [data-research-home]').click(),
+      ])
+      await techMapPage.waitForSelector('.grid')
+      assert(
+        (await techMapPage.title()).includes('股票调研报告库'),
+        '科技图谱返回首页后没有进入独立报告库',
+      )
+    } finally {
+      await techMapPage.close()
     }
 
     const firstSlug = await page.locator('.rp-doc').getAttribute('data-report-slug')
@@ -2610,7 +2747,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

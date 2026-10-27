@@ -192,6 +192,10 @@ function textOnly(html) {
 
 function stripEmbeddedChrome(body) {
   return body
+    .replace(
+      /\s*<a\b(?=[^>]*\bdata-report-page-home\b)[^>]*>[\s\S]*?<\/a>\s*/gi,
+      '',
+    )
     .replace(/<!--\s*↓\s*报告导航[\s\S]*?-->/g, '')
     .replace(
       /<script\b[^>]*\bsrc=["'][^"']*report-nav\.js["'][^>]*>\s*<\/script>/gi,

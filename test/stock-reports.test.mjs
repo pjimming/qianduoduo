@@ -51,6 +51,19 @@ test('source reports and the Vue library manifest contain the same complete file
     assert.match(html, /<style[\s>]/i)
     assert.match(html, /<body[\s>]/i)
     assert.match(html, /report-nav\.js/)
+
+    const pageHomeLinks = [
+      ...html.matchAll(
+        /<a\b(?=[^>]*\bdata-report-page-home\b)[^>]*>[\s\S]*?<\/a>/gi,
+      ),
+    ]
+    assert.equal(pageHomeLinks.length, 1, `${report.file} 应有且仅有一个首页链接`)
+    assert.match(
+      pageHomeLinks[0][0],
+      /\bhref=["']\.\.\/research\/index\.html["']/,
+      `${report.file} 的首页链接路径不正确`,
+    )
+    assert.match(pageHomeLinks[0][0], /返回首页/u)
   }
 })
 
@@ -116,6 +129,11 @@ test('every stock report has a generated Vue document', () => {
     assert.ok(doc.html.length > 500, `${report.slug} 正文过短`)
     assert.ok(doc.css.includes('.rp-doc'))
     assert.doesNotMatch(doc.html, /<script\b/i, `${report.slug} 仍残留脚本`)
+    assert.doesNotMatch(
+      doc.html,
+      /data-report-page-home/i,
+      `${report.slug} 的静态首页链接未从 Vue 阅读正文剥离`,
+    )
     assert.doesNotMatch(
       doc.css,
       /(^|})\s*(body|html|:root)\s*[,{]/,

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import {
@@ -16,6 +17,57 @@ async function temporaryBuild(t) {
   const outputDir = path.join(root, 'pages-site')
   const result = await buildPagesSite({ outputDir })
   return { root, outputDir, result }
+}
+
+async function serveArtifact(t, outputDir) {
+  const rootDir = path.resolve(outputDir)
+  const server = createServer(async (request, response) => {
+    try {
+      const pathname = decodeURIComponent(
+        new URL(request.url || '/', 'http://127.0.0.1').pathname,
+      )
+      const filePath = path.resolve(rootDir, `.${pathname}`)
+      if (
+        filePath !== rootDir &&
+        !filePath.startsWith(`${rootDir}${path.sep}`)
+      ) {
+        response.writeHead(403)
+        response.end()
+        return
+      }
+      const content = await readFile(filePath)
+      response.writeHead(200, {
+        'content-type': filePath.endsWith('.html')
+          ? 'text/html; charset=utf-8'
+          : 'application/octet-stream',
+      })
+      response.end(content)
+    } catch {
+      response.writeHead(404)
+      response.end()
+    }
+  })
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.close(resolve)
+      }),
+  )
+  const address = server.address()
+  assert.ok(address && typeof address !== 'string')
+  return `http://127.0.0.1:${address.port}`
+}
+
+function artifactUrl(origin, relativePath) {
+  const encoded = relativePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+  return `${origin}/${encoded}`
 }
 
 test('Pages artifact contains every report, the report library, and all tech map views', async (t) => {
@@ -57,6 +109,52 @@ test('Pages artifact contains every report, the report library, and all tech map
   )
   assert.match(techMapIndex, /href="\.\/tree\.html"/)
   assert.match(techMapIndex, /href="\.\/table\.html"/)
+})
+
+test('every published report and tech map view returns to the report library', async (t) => {
+  const { outputDir, result } = await temporaryBuild(t)
+  const { files: reportFiles } = await readReportManifest()
+  const origin = await serveArtifact(t, outputDir)
+  const pages = [
+    ...reportFiles.map((file) => ({
+      path: `report/${file}`,
+      marker: 'data-report-page-home',
+      href: '../research/index.html',
+    })),
+    ...['index.html', 'tree.html', 'table.html'].map((file) => ({
+      path: `public/research/techmap/${file}`,
+      marker: 'data-research-home',
+      href: '../../../research/index.html',
+    })),
+  ]
+
+  for (const page of pages) {
+    const response = await fetch(artifactUrl(origin, page.path))
+    assert.equal(response.status, 200, `${page.path} 未返回 200`)
+    const html = await response.text()
+    const links = [
+      ...html.matchAll(
+        new RegExp(
+          `<a\\b(?=[^>]*\\b${page.marker}\\b)[^>]*>[\\s\\S]*?<\\/a>`,
+          'gi',
+        ),
+      ),
+    ]
+    assert.equal(links.length, 1, `${page.path} 应有且仅有一个首页链接`)
+    assert.ok(
+      links[0][0].includes(`href="${page.href}"`),
+      `${page.path} 的首页链接应指向 ${page.href}`,
+    )
+    assert.match(links[0][0], /返回首页/u)
+
+    const homeResponse = await fetch(
+      new URL(page.href, response.url),
+    )
+    assert.equal(homeResponse.status, 200, `${page.path} 的首页链接未返回 200`)
+    assert.match(await homeResponse.text(), /股票调研报告库/u)
+  }
+
+  assert.equal(result.reportCount, reportFiles.length)
 })
 
 test('Pages artifact excludes R2 data, application code, and unlisted tech map files', async (t) => {

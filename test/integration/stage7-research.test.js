@@ -40,6 +40,16 @@ test('research library uses Vue documents and no longer serves archived report c
   );
   assert.equal(legacyNavigation.status, 404);
 
+  const standaloneLibraryFromApp = await fetch(
+    `${context.baseUrl}/research/index.html`,
+    { redirect: 'manual' },
+  );
+  assert.equal(standaloneLibraryFromApp.status, 302);
+  assert.equal(
+    standaloneLibraryFromApp.headers.get('location'),
+    '/investment/research',
+  );
+
   const techMap = await fetch(`${context.baseUrl}/research/techmap/index.html`);
   assert.equal(techMap.status, 200);
   assert.match(techMap.headers.get('content-type'), /^text\/html/);

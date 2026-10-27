@@ -139,12 +139,14 @@ Serenity 完成技术或需求变化、系统拆解、瓶颈识别、产业链�
 
 - 每篇报告包含非空正文和自带 `<style>`，样式限定在报告作用域内。
 - 正文末尾挂载固定的报告导航脚本；构建先识别该入口，再处理正文内容。
+- 每篇静态报告在 `<body>` 后保留一个原生首页入口：`data-report-page-home`、`href="../research/index.html"`、固定左下且字号不低于 12px；该入口不得依赖报告导航脚本。`scripts/build-report-docs.mjs` 将其从 Vue 正文剥离，应用阅读器继续使用顶部报告库路由。
 - 章节锚点、目录、正文检索和阅读进度由应用统一提供；构建自动补 `h2/h3` 的缺失 `id`。
 - 图片以内联 base64 写入报告，构建将其抽取到 `public/research/media/<slug>/`、优先转为 WebP，并补充懒加载和尺寸信息。
 - 科技图谱联动使用搜索关键词。关键词来自标题、小节标题和表格首列；正文段落中的代码通过 `<!-- rpnav-keywords: 002414 -->` 加入关键词。
 - 检索索引随报告数线性增长；达到 50 篇以上时评估拆分索引或服务端检索，当前数量、索引体积和构建耗时从发布清单与实际构建输出读取。
 - `src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/` 由 `scripts/build-report-docs.mjs` 生成，属于忽略文件，并随构建刷新。
-- 应用内报告只通过 Vue 阅读页 `/investment/research/:slug` 访问。`public/research/stocks/`、`public/research/scripts/report-nav.js` 和 `/research/stocks/*` 均为已退役路径，发布链和服务路由不得恢复这些静态副本。
+- 应用内报告只通过 Vue 阅读页 `/investment/research/:slug` 访问。应用服务收到 `/research/index.html` 时重定向到 `/investment/research`；`file://` 与 GitHub Pages 则直接打开独立归档库。`public/research/stocks/`、`public/research/scripts/report-nav.js` 和 `/research/stocks/*` 均为已退役路径，发布链和服务路由不得恢复这些静态副本。
+- 科技图谱三个静态视图必须在现有 `#vn` 版本工具条中保留 `data-research-home` 首页入口，统一使用 `../../../research/index.html`；不得使用会落到不存在的 `public/research/index.html` 的两级上级路径。桌面和移动端需保留三版切换、可键盘聚焦且无横向溢出。
 
 每轮调研结束时清理 Markdown 草稿、抓取缓存和临时目录。
 
