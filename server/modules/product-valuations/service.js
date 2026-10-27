@@ -153,6 +153,8 @@ function createProductValuationsService({
 
   function updateValuation(id, before, body) {
     const today = todayProvider();
+    const beforeInput = { ...before };
+    delete beforeInput.covered_yield_dates;
     const yieldDate = String(body.yield_date || before.yield_date || '');
     const creditDate = String(
       body.credit_date ||
@@ -171,7 +173,7 @@ function createProductValuationsService({
       result = productValuationsRepository.updateValuationById(
         id,
         {
-          ...before,
+          ...beforeInput,
           ...body,
           product_code: before.product_code,
           yield_date: yieldDate,

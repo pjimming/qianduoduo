@@ -43,6 +43,21 @@ test('review API stores decisions, holdings, events, notes and exports Markdown'
     initial_principal: 500000,
     initial_date: '2026-09-01',
   });
+  for (const [date, dailyPnl] of [
+    ['2026-08-31', 10],
+    ['2026-10-15', 120],
+    ['2026-10-16', -30],
+  ]) {
+    const product = await postJson(`${base}/api/product-valuations`, {
+      yield_date: date,
+      credit_date: date,
+      product_code: 'REVIEW001',
+      product_name: '复盘接口测试产品',
+      holding_amount: 500000,
+      daily_pnl: dailyPnl,
+    });
+    assert.equal(product.status, 201);
+  }
   const beforeStart = await postJson(`${base}/api/records`, {
     date: '2026-08-31',
     daily_pnl: 10,

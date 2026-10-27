@@ -26,6 +26,34 @@
 
 ## 近期完成（2026-10）
 
+- **2026-10-28 `TD-R2-INBOX-002` 产品收益缺口消息自动重算、合并与关闭**
+  - 产品收益新增显式 `covered_yield_dates` 契约：合并收益只记最后归属日，覆盖日期仅消除来源缺口，不为前几日补 0、均分或复制金额；兼容现有“覆盖10月24日至26日”备注，并支持 `clear_coverage=true` 撤回及重新打开缺口。
+  - 最终披露日当天保持 `waiting`，次日仍缺才进入 `missing-product-details`；同日全额赎回产品单独返回 `same_day_redeemed_product_codes`，提示确认确认日是否计息，不再直接定性漏记。
+  - 消息中心将连续日期、相同缺口和相同赎回边界合并为一个稳定事项；消息键不包含结束日，范围从单日扩展为多日时沿用同一事项。真实 `mismatch` 继续生成“账户收益投影需修复”事项。
+  - 前端产品收益档案显示“合并覆盖 X 至 Y；金额并入最后归属日”，支持录入/修正覆盖起止日和撤回覆盖；所有信息文字保持 12px 下限。
+  - 本机 `r2-2`、`r2-3` 实际任务提示词已同步次日最终确认、覆盖不补 0/不均分、同日赎回归属确认和复用现有对账消息；时间、模型、状态、项目与执行环境保持不变。
+  - 验证：`npm run check`、373/373 `npm test`、`npm run build`、完整 `npm run test:e2e` 和覆盖率测试通过；行/分支/函数覆盖率 89.49% / 74.92% / 90.06%。
+  - 发布前已生成数据库备份并通过 SHA256 校验；具体本机路径和摘要不写入公开仓库。
+  - 生产验收：Health/Server/Supervisor 正常，`integrity_check=ok`，派生总账无待投影变更，stderr 0 字节且无 stop marker。旧逐日产品对账消息已自动收敛，现只保留同日赎回确认和真实产品缺口。
+
+- **2026-10-27 `TD-R2-DERIVE-ACCOUNT-001` 产品日收益汇总驱动账户总账**
+  - `product_daily_valuations` 成为收益唯一事实源；`daily_records.daily_pnl` 改为按 `yield_date` 全量产品收益按分汇总的物化投影。产品新增、修正、迟到补录、批量重放、日期迁移和删除在同一 SQLite 事务内按最终集合重算，投影失败整体回滚。
+  - 产品-only 收益截图在日期和至少一条产品明细明确时自动创建/更新账户总账；截图账户金额只作可选核对。没有产品明细不得新建账户收益；`POST/PUT /api/records` 保留兼容路径，但客户端金额不能覆盖产品汇总，操作和备注仍可维护。
+  - 对账 `missing-account-total` 退役；本金未就绪时用 `account_projection_status=pending` 和明确 reason 等待，差额保持 null。前端收益金额改为只读，历史无产品记录标为手工口径，删除“缺账户汇总”交互。
+  - 新增 `db:preflight:derived-income`、`db:migrate:derived-income`、`db:verify:derived-income`；preflight/verify 只读，apply 在任何应用/业务迁移前完成 WAL 一致性备份与校验，失败自动恢复。
+  - 验证：`npm run check`、358/358 `npm test`、`npm run build`、完整 `npm run test:e2e`、覆盖率测试通过；行/分支/函数覆盖率 89.27% / 74.72% / 89.89%。
+  - 生产迁移完成：历史账户投影已全部按产品合计重算并规范化来源，`db:verify:derived-income` 返回 `ok=true`、`projected_changes=0`；个人金额不写入公开仓库。
+  - 迁移前已生成受控数据库备份并通过 SHA256 校验。回滚需停服后通过现有 `db:restore` 流程恢复该备份并重启；具体本机路径和摘要不写入公开仓库。
+  - 生产验收：Health OK、Supervisor/Server 正常、Dashboard/inbox/automation/review workspace 正常，`mismatch=0`、`missing_account_total=0`，最新 stderr 0 字节，停止标记不存在。剩余 10/23–10/25 产品明细缺口为真实业务待补，不属于迁移失败。
+
+- **2026-10-27 `TD-R2-INCOME-RECON-001` T+N 产品覆盖与最终披露对账（历史，账户总账口径已由 `TD-R2-DERIVE-ACCOUNT-001` 取代）**
+  - 本阶段建立了按 `yield_date` 聚合、按当日持有产品最大 `yield_lag_days` 计算最终披露日的覆盖检查，以及 `waiting / missing-product-details / matched / mismatch` 状态。
+  - 当时“账户总额独立维护、产品-only 不生成总账、缺少账户汇总需提示”的口径已被后续产品汇总驱动总账改造取代；当前有效规则以 `TD-R2-DERIVE-ACCOUNT-001`、`AGENTS.md` 和 `MEMORY.md` 为准。
+  - 消息中心将相同评估状态的逐决策提醒合并为一张汇总卡，避免“评估等待更多收益样本”重复堆叠；已处理历史按用户要求清理，真实最终缺项和到期/复核提醒保留。
+  - 本机 `r2-2`、`r2-3` 自动化已更新并保持 `ACTIVE`，仓库提示词、`AGENTS.md`、`MEMORY.md`、`README.md`、`USAGE.md` 和自动化说明已同步。
+  - 验证：`npm run check`、345/345 `npm test`、`npm run build`、完整 `npm run test:e2e`、财务不变量覆盖率测试全部通过；整体行 89.38%、分支 74.78%、函数 89.96%。
+  - 生产已重启验收：Health OK，Supervisor/Server 正常，最新 stderr 为 0 字节且无 stop marker；真实只读响应为新格式，10 月 26 日为 `waiting`、最终披露日 10 月 28 日且无行动提醒，最终披露日后的缺项才保留消息中心告警，账户总收益未被产品合计改写。
+
 - **2026-10-27 GitHub Pages 公开归档与 R2 当前数据清理**
   - 新增 `.github/workflows/deploy-pages.yml` 与 `scripts/build-pages-site.mjs`；Pages 仅构建 `research/index.html`、`scripts/report-nav.js`、全部 25 篇 `report/*.html`、科技图谱脑图/树状/表格三版和 `.nojekyll`，共 31 个文件。
   - 构建器和 6 项 Pages 测试会拒绝白名单外文件、`data/`、R2 标记、SQLite、截图、应用源码和未列出的科技图谱文件；部署前执行 `npm ci`、生产构建和 335 项回归测试。

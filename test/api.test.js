@@ -172,6 +172,20 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   });
   assert.equal(depositResponse.status, 201);
 
+  const productIncomeResponse = await fetch(`${base}/api/product-valuations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      yield_date: '2026-10-18',
+      credit_date: '2026-10-18',
+      product_code: '120056A',
+      product_name: '测试产品',
+      holding_amount: 6000,
+      daily_pnl: 54,
+    }),
+  });
+  assert.equal(productIncomeResponse.status, 201);
+
   const createResponse = await fetch(`${base}/api/records`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -182,8 +196,11 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
       notes: '接口测试',
     }),
   });
-  assert.equal(createResponse.status, 201);
+  assert.equal(createResponse.status, 200);
   const created = await createResponse.json();
+  assert.equal(created.changed, true);
+  assert.equal(created.record.source, 'product-income-summary');
+  assert.equal(created.record.notes, '接口测试');
   assert.equal(created.dashboard.records.length, 1);
   assert.equal(created.dashboard.summary.total_pnl, 54);
   assert.equal(created.record.principal, 550000);
@@ -231,16 +248,9 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   assert.equal(duplicateResponse.status, 200);
   const duplicate = await duplicateResponse.json();
   assert.equal(duplicate.record.daily_pnl, 54);
-  assert.equal(duplicate.conflict.existing_daily_pnl, 54);
-  assert.equal(duplicate.conflict.incoming_daily_pnl, 50);
+  assert.equal(duplicate.record.notes, '接口测试');
+  assert.equal(duplicate.conflict, null);
   assert.equal(duplicate.dashboard.records.length, 1);
-  assert.ok(
-    duplicate.dashboard.inbox_center.pending.some(
-      (item) =>
-        item.source_type === 'system_notification' &&
-        item.title.includes('收益金额不一致'),
-    ),
-  );
 
   const updateResponse = await fetch(`${base}/api/records/2026-10-18`, {
     method: 'PUT',
@@ -254,17 +264,17 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   });
   assert.equal(updateResponse.status, 200);
   const updated = await updateResponse.json();
-  assert.equal(updated.record.daily_pnl, 60);
+  assert.equal(updated.record.daily_pnl, 54);
+  assert.equal(updated.record.action, '买入');
+  assert.equal(updated.record.notes, '更新');
 
   const csvResponse = await fetch(`${base}/api/export.csv`);
   const csv = await csvResponse.text();
   assert.match(csv, /date,principal,daily_pnl,action,notes/);
-  assert.match(csv, /2026-10-18,545000,60,买入,更新/);
+  assert.match(csv, /2026-10-18,545000,54,买入,更新/);
 
   const deleteResponse = await fetch(`${base}/api/records/2026-10-18`, { method: 'DELETE' });
-  assert.equal(deleteResponse.status, 200);
-  const deleted = await deleteResponse.json();
-  assert.equal(deleted.dashboard.records.length, 0);
+  assert.equal(deleteResponse.status, 400);
 });
 
 test('API rejects future dates and records before capital initialization', async (t) => {
@@ -315,12 +325,28 @@ test('API accepts user-provided dates through today and validates duplicates ide
   });
   assert.equal(initResponse.status, 201);
 
+  for (const date of [today, reportingDate]) {
+    const product = await fetch(`${base}/api/product-valuations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        yield_date: date,
+        credit_date: date,
+        product_code: '120056A',
+        product_name: '测试产品',
+        holding_amount: 10000,
+        daily_pnl: 1,
+      }),
+    });
+    assert.equal(product.status, 201);
+  }
+
   const currentDay = await fetch(`${base}/api/records`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ date: today, daily_pnl: 1 }),
   });
-  assert.equal(currentDay.status, 201);
+  assert.equal(currentDay.status, 200);
   const currentPayload = await currentDay.json();
   assert.equal(currentPayload.record.daily_pnl, 1);
 
@@ -334,14 +360,14 @@ test('API accepts user-provided dates through today and validates duplicates ide
   assert.equal(sameCurrentPayload.duplicate, true);
   assert.equal(sameCurrentPayload.changed, false);
   assert.equal(sameCurrentPayload.conflict, null);
-  assert.equal(sameCurrentPayload.dashboard.records.length, 1);
+  assert.equal(sameCurrentPayload.dashboard.records.length, 2);
 
   const previousDay = await fetch(`${base}/api/records`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ date: reportingDate, daily_pnl: 1 }),
   });
-  assert.equal(previousDay.status, 201);
+  assert.equal(previousDay.status, 200);
   assert.equal(
     (await previousDay.json()).dashboard.meta.has_reporting_record,
     true,

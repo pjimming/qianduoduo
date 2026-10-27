@@ -32,6 +32,22 @@ test('capital, ledger and product valuation routes are module-owned and compatib
   assert.equal(event.response.status, 201);
   assert.equal(event.body.event.amount, 5000);
 
+  const productIncome = await requestJson(
+    `${context.baseUrl}/api/product-valuations`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        product_code: 'STAGE4001',
+        product_name: '阶段四测试产品',
+        yield_date: '2026-09-15',
+        credit_date: '2026-09-16',
+        daily_pnl: 12.34,
+        holding_amount: 10000,
+      }),
+    },
+  );
+  assert.equal(productIncome.response.status, 201);
+
   const record = await requestJson(`${context.baseUrl}/api/records`, {
     method: 'POST',
     body: JSON.stringify({
@@ -41,7 +57,8 @@ test('capital, ledger and product valuation routes are module-owned and compatib
       notes: 'module record',
     }),
   });
-  assert.equal(record.response.status, 201);
+  assert.equal(record.response.status, 200);
+  assert.equal(record.body.record.daily_pnl, 12.34);
   assert.equal(record.body.record.principal, 105000);
 
   const setting = await requestJson(

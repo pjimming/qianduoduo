@@ -10,31 +10,74 @@ function incomeError(statusCode, message) {
 }
 
 function normalizeApplyInput(body = {}) {
+  const products = Array.isArray(body.products)
+    ? body.products.map((item) => ({
+        ...item,
+        daily_pnl:
+          item.daily_pnl === undefined || item.daily_pnl === null
+            ? null
+            : Number(item.daily_pnl),
+        holding_amount:
+          item.holding_amount === undefined ||
+          item.holding_amount === null ||
+          item.holding_amount === ''
+            ? null
+            : Number(item.holding_amount),
+        confidence:
+          item.confidence === undefined || item.confidence === null
+            ? undefined
+            : Number(item.confidence),
+      }))
+    : undefined;
+  if (
+    body.clear_coverage === true &&
+    ((Array.isArray(body.covered_yield_dates) &&
+      body.covered_yield_dates.length) ||
+      body.coverage_start_date ||
+      body.coverage_end_date)
+  ) {
+    throw new Error('不能同时撤回并新增收益覆盖日期');
+  }
+  const hasRootCoverage = Boolean(
+    body.clear_coverage === true ||
+      (Array.isArray(body.covered_yield_dates) &&
+        body.covered_yield_dates.length) ||
+      body.coverage_start_date ||
+      body.coverage_end_date,
+  );
+  if (hasRootCoverage && (products?.length || 0) > 1) {
+    throw new Error('多产品收益截图需要在各产品明细中分别提供覆盖日期');
+  }
+  if (body.clear_coverage === true && products?.length === 1) {
+    products[0].clear_coverage = true;
+  } else if (
+    products?.length === 1 &&
+    !products[0].covered_yield_dates?.length &&
+    Array.isArray(body.covered_yield_dates) &&
+    body.covered_yield_dates.length
+  ) {
+    products[0].covered_yield_dates = body.covered_yield_dates;
+  } else if (
+    products?.length === 1 &&
+    !products[0].covered_yield_dates?.length &&
+    (body.coverage_start_date || body.coverage_end_date)
+  ) {
+    products[0].coverage_start_date = body.coverage_start_date;
+    products[0].coverage_end_date = body.coverage_end_date;
+  }
   return {
     date: body.date,
     daily_pnl:
       body.daily_pnl === undefined || body.daily_pnl === null
         ? undefined
         : Number(body.daily_pnl),
-    products: Array.isArray(body.products)
-      ? body.products.map((item) => ({
-          ...item,
-          daily_pnl:
-            item.daily_pnl === undefined || item.daily_pnl === null
-              ? null
-              : Number(item.daily_pnl),
-          holding_amount:
-            item.holding_amount === undefined ||
-            item.holding_amount === null ||
-            item.holding_amount === ''
-              ? null
-              : Number(item.holding_amount),
-          confidence:
-            item.confidence === undefined || item.confidence === null
-              ? undefined
-              : Number(item.confidence),
-        }))
+    products,
+    covered_yield_dates: Array.isArray(body.covered_yield_dates)
+      ? body.covered_yield_dates
       : undefined,
+    coverage_start_date: body.coverage_start_date,
+    coverage_end_date: body.coverage_end_date,
+    clear_coverage: body.clear_coverage === true ? true : undefined,
     action: body.action,
     notes: body.notes,
   };
@@ -105,8 +148,20 @@ function createIncomeService({
     });
     const parsed = ocrResult.parsed;
     const threshold = incomeRepository.getAutoConfidenceThreshold();
+    const hasExplicitAccountPnl =
+      parsed.daily_pnl !== null && parsed.daily_pnl !== undefined;
+    const hasProductDetails =
+      Array.isArray(parsed.products) &&
+      parsed.products.some(
+        (item) =>
+          String(item.product_code || '').trim() &&
+          item.daily_pnl !== null &&
+          item.daily_pnl !== undefined &&
+          Number.isFinite(Number(item.daily_pnl)),
+      );
+    const hasPostableFacts = hasExplicitAccountPnl || hasProductDetails;
     const workflowState =
-      ocrResult.ok && parsed.daily_pnl !== null
+      ocrResult.ok && hasPostableFacts
         ? parsed.confidence >= threshold
           ? 'ready_to_post'
           : 'needs_correction'
@@ -181,7 +236,7 @@ function createIncomeService({
     let reconciliation = null;
     let incomeConflict = null;
     let incomeIgnored = false;
-    if (ocrResult.ok && parsed.daily_pnl !== null && parsed.confidence >= threshold) {
+    if (ocrResult.ok && hasPostableFacts && parsed.confidence >= threshold) {
       try {
         const applied = incomeRepository.applyIncomeScreenshot(item.id, parsed, {
           today,

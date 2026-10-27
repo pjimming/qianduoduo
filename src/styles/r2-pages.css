@@ -266,13 +266,39 @@ a.r2-head-chip:hover {
 }
 
 .pv-issue strong {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
   font-family: var(--mono);
   font-size: 12.5px;
+}
+
+.pv-issue strong small,
+.pv-issue > small {
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .pv-issue span {
   font-size: 12px;
   line-height: 1.55;
+}
+
+.pv-issue.is-waiting {
+  border-color: var(--line);
+  background: var(--surface-quiet);
+  color: var(--ink-soft);
+}
+
+.pv-issue.is-missing {
+  border-color: rgba(183, 124, 45, 0.3);
+  background: var(--surface-warning);
+  color: var(--warning-ink);
 }
 
 .pv-grid {

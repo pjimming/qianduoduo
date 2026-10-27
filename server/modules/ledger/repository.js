@@ -15,6 +15,9 @@ function createLedgerRepository(repository) {
     getCapitalState(today) {
       return repository.getCapitalState(today);
     },
+    getProductIncomeSummary(date) {
+      return repository.getProductIncomeSummary(date);
+    },
     getRecord(date) {
       return repository.getRecord(date);
     },

@@ -66,9 +66,9 @@
 - 读取 `decision_proposals`：待采纳提案只提醒用户本人决定，已采纳提案只提醒用户自行执行；不得代替用户采纳、拒绝或取消；
 - 平台在可分配资金或可执行换仓出现时生成决策提案；用户本人采纳/拒绝并自行交易。上传截图后，应用自动匹配已采纳提案、审计偏差、更新执行状态并继续评估；
 - 优先读取 `/api/inbox`；常规事项已在消息中心去重，只有用户补事实或最后确认的例外才进入用户消息；
-- 需要用户补事实或最后确认的事项必须先通过 `POST /api/inbox/confirmations` 写入应用消息中心，使用确定性 `dedupe_key` 防重复并返回站内深链；临时桥接本金还要附带结构化金额、转入/转出日期、目标本金和决策 ID；逐产品收益待补要附带 `metadata.product_income_requirement={product_code,yield_date}`，以便匹配产品收益事实后自动关闭；Codex 卡片只作摘要；
-- 收益提醒按 `/api/dashboard` 的 `meta.reporting_date`（通常为昨日）检查，但用户提供的实际收益日期允许不晚于今天；不得用产品 T+1/T+2 延迟拒绝或改写日期。同日期同金额视为已记录，不同金额只提醒、不覆盖；
-- 产品明细缺失先按逐产品 `yield_lag_days` 过滤：当 `today < 收益归属日 + yield_lag_days` 时属于正常等到账，不提示补图；满足 `today >= 收益归属日 + yield_lag_days` 后仍缺失才标记“本次未拍到”，不得自行推断为 0、不判定赎回；用户或银行页面明确确认 0 元时必须记录为有效收益；产品合计与账户总账差异只提示核对，不覆盖任何一侧；
+- 需要用户补事实或最后确认的事项必须先通过 `POST /api/inbox/confirmations` 写入应用消息中心，使用确定性 `dedupe_key` 防重复并返回站内深链；临时桥接本金还要附带结构化金额、转入/转出日期、目标本金和决策 ID；逐产品收益待补要附带 `metadata.product_income_requirement={product_code,yield_date}`，但若 `/api/inbox` 已存在同一 `product_valuation_reconciliation` 事项，只引用现有记录，不再写入重复项；事实、明确 0 元或覆盖区间确认后自动关闭；Codex 卡片只作摘要；
+- 收益提醒按 `/api/dashboard` 的 `meta.reporting_date` 检查；该日期由当前持仓最大 `yield_lag_days` 推算，没有持仓时才回退昨日。用户提供的实际收益日期允许不晚于今天；不得用产品 T+1/T+2 延迟拒绝或改写日期。同日期同金额视为已记录，不同金额只提醒、不覆盖；
+- 日期和至少一条产品明细明确时，归档产品事实并按当日产品合计创建或更新账户总账；截图账户金额只作可选核对。`product_valuation_reconciliation` 的 `waiting` 表示最大 T+N 尚未完成，最终披露日当天仍等待、次日仍缺才转为 `missing-product-details`；连续日期且缺口集合相同的消息合并为日期区间，已见产品进入汇总且后续到账自动重算，不要求用户补账户总额。覆盖区间只消除来源缺口，金额仍归最后披露日，不向前几日补 0、均分或复制。`same_day_redeemed_product_codes` 只提示确认赎回日收益归属，不得直接定性漏记；投影完整性异常才进入系统修复。`matched` 或覆盖区间确认后自动关闭，`missing-account-total` 已退役，0 元只有在用户或银行页面明确确认时记录；
 - 没有异常、没有待办时保持安静，不发送“今日无异常”；不得代替用户采纳、拒绝或取消决策提案；
 - 只维护账本事实和流程，不写投资建议、不做收益预测。
 
@@ -78,7 +78,7 @@
 
 - 每周五 18:30 先调用 `POST /api/dashboard/refresh`，再检查本周记录完整度、逐产品个人表现、账户/产品对账、持仓结构（评分桶 1–30 与流动性子集 7–30 分开）、逐只替代复核、单只/期限桶结构、发行方展示、现有日开迁移、到期阶梯、产品事件、交易对账和下周安排；
 - 逐只替代复核读取 `workspace.holding_reviews`，输出继续持有/观察/建议替换、期限调整参考年化、`yield_status/yield_reason`、证据档位、比较期限、切换等待及其 `verified/estimated` 状态、有效计息、费用、复利盈亏平衡、数据缺口和验证日；6M/3M 候选执行单只 10%、同类合计 20%，估算值必须标“估算”，不能当作已核验事实；
-- 逐产品个人收益只作观察证据；短样本不换算稳定年化，产品收益不重复计入账户总收益；
+- 逐产品个人收益同时驱动账户日总账，但周卡只把逐产品表现作为持有体验与下钻证据；短样本不换算稳定年化，不重复累加金额；
 - 读取 `decision_proposals`，报告待采纳和待执行方案；不得代替用户采纳、拒绝或取消；
 - 读取 `GET /api/calibration/monthly?month=YYYY-MM`，把到复核日的预测命中、未命中、待验证、失效和误差来源纳入周卡；待验证和未执行不计入命中率；
 - 需要用户补事实或最后确认的事项必须先通过 `POST /api/inbox/confirmations` 写入消息中心，使用确定性 `dedupe_key` 防重复；临时桥接本金提醒必须附带结构化金额、转入/转出日期、目标本金和决策 ID；逐产品收益待补要附带 `metadata.product_income_requirement={product_code,yield_date}`；周卡只作摘要；
@@ -148,8 +148,8 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 ### 4.4 任务本身
 
 - `r2`：手动运行后检查 `data/` 是否生成当天 CSV，`/api/dashboard/products` 是否切换快照，五档 `evidence_counts` 与 6M/3M 的 10%/20% 上限是否存在；
-- `r2-2`：最近披露收益按 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation`、`product_valuation_disclosure_policy` 与“本次未拍到”；未到产品 T+N 到账日及今日未披露均不计异常，已到到账日仍缺明细才提示补图；替换候选应显示期限调整参考年化、`yield_status/yield_reason`、证据档位和短历史单只上限；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
-- `r2-3`：逐产品个人表现只作观察证据，替换候选应显示证据档位与 10%/20% 限制；没有结构风险、产品对账异常或下周动作时应该“无消息”，有内容时只发一张周卡。
+- `r2-2`：最近披露收益按最大 T+N 推算的 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation` 与 `product_valuation_disclosure_policy`；`waiting` 不写消息，最终披露日次日仍缺、且未被覆盖区间消除的产品才提示。应用消息中心已按连续日期和相同缺口聚合，Codex 不重复建卡；已见产品驱动账户总账，投影完整性异常才单独提示。产品-only 截图就是账户总账来源；替换候选应显示期限调整参考年化、`yield_status/yield_reason`、证据档位和短历史单只上限；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
+- `r2-3`：逐产品个人表现只作观察证据，替换候选应显示证据档位与 10%/20% 限制；账户/产品对账只报最终状态，等待到账保持安静；没有结构风险、最终对账异常或下周动作时应该“无消息”，有内容时只发一张周卡。
 
 ## 5. 常见问题
 

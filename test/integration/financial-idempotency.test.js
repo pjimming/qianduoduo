@@ -101,11 +101,29 @@ test('same-day income requests do not duplicate or overwrite the ledger', async 
     action: '无操作',
     notes: 'first',
   };
+  const product = await requestJson(
+    `${context.baseUrl}/api/product-valuations`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        yield_date: input.date,
+        credit_date: input.date,
+        product_code: '120056A',
+        product_name: '测试产品',
+        holding_amount: 10000,
+        daily_pnl: input.daily_pnl,
+      }),
+    },
+  );
+  assert.equal(product.response.status, 201);
   const first = await requestJson(`${context.baseUrl}/api/records`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
-  assert.equal(first.response.status, 201);
+  assert.equal(first.response.status, 200);
+  assert.equal(first.body.duplicate, false);
+  assert.equal(first.body.changed, true);
+  assert.equal(first.body.record.notes, 'first');
 
   const same = await requestJson(`${context.baseUrl}/api/records`, {
     method: 'POST',
@@ -120,7 +138,8 @@ test('same-day income requests do not duplicate or overwrite the ledger', async 
     body: JSON.stringify({ ...input, daily_pnl: 99 }),
   });
   assert.equal(conflict.response.status, 200);
-  assert.equal(conflict.body.conflict.existing_daily_pnl, 12.34);
+  assert.equal(conflict.body.conflict, null);
   assert.equal(conflict.body.record.daily_pnl, 12.34);
+  assert.equal(conflict.body.record.notes, 'first');
   assert.equal(conflict.body.dashboard.records.length, 1);
 });

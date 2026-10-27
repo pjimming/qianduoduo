@@ -19,7 +19,15 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
     if (!capitalState.initialized) {
       throw serviceError(400, '请先初始化本金账户，再记录收益');
     }
-    const validation = validateRecordPayload(body, { today });
+    const date = String(body?.date || '').trim();
+    const productSummary = ledgerRepository.getProductIncomeSummary(date);
+    if (!productSummary.available) {
+      throw serviceError(400, '请先录入至少一条产品当日收益，账户总收益会自动汇总');
+    }
+    const validation = validateRecordPayload(
+      { ...body, daily_pnl: productSummary.daily_pnl },
+      { today },
+    );
     if (validation.error) throw serviceError(400, validation.error);
     const existing = ledgerRepository.getRecord(validation.value.date);
     if (existing) {
@@ -28,42 +36,35 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
           Number(existing.daily_pnl) -
             Number(validation.value.daily_pnl),
         ) <= 0.005;
-      if (sameValue) {
-        return {
-          statusCode: 200,
-          body: {
-            record: existing,
-            duplicate: true,
-            changed: false,
-            conflict: null,
-            dashboard: dashboardQuery.projectDashboard(),
-          },
-        };
+      const canAdoptFirstMetadata =
+        existing.source === 'product-income-summary' &&
+        existing.action === '无操作' &&
+        existing.notes === '由逐产品每日收益汇总生成';
+      let record = existing;
+      let adoptedMetadata = false;
+      if (
+        canAdoptFirstMetadata &&
+        (validation.value.action !== existing.action ||
+          validation.value.notes !== existing.notes)
+      ) {
+        try {
+          record = ledgerRepository.updateRecord(
+            validation.value.date,
+            validation.value,
+          );
+          adoptedMetadata = true;
+        } catch (error) {
+          throw serviceError(400, error.message);
+        }
       }
-      const notification = ledgerRepository.flagIncomeConflict({
-        date: validation.value.date,
-        existing,
-        incoming: validation.value.daily_pnl,
-        source: 'manual',
-      });
       return {
         statusCode: 200,
         body: {
-          record: existing,
-          duplicate: false,
-          changed: false,
-          conflict: {
-            date: validation.value.date,
-            existing_daily_pnl: Number(existing.daily_pnl),
-            incoming_daily_pnl: validation.value.daily_pnl,
-            difference:
-              Math.round(
-                (validation.value.daily_pnl -
-                  Number(existing.daily_pnl)) *
-                  100,
-              ) / 100,
-            notification_id: notification.id,
-          },
+          record,
+          duplicate: sameValue && !adoptedMetadata,
+          changed: adoptedMetadata,
+          conflict: null,
+          derived_daily_pnl: productSummary.daily_pnl,
           dashboard: dashboardQuery.projectDashboard(),
         },
       };
@@ -81,6 +82,7 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
         duplicate: false,
         changed: true,
         conflict: null,
+        derived_daily_pnl: productSummary.daily_pnl,
         dashboard: dashboardQuery.projectDashboard(),
       },
     };
@@ -96,8 +98,12 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
       );
     }
     const today = todayProvider();
+    const productSummary = ledgerRepository.getProductIncomeSummary(date);
+    if (!productSummary.available) {
+      throw serviceError(400, '该日期没有产品收益事实，账户总收益不能独立修改');
+    }
     const validation = validateRecordPayload(
-      { ...body, date },
+      { ...body, date, daily_pnl: productSummary.daily_pnl },
       { date, today },
     );
     if (validation.error) throw serviceError(400, validation.error);
@@ -114,6 +120,10 @@ function createLedgerService({ ledgerRepository, dashboardQuery }) {
   }
 
   function deleteRecord(date) {
+    const productSummary = ledgerRepository.getProductIncomeSummary(date);
+    if (productSummary.available) {
+      throw serviceError(400, '账户总收益由产品收益汇总生成，请修改产品明细');
+    }
     if (!ledgerRepository.deleteRecord(date)) {
       throw serviceError(404, '没有找到这条记录');
     }

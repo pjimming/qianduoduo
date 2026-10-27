@@ -41,6 +41,7 @@ export interface LedgerRecord {
   daily_pnl: number
   action: LedgerAction
   notes: string
+  source?: 'manual' | 'income-screenshot' | 'product-income-summary' | string
   cumulative_pnl: number
   net_value: number
   daily_return: number
@@ -600,6 +601,7 @@ export interface ProductDailyValuation {
   screenshot_id: number | null
   confidence: number
   notes: string
+  covered_yield_dates: string[]
   created_at: string
   updated_at: string
 }
@@ -665,14 +667,36 @@ export interface ProductValuationSummary {
   best_day: ProductValuationDay | null
 }
 
+export type ProductValuationReconciliationStatus =
+  | 'waiting'
+  | 'missing-product-details'
+  | 'matched'
+  | 'mismatch'
+
 export interface ProductValuationReconciliationItem {
   account_date: string
   yield_dates: string[]
   product_pnl: number
   product_count: number
+  expected_product_count: number
+  covered_product_codes?: string[]
+  covered_product_count?: number
+  covered_only_product_codes?: string[]
+  missing_product_codes: string[]
+  same_day_redeemed_product_codes?: string[]
+  max_yield_lag_days: number
+  final_disclosure_date: string
+  waiting_product_codes: string[]
+  is_final: boolean
   account_pnl: number | null
+  account_projection_status: 'ready' | 'pending' | 'missing'
+  account_projection_reason:
+    | 'capital-uninitialized'
+    | 'before-capital-start'
+    | 'principal-zero'
+    | null
   difference: number | null
-  status: 'matched' | 'mismatch' | 'missing-account-total'
+  status: ProductValuationReconciliationStatus
   message: string
   record_id: number | null
 }
@@ -680,9 +704,10 @@ export interface ProductValuationReconciliationItem {
 export interface ProductValuationReconciliation {
   items: ProductValuationReconciliationItem[]
   counts: {
+    waiting: number
     matched: number
     mismatch: number
-    missing_account_total: number
+    missing_products: number
   }
 }
 
@@ -1548,6 +1573,10 @@ export interface IncomeInboxParsed {
   action?: LedgerAction
   notes?: string
   products?: ProductValuationInput[]
+  covered_yield_dates?: string[]
+  coverage_start_date?: string
+  coverage_end_date?: string
+  clear_coverage?: boolean
   needs_product_date_review?: boolean
   missing_product_codes?: string[]
   reconciliation?: ProductValuationReconciliationItem | null
@@ -1679,6 +1708,10 @@ export interface ProductValuationInput {
   screenshot_id?: number | null
   confidence?: number
   notes?: string
+  covered_yield_dates?: string[]
+  coverage_start_date?: string
+  coverage_end_date?: string
+  clear_coverage?: boolean
   correction_note?: string
 }
 
@@ -2064,6 +2097,7 @@ export interface RecordMutationResponse {
   duplicate: boolean
   changed: boolean
   conflict: IncomeRecordConflict | null
+  derived_daily_pnl?: number
   dashboard: DashboardPayload
 }
 

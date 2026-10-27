@@ -55,18 +55,19 @@
 
 ### 5.2 收益记录与对账
 
-- `daily_records` 保存账户每日汇总收益；逐产品收益写入 `product_daily_valuations`。账户总收益使用账户记录，产品收益用于产品级展示和核对。
-- 产品记录以 `(product_code, yield_date)` 为唯一键，保留 `holding_amount`、来源截图、置信度、备注和时间戳；人工修正同步写入 `product_daily_valuation_audit`。
-- 一张收益截图按已确认持仓代码拆分多只产品。截图缺少某项持仓时，在 `today < 收益归属日 + yield_lag_days` 阶段标记“等待到账”；达到披露时点后标记“本次未拍到”。0 元收益来自用户或银行页面的明确确认，并写入值为 0 的记录；赎回状态以确认的赎回交易为准。
-- 产品当日收益合计与 `daily_records.daily_pnl` 定期核对。出现差异时登记漏识别、重复、尚未披露或代码错误等候选原因；账户总账以 `daily_records` 为准，产品明细在来源核实后修正。
-- 账户收益以“收益日期 + 金额”作为幂等键。收益日期由用户或截图明确提供，并采用不晚于今天的日期；`reporting_date = today - 1` 用于日常缺记提醒，实际补记日期按用户提供的收益日期记录。产品 `T+1/T+2` 或 `yield_lag_days` 用于判断披露进度，收益日期按用户提供的事实写入。
-- 同一日期存在相同金额时保留一条记录及其原时间戳；日期或金额形成新组合时新增记录。同一日期出现不同金额时保留原记录，并把原值、本次值、差额和来源写入消息中心等待人工确认。0 元作为有效收益值保存。手工录入、API 写入和截图入账执行同一套规则。
+- `product_daily_valuations` 是收益唯一事实源；`daily_records` 是逐日账户总账的物化投影。每个 `yield_date` 的 `daily_records.daily_pnl` 必须等于该日全部产品收益按分汇总，不得由手工账户金额独立形成或覆盖。
+- 产品记录以 `(product_code, yield_date)` 为唯一键，保留 `holding_amount`、`covered_yield_dates`、来源截图、置信度、备注和时间戳；人工修正同步写入 `product_daily_valuation_audit`。`covered_yield_dates` 表示一条合并收益记录明确覆盖的日期，只用于确认来源覆盖；收益金额只归属该记录自身的 `yield_date`，不得为前几日补 0、均分或复制金额。
+- 一张收益截图按已确认持仓代码拆分多只产品。截图缺少某项持仓时，在 `today < 收益归属日 + yield_lag_days` 阶段标记“等待到账”；最终披露日当天仍保持等待，进入次日巡检后仍缺才标记“本次未拍到”。同日确认赎回的产品先标记“赎回日收益归属待确认”，不得直接定性漏记。0 元收益来自用户或银行页面的明确确认，并写入值为 0 的记录；赎回状态以确认的赎回交易为准。
+- 产品新增、修正、迟到补录、批次重放和删除必须在同一 SQLite 事务内按最终产品集合重算账户日记录，不得做增量加减。派生记录保存 `source=product-income-summary`，保留人员维护的操作和备注，并从本金账户重算 `principal`。本金未初始化、收益日早于起始日或本金为 0 时只延迟账户投影并明确原因，不伪造差额；其他本金读取异常必须回滚产品写入。
+- 收益日期来自产品收益归属日，并采用不晚于今天的日期；`reporting_date = today - max(当前持仓 yield_lag_days)` 用于日常缺记提醒，没有持仓时才回退 `today - 1`。产品 `T+1/T+2` 或 `yield_lag_days` 用于判断披露进度，不用于拒绝或改写用户已明确提供的收益日期。
+- 没有产品明细时不得新建账户收益；兼容 `POST/PUT /api/records` 时，客户端提交的 `daily_pnl` 不具权威性，有产品事实时只能收敛到派生汇总，操作和备注仍可人工维护。银行页面账户金额只作可选核对证据，不覆盖产品汇总。
+- 同一 `(product_code, yield_date)` 保留一条产品事实；重复请求和重试按最终集合幂等收敛。0 元只有在用户或银行页面明确确认时写入。投影失败必须使产品写入整体回滚。
 - 完全赎回的产品保留在账本中并标记“已赎回”。逐产品累计收益、负收益天数和最差单日作为个人观察指标展示，并与产品市场 3M/6M/1Y 收益和年化指标分栏说明。
 
 ### 5.3 `r2-2`、`r2-3` 与消息中心
 
-- `r2-2` 和 `r2-3` 读取 `/api/dashboard` 的 `workspace.product_valuation_summary`、`product_valuation_summaries`、`workspace.product_valuation_disclosure_policy` 和 `product_valuation_reconciliation`。逐产品按 `yield_lag_days` 判断披露进度，差异或缺口提示从实际披露时点开始。
-- 需要用户补充事实或最终确认的事项，通过 `POST /api/inbox/confirmations` 写入消息中心。使用确定性 `dedupe_key` 保证跨日唯一，并写明标题、事实摘要、严重度、深链和到期日；回复卡片同时引用对应消息中心记录。
+- `r2-2` 和 `r2-3` 读取 `/api/dashboard` 的 `workspace.product_valuation_summary`、`product_valuation_summaries`、`workspace.product_valuation_disclosure_policy` 和 `product_valuation_reconciliation`。逐产品按 `yield_lag_days` 判断披露进度，差异或缺口提示从最终披露窗口结束后的次日开始。连续日期且缺失产品集合相同的产品缺口合并为一条日期区间消息；事实补录、显式 0 元或覆盖区间确认后由消息中心投影自动关闭。
+- 需要用户补充事实或最终确认的事项，通过 `POST /api/inbox/confirmations` 写入消息中心。使用确定性 `dedupe_key` 保证跨日唯一，并写明标题、事实摘要、严重度、深链和到期日；回复卡片同时引用对应消息中心记录。若消息中心已存在同一 `product_valuation_reconciliation` 事项，只引用现有记录，不再写入重复确认项。
 - 修改 Codex 定时任务时，同步更新 `codex-automations/*.md`、`codex-automations/README.md`、`USAGE.md`、`MEMORY.md` 和本机实际任务定义。实际任务通过 Codex 自动化工具更新，内部 TOML 以自动化工具生成的状态为准。
 
 ## 6. 股票调研工作流

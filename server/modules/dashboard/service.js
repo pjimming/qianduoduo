@@ -187,7 +187,7 @@ function createDashboardQueryService(repository, options = {}) {
         today,
         tradeOverview.holdings,
       );
-    const reportingDate = shiftDate(today, -1);
+    const reportingDate = incomeDisclosurePolicy.reporting_date;
     const todayRecord =
       rawRecords.find((record) => record.date === today) || null;
     const reportingRecord =
@@ -228,7 +228,7 @@ function createDashboardQueryService(repository, options = {}) {
     const review = buildReview(records, today, {
       initialDate: capital.initial_date,
       reportingDate,
-      reportingLagDays: 1,
+      reportingLagDays: incomeDisclosurePolicy.reporting_lag_days,
     });
     const holdingReviewSettings = Object.fromEntries(
       repository
@@ -320,7 +320,7 @@ function createDashboardQueryService(repository, options = {}) {
       meta: {
         today,
         reporting_date: reportingDate,
-        reporting_lag_days: 1,
+        reporting_lag_days: incomeDisclosurePolicy.reporting_lag_days,
         recording_date_source: 'user-provided',
         income_disclosure_policy: incomeDisclosurePolicy,
         target_annualized: TARGET_ANNUALIZED,

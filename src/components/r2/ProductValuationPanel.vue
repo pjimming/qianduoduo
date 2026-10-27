@@ -42,6 +42,9 @@ const form = reactive({
   credit_date: props.reportingDate,
   holding_amount: null as number | null,
   daily_pnl: null as number | null,
+  coverage_start_date: '',
+  coverage_end_date: '',
+  clear_coverage: false,
   notes: '',
   correction_note: '',
 })
@@ -94,9 +97,34 @@ const activeCount = computed(
 const redeemedCount = computed(
   () => productCards.value.filter((item) => item.status === 'redeemed').length,
 )
-const reconciliationIssues = computed(() =>
-  props.reconciliation.items.filter((item) => item.status !== 'matched'),
+const waitingReconciliations = computed(() =>
+  props.reconciliation.items.filter((item) => item.status === 'waiting'),
 )
+const finalReconciliations = computed(() =>
+  props.reconciliation.items.filter((item) =>
+    ['mismatch', 'missing-product-details'].includes(item.status),
+  ),
+)
+
+function reconciliationLabel(
+  status: ProductValuationReconciliation['items'][number]['status'],
+): string {
+  return (
+    {
+      waiting: '等待到账',
+      'missing-product-details': '待补产品',
+      mismatch: '最终差异',
+      matched: '核对一致',
+    }[status] || status
+  )
+}
+
+function reconciliationTone(
+  status: ProductValuationReconciliation['items'][number]['status'],
+): string {
+  if (status === 'waiting') return 'is-waiting'
+  return 'is-warn'
+}
 
 function sourceLabel(source: string): string {
   return (
@@ -104,6 +132,37 @@ function sourceLabel(source: string): string {
       'income-screenshot': '收益截图',
       'manual-correction': '人工修正',
     }[source] || source
+  )
+}
+
+function coverageLabel(dates: string[] | undefined): string {
+  const values = [...new Set((dates || []).filter(Boolean))].sort()
+  if (values.length < 2) return ''
+  const contiguous = values.every((date, index) => {
+    if (index === 0) return true
+    return (
+      Date.parse(`${date}T00:00:00Z`) -
+        Date.parse(`${values[index - 1]}T00:00:00Z`) ===
+      86400000
+    )
+  })
+  if (!contiguous) return values.join('、')
+  if (values.length === 2) return `${values[0]} 至 ${values[1]}`
+  return `${values[0]} 至 ${values[values.length - 1]}（${values.length} 日合并）`
+}
+
+function contiguousCoverage(dates: string[] | undefined): boolean {
+  const values = [...new Set((dates || []).filter(Boolean))].sort()
+  return (
+    values.length > 1 &&
+    values.every((date, index) => {
+      if (index === 0) return true
+      return (
+        Date.parse(`${date}T00:00:00Z`) -
+          Date.parse(`${values[index - 1]}T00:00:00Z`) ===
+        86400000
+      )
+    })
   )
 }
 
@@ -115,6 +174,9 @@ function resetForm(): void {
     selectedSummary.value?.latest_holding_amount ||
     null
   form.daily_pnl = null
+  form.coverage_start_date = ''
+  form.coverage_end_date = ''
+  form.clear_coverage = false
   form.notes = ''
   form.correction_note = ''
 }
@@ -156,6 +218,13 @@ function startCorrection(
   form.credit_date = valuation.credit_date
   form.holding_amount = valuation.holding_amount
   form.daily_pnl = valuation.daily_pnl
+  form.coverage_start_date = contiguousCoverage(valuation.covered_yield_dates)
+    ? valuation.covered_yield_dates[0]
+    : ''
+  form.coverage_end_date = contiguousCoverage(valuation.covered_yield_dates)
+    ? valuation.covered_yield_dates[valuation.covered_yield_dates.length - 1]
+    : ''
+  form.clear_coverage = false
   form.notes = valuation.notes
   form.correction_note = ''
 }
@@ -181,6 +250,22 @@ async function save(): Promise<void> {
     show('请选择收益日期', { error: true })
     return
   }
+  if (
+    !form.clear_coverage &&
+    Boolean(form.coverage_start_date) !== Boolean(form.coverage_end_date)
+  ) {
+    show('合并覆盖需要同时填写起始日和截止日', { error: true })
+    return
+  }
+  if (
+    !form.clear_coverage &&
+    form.coverage_start_date &&
+    form.coverage_end_date &&
+    form.coverage_end_date < form.coverage_start_date
+  ) {
+    show('合并覆盖截止日不能早于起始日', { error: true })
+    return
+  }
   saving.value = true
   try {
     const payload = {
@@ -191,6 +276,13 @@ async function save(): Promise<void> {
       product_name: selectedSummary.value.product_name,
       holding_amount: form.holding_amount,
       daily_pnl: form.daily_pnl,
+      ...(!form.clear_coverage && form.coverage_start_date
+        ? {
+            coverage_start_date: form.coverage_start_date,
+            coverage_end_date: form.coverage_end_date,
+          }
+        : {}),
+      ...(form.clear_coverage ? { clear_coverage: true } : {}),
       notes: form.notes.trim(),
       correction_note: form.correction_note.trim() || '持仓页手工修正',
     }
@@ -228,32 +320,81 @@ async function save(): Promise<void> {
         <strong class="rw-panel-title">逐产品每日收益档案</strong>
         <p class="rw-panel-sub">
           产品收益按你提供的收益归属日归档，并另行保存到账/可见日；同日期同金额视为已记录，
-          不同金额只提醒、不覆盖。产品收益不重复计入账户总收益。
+          不同金额只提醒、不覆盖。合并更新只记最后归属日并标明覆盖区间，前几日不补 0、
+          不做均分；账户总收益按逐产品当日收益自动汇总。
         </p>
       </div>
       <div class="rw-toolbar-actions pv-summary-chips">
         <span class="rw-stat-chip">持有中 <strong>{{ activeCount }}</strong></span>
         <span class="rw-stat-chip">已赎回 <strong>{{ redeemedCount }}</strong></span>
+        <span class="rw-stat-chip">
+          等待到账 <strong>{{ props.reconciliation.counts.waiting }}</strong>
+        </span>
+        <span class="rw-stat-chip">
+          核对一致 <strong>{{ props.reconciliation.counts.matched }}</strong>
+        </span>
         <span
           class="rw-stat-chip"
           :class="{ 'is-warn': props.reconciliation.counts.mismatch > 0 }"
         >
-          对账差异 <strong>{{ props.reconciliation.counts.mismatch }}</strong>
+          最终差异 <strong>{{ props.reconciliation.counts.mismatch }}</strong>
+        </span>
+        <span
+          class="rw-stat-chip"
+          :class="{
+            'is-warn': props.reconciliation.counts.missing_products > 0,
+          }"
+        >
+          待补产品
+          <strong>{{ props.reconciliation.counts.missing_products }}</strong>
         </span>
       </div>
     </div>
 
-    <div v-if="reconciliationIssues.length" class="pv-issues">
+    <div v-if="waitingReconciliations.length" class="pv-issues pv-issues--waiting">
       <button
-        v-for="item in reconciliationIssues.slice(0, 4)"
+        v-for="item in waitingReconciliations.slice(0, 4)"
+        :key="`waiting-${item.account_date}`"
+        type="button"
+        class="pv-issue is-waiting"
+        @click="productCards[0] && openProduct(productCards[0].product_code)"
+      >
+        <strong>
+          {{ item.account_date }} · 等待到账
+          <small>
+            {{ item.covered_product_count ?? item.product_count }} /
+            {{ item.expected_product_count }} 只产品已覆盖
+          </small>
+        </strong>
+        <span>
+          最迟 {{ item.final_disclosure_date }} 完成披露（最大 T+{{ item.max_yield_lag_days }}）；
+          该日仍保持等待，次日巡检仍缺才提示。已见产品合计已进入账户总账，其余产品到账后自动重算。
+        </span>
+      </button>
+    </div>
+
+    <div v-if="finalReconciliations.length" class="pv-issues">
+      <button
+        v-for="item in finalReconciliations.slice(0, 6)"
         :key="`${item.account_date}-${item.status}`"
         type="button"
         class="pv-issue"
-        :class="{ 'is-warn': item.status === 'mismatch' }"
+        :class="reconciliationTone(item.status)"
         @click="productCards[0] && openProduct(productCards[0].product_code)"
       >
-        <strong>{{ item.account_date }} · 产品 ¥{{ formatMoney(item.product_pnl, 2) }}</strong>
+        <strong>
+          {{ item.account_date }} · {{ reconciliationLabel(item.status) }}
+          <small>
+            {{ item.covered_product_count ?? item.product_count }} /
+            {{ item.expected_product_count }} 只已覆盖 · 当日产品
+            ¥{{ formatMoney(item.product_pnl, 2) }}
+          </small>
+        </strong>
         <span>{{ item.message }}</span>
+        <small>
+          最终披露日 {{ item.final_disclosure_date }} · 最大
+          T+{{ item.max_yield_lag_days }}
+        </small>
       </button>
     </div>
 
@@ -344,6 +485,28 @@ async function save(): Promise<void> {
           <span>当日收益</span>
           <input v-model.number="form.daily_pnl" type="number" step="0.01" required />
         </label>
+        <label>
+          <span>合并覆盖起始日（可选）</span>
+          <input
+            v-model="form.coverage_start_date"
+            type="date"
+            :max="form.yield_date"
+            :disabled="form.clear_coverage"
+          />
+        </label>
+        <label>
+          <span>合并覆盖截止日（可选）</span>
+          <input
+            v-model="form.coverage_end_date"
+            type="date"
+            :max="form.yield_date"
+            :disabled="form.clear_coverage"
+          />
+        </label>
+        <label v-if="editingId !== null" class="is-wide pv-checkbox">
+          <input v-model="form.clear_coverage" type="checkbox" />
+          <span>撤回这条记录的合并覆盖区间</span>
+        </label>
         <label class="is-wide">
           <span>备注</span>
           <input v-model="form.notes" type="text" maxlength="300" placeholder="可选" />
@@ -383,7 +546,16 @@ async function save(): Promise<void> {
           </thead>
           <tbody>
             <tr v-for="valuation in detail.valuations.slice().reverse()" :key="valuation.id">
-              <td>{{ valuation.yield_date }}</td>
+              <td>
+                {{ valuation.yield_date }}
+                <small
+                  v-if="coverageLabel(valuation.covered_yield_dates)"
+                  class="pv-coverage"
+                >
+                  合并覆盖 {{ coverageLabel(valuation.covered_yield_dates) }}；
+                  金额并入 {{ valuation.yield_date }}
+                </small>
+              </td>
               <td>{{ valuation.credit_date }}</td>
               <td class="is-number">
                 {{ valuation.holding_amount === null ? '—' : `¥${formatMoney(valuation.holding_amount, 2)}` }}
@@ -435,5 +607,24 @@ async function save(): Promise<void> {
   display: flex;
   gap: 10px;
   white-space: nowrap;
+}
+
+.pv-coverage {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pv-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pv-checkbox input {
+  width: auto;
+  min-height: 0;
 }
 </style>

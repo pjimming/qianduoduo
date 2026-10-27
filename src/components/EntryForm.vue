@@ -3,7 +3,12 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatPct } from '@/composables/useFormatters'
-import type { DashboardPayload, LedgerAction, LedgerRecord } from '@/types/dashboard'
+import type {
+  DashboardPayload,
+  LedgerAction,
+  LedgerRecord,
+  ProductValuationReconciliationItem,
+} from '@/types/dashboard'
 
 const props = defineProps<{
   dashboard: DashboardPayload
@@ -24,16 +29,56 @@ const reportingDate = computed(
 )
 const today = computed(() => props.dashboard.meta.today)
 const recordDate = ref(reportingDate.value)
-const dailyPnl = ref<number | ''>('')
 const action = ref<LedgerAction>('无操作')
 const notes = ref('')
 const saving = ref(false)
 const panel = ref<HTMLElement | null>(null)
-const dailyPnlInput = ref<HTMLInputElement | null>(null)
+const actionInput = ref<HTMLSelectElement | null>(null)
 let focusTimer: number | undefined
 
 const isEditing = computed(() => formMode.value === 'edit')
 const principal = computed(() => dashboardStore.principalForDate(recordDate.value))
+const currentRecord = computed(() =>
+  dashboardStore.recordByDate(recordDate.value),
+)
+const dailyReconciliation = computed<
+  ProductValuationReconciliationItem | null
+>(() =>
+  props.dashboard.workspace.product_valuation_reconciliation.items.find(
+    (item) => item.account_date === recordDate.value,
+  ) ?? null,
+)
+const isLegacyManualRecord = computed(
+  () =>
+    Boolean(currentRecord.value) &&
+    currentRecord.value?.source !== 'product-income-summary' &&
+    !(dailyReconciliation.value?.product_count ?? 0),
+)
+const derivedDailyPnl = computed<number | null>(() => {
+  if (isLegacyManualRecord.value) return null
+  const amount =
+    currentRecord.value?.daily_pnl ?? dailyReconciliation.value?.product_pnl
+  return typeof amount === 'number' && Number.isFinite(amount) ? amount : null
+})
+const derivedProductCount = computed(
+  () => dailyReconciliation.value?.product_count ?? null,
+)
+const derivedCoverageText = computed(() => {
+  if (isLegacyManualRecord.value) {
+    return `历史手工口径 ¥${currentRecord.value?.daily_pnl.toFixed(
+      2,
+    )}；需补录对应产品明细后才会进入派生总账`
+  }
+  const item = dailyReconciliation.value
+  if (!item) return '尚未发现该日产品收益事实'
+  if (item.status === 'waiting') {
+    return `已汇总 ${item.product_count} / ${item.expected_product_count} 只产品；其余产品到账后自动重算`
+  }
+  if (item.status === 'missing-product-details') {
+    return `已汇总 ${item.product_count} / ${item.expected_product_count} 只产品；仍缺 ${item.missing_product_codes.join('、')}`
+  }
+  return `已汇总 ${item.product_count} 只产品`
+})
 const accountStartDate = computed(() => props.dashboard.capital.initial_date ?? null)
 const hasReportableDay = computed(
   () =>
@@ -53,7 +98,7 @@ const showTodayNotice = computed(
 const reportingDayLabel = computed(() =>
   reportingDate.value === props.dashboard.meta.today
     ? '今日'
-    : '昨日',
+    : formatDateShort(reportingDate.value),
 )
 const entryDateChip = computed(() =>
   recordDate.value === reportingDate.value
@@ -63,11 +108,11 @@ const entryDateChip = computed(() =>
 
 const preview = computed(() => {
   const currentPrincipal = principal.value
-  const pnl = Number(dailyPnl.value)
+  const pnl = derivedDailyPnl.value
   if (
     currentPrincipal === null ||
     currentPrincipal <= 0 ||
-    dailyPnl.value === '' ||
+    pnl === null ||
     !Number.isFinite(pnl)
   ) {
     return { text: '—', tone: '' }
@@ -97,7 +142,6 @@ function applyRecord(record: LedgerRecord): void {
   editingDate.value = record.date
   formMode.value = 'edit'
   recordDate.value = record.date
-  dailyPnl.value = record.daily_pnl
   action.value = record.action
   notes.value = record.notes
 }
@@ -106,7 +150,6 @@ function resetForm(): void {
   editingDate.value = null
   formMode.value = 'create'
   recordDate.value = reportingDate.value
-  dailyPnl.value = ''
   action.value = '无操作'
   notes.value = ''
 }
@@ -121,7 +164,7 @@ function loadRecordForEdit(date: string, focus = true): void {
   if (!focus) return
   panel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   window.clearTimeout(focusTimer)
-  focusTimer = window.setTimeout(() => dailyPnlInput.value?.focus(), 380)
+  focusTimer = window.setTimeout(() => actionInput.value?.focus(), 380)
 }
 
 function loadReportingRecord(): void {
@@ -130,8 +173,8 @@ function loadReportingRecord(): void {
 
 function startRecord(date: string): void {
   if (!date) return
-  if (date > reportingDate.value) {
-    show(`今日收益尚未披露，请记录 ${reportingDate.value} 或更早日期`, {
+  if (date > today.value) {
+    show('不能记录未来日期的收益', {
       error: true,
     })
     return
@@ -145,12 +188,11 @@ function startRecord(date: string): void {
   editingDate.value = null
   formMode.value = 'create'
   recordDate.value = date
-  dailyPnl.value = ''
   action.value = '无操作'
   notes.value = ''
   panel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   window.clearTimeout(focusTimer)
-  focusTimer = window.setTimeout(() => dailyPnlInput.value?.focus(), 380)
+  focusTimer = window.setTimeout(() => actionInput.value?.focus(), 380)
 }
 
 async function handleSubmit(): Promise<void> {
@@ -162,8 +204,8 @@ async function handleSubmit(): Promise<void> {
     show(`收益尚未披露到本金起始日 ${accountStartDate.value}`, { error: true })
     return
   }
-  if (recordDate.value > reportingDate.value) {
-    show(`今日收益尚未披露，请记录 ${reportingDate.value} 或更早日期`, {
+  if (recordDate.value > today.value) {
+    show('不能记录未来日期的收益', {
       error: true,
     })
     return
@@ -186,20 +228,17 @@ async function handleSubmit(): Promise<void> {
     show('该日期本金为 0，无法记录收益', { error: true })
     return
   }
-  if (dailyPnl.value === '') {
-    show('请填写当日收益，亏损填负数', { error: true })
-    return
-  }
-  const pnl = Number(dailyPnl.value)
-  if (!Number.isFinite(pnl)) {
-    show('请填写当日收益，亏损填负数', { error: true })
+  if (derivedDailyPnl.value === null) {
+    show('该日期尚无产品收益明细，请先上传收益截图或补录产品收益', {
+      error: true,
+    })
     return
   }
   saving.value = true
   try {
     const input = {
       date: recordDate.value,
-      daily_pnl: pnl,
+      daily_pnl: derivedDailyPnl.value,
       action: action.value,
       notes: notes.value.trim(),
     }
@@ -211,7 +250,7 @@ async function handleSubmit(): Promise<void> {
     emit('saved', response.record.date)
     show(
       isEdit
-        ? '记录已更新'
+        ? '操作与备注已更新；收益仍按产品明细汇总'
         : response.conflict
           ? `${response.conflict.date} 已有收益 ¥${response.conflict.existing_daily_pnl.toFixed(
               2,
@@ -219,8 +258,8 @@ async function handleSubmit(): Promise<void> {
               2,
             )}；未覆盖，已生成人工确认提醒`
           : response.duplicate
-            ? '该日期收益已存在且金额一致，本次已忽略'
-            : '收益已记入账本',
+            ? '账户收益已按产品明细汇总，本次未重复记账'
+            : '账户收益已按产品明细汇总',
       response.conflict ? { error: true, duration: 8000 } : undefined,
     )
   } catch (error) {
@@ -290,7 +329,7 @@ defineExpose({
           required
         />
         <p class="date-window-note is-reporting">
-          收益日期由你提供。平台只校验该日期是否已有记录、金额是否一致；未来日期不能记录。
+          收益日期由产品明细提供；账户总收益按该日产品收益自动汇总，未来日期不能记录。
         </p>
         <p v-if="isBeforeAccountStart" class="date-window-note">
           该日期早于本金起始日 {{ accountStartDate }}，起始日前没有收益属于正常状态，无需补记。
@@ -302,24 +341,32 @@ defineExpose({
 
       <div class="field">
         <label for="dailyPnl">
-          当日收益
-          <span class="field-help">亏损填负数</span>
+          账户当日收益
+          <span class="field-help">由产品明细自动汇总</span>
         </label>
         <div class="input-affix">
           <span>¥</span>
           <input
             id="dailyPnl"
-            ref="dailyPnlInput"
-            v-model.number="dailyPnl"
             name="daily_pnl"
-            type="number"
-            step="0.01"
-            inputmode="decimal"
-            placeholder="0.00"
-            :disabled="!hasReportableDay"
-            required
+            type="text"
+            :value="
+              isLegacyManualRecord
+                ? '待补产品明细'
+                : derivedDailyPnl === null
+                ? '等待产品收益'
+                : derivedDailyPnl.toFixed(2)
+            "
+            readonly
+            aria-readonly="true"
           />
         </div>
+        <p class="date-window-note is-reporting">
+          {{ derivedCoverageText }}
+          <template v-if="derivedProductCount !== null && !isLegacyManualRecord">
+            · 账户总账来源：逐产品收益
+          </template>
+        </p>
       </div>
 
       <div class="rate-preview">
@@ -329,7 +376,7 @@ defineExpose({
 
       <div class="field">
         <label for="action">操作</label>
-        <select id="action" v-model="action" name="action">
+        <select id="action" ref="actionInput" v-model="action" name="action">
           <option value="无操作">无操作</option>
           <option value="买入">买入</option>
           <option value="赎回">赎回</option>
@@ -354,9 +401,14 @@ defineExpose({
           id="submitButton"
           class="button button-primary"
           type="submit"
-          :disabled="saving || !hasReportableDay"
+          :disabled="
+            saving ||
+            !hasReportableDay ||
+            derivedDailyPnl === null ||
+            isBeforeAccountStart
+          "
         >
-          <span>{{ saving ? '保存中…' : isEditing ? '保存修改' : '保存记录' }}</span>
+          <span>{{ saving ? '保存中…' : '保存操作与备注' }}</span>
           <svg viewBox="0 0 20 20" aria-hidden="true">
             <path d="M4 10h12m0 0-4-4m4 4-4 4" />
           </svg>

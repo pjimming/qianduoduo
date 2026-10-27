@@ -154,13 +154,15 @@ test('return attribution API exposes the three unavailable yield reasons', async
     initial_date: '2026-10-20',
   });
   assert.equal(capital.status, 201);
-  const record = await postJson(`${base}/api/records`, {
-    date: '2026-10-22',
+  const productIncome = await postJson(`${base}/api/product-valuations`, {
+    yield_date: '2026-10-22',
+    credit_date: '2026-10-22',
+    product_code: 'AVAILABLE001',
+    product_name: '可用历史产品',
+    holding_amount: 4000,
     daily_pnl: 3,
-    action: '无操作',
-    notes: '收益归因原因码测试',
   });
-  assert.equal(record.status, 201);
+  assert.equal(productIncome.status, 201);
   for (const [code, name] of [
     ['AVAILABLE001', '可用历史产品'],
     ['UNKNOWN001', '期限未知产品'],

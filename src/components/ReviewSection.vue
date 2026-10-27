@@ -41,7 +41,7 @@ const accountStartDate = computed(() => props.review.account_start_date ?? null)
 const reportingLabel = computed(() =>
   props.reportingDate === props.today
     ? '今日'
-    : '昨日',
+    : formatDateShort(props.reportingDate),
 )
 const monthly = computed<MonthlyReview | null>(() => {
   if (selectedMonth.value) {
@@ -776,7 +776,6 @@ function selectMonth(month: string): void {
                   :disabled="
                     cell.status === 'outside' ||
                     cell.status === 'future' ||
-                    cell.status === 'pending' ||
                     cell.status === 'before-start'
                   "
                   :aria-label="
@@ -788,7 +787,7 @@ function selectMonth(month: string): void {
                             : cell.status === 'missing'
                               ? '缺记'
                               : cell.status === 'pending'
-                                ? '收益待披露，暂不计缺记'
+                                ? '平台等待披露，如有明确账户事实可补记'
                               : cell.status === 'before-start'
                                 ? '本金起始日前，未纳入账本'
                               : '未到'

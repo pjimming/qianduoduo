@@ -91,6 +91,10 @@ const pendingIncomeScreenshots = computed(() =>
 const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
 const remainingWork = computed(() => props.dashboard.inbox_center.pending.slice(0, 5))
 
+function hasAccountPnl(value: number | null): boolean {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 const caseTypes: ProductEventType[] = ['额度', '费率', '赎回规则', '经理', '底层', '其他']
 const caseImpacts: ProductEventImpact[] = ['低', '中', '高']
 
@@ -261,14 +265,27 @@ async function uploadIncomeFiles(files: FileList | File[]): Promise<void> {
         show(`${file.name} 对应日期已有相同收益，本次已忽略`)
       } else if (response.auto_applied) {
         const savedCount = response.saved_valuations?.length ?? 0
+        const accountPnlAbsent = !hasAccountPnl(response.record?.daily_pnl ?? null)
+        const waiting =
+          response.reconciliation?.status === 'waiting'
         const mismatch = response.reconciliation?.status === 'mismatch'
         show(
+          accountPnlAbsent && waiting
+            ? `${file.name} 已归档 ${savedCount} 只产品明细；已见合计 ¥${Number(
+                response.reconciliation?.product_pnl ?? 0,
+              ).toFixed(2)} 已进入账户总账，最迟 ${response.reconciliation?.final_disclosure_date} 自动重算`
+            : accountPnlAbsent
+              ? `${file.name} 已归档 ${savedCount} 只产品明细；账户总账待本金账户就绪后同步`
+              : mismatch
+                ? `${file.name} 已按 ${savedCount} 只产品收益汇总；投影一致性异常已转入对账提醒`
+                : `${file.name} 已按 ${savedCount} 只产品收益汇总 ${response.record?.date ?? ''} 账户收益 ¥${Number(
+                    response.record?.daily_pnl ?? 0,
+                  ).toFixed(2)}`,
           mismatch
-            ? `${file.name} 已记录账户与 ${savedCount} 只产品收益；产品合计与总账不一致，已转入对账提醒`
-            : `${file.name} 已自动记录 ${response.record?.date ?? ''} 收益 ¥${Number(
-                response.record?.daily_pnl ?? 0,
-              ).toFixed(2)}${savedCount ? `，含 ${savedCount} 只产品明细` : ''}`,
-          mismatch ? { duration: 7000 } : undefined,
+            ? { duration: 7000 }
+            : accountPnlAbsent
+              ? { duration: 6500 }
+              : undefined,
         )
       } else {
         show(
@@ -279,6 +296,9 @@ async function uploadIncomeFiles(files: FileList | File[]): Promise<void> {
         )
       }
       if (response.record?.date) emit('saved', response.record.date)
+      else if (response.saved_valuations?.[0]?.yield_date) {
+        emit('saved', response.saved_valuations[0].yield_date)
+      }
       else emit('saved', reportingDate.value)
     } catch (error) {
       show(error instanceof Error ? error.message : '上传失败', { error: true })
@@ -300,8 +320,15 @@ function onIncomeDrop(event: DragEvent): void {
 
 async function applyIncome(item: IncomeInboxItem): Promise<void> {
   const draft = incomeDrafts[item.id]
-  if (!draft || draft.daily_pnl === null || !draft.date) {
-    show('请先确认日期和收益数字', { error: true })
+  const hasProducts = Boolean(draft?.products.length)
+  const accountPnlPresent = hasAccountPnl(draft?.daily_pnl ?? null)
+  if (!draft || !draft.date || !hasProducts) {
+    show(
+      draft?.date
+        ? '请至少确认一条产品明细；账户总收益由产品收益自动汇总'
+        : '请先确认收益归属日',
+      { error: true },
+    )
     return
   }
   const incompleteProduct = draft.products.find(
@@ -319,8 +346,13 @@ async function applyIncome(item: IncomeInboxItem): Promise<void> {
   }
   applyingIncomeId.value = item.id
   try {
-    const response = await store.applyIncomeScreenshot(item.id, draft)
+    const response = await store.applyIncomeScreenshot(item.id, {
+      ...draft,
+      daily_pnl: accountPnlPresent ? draft.daily_pnl : null,
+    })
     const savedCount = response.saved_valuations?.length ?? 0
+    const accountPnlAbsent = !hasAccountPnl(response.record?.daily_pnl ?? null)
+    const waiting = response.reconciliation?.status === 'waiting'
     const mismatch = response.reconciliation?.status === 'mismatch'
     show(
       response.conflict
@@ -331,13 +363,17 @@ async function applyIncome(item: IncomeInboxItem): Promise<void> {
           ).toFixed(2)}；未覆盖，已生成人工确认提醒`
         : response.ignored
         ? '该日期收益已存在且金额一致，本次已忽略'
+        : accountPnlAbsent && waiting
+          ? `已归档 ${savedCount} 只产品明细；已见合计已进入账户总账，最迟 ${response.reconciliation?.final_disclosure_date} 自动重算`
+        : accountPnlAbsent
+          ? `已归档 ${savedCount} 只产品明细；账户总账待本金账户就绪后同步`
         : mismatch
-        ? `截图已入账；${savedCount} 只产品收益合计与账户总账不一致，已进入对账提醒`
+        ? `已按 ${savedCount} 只产品收益汇总结算；投影一致性异常已进入对账提醒`
         : response.overwritten
-        ? '已用收益截图更新这笔记录'
+        ? '已按最新产品收益重算账户总账'
         : response.matched_existing
-          ? '截图已归档；该日期已有记录，平台没有覆盖'
-          : `收益截图已入账${savedCount ? `，同步 ${savedCount} 只产品明细` : ''}`,
+          ? '截图已归档；账户总账已按产品明细幂等重算'
+          : `已按 ${savedCount} 只产品收益更新账户总账`,
       mismatch ? { duration: 7000 } : undefined,
     )
     emit('saved', draft.date)
@@ -488,7 +524,8 @@ defineExpose({
           <div>
             <strong>收益截图</strong>
             <p>
-              上传招行收益页截图。平台按识别到的收益日期先核对是否已有记录和金额，再决定记录、忽略或提醒。
+              上传招行收益页截图。平台把逐产品收益按归属日汇总为账户总收益，
+              截图中的账户金额仅用于核对。
             </p>
           </div>
         </div>
@@ -571,7 +608,9 @@ defineExpose({
     <section v-if="pendingIncomeScreenshots.length" class="income-correction">
       <div class="capture-exceptions-head">
         <strong>收益截图识别补正</strong>
-        <span>平台已尽量自动识别；只有数字或日期不确定时才需要确认。</span>
+        <span>
+          收益由产品明细自动汇总；只有产品代码、收益数字或日期不明确时才需要补充确认。
+        </span>
       </div>
       <article
         v-for="item in pendingIncomeScreenshots"
@@ -592,7 +631,9 @@ defineExpose({
         <div v-if="incomeDrafts[item.id]?.products.length" class="income-product-editor">
           <div class="income-product-head">
             <strong>产品明细</strong>
-            <span>产品收益只进个人档案，不重复计入账户总收益</span>
+            <span>
+              这些产品收益会实时汇总为账户总收益；银行账户金额仅用于可选核对。
+            </span>
           </div>
           <div
             v-for="(product, index) in incomeDrafts[item.id].products"
@@ -633,7 +674,8 @@ defineExpose({
           </div>
         </div>
         <p v-else class="income-product-empty">
-          本次截图没有可确认的产品明细，只会记录账户总收益；当前持仓会标记为“本次未拍到”，不会自动记 0 或视为赎回。
+          本次截图没有可确认的产品明细。请至少补录一条产品收益；
+          仅凭账户总额不能生成或覆盖账户总账。
         </p>
         <div class="income-correction-form">
           <label>
@@ -641,12 +683,16 @@ defineExpose({
             <input v-model="incomeDrafts[item.id].date" type="date" :max="today" />
           </label>
           <label>
-            <span>账户披露收益</span>
+            <span>银行账户总收益（仅核对，可选）</span>
             <input
               v-model.number="incomeDrafts[item.id].daily_pnl"
               type="number"
               step="0.01"
+              placeholder="未明确显示请留空"
             />
+            <small class="income-account-hint">
+              产品收益决定账户总账；这里只记录银行显示值用于差异核对。
+            </small>
           </label>
           <button
             type="button"
@@ -654,7 +700,11 @@ defineExpose({
             :disabled="applyingIncomeId === item.id"
             @click="applyIncome(item)"
           >
-            自动入账
+            {{
+              incomeDrafts[item.id].products.length
+                ? '保存并汇总账户总账'
+                : '需补产品明细'
+            }}
           </button>
           <button
             type="button"
@@ -674,7 +724,7 @@ defineExpose({
       <summary>例外情况下手工维护</summary>
       <div class="capture-manual-grid">
         <section>
-          <h4>手工修正某天收益</h4>
+          <h4>维护操作与备注</h4>
           <EntryForm
             ref="dailyRef"
             :dashboard="dashboard"

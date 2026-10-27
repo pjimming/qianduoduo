@@ -321,8 +321,10 @@ test('product lag remains informational and never blocks a user-provided income 
   assert.equal(settingResponse.status, 200);
   const settingPayload = await settingResponse.json();
   assert.equal(settingPayload.setting.yield_lag_days, 2);
-  assert.equal(settingPayload.dashboard.meta.reporting_date, yesterday);
-  assert.equal(settingPayload.dashboard.meta.reporting_lag_days, 1);
+  assert.equal(settingPayload.dashboard.meta.reporting_date, latestComplete);
+  assert.equal(settingPayload.dashboard.meta.reporting_lag_days, 2);
+  assert.equal(settingPayload.dashboard.review.reporting_date, latestComplete);
+  assert.equal(settingPayload.dashboard.review.reporting_lag_days, 2);
   assert.deepEqual(
     settingPayload.dashboard.meta.income_disclosure_policy.unverified_product_codes,
     [],
@@ -333,14 +335,6 @@ test('product lag remains informational and never blocks a user-provided income 
   );
   assert.equal(dashboard.meta.recording_date_source, 'user-provided');
 
-  const userProvidedRecord = await postJson(`${base}/api/records`, {
-    date: yesterday,
-    daily_pnl: 1.2,
-    action: '无操作',
-    notes: '',
-  });
-  assert.equal(userProvidedRecord.status, 201);
-
   const userProvidedProduct = await postJson(`${base}/api/product-valuations`, {
     yield_date: yesterday,
     credit_date: yesterday,
@@ -350,14 +344,21 @@ test('product lag remains informational and never blocks a user-provided income 
     daily_pnl: 0.6,
   });
   assert.equal(userProvidedProduct.status, 201);
+  assert.equal(
+    (await fetch(`${base}/api/dashboard`).then((response) => response.json()))
+      .records.find((item) => item.date === yesterday).daily_pnl,
+    0.6,
+  );
 
-  const acceptedRecord = await postJson(`${base}/api/records`, {
-    date: latestComplete,
+  const acceptedProduct = await postJson(`${base}/api/product-valuations`, {
+    yield_date: latestComplete,
+    credit_date: latestComplete,
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    holding_amount: 3000,
     daily_pnl: 1.2,
-    action: '无操作',
-    notes: '',
   });
-  assert.equal(acceptedRecord.status, 201);
+  assert.equal(acceptedProduct.status, 201);
 });
 
 test('product valuation API stores an explicitly confirmed zero yield', async (t) => {
@@ -522,6 +523,17 @@ test('income screenshot API accepts a queued capture and records the P&L', async
       daily_pnl: -2.35,
       action: '无操作',
       notes: '收益截图补正',
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          yield_date: recordDate,
+          credit_date: recordDate,
+          daily_pnl: -2.35,
+          confidence: 95,
+        },
+      ],
     },
   );
   assert.equal(applied.status, 200);
@@ -529,7 +541,7 @@ test('income screenshot API accepts a queued capture and records the P&L', async
   assert.equal(payload.inbox.status, 'applied');
   assert.equal(payload.record.date, recordDate);
   assert.equal(payload.record.daily_pnl, -2.35);
-  assert.equal(payload.record.source, 'income-screenshot');
+  assert.equal(payload.record.source, 'product-income-summary');
   assert.ok(
     payload.dashboard.workspace.income_inbox.some(
       (item) => item.id === captured.inbox.id && item.status === 'applied',
@@ -537,18 +549,20 @@ test('income screenshot API accepts a queued capture and records the P&L', async
   );
 });
 
-test('income screenshot apply ignores matching dates and flags conflicting amounts without overwriting', async (t) => {
+test('income screenshot apply derives account totals and preserves product conflicts', async (t) => {
   const { base, repository } = await startTestServer(t);
   const date = shiftDate(todayShanghai(), -1);
   await postJson(`${base}/api/capital/init`, {
     initial_principal: 30000,
     initial_date: shiftDate(todayShanghai(), -10),
   });
-  const created = await postJson(`${base}/api/records`, {
-    date,
+  const created = await postJson(`${base}/api/product-valuations`, {
+    yield_date: date,
+    credit_date: date,
+    product_code: '120056A',
+    product_name: '测试产品',
+    holding_amount: 10000,
     daily_pnl: 1.23,
-    action: '无操作',
-    notes: '',
   });
   assert.equal(created.status, 201);
 
@@ -558,12 +572,34 @@ test('income screenshot apply ignores matching dates and flags conflicting amoun
     mime: 'image/png',
     bytes: 1,
     sha256: 'income-idempotent-matching',
-    parsed: { date, daily_pnl: 1.23, products: [] },
+    parsed: {
+      date,
+      daily_pnl: 1.23,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 1.23,
+        },
+      ],
+    },
     parse_confidence: 95,
   });
   const matchingApply = await postJson(
     `${base}/api/income/inbox/${matching.id}/apply`,
-    { date, daily_pnl: 1.23, products: [] },
+    {
+      date,
+      daily_pnl: 1.23,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 1.23,
+        },
+      ],
+    },
   );
   assert.equal(matchingApply.status, 200);
   const matchingPayload = await matchingApply.json();
@@ -578,12 +614,34 @@ test('income screenshot apply ignores matching dates and flags conflicting amoun
     mime: 'image/png',
     bytes: 1,
     sha256: 'income-idempotent-conflicting',
-    parsed: { date, daily_pnl: 9.99, products: [] },
+    parsed: {
+      date,
+      daily_pnl: 9.99,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 9.99,
+        },
+      ],
+    },
     parse_confidence: 95,
   });
   const conflictApply = await postJson(
     `${base}/api/income/inbox/${conflicting.id}/apply`,
-    { date, daily_pnl: 9.99, products: [] },
+    {
+      date,
+      daily_pnl: 9.99,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 9.99,
+        },
+      ],
+    },
   );
   assert.equal(conflictApply.status, 200);
   const conflictPayload = await conflictApply.json();
@@ -591,13 +649,13 @@ test('income screenshot apply ignores matching dates and flags conflicting amoun
   assert.equal(conflictPayload.overwritten, false);
   assert.equal(conflictPayload.record.daily_pnl, 1.23);
   assert.equal(conflictPayload.inbox.status, 'pending');
-  assert.equal(conflictPayload.conflict.existing_daily_pnl, 1.23);
-  assert.equal(conflictPayload.conflict.incoming_daily_pnl, 9.99);
+  assert.equal(conflictPayload.conflict, null);
+  assert.equal(conflictPayload.valuation_conflicts.length, 1);
   assert.ok(
     conflictPayload.dashboard.inbox_center.pending.some(
       (item) =>
         item.source_type === 'system_notification' &&
-        item.title.includes('收益金额不一致'),
+        item.title.includes('产品收益不一致'),
     ),
   );
   assert.equal(
@@ -681,14 +739,16 @@ test('income screenshot API archives multiple products, flags reconciliation and
   assert.equal(applied.status, 200);
   const payload = await applied.json();
   assert.equal(payload.saved_valuations.length, 2);
-  assert.equal(payload.reconciliation.status, 'mismatch');
-  assert.equal(payload.reconciliation.difference, 0.29);
+  assert.equal(payload.reconciliation.status, 'matched');
+  assert.equal(payload.reconciliation.difference, 0);
+  assert.equal(payload.record.daily_pnl, 2.02);
   assert.deepEqual(payload.missing_product_codes, []);
   assert.equal(
     payload.dashboard.inbox_center.pending.some(
-      (item) => item.source_type === 'product_valuation_reconciliation',
+      (item) =>
+        item.source_type === 'product_valuation_reconciliation',
     ),
-    true,
+    false,
   );
 
   const firstValuation = payload.saved_valuations.find(
@@ -741,10 +801,234 @@ test('income screenshot API archives multiple products, flags reconciliation and
   );
   assert.equal(missingApplied.status, 200);
   const missingPayload = await missingApplied.json();
+  assert.equal(
+    missingPayload.reconciliation.status,
+    'missing-product-details',
+  );
   assert.deepEqual(missingPayload.missing_product_codes, ['120026A']);
   assert.ok(
     missingPayload.inbox.parsed.warnings.some((item) =>
-      item.includes('本次未拍到：120026A'),
+      item.includes('最终仍缺产品收益：120026A'),
     ),
+  );
+  assert.ok(
+    missingPayload.dashboard.inbox_center.pending.some(
+      (item) =>
+        item.source_type === 'product_valuation_reconciliation' &&
+        item.source_id === '2026-10-21' &&
+        item.title === '产品收益待补（10/21）',
+    ),
+  );
+
+  const completed = await postJson(`${base}/api/product-valuations`, {
+    yield_date: '2026-10-21',
+    credit_date: '2026-10-21',
+    product_code: '120026A',
+    product_name: '招银理财14天',
+    holding_amount: 3000,
+    daily_pnl: 0.5,
+    covered_yield_dates: ['2026-10-21'],
+  });
+  assert.equal(completed.status, 201);
+  const completedPayload = await completed.json();
+  assert.deepEqual(completedPayload.valuation.covered_yield_dates, [
+    '2026-10-21',
+  ]);
+  assert.equal(
+    completedPayload.dashboard.workspace.product_valuation_reconciliation.items.find(
+      (item) => item.account_date === '2026-10-21',
+    ).status,
+    'matched',
+  );
+  assert.equal(
+    completedPayload.dashboard.inbox_center.items.some(
+      (item) =>
+        item.source_type === 'product_valuation_reconciliation' &&
+        item.metadata?.account_dates?.includes('2026-10-21') &&
+        item.status !== 'resolved',
+    ),
+    false,
+  );
+  const cleared = await postJson(
+    `${base}/api/product-valuations/${completedPayload.valuation.id}`,
+    {
+      notes: '撤回错误的覆盖说明',
+      clear_coverage: true,
+      correction_note: 'API 测试撤回覆盖区间',
+    },
+    'PUT',
+  );
+  assert.equal(cleared.status, 200);
+  const clearedPayload = await cleared.json();
+  assert.deepEqual(clearedPayload.valuation.covered_yield_dates, []);
+  assert.match(clearedPayload.valuation.notes, /覆盖收益日期：无/);
+
+  await postJson(`${base}/api/product-valuations`, {
+    yield_date: '2026-10-22',
+    product_code: '120056A',
+    product_name: '招银理财90天',
+    daily_pnl: 1.2,
+  });
+  const coveredFutureResponse = await postJson(
+    `${base}/api/product-valuations`,
+    {
+      yield_date: '2026-10-23',
+      product_code: '120026A',
+      product_name: '招银理财14天',
+      daily_pnl: 0.6,
+      covered_yield_dates: ['2026-10-22', '2026-10-23'],
+    },
+  );
+  const coveredFuture = await coveredFutureResponse.json();
+  assert.equal(
+    coveredFuture.dashboard.workspace.product_valuation_reconciliation.items.find(
+      (item) => item.account_date === '2026-10-22',
+    ).status,
+    'matched',
+  );
+
+  const clearFuture = await postJson(
+    `${base}/api/product-valuations/${coveredFuture.valuation.id}`,
+    {
+      clear_coverage: true,
+      correction_note: '撤回后续合并覆盖',
+    },
+    'PUT',
+  );
+  const clearFuturePayload = await clearFuture.json();
+  const reopened = clearFuturePayload.dashboard.workspace
+    .product_valuation_reconciliation.items.find(
+      (item) => item.account_date === '2026-10-22',
+    );
+  assert.equal(reopened.status, 'missing-product-details');
+  assert.deepEqual(reopened.missing_product_codes, ['120026A']);
+  assert.ok(
+    clearFuturePayload.dashboard.inbox_center.pending.some(
+      (item) =>
+        item.source_type === 'product_valuation_reconciliation' &&
+        item.metadata?.account_dates?.includes('2026-10-22'),
+    ),
+  );
+});
+
+test('product-only income derives the account total through T+N and never asks for an account-only total', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  const today = todayShanghai();
+  const waitingDate = shiftDate(today, -1);
+  const finalDate = shiftDate(today, -3);
+  await postJson(`${base}/api/capital/init`, {
+    initial_principal: 30000,
+    initial_date: '2026-10-01',
+  });
+  for (const product of [
+    ['120056A', '招银理财90天', 6000],
+    ['120026A', '招银理财14天', 3000],
+  ]) {
+    repository.tradeStore.createTrade({
+      trade_date: '2026-10-01',
+      confirm_date: '2026-10-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: product[0],
+      product_name: product[1],
+      issuer: '招银理财',
+      risk_level: 'R2',
+      amount: product[2],
+      term_days: 90,
+      source: 'manual',
+      notes: '',
+    });
+    repository.productValuationStore.saveYieldSetting(product[0], {
+      yield_lag_days: 2,
+      source: 'app-rule',
+      notes: '测试 T+2',
+      verified_at: '2026-10-20',
+    });
+  }
+
+  const waitingItem = repository.incomeStore.addInbox({
+    original_name: 'waiting-products.png',
+    stored_name: '',
+    mime: 'image/png',
+    bytes: 1,
+    sha256: 'waiting-products-test',
+    ocr_text: '',
+    parsed: {},
+  });
+  const waitingResponse = await postJson(
+    `${base}/api/income/inbox/${waitingItem.id}/apply`,
+    {
+      date: waitingDate,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '招银理财90天',
+          holding_amount: 6000,
+          daily_pnl: 1,
+        },
+      ],
+    },
+  );
+  assert.equal(waitingResponse.status, 200);
+  const waitingPayload = await waitingResponse.json();
+  assert.equal(waitingPayload.record.daily_pnl, 1);
+  assert.equal(waitingPayload.reconciliation.status, 'waiting');
+  assert.equal(waitingPayload.reconciliation.difference, null);
+  assert.deepEqual(waitingPayload.reconciliation.missing_product_codes, [
+    '120026A',
+  ]);
+  assert.equal(repository.getRecord(waitingDate).daily_pnl, 1);
+  assert.equal(
+    waitingPayload.dashboard.inbox_center.pending.some(
+      (item) =>
+        item.source_type === 'product_valuation_reconciliation' &&
+        item.source_id === waitingDate,
+    ),
+    false,
+  );
+
+  const finalItem = repository.incomeStore.addInbox({
+    original_name: 'complete-products-missing-account.png',
+    stored_name: '',
+    mime: 'image/png',
+    bytes: 1,
+    sha256: 'complete-products-missing-account-test',
+    ocr_text: '',
+    parsed: {},
+  });
+  const finalResponse = await postJson(
+    `${base}/api/income/inbox/${finalItem.id}/apply`,
+    {
+      date: finalDate,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '招银理财90天',
+          holding_amount: 6000,
+          daily_pnl: 1,
+        },
+        {
+          product_code: '120026A',
+          product_name: '招银理财14天',
+          holding_amount: 3000,
+          daily_pnl: 0.5,
+        },
+      ],
+    },
+  );
+  assert.equal(finalResponse.status, 200);
+  const finalPayload = await finalResponse.json();
+  assert.equal(finalPayload.record.daily_pnl, 1.5);
+  assert.equal(finalPayload.reconciliation.status, 'matched');
+  assert.deepEqual(finalPayload.reconciliation.missing_product_codes, []);
+  assert.equal(repository.getRecord(finalDate).daily_pnl, 1.5);
+  assert.equal(
+    finalPayload.dashboard.inbox_center.items.some(
+      (item) =>
+        item.source_type === 'product_valuation_reconciliation' &&
+        item.source_id === finalDate &&
+        item.status !== 'resolved',
+    ),
+    false,
   );
 });

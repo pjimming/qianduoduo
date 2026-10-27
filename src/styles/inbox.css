@@ -262,6 +262,12 @@
   font: inherit;
 }
 
+.income-account-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .income-history {
   margin-top: 16px;
   overflow: hidden;
@@ -348,6 +354,11 @@
 .income-history-card.is-conflict {
   border-color: rgba(183, 124, 45, 0.38);
   background: #fcf7ec;
+}
+
+.income-history-card.is-product-only {
+  border-color: var(--line);
+  background: var(--card-soft);
 }
 
 .income-history-thumb {
@@ -442,6 +453,11 @@
 .income-history-card.is-conflict .income-history-status {
   background: #f8e9ce;
   color: #8a5c1c;
+}
+
+.income-history-card.is-product-only .income-history-status {
+  background: var(--surface-quiet);
+  color: var(--ink-soft);
 }
 
 .income-history-facts {

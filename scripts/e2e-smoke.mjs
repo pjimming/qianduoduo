@@ -24,9 +24,13 @@ import { fileURLToPath } from 'node:url'
 const require = createRequire(import.meta.url)
 const { createServer } = require('../server.js')
 const { openDatabase } = require('../lib/db.js')
+const { shiftDate, todayShanghai } = require('../lib/metrics.js')
 const { resolveProductCsv } = require('../server.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const e2eToday = todayShanghai()
+const waitingYieldDate = shiftDate(e2eToday, -1)
+const waitingFinalDate = shiftDate(e2eToday, 1)
 const ONE_PIXEL_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII='
 const chromeCandidates = [
@@ -348,10 +352,16 @@ async function main() {
       ],
       { source: 'income-screenshot', screenshotId: 99 },
     )
+    repository.productValuationStore.saveYieldSetting('120026A', {
+      yield_lag_days: 2,
+      source: 'app-rule',
+      notes: 'E2E 产品收益 T+2 披露',
+      verified_at: '2026-10-24',
+    })
     repository.holdingValuationStore.createSnapshot(
       {
         as_of_date: '2026-10-24',
-        total_value: 3002.03,
+        total_value: 3003.03,
         source: 'user-confirmed',
         notes: 'E2E 银行对照市值',
       },
@@ -366,6 +376,7 @@ async function main() {
       productCode,
       notes,
       warning = '',
+      dailyPnl = 5,
     }) => {
       const storedName = `e2e-income-${key}.png`
       writeFileSync(
@@ -374,7 +385,7 @@ async function main() {
       )
       const parsed = {
         date: recordDate,
-        daily_pnl: 5,
+        daily_pnl: dailyPnl,
         products: [
           {
             product_code: productCode,
@@ -441,6 +452,17 @@ async function main() {
       productCode: '120056A',
       notes: 'E2E 金额冲突截图',
       warning: '该日期已有不同收益，平台未覆盖',
+    })
+    addIncomeHistory({
+      key: 'product-only',
+      name: 'e2e-product-only.png',
+      status: 'pending',
+      recordDate: waitingYieldDate,
+      appliedAt: null,
+      productCode: '120026A',
+      notes: 'E2E 产品-only 归档截图',
+      warning: '未明确识别银行账户总收益，将按产品明细自动汇总',
+      dailyPnl: null,
     })
 
     await page.goto(`${base}/`, { waitUntil: 'networkidle' })
@@ -873,7 +895,7 @@ async function main() {
       ledgerHeaderText.includes('持仓金额') &&
         !ledgerHeaderText.includes('R2 本金') &&
         ledgerRowText.includes('¥3,000.00') &&
-        ledgerRowText.includes('0.1667%'),
+        ledgerRowText.includes('0.0673%'),
       `账本没有按持仓金额展示收益率：${JSON.stringify(ledgerRowText)}`,
     )
     const incomeHistory = page.locator('.income-history')
@@ -925,6 +947,18 @@ async function main() {
       (await page.locator('#recordDate').inputValue()) === '2026-10-18',
       '收益截图历史没有打开对应账户收益记录',
     )
+    const derivedDailyPnl = page.locator('#dailyPnl')
+    assert(
+      (await derivedDailyPnl.getAttribute('readonly')) !== null &&
+        (await derivedDailyPnl.inputValue()) === '2.02',
+      '每日收益仍可独立编辑或没有展示产品汇总值',
+    )
+    assert(
+      ((await page.locator('#recordForm').textContent()) ?? '').includes(
+        '账户总账来源：逐产品收益',
+      ),
+      '每日收益没有标明产品汇总来源',
+    )
     await incomeHistory
       .getByRole('link', { name: '查看逐产品收益档案' })
       .first()
@@ -942,6 +976,50 @@ async function main() {
     await page.locator('.income-history > summary').click()
     await assertFontFloor(page, '.income-history', '收益截图历史桌面端')
 
+    const productOnlyCard = page
+      .locator('.income-correction-card')
+      .filter({ hasText: 'e2e-product-only.png' })
+    await productOnlyCard.waitFor()
+    assert(
+      ((await productOnlyCard.textContent()) ?? '').includes(
+        '产品收益决定账户总账；这里只记录银行显示值用于差异核对',
+      ),
+      '产品-only 补正没有说明银行金额仅用于核对',
+    )
+    assert(
+      (await productOnlyCard
+        .getByLabel('银行账户总收益（仅核对，可选）')
+        .inputValue()) === '',
+      '产品-only 补正不应预填部分产品合计',
+    )
+    await productOnlyCard
+      .getByRole('button', { name: '保存并汇总账户总账' })
+      .click()
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('.toast')
+          ?.textContent?.includes('已按 1 只产品收益更新账户总账'),
+      null,
+      { timeout: 5000 },
+    )
+    const productOnlyHistory = page
+      .locator('.income-history-card')
+      .filter({ hasText: 'e2e-product-only.png' })
+    await productOnlyHistory.waitFor()
+    assert(
+      ((await productOnlyHistory.textContent()) ?? '').includes(
+        '产品汇总已入账',
+      ),
+      '产品-only 截图历史没有显示汇总入账状态',
+    )
+    assert(
+      (await productOnlyHistory
+        .getByRole('link', { name: '查看当日账户收益' })
+        .count()) === 1,
+      '产品-only 截图没有关联自动生成的账户总账',
+    )
+
     await page.locator('.capture-manual > summary').click()
     await assertNoLargeLightSurface(page, '.capture-manual', '手工补正深色主题')
     await page.getByLabel('发生了什么').fill('E2E 特殊事项：额度临时关闭')
@@ -956,7 +1034,7 @@ async function main() {
     await page.waitForSelector('.confirm-dialog')
     await page.getByRole('button', { name: '取消' }).click()
     assert(
-      (await page.locator('.ledger-table tbody tr').count()) === 1,
+      (await page.locator('.ledger-table tbody tr').count()) === 2,
       '取消删除后记录不应消失',
     )
 
@@ -1027,9 +1105,9 @@ async function main() {
     const currentValuationPanel =
       (await page.locator('#current-value').textContent()) ?? ''
     assert(
-      currentValuationPanel.includes('¥3,002.02') &&
+      currentValuationPanel.includes('¥3,003.02') &&
         currentValuationPanel.includes('银行对照') &&
-        currentValuationPanel.includes('¥3,002.03') &&
+        currentValuationPanel.includes('¥3,003.03') &&
         currentValuationPanel.includes('银行对照一致 ±¥0.01'),
       `持仓净值派生或银行对照不正确：${currentValuationPanel}`,
     )
@@ -1091,7 +1169,39 @@ async function main() {
       (await page.locator('.product-valuation-panel .pv-card').count()) === 2,
       '逐产品收益档案没有渲染两张产品卡',
     )
-    await page.locator('.product-valuation-panel .pv-card').first().click()
+    const waitingNotice = page
+      .locator('.pv-issues--waiting .pv-issue')
+      .first()
+    await waitingNotice.waitFor()
+    const waitingNoticeText = (await waitingNotice.textContent()) ?? ''
+    const waitingNoticeClass =
+      (await waitingNotice.getAttribute('class')) ?? ''
+    assert(
+      waitingNoticeText.includes('等待到账') &&
+        waitingNoticeText.includes(waitingFinalDate) &&
+        waitingNoticeText.includes('最大 T+2') &&
+        !waitingNoticeClass.includes('is-warn'),
+      `等待到账没有使用中性状态或最终披露日错误：${waitingNoticeText}`,
+    )
+    assert(
+      (await page
+        .locator('.pv-issue.is-warn')
+        .filter({ hasText: '最终差异' })
+        .count()) === 0,
+      '产品汇总驱动账户总账后仍出现独立总账差额告警',
+    )
+    const reconciliationSummaryText =
+      (await page.locator('.pv-summary-chips').textContent()) ?? ''
+    for (const label of ['等待到账', '最终差异', '待补产品', '核对一致']) {
+      assert(
+        reconciliationSummaryText.includes(label),
+        `产品对账摘要缺少状态：${label}`,
+      )
+    }
+    await page
+      .locator('.product-valuation-panel .pv-card')
+      .filter({ hasText: '120056A' })
+      .click()
     await page.waitForSelector('.product-valuation-panel .pv-table')
     assert(
       (await page.locator('.product-valuation-panel .pv-table tbody tr').count()) ===
@@ -1246,7 +1356,10 @@ async function main() {
     assert(
       returnBaseRecord?.principal === 10000 &&
         returnBaseRecord?.holding_amount === 3000 &&
-        Math.abs(returnBaseRecord.daily_return - 5 / 3000) < 0.0000000001,
+        Math.abs(
+          returnBaseRecord.daily_return -
+            returnBaseRecord.daily_pnl / returnBaseRecord.holding_amount,
+        ) < 0.0000000001,
       `收益率没有按当日持仓金额计算：${JSON.stringify(returnBaseRecord)}`,
     )
     await page.goto(`${base}/ledger/inbox`, { waitUntil: 'networkidle' })
@@ -1327,7 +1440,7 @@ async function main() {
     )
     await page.locator('.income-history > summary').click()
     await page.waitForFunction(
-      () => document.querySelectorAll('.income-history-card').length === 4,
+      () => document.querySelectorAll('.income-history-card').length === 5,
     )
     assert(
       await page.evaluate(
@@ -1354,6 +1467,14 @@ async function main() {
       page,
       '#current-value',
       '当前已确认持仓净值移动端',
+    )
+    const mobileValuationText =
+      (await page.locator('.product-valuation-panel').textContent()) ?? ''
+    assert(
+      mobileValuationText.includes('等待到账') &&
+        mobileValuationText.includes('最终差异') &&
+        mobileValuationText.includes('其余产品到账后自动重算'),
+      '移动端没有清晰区分等待到账与最终差异',
     )
     assert(
       await page.evaluate(
@@ -2500,6 +2621,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error)
+  console.error(error instanceof Error ? error.stack || error.message : error)
   process.exitCode = 1
 })

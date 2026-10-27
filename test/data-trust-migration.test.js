@@ -308,13 +308,31 @@ test('data trust trace APIs expose evidence and fact lineage', async (t) => {
     parsed: {
       date: '2026-10-20',
       daily_pnl: 1.5,
-      products: [],
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 1.5,
+        },
+      ],
     },
     parse_confidence: 90,
   });
   const appliedResponse = await post(
     `${baseUrl}/api/income/inbox/${inbox.id}/apply`,
-    { date: '2026-10-20', daily_pnl: 1.5, products: [] },
+    {
+      date: '2026-10-20',
+      daily_pnl: 1.5,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 1.5,
+        },
+      ],
+    },
   );
   assert.equal(appliedResponse.status, 200);
   const applied = await appliedResponse.json();
@@ -371,12 +389,34 @@ test('linked evidence is retained when old screenshot pruning runs', (t) => {
     mime: 'image/png',
     bytes: image.length,
     sha256,
-    parsed: { date: '2026-10-20', daily_pnl: 2, products: [] },
+    parsed: {
+      date: '2026-10-20',
+      daily_pnl: 2,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 2,
+        },
+      ],
+    },
     parse_confidence: 95,
   });
   context.repository.applyIncomeScreenshot(
     inbox.id,
-    { date: '2026-10-20', daily_pnl: 2, products: [] },
+    {
+      date: '2026-10-20',
+      daily_pnl: 2,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 2,
+        },
+      ],
+    },
     { today: '2026-10-23', actorType: 'human' },
   );
   context.repository.db
@@ -581,13 +621,31 @@ test('data trust off mode remains a compatible logical rollback', (t) => {
     parsed: {
       date: '2026-10-20',
       daily_pnl: 1,
-      products: [],
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 1,
+        },
+      ],
     },
     parse_confidence: 90,
   });
   const result = context.repository.applyIncomeScreenshot(
     inbox.id,
-    { date: '2026-10-20', daily_pnl: 1, products: [] },
+    {
+      date: '2026-10-20',
+      daily_pnl: 1,
+      products: [
+        {
+          product_code: '120056A',
+          product_name: '测试产品',
+          holding_amount: 10000,
+          daily_pnl: 1,
+        },
+      ],
+    },
     { today: '2026-10-23' },
   );
   assert.equal(result.record.daily_pnl, 1);

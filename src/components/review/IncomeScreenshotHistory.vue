@@ -25,6 +25,15 @@ function isSameAmountIgnored(item: IncomeInboxItem): boolean {
   )
 }
 
+function isProductOnly(item: IncomeInboxItem): boolean {
+  return Boolean(
+    item.status === 'applied' &&
+      (item.parsed.daily_pnl === null ||
+        item.parsed.daily_pnl === undefined) &&
+      (item.parsed.products?.length ?? 0) > 0,
+  )
+}
+
 const historyItems = computed(() =>
   props.items.filter(
     (item) => item.status !== 'pending' || isAmountConflict(item),
@@ -38,6 +47,7 @@ const conflictCount = computed(
 function statusLabel(item: IncomeInboxItem): string {
   if (isAmountConflict(item)) return '金额冲突 · 待确认'
   if (isSameAmountIgnored(item)) return '同金额已忽略'
+  if (isProductOnly(item)) return '产品汇总已入账'
   if (item.status === 'applied') return '已入账'
   if (item.status === 'ignored') return '已忽略'
   return '待确认'
@@ -46,6 +56,7 @@ function statusLabel(item: IncomeInboxItem): string {
 function statusTone(item: IncomeInboxItem): string {
   if (isAmountConflict(item)) return 'is-conflict'
   if (isSameAmountIgnored(item)) return 'is-ignored'
+  if (isProductOnly(item)) return 'is-product-only'
   return item.status === 'applied' ? 'is-applied' : 'is-ignored'
 }
 
@@ -90,7 +101,7 @@ function noteText(item: IncomeInboxItem): string {
       <span class="income-history-summary">
         <strong>收益截图处理记录</strong>
         <span>
-          原图仅保存在本机；已入账、已忽略、同金额忽略和金额冲突都可展开核对。
+          原图仅保存在本机；产品汇总入账、忽略和金额冲突都可展开核对。
         </span>
       </span>
       <span class="income-history-count">

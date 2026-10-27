@@ -617,6 +617,12 @@ html[data-theme='dark'] body {
   color: var(--warning-ink);
 }
 
+:root[data-theme='dark'] .pv-issue.is-waiting {
+  border-color: var(--line);
+  background: var(--surface-quiet);
+  color: var(--ink-soft);
+}
+
 :root[data-theme='dark'] :is(
   .grade-badge.grade-fail,
   .action-tag.is-redeem,
@@ -640,6 +646,12 @@ html[data-theme='dark'] body {
   color: var(--danger-ink);
 }
 
+:root[data-theme='dark'] .pv-issue.is-missing {
+  border-color: rgba(232, 189, 113, 0.28);
+  background: var(--surface-warning);
+  color: var(--warning-ink);
+}
+
 :root[data-theme='dark'] :is(
   .review-alert.is-info,
   .rw-alert.is-info,
@@ -658,6 +670,14 @@ html[data-theme='dark'] body {
   border-color: rgba(145, 213, 213, 0.26);
   background: var(--surface-info);
   color: var(--success-ink);
+}
+
+:root[data-theme='dark']
+  .income-history-card.is-product-only
+  .income-history-status {
+  border: 1px solid var(--line);
+  background: var(--surface-quiet);
+  color: var(--ink-soft);
 }
 
 :root[data-theme='dark'] :is(
