@@ -19,13 +19,22 @@ test('stock report manifest keeps unique, dated entries', () => {
   const files = library.reports.map((report) => report.file)
   assert.equal(new Set(files).size, files.length)
 
+  let previousPublishedAt = '9999-12-31 23:59'
   let previousDate = '9999-12-31'
   for (const report of library.reports) {
     assert.match(report.date, /^\d{4}-\d{2}-\d{2}$/)
-    assert.ok(report.date <= previousDate, `${report.file} 未按日期倒序排列`)
+    assert.match(report.publishedAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
+    assert.ok(
+      report.publishedAt <= previousPublishedAt,
+      `${report.file} 未按发布时间倒序排列`,
+    )
+    if (report.publishedAt === previousPublishedAt) {
+      assert.ok(report.date <= previousDate, `${report.file} 未按日期倒序排列`)
+    }
     assert.ok(report.title)
     assert.ok(report.category)
     assert.ok(report.summary)
+    previousPublishedAt = report.publishedAt
     previousDate = report.date
   }
 })
