@@ -1047,6 +1047,92 @@ html[data-theme='dark'] body {
   border-bottom-color: #55788d;
 }
 
+/* 正海磁材报告：在现有报告阅读器深色框架内补齐自定义卡片与状态色。 */
+:root[data-theme='dark'] .rp-doc.zhenghai-report {
+  --ink3: #9ba7a8;
+  --line2: #2c3335;
+  --navy: #eef2f2;
+  --blue: #a7d2e8;
+  --gold: #d8bd7b;
+  --red: #ff9c90;
+  --green: #91d5b4;
+  --amber: #e5c88e;
+  --soft: #181d1f;
+  --teal: #91d5d5;
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .summary-card,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .two-col > div,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .kpi-strip div {
+  border-color: var(--line);
+  background: var(--soft);
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .summary-card .label,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .summary-card .note,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .kpi-strip span,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .mini-note {
+  background: transparent;
+  color: var(--ink3);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .summary-card .value,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .kpi-strip b {
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report blockquote {
+  border-color: var(--line);
+  border-left-color: var(--gold);
+  background: linear-gradient(180deg, #1d2427, #181d1f);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report blockquote p,
+:root[data-theme='dark'] .rp-doc.zhenghai-report .callout {
+  color: var(--ink2);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .callout {
+  border-color: rgba(145, 213, 213, 0.24);
+  background: var(--surface-info);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .tag.ok {
+  border-color: rgba(145, 213, 180, 0.32);
+  background: #183128;
+  color: #a2dfbd;
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .tag.watch {
+  border-color: rgba(229, 200, 142, 0.32);
+  background: #30291c;
+  color: #e5c88e;
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .tag.red {
+  border-color: rgba(255, 156, 144, 0.34);
+  background: #3a2422;
+  color: #ff9c90;
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report .tag.neutral {
+  border-color: var(--line);
+  background: #202729;
+  color: var(--ink2);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report th {
+  border-color: var(--line);
+  background: #242c2f;
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] .rp-doc.zhenghai-report td {
+  border-color: var(--line);
+  color: var(--ink2);
+}
+
 @media print {
   :root[data-theme='dark'] .rp-doc {
     --ink: #1b1f24;
