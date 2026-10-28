@@ -227,7 +227,8 @@ html[data-theme='dark'] body {
   .calibration-errors span,
   .calibration-record details,
   .calibration-versions,
-  .report-card
+  .report-card,
+  .library-empty
 ) {
   border-color: var(--line);
   background: var(--card);
