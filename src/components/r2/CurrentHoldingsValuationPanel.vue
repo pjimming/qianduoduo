@@ -15,17 +15,42 @@ const bank = computed(() => props.valuation.bank_reconciliation)
 
 const statusLabel = computed(() => {
   if (!props.valuation.available) return '暂无确认持仓'
-  if (bank.value.status === 'missing') return '银行对照未录入'
-  if (bank.value.status === 'outdated') return '银行对照待更新'
+  if (props.valuation.stale_reasons.length) return '推算净值需复核'
   if (bank.value.status === 'mismatch') return '银行对照有差异'
   if (bank.value.status === 'rounding') return '银行对照一致 ±¥0.01'
-  return '银行对照一致'
+  if (bank.value.status === 'matched') return '银行对照一致'
+  return '净值按产品收益推算'
 })
 
 const statusTone = computed(() => {
-  if (bank.value.status === 'mismatch') return 'is-warn'
-  if (bank.value.status === 'outdated') return 'is-note'
+  if (
+    bank.value.status === 'mismatch' ||
+    props.valuation.stale_reasons.length
+  ) {
+    return 'is-warn'
+  }
   return 'is-ok'
+})
+
+const bankStatusLabel = computed(() => {
+  if (bank.value.status === 'missing') return '未录入（可选）'
+  if (bank.value.status === 'outdated') return '历史快照（无需更新）'
+  if (bank.value.status === 'mismatch') return '有差异，需复核'
+  if (bank.value.status === 'rounding') return '一致 ±¥0.01'
+  return '一致'
+})
+
+const bankContextNote = computed(() => {
+  if (bank.value.status === 'missing') {
+    return '银行对照是可选证据，未录入不影响按产品收益推算的当前净值。'
+  }
+  if (bank.value.status === 'outdated') {
+    const latestChangeDate = props.valuation.latest_confirmed_change_date
+    return `银行快照早于最近确认交易${
+      latestChangeDate ? `（${formatDateShort(latestChangeDate)}）` : ''
+    }；它只保留为历史证据，无需每日更新，也不参与当前差额计算。`
+  }
+  return ''
 })
 
 const differenceLabel = computed(() => {
@@ -130,7 +155,7 @@ const coverageNote = computed(() => {
 
     <div class="nav-bank" :class="statusTone">
       <div>
-        <span>银行对照</span>
+        <span>银行对照（可选）</span>
         <strong>
           {{
             bank.available && bank.bank_value !== null
@@ -150,8 +175,8 @@ const coverageNote = computed(() => {
         <strong>{{ differenceLabel }}</strong>
       </div>
       <div>
-        <span>判定</span>
-        <strong>{{ statusLabel }}</strong>
+        <span>对照状态</span>
+        <strong>{{ bankStatusLabel }}</strong>
       </div>
       <a
         v-if="bank.evidence_id"
@@ -163,7 +188,13 @@ const coverageNote = computed(() => {
       </a>
     </div>
 
-    <div v-if="bank.stale_reasons.length" class="rw-alerts">
+    <div v-if="bankContextNote" class="rw-alerts">
+      <span class="rw-alert is-info">{{ bankContextNote }}</span>
+    </div>
+    <div
+      v-if="bank.status === 'mismatch' && bank.stale_reasons.length"
+      class="rw-alerts"
+    >
       <span
         v-for="reason in bank.stale_reasons"
         :key="reason"
