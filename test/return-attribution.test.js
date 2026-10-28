@@ -126,6 +126,19 @@ test('return attribution ranks selection drag and closes the account bridge', ()
     attribution.product_evidence.products[0].reference_yield_policy_version,
     'r2-term-yield-v1',
   );
+  const product = attribution.product_evidence.products[0];
+  assert.ok(
+    Math.abs(
+      product.actual_vs_reference_pnl -
+        (product.recorded_product_pnl - product.reference_pnl),
+    ) <= 0.01,
+  );
+  assert.ok(
+    Math.abs(
+      product.actual_vs_target_pnl -
+        (product.recorded_product_pnl - product.target_pnl),
+    ) <= 0.01,
+  );
 });
 
 test('purchase wait, redemption wait and cash are separated without double counting', () => {
@@ -369,6 +382,14 @@ test('missing reference yield is unavailable rather than zero-filled', () => {
   assert.equal(
     attribution.product_evidence.products[0].reference_yield_policy_version,
     'r2-term-yield-v1',
+  );
+  assert.equal(
+    attribution.product_evidence.products[0].actual_vs_reference_pnl,
+    null,
+  );
+  assert.notEqual(
+    attribution.product_evidence.products[0].actual_vs_target_pnl,
+    null,
   );
 });
 

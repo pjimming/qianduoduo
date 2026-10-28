@@ -171,12 +171,15 @@ function holdingDetail(
     : '已退出当前持仓，保留历史归因'
 }
 
-function targetRelationLabel(
+function comparisonRelationLabel(
   amount: number | null,
+  baseLabel: '期望收益' | '3%目标',
 ): string {
-  if (amount === null) return '不可估算'
-  if (Math.abs(amount) < 0.005) return '接近3%目标'
-  return amount > 0 ? '高于3%目标' : '低于3%目标'
+  if (amount === null) return '不可比较'
+  if (Math.abs(amount) < 0.005) {
+    return baseLabel === '期望收益' ? '接近期望' : '接近3%目标'
+  }
+  return amount > 0 ? `高于${baseLabel}` : `低于${baseLabel}`
 }
 
 function barStyle(component: ReturnAttributionComponent): Record<string, string> {
@@ -478,7 +481,7 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
       <summary>
         <span>
           <span class="ra-kicker">PRODUCT ATTRIBUTION</span>
-          <strong>逐产品收益与3%目标贡献</strong>
+          <strong>逐产品实际收益 vs 期望收益与3%目标</strong>
           <small>
             {{ productStatusCounts.held }} 只当前持有 ·
             {{ productStatusCounts.redeemed }} 只已赎回 ·
@@ -527,9 +530,9 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
         </div>
         <p class="ra-evidence-note">
           <strong>怎么看：</strong>
-          先确认“核对结果”为 ¥0.00；再按“与3%目标差额”从低到高检查。
-          负值表示该产品参考收益低于3%目标，正值表示高于目标。
-          这里是归因估算，不自动触发买卖。
+          先确认“核对结果”为 ¥0.00；再以“账本实际收益”为被比较项，
+          分别看“实际 vs 期望收益”和“实际 vs 3%目标”。负值表示实际收益低于对应基准。
+          期望收益来自期限加权参考年化估算，3%是指定目标，二者都不是收益承诺。
         </p>
 
         <div
@@ -538,9 +541,10 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
         >
           <div class="ra-product-row is-head" aria-hidden="true">
             <span>产品 / 当前状态</span>
-            <span>参考年化与参考收益</span>
-            <span>与3%目标差额</span>
+            <span>期望收益（参考估算）</span>
             <span>账本实际收益</span>
+            <span>实际 vs 期望收益</span>
+            <span>实际 vs 3%目标</span>
           </div>
           <div
             v-for="product in attribution.product_evidence.products"
@@ -567,7 +571,8 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
               <small>{{ holdingDetail(product) }}</small>
             </span>
             <span
-              data-label="参考年化与参考收益"
+              data-label="期望收益（参考估算）"
+              :data-expected-pnl="product.reference_pnl"
               :data-reference-status="product.reference_yield_status"
               :data-reference-reason="product.reference_yield_reason || ''"
               :data-reference-policy-version="product.reference_yield_policy_version || ''"
@@ -578,26 +583,13 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
               </span>
               <small>{{ referenceYieldHint(product) }}</small>
               <small class="ra-reference-amount">
-                参考收益 {{ signedMoney(product.reference_pnl) }}
+                期望收益 {{ signedMoney(product.reference_pnl) }}
               </small>
             </span>
-            <span data-label="与3%目标差额">
-              <span class="ra-metric-line">
-                <strong :class="amountTone(product.selection_estimate_pnl)">
-                  {{ signedMoney(product.selection_estimate_pnl) }}
-                </strong>
-                <em
-                  class="ra-contribution-status"
-                  :class="amountTone(product.selection_estimate_pnl)"
-                >
-                  {{ targetRelationLabel(product.selection_estimate_pnl) }}
-                </em>
-              </span>
-              <small>
-                同期3%目标 {{ signedMoney(product.target_pnl) }}
-              </small>
-            </span>
-            <span data-label="账本实际收益">
+            <span
+              data-label="账本实际收益"
+              :data-actual-pnl="product.recorded_product_pnl"
+            >
               <span class="ra-metric-line">
                 <strong :class="amountTone(product.recorded_product_pnl)">
                   {{ signedMoney(product.recorded_product_pnl) }}
@@ -605,6 +597,51 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
                 <em class="ra-fact-status">账本事实</em>
               </span>
               <small>{{ product.recorded_days }} 个产品收益日</small>
+            </span>
+            <span
+              data-label="实际 vs 期望收益"
+              :data-actual-vs-reference-pnl="product.actual_vs_reference_pnl"
+            >
+              <span class="ra-metric-line">
+                <strong :class="amountTone(product.actual_vs_reference_pnl)">
+                  {{ signedMoney(product.actual_vs_reference_pnl) }}
+                </strong>
+                <em
+                  class="ra-contribution-status"
+                  :class="amountTone(product.actual_vs_reference_pnl)"
+                >
+                  {{
+                    comparisonRelationLabel(
+                      product.actual_vs_reference_pnl,
+                      '期望收益',
+                    )
+                  }}
+                </em>
+              </span>
+              <small>实际收益 − 期望收益</small>
+            </span>
+            <span
+              data-label="实际 vs 3%目标"
+              :data-target-pnl="product.target_pnl"
+              :data-actual-vs-target-pnl="product.actual_vs_target_pnl"
+            >
+              <span class="ra-metric-line">
+                <strong :class="amountTone(product.actual_vs_target_pnl)">
+                  {{ signedMoney(product.actual_vs_target_pnl) }}
+                </strong>
+                <em
+                  class="ra-contribution-status"
+                  :class="amountTone(product.actual_vs_target_pnl)"
+                >
+                  {{
+                    comparisonRelationLabel(
+                      product.actual_vs_target_pnl,
+                      '3%目标',
+                    )
+                  }}
+                </em>
+              </span>
+              <small>3%目标收益 {{ signedMoney(product.target_pnl) }}</small>
             </span>
           </div>
         </div>
@@ -1185,9 +1222,12 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
 .ra-product-row {
   display: grid;
   grid-template-columns:
-    minmax(230px, 1.55fr)
-    repeat(3, minmax(140px, 1fr));
-  gap: 12px;
+    minmax(220px, 1.45fr)
+    minmax(145px, 1fr)
+    minmax(125px, 0.85fr)
+    minmax(120px, 0.85fr)
+    minmax(130px, 0.9fr);
+  gap: 10px;
   align-items: center;
   padding: 12px;
   border-bottom: 1px solid var(--line);
@@ -1360,8 +1400,10 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
 
   .ra-product-row {
     grid-template-columns:
-      minmax(200px, 1.45fr)
-      repeat(3, minmax(125px, 1fr));
+      minmax(180px, 1.35fr)
+      minmax(115px, 0.9fr)
+      repeat(3, minmax(110px, 0.85fr));
+    gap: 8px;
   }
 }
 

@@ -1166,6 +1166,8 @@ export interface ReturnAttributionProduct {
   target_pnl: number
   reference_pnl: number | null
   selection_estimate_pnl: number | null
+  actual_vs_reference_pnl: number | null
+  actual_vs_target_pnl: number | null
   recorded_product_pnl: number
   recorded_days: number
 }

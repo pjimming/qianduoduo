@@ -825,7 +825,8 @@ async function main() {
         attributionText.includes('费用估算') &&
         attributionText.includes('账本实际收益') &&
         attributionText.includes('产品明细合计') &&
-        attributionText.includes('与3%目标差额'),
+        attributionText.includes('实际 vs 期望收益') &&
+        attributionText.includes('实际 vs 3%目标'),
       `收益概览没有渲染目标差距归因：${attributionText.slice(0, 240)}`,
     )
     assert(
@@ -860,10 +861,63 @@ async function main() {
         '收益归因产品行没有显示当前持有或已赎回状态',
       )
       assert(
-        firstAttributionText.includes('参考收益') &&
-          firstAttributionText.includes('同期3%目标'),
-        '收益归因产品行没有同时说明参考收益与3%目标',
+        firstAttributionText.includes('期望收益') &&
+          firstAttributionText.includes('3%目标收益'),
+        '收益归因产品行没有同时说明实际、期望收益与3%目标',
       )
+      const comparisonAmounts = await firstAttributionProduct.evaluate(
+        (row) => {
+          const read = (selector) => {
+            const attributeBySelector = {
+              '[data-actual-pnl]': 'data-actual-pnl',
+              '[data-expected-pnl]': 'data-expected-pnl',
+              '[data-target-pnl]': 'data-target-pnl',
+              '[data-actual-vs-reference-pnl]':
+                'data-actual-vs-reference-pnl',
+              '[data-actual-vs-target-pnl]': 'data-actual-vs-target-pnl',
+            }
+            const value = row
+              .querySelector(selector)
+              ?.getAttribute(attributeBySelector[selector])
+            return value === null || value === undefined ? null : Number(value)
+          }
+          return {
+            actual: read('[data-actual-pnl]'),
+            expected: read('[data-expected-pnl]'),
+            target: read('[data-target-pnl]'),
+            actualVsExpected: read(
+              '[data-actual-vs-reference-pnl]',
+            ),
+            actualVsTarget: read('[data-actual-vs-target-pnl]'),
+          }
+        },
+      )
+      if (
+        Number.isFinite(comparisonAmounts.actual) &&
+        Number.isFinite(comparisonAmounts.expected) &&
+        Number.isFinite(comparisonAmounts.actualVsExpected)
+      ) {
+        assert(
+          Math.abs(
+            comparisonAmounts.actualVsExpected -
+              (comparisonAmounts.actual - comparisonAmounts.expected),
+          ) <= 0.011,
+          `收益归因“实际 vs 期望收益”未按实际收益减期望收益：${JSON.stringify(comparisonAmounts)}`,
+        )
+      }
+      if (
+        Number.isFinite(comparisonAmounts.actual) &&
+        Number.isFinite(comparisonAmounts.target) &&
+        Number.isFinite(comparisonAmounts.actualVsTarget)
+      ) {
+        assert(
+          Math.abs(
+            comparisonAmounts.actualVsTarget -
+              (comparisonAmounts.actual - comparisonAmounts.target),
+          ) <= 0.011,
+          `收益归因“实际 vs 3%目标”未按实际收益减目标收益：${JSON.stringify(comparisonAmounts)}`,
+        )
+      }
     }
     await assertFontFloor(page, '.return-attribution', '目标差距归因桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
@@ -926,6 +980,8 @@ async function main() {
         reference_data_date: null,
         reference_pnl: null,
         selection_estimate_pnl: null,
+        actual_vs_reference_pnl: null,
+        actual_vs_target_pnl: null,
         recorded_product_pnl: 0,
         recorded_days: 0,
       }))

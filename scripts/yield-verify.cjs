@@ -426,8 +426,9 @@ function validateAttribution(verifier, label, attribution) {
         `${productLabel} 不可用时不回退数值`,
         product.reference_yield_pct === null &&
           product.reference_pnl === null &&
-          product.selection_estimate_pnl === null,
-        `${product.reference_yield_pct}, ${product.reference_pnl}, ${product.selection_estimate_pnl}`,
+          product.selection_estimate_pnl === null &&
+          product.actual_vs_reference_pnl === null,
+        `${product.reference_yield_pct}, ${product.reference_pnl}, ${product.selection_estimate_pnl}, ${product.actual_vs_reference_pnl}`,
       );
     } else {
       verifier.check(
@@ -436,7 +437,30 @@ function validateAttribution(verifier, label, attribution) {
           isFiniteNumber(product.reference_yield_pct),
         String(product.reference_yield_pct),
       );
+      verifier.check(
+        `${productLabel} 实际收益与期望收益差额正确`,
+        isFiniteNumber(product.actual_vs_reference_pnl) &&
+          Math.abs(
+            product.actual_vs_reference_pnl -
+              (product.recorded_product_pnl - product.reference_pnl),
+          ) <= 0.01,
+        `${product.recorded_product_pnl} - ${product.reference_pnl} vs ${product.actual_vs_reference_pnl}`,
+      );
     }
+    const hasHoldingPeriod =
+      isFiniteNumber(product.holding_days_amount) &&
+      product.holding_days_amount > 0;
+    verifier.check(
+      `${productLabel} 实际收益与3%目标差额正确`,
+      hasHoldingPeriod
+        ? isFiniteNumber(product.actual_vs_target_pnl) &&
+            Math.abs(
+              product.actual_vs_target_pnl -
+                (product.recorded_product_pnl - product.target_pnl),
+            ) <= 0.01
+        : product.actual_vs_target_pnl === null,
+      `${product.recorded_product_pnl} - ${product.target_pnl} vs ${product.actual_vs_target_pnl}`,
+    );
   }
 }
 

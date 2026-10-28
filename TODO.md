@@ -26,6 +26,12 @@
 
 ## 近期完成（2026-10）
 
+- **2026-10-28 逐产品收益归因改为实际收益双基准对比**
+  - 逐产品下钻改为以“账本实际收益”为被比较项，分别展示“实际 vs 期望收益”和“实际 vs 3%目标”；`selection_estimate_pnl` 保留为“参考收益 − 3%目标”的产品选择归因，不再作为主对比列。
+  - API 新增 `actual_vs_reference_pnl` 与 `actual_vs_target_pnl` 兼容扩展字段；参考年化缺失或没有对应持仓期时返回 `null`，不按 0 补齐。真实数据行已逐项验证两项差额均按“实际收益 − 对应基准”计算。
+  - 验证：`npm run check`、375/375 `npm test`、`npm run build`、完整 `npm run test:e2e`、覆盖率测试和 `npm run yield:verify` 757/757 全部通过；E2E 覆盖桌面、390px、深色主题、12px 字号下限、无横向溢出和 DOM 差额公式。
+  - 生产重启后 Health OK、Supervisor/Server 正常、最新 stderr 0 字节且无 stop marker；实际 API 的 9 个逐产品证据均包含新增字段，差额公式失败数为 0。
+
 - **2026-10-28 `TD-RESEARCH-002` 报告正文和科技图谱支持返回首页**
   - 25 篇 `report/*.html` 全部加入唯一 `data-report-page-home` 原生链接，使用 `../research/index.html`，固定左下、13px，与右下角报告导航并存；科技图谱三版在现有 `#vn` 工具条加入 `data-research-home`，统一使用正确的 `../../../research/index.html`，保留脑图、树状、表格切换和 `aria-current`。
   - `scripts/build-report-docs.mjs` 从 Vue 正文剥离页面级首页链接，避免与阅读器顶部报告库入口重复；应用服务把 `/research/index.html` 以 302 重定向到 `/investment/research`，`file://`、本地相对路径和 GitHub Pages 子路径均正确解析。
