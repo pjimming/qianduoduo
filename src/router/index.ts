@@ -100,6 +100,15 @@ const router = createRouter({
       },
     },
     {
+      path: '/investment/briefs',
+      name: 'investment-briefs',
+      component: () => import('@/views/InvestmentBriefsView.vue'),
+      meta: {
+        module: 'investment',
+        title: '投资 · 每日市场简报 · 钱多多',
+      },
+    },
+    {
       path: '/investment/research/:slug',
       name: 'investment-report',
       component: () => import('@/views/InvestmentReportView.vue'),

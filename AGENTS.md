@@ -6,8 +6,8 @@
 
 - **账本与研究隔离**：R2 账本数据保存在 `data/r2_ledger.sqlite`，用于 R2 记账、对账和资金管理；股票研究使用 `report/` 和股票研究数据，输出独立的调研报告与研究结论。
 - **报告来源**：股票报告的原始 HTML 在 `report/` 编辑，是唯一可编辑源文件。运行 `npm run research:publish`，由脚本更新独立报告库导航、`src/data/stockReports.json`、`src/data/reportDocs/`、`src/data/reportSearch.json` 和 `public/research/media/`；不再生成或托管 `public/research/stocks/` 与 `public/research/scripts/report-nav.js`。
-- **应用入口**：报告库为 `/investment/research`，A 股科技图谱为 `/investment/tech-map`，独立归档页为 `research/index.html`。
-- **GitHub Pages**：公开静态站点只允许发布独立报告库、全部 `report/*.html` 和 A 股科技图谱三个静态视图；构建与部署由 `npm run pages:build` 和 `.github/workflows/deploy-pages.yml` 完成。不得发布 R2 数据、账户事实、截图、API/服务端代码或 Vue 应用构建物。
+- **应用入口**：每日市场简报为 `/investment/briefs`，报告库为 `/investment/research`，A 股科技图谱为 `/investment/tech-map`，独立归档页为 `research/index.html`。
+- **GitHub Pages**：公开静态站点只允许发布独立报告库、全部 `report/*.html` 和 A 股科技图谱三个静态视图；构建与部署由 `npm run pages:build` 和 `.github/workflows/deploy-pages.yml` 完成。不得发布 R2 数据、账户事实、截图、API/服务端代码、Vue 应用构建物或 `market-briefs/`。
 - **专题规则来源**：R2 记账口径与运行方式遵循 `MEMORY.md`、`README.md` 和 `r2-wealth-management` skill；股票研究遵循 `serenity-skill`。
 - **任务状态来源**：后端工作开始前先检查 `TODO.md`。任务状态、优先级、阻塞项和剩余事项从 `TODO.md`、代码、Git、数据库、API 和当次测试结果读取。
 
@@ -75,6 +75,8 @@
 ### 6.1 工作流与交付
 
 股票、个股、主题、产业链、候选公司对比和公司事件研究以 `$serenity-skill`（`%USERPROFILE%\.codex\skills\serenity-skill\SKILL.md`）为唯一工作流。执行前完整读取 `SKILL.md`，再按任务读取必要的 `references/` 和 `assets/`。
+
+每日市场简报使用独立入口 `/investment/briefs`，唯一手工源文件为 `market-briefs/YYYY-MM-DD.md`。页面只列出实际存在的日期，默认最新，以 `?date=YYYY-MM-DD` 定位指定简报；Markdown 在访问时按文件动态加载，经解析和安全清理后渲染。固定结构为市场概览、风格与板块、关键事件、报告库联动、下一交易日关注、一句话结论。缺失字段写“未获取到”，事实与推断分开，宽表仅在表格容器内部横向滚动；简报不进入 `report/`、报告清单、独立归档页、GitHub Pages 或 R2 账本。每日市场简报是行情与事件汇总，不调用 `$serenity-skill`；该 skill 只用于个股、公司和产业链研究。
 
 Serenity 完成技术或需求变化、系统拆解、瓶颈识别、产业链层级、替代路线、供给扩张、公司商业化阶段、主题收入暴露，以及从叙事到收入、利润和现金流的证据链。工作区在此基础上补充市场叙事与拥挤度、催化验证和退出条件。
 

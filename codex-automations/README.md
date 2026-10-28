@@ -17,6 +17,7 @@
 
 | ID（本机） | 名称 | 时间 | RRULE | 模型 | Reasoning | 执行环境 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `a` | 钱多多A股收盘每日简报 | 每天 18:00 | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每天 21:00 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
@@ -30,12 +31,26 @@
 
 | 任务 | 依赖 |
 | --- | --- |
+| `a` | Codex 桌面端运行、可访问交易所/官方公告和行情来源、Node.js 24+、本地生产服务用于健康检查 |
 | `r2` | Node.js 24+、可访问招行公开接口、本地服务用于 `/api/products/refresh` |
 | `r2-2` | 本地服务 `http://127.0.0.1:8765` 正在运行，SQLite 中可能已有 Codex 判断任务 |
 | `r2-3` | 本地服务 `http://127.0.0.1:8765` 正在运行 |
 | `r2-4` | `r2` 周快照任务已生成最新 universe CSV；本地工作区含冻结观察规格和 cohort |
 
 ## 2. 每个任务做什么
+
+### `a` — 钱多多A股收盘每日简报
+
+- 每天 18:00 先用交易所日历或当日官方行情确认今天确为交易日；周末、法定休市或无法确认收盘数据时不创建文件、不发送例行简报；
+- 不调用 `$serenity-skill`；直接按本任务固定的来源、口径和证据规则交叉核对主要指数和成交额，无法确认的涨跌家数、北向或主力资金写“未获取到”，不猜数；
+- 生成或幂等覆盖 `market-briefs/YYYY-MM-DD.md`，固定为市场概览、风格与板块、关键事件、报告库联动、下一交易日关注、一句话结论六段；
+- 报告联动只读取 `src/data/stockReports.json` 并按代码、分类或明确关键词确定性匹配，最多 3 篇；没有可靠匹配时明确写“未匹配”；
+- 不读取或写入 R2 账本，不修改报告 HTML、报告清单、独立归档页或 GitHub Pages；
+- 写完后必须运行 `npm run build`，让新 Markdown 进入按日期动态加载清单，再检查 `/api/health`；两项都通过后，只暂存并提交当天的 `market-briefs/YYYY-MM-DD.md`，再正常推送到当前分支 upstream；
+- 提交前保留用户已有改动，不使用 `git add -A`；已有暂存内容通过路径限定的 `git commit --only` 隔离。无内容变化不建空提交；推送失败时保留本地提交并报告哈希与原因，不自动 pull、merge、rebase、reset 或强推；
+- 有正常简报时只返回一张短卡，列出提交哈希和推送结果；非交易日保持安静；数据、构建、健康检查或推送失败时只报告阻塞原因和已完成/未完成状态。
+
+提示词：[market-daily-brief.md](market-daily-brief.md)
 
 ### `r2` — R2产品快照每周更新
 
@@ -192,14 +207,14 @@ cwds = ["<WORKSPACE>"]
 
 ## 7. 当前环境快照
 
-截至 2026-10-25：
+截至 2026-10-29：
 
 | 项目 | 当前值 |
 | --- | --- |
 | 工作区 | `D:\codex\钱多多财富工作台` |
 | 本地服务 | `http://127.0.0.1:8765` |
 | 时区 | `Asia/Shanghai` |
-| Codex 定时任务 | 4 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
+| Codex 定时任务 | 5 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
 | 生产守护 | Supervisor 运行中，Health OK |
 | 登录自启 | 当前用户 Startup 快捷方式，单次触发，无周期巡检 |
 | 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，短期桶下限 30%，新增日开 0%，置信度 75%，巡检 5 分钟；包含逐产品收益对账和现有日开迁移提示 |

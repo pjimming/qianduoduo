@@ -26,6 +26,14 @@
 
 ## 近期完成（2026-10）
 
+- **2026-10-29 每日市场简报 Markdown 阅读页**
+  - 投资导航新增“每日简报”，入口为 `/investment/briefs`；只列出 `market-briefs/YYYY-MM-DD.md` 中实际存在的日期，默认最新，并通过 `?date=YYYY-MM-DD` 直接定位指定日期。
+  - Markdown 按日期动态加载，使用 `marked` 渲染、`DOMPurify` 清理脚本与不安全属性；表格自动放入独立横向滚动容器，页面适配浅色、深色、桌面和 390px 移动端。
+  - 固定源文件模板为市场概览、风格与板块、关键事件、报告库联动、下一交易日关注、一句话结论；简报不进入 `report/`、报告清单、独立归档页、GitHub Pages 或 R2 账本。
+  - 已创建本机 Codex 定时任务 `a`，每天 18:00 运行，仅真实交易日生成；提示词已同步到 `codex-automations/market-daily-brief.md`，完成后执行生产构建和健康检查。
+  - 已清理两篇验收示例 Markdown；空目录显示“还没有每日简报”，定时任务生成首篇正式简报后自动恢复日期选择器。
+  - 验证：`npm run check`、376/376 `npm test`、生产构建、完整 `npm run test:e2e`、`npm run pages:build` 和 `npm audit --omit=dev` 全部通过；Pages 白名单仍为 26 篇报告和 3 个科技图谱视图，共 32 个文件。
+
 - **2026-10-28 逐产品收益归因改为实际收益双基准对比**
   - 逐产品下钻改为以“账本实际收益”为被比较项，分别展示“实际 vs 期望收益”和“实际 vs 3%目标”；`selection_estimate_pnl` 保留为“参考收益 − 3%目标”的产品选择归因，不再作为主对比列。
   - API 新增 `actual_vs_reference_pnl` 与 `actual_vs_target_pnl` 兼容扩展字段；参考年化缺失或没有对应持仓期时返回 `null`，不按 0 补齐。真实数据行已逐项验证两项差额均按“实际收益 − 对应基准”计算。

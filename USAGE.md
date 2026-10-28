@@ -29,6 +29,7 @@
 | 产品与配置 | `/ledger/products` | `data/cmb_r2_*.csv` | 查看 R2 候选、动态配置、持仓复核与替换，不构成买入建议 |
 | 复盘 | `/ledger/review` | 同一个 SQLite | 日/周/月评分、月度五问、季度复盘 |
 | 决策与评估 | `/ledger/evaluation` | 同一个 SQLite | 决策日志、自动评估与待确认队列 |
+| 每日市场简报 | `/investment/briefs` | `market-briefs/*.md` | 按日期读取收盘后的市场概述、板块、事件与报告联动 |
 | 股票调研报告库 | `/investment/research` | `report/*.html` 及构建产物 | 阅读、检索、切换调研报告 |
 | A 股科技图谱 | `/investment/tech-map` | `src/data/techmap.json` | 脑图、树状、表格三种产业视图 |
 
@@ -313,7 +314,28 @@ npm run r2:refresh-all
 
 ## 6. 投资模块
 
-### 6.1 股票调研报告库
+### 6.1 每日市场简报
+
+入口：`/investment/briefs`，位于左侧“投资”分组第一项。
+
+页面只读取 `market-briefs/YYYY-MM-DD.md` 中实际存在的日期，默认打开最新一篇。选择日期后，URL 会同步为 `/investment/briefs?date=YYYY-MM-DD`，刷新或保存链接仍会打开同一篇简报。正文以 Markdown 为唯一源文件，页面抽取首个一级标题，并安全渲染标题、表格、列表、引用和链接。
+
+固定模板包含：
+
+- 市场概览；
+- 风格与板块；
+- 关键事件；
+- 与报告库联动；
+- 下一交易日关注；
+- 一句话结论。
+
+数字与事件必须能追溯来源；缺失字段写“未获取到”，不得为了凑满模板而估算。市场状态标签只描述当日结构，不构成买卖建议。Markdown 中的宽表只在表格容器内横向滚动，不进入 `report/`、GitHub Pages 或 R2 账本。
+
+每日市场简报不调用 `$serenity-skill`；该 skill 只用于个股、公司和产业链研究。
+
+交易日 18:00 的 Codex 任务 `a` 在生成简报、构建和健康检查均成功后，只暂存并提交当天 `market-briefs/YYYY-MM-DD.md`，再正常推送到当前分支 upstream。已有工作区改动必须保留；同日无内容变化不建空提交；推送失败时保留本地提交并报告哈希与原因。
+
+### 6.2 股票调研报告库
 
 入口：`/investment/research`（左侧“投资”默认页）。
 
@@ -328,7 +350,7 @@ npm run r2:refresh-all
 
 报告源文件统一在 `report/`；`research/index.html` 是可双击打开的独立归档页。每篇静态报告都有固定左下的原生“返回首页”入口，Vue 阅读正文会剥离该页面级链接并使用顶部报告库按钮。应用内不提供“原文”或静态 HTML 出口，`/research/stocks/*` 不再受支持；应用服务收到 `/research/index.html` 时重定向到 `/investment/research`。
 
-### 6.2 A 股科技图谱
+### 6.3 A 股科技图谱
 
 入口：`/investment/tech-map`，旧地址 `/research/tech-map` 会自动跳转。
 
@@ -887,6 +909,7 @@ npm run prod:restart
 
 | ID | 名称 | 时间 | 模型 | 做什么 |
 | --- | --- | --- | --- | --- |
+| `a` | 钱多多A股收盘每日简报 | 每日 18:00 | `deepseek-flash` | 真实交易日生成 `market-briefs/YYYY-MM-DD.md`，交叉核对行情与官方事件，联动报告库并构建；健康检查通过后只提交当天简报并推送 upstream；休市日不生成 |
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `deepseek-flash` | 刷新招行 R2 全量/研究池/精选 CSV；检查五档证据数量与 10%/20% 规则后刷新应用 |
 | `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每日 21:00 | `deepseek-flash` | 处理截图和 AI 队列，产品-only 明细按产品合计驱动账户总账；按最大 T+N 等待并自动重算，检查最终缺项、提案、到期和评估 |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `deepseek-flash` | 检查结构、流动性和逐只替换；按五档证据、期限调整参考年和 `yield_status` 复核，6M/3M 执行 10%/20% 上限 |
@@ -936,6 +959,7 @@ Codex 巡检发现“需要用户补事实或最后确认、且平台不能自�
 │  ├─ router/                # 路由
 │  └─ styles/                # 全局样式
 ├─ report/                   # 报告源文件（唯一手工编辑位置）
+├─ market-briefs/            # 每日市场简报 Markdown（YYYY-MM-DD.md）
 ├─ research/index.html       # 独立报告库归档页
 ├─ scripts/                  # 构建、发布、同步、抓取、备份、守护
 ├─ data/                     # SQLite、备份、产品 CSV、交易截图

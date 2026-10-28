@@ -286,6 +286,24 @@ watch(
         >
           <RouterLink
             class="sidebar-link"
+            to="/investment/briefs"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 3.5h12v13H4z"></path>
+                <path d="M6.5 7h7M6.5 10h7M6.5 13h4.5"></path>
+                <path d="M4 6h12"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>每日简报</strong>
+              <small>收盘 · 板块 · 事件</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
             to="/investment/tech-map"
             active-class="is-active"
             @click="closeMenu"
