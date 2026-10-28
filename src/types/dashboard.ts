@@ -1153,6 +1153,8 @@ export interface ReturnAttributionComponent {
 export interface ReturnAttributionProduct {
   product_code: string
   product_name: string
+  holding_status: 'held' | 'redeemed'
+  current_holding_amount: number
   reference_yield_pct: number | null
   reference_yield_status: ReferenceYieldStatus
   reference_yield_reason: ReferenceYieldReason | null

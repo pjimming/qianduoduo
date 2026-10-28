@@ -822,7 +822,10 @@ async function main() {
         attributionText.includes('尺子一') &&
         attributionText.includes('尺子二') &&
         attributionText.includes('买入确认前等待') &&
-        attributionText.includes('费用估算'),
+        attributionText.includes('费用估算') &&
+        attributionText.includes('账本实际收益') &&
+        attributionText.includes('产品明细合计') &&
+        attributionText.includes('与3%目标差额'),
       `收益概览没有渲染目标差距归因：${attributionText.slice(0, 240)}`,
     )
     assert(
@@ -848,6 +851,18 @@ async function main() {
           'r2-term-yield-v1' &&
           ((await referenceCell.textContent()) ?? '').includes('可用窗口'),
         '收益归因产品行没有显示收益策略版本与可用窗口',
+      )
+      const firstAttributionText =
+        (await firstAttributionProduct.textContent()) ?? ''
+      assert(
+        firstAttributionText.includes('当前持有') ||
+          firstAttributionText.includes('已赎回'),
+        '收益归因产品行没有显示当前持有或已赎回状态',
+      )
+      assert(
+        firstAttributionText.includes('参考收益') &&
+          firstAttributionText.includes('同期3%目标'),
+        '收益归因产品行没有同时说明参考收益与3%目标',
       )
     }
     await assertFontFloor(page, '.return-attribution', '目标差距归因桌面端')
@@ -878,18 +893,21 @@ async function main() {
         code: 'E2E-NO-SNAPSHOT',
         label: '当前快照缺失',
         policy: null,
+        holdingStatus: 'held',
       },
       {
         reason: 'unknown_term',
         code: 'E2E-UNKNOWN-TERM',
         label: '期限无法分桶',
         policy: 'r2-term-yield-v1',
+        holdingStatus: 'redeemed',
       },
       {
         reason: 'no_available_horizons',
         code: 'E2E-NO-HORIZONS',
         label: '指定窗口均缺失',
         policy: 'r2-term-yield-v1',
+        holdingStatus: 'held',
       },
     ]
     reasonOverviewPatch.workspace.return_attribution.product_evidence.products =
@@ -897,6 +915,8 @@ async function main() {
         ...reasonTemplate,
         product_code: row.code,
         product_name: row.label,
+        holding_status: row.holdingStatus,
+        current_holding_amount: row.holdingStatus === 'held' ? 1000 : 0,
         reference_yield_pct: null,
         reference_yield_status: 'unavailable',
         reference_yield_reason: row.reason,
@@ -954,6 +974,14 @@ async function main() {
           `收益归因原因码 ${expected.reason} 的策略版本不正确：${JSON.stringify(rendered)}`,
         )
       }
+      const renderedHoldingStates = await reasonPanel
+        .locator('.ra-holding-status')
+        .allTextContents()
+      assert(
+        renderedHoldingStates.some((text) => text.includes('当前持有')) &&
+          renderedHoldingStates.some((text) => text.includes('已赎回')),
+        `收益归因未同时显示当前持有与已赎回状态：${renderedHoldingStates.join('、')}`,
+      )
       await assertFontFloor(
         reasonPage,
         '.return-attribution',

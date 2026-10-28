@@ -85,6 +85,14 @@ test('return attribution ranks selection drag and closes the account bridge', ()
   assert.equal(attribution.period.record_days, 30);
   assert.equal(attribution.period.missing_record_days, 0);
   assert.equal(attribution.product_evidence.reference_yield_complete, true);
+  assert.equal(
+    attribution.product_evidence.products[0].holding_status,
+    'held',
+  );
+  assert.equal(
+    attribution.product_evidence.products[0].current_holding_amount,
+    30000,
+  );
   assert.equal(attribution.bridge.reconciled, true);
   assert.ok(Math.abs(attribution.actual.annualized_pct - 2.463099) < 0.00001);
   assert.ok(attribution.gap.annualized_pct < -0.53);
@@ -209,6 +217,90 @@ test('purchase wait, redemption wait and cash are separated without double count
   assert.equal(attribution.tplus_evidence.available, true);
   assert.equal(attribution.tplus_evidence.product_count, 2);
   assert.equal(attribution.tplus_evidence.verified_product_count, 2);
+});
+
+test('product evidence marks current holdings and fully redeemed products', () => {
+  const trades = [
+    {
+      id: 1,
+      trade_date: '2026-09-01',
+      confirm_date: '2026-09-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: 'HELD001',
+      product_name: '当前持有产品',
+      amount: 15000,
+    },
+    {
+      id: 2,
+      trade_date: '2026-09-01',
+      confirm_date: '2026-09-01',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: 'SOLD001',
+      product_name: '已赎回产品',
+      amount: 12000,
+    },
+    {
+      id: 3,
+      trade_date: '2026-09-03',
+      confirm_date: '2026-09-03',
+      trade_type: 'redeem',
+      status: 'confirmed',
+      product_code: 'SOLD001',
+      product_name: '已赎回产品',
+      amount: 12000,
+    },
+  ];
+  const records = buildRecords({ days: 5, dailyPnl: 2.4, trades });
+  const valuations = records.flatMap((record) => [
+    {
+      yield_date: record.date,
+      product_code: 'HELD001',
+      product_name: '当前持有产品',
+      daily_pnl: 1.4,
+    },
+    {
+      yield_date: record.date,
+      product_code: 'SOLD001',
+      product_name: '已赎回产品',
+      daily_pnl: 1,
+    },
+  ]);
+  const attribution = buildReturnAttribution({
+    records,
+    trades,
+    products: [
+      {
+        code: 'HELD001',
+        name: '当前持有产品',
+        term_days: 90,
+        reference_yield_pct: 3,
+        data_date: '2026-09-01',
+      },
+      {
+        code: 'SOLD001',
+        name: '已赎回产品',
+        term_days: 90,
+        reference_yield_pct: 3,
+        data_date: '2026-09-01',
+      },
+    ],
+    valuations,
+    windowSummary: buildWindows(records)[30],
+    targetAnnualized: 3,
+  });
+  const byCode = new Map(
+    attribution.product_evidence.products.map((product) => [
+      product.product_code,
+      product,
+    ]),
+  );
+
+  assert.equal(byCode.get('HELD001').holding_status, 'held');
+  assert.equal(byCode.get('HELD001').current_holding_amount, 15000);
+  assert.equal(byCode.get('SOLD001').holding_status, 'redeemed');
+  assert.equal(byCode.get('SOLD001').current_holding_amount, 0);
 });
 
 test('missing reference yield is unavailable rather than zero-filled', () => {

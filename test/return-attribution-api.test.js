@@ -188,6 +188,8 @@ test('return attribution API exposes the three unavailable yield reasons', async
   );
 
   assert.equal(byCode.get('AVAILABLE001').reference_yield_status, 'available');
+  assert.equal(byCode.get('AVAILABLE001').holding_status, 'held');
+  assert.equal(byCode.get('AVAILABLE001').current_holding_amount, 1000);
   assert.equal(
     byCode.get('AVAILABLE001').reference_yield_reason,
     'complete_history',

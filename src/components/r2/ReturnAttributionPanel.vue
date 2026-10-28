@@ -43,6 +43,16 @@ const productCoverageTone = computed(() => {
   const difference = Math.abs(props.attribution.product_evidence.difference)
   return difference <= 0.01 ? 'is-positive' : 'is-negative'
 })
+const productStatusCounts = computed(() => {
+  const products = props.attribution.product_evidence.products
+  const held = products.filter(
+    (product) => product.holding_status === 'held',
+  ).length
+  return {
+    held,
+    redeemed: products.length - held,
+  }
+})
 const deploymentPct = computed(() => {
   const principal = props.attribution.actual.average_principal
   if (!(principal > 0)) return null
@@ -145,6 +155,28 @@ function referenceYieldHint(
   const prefix =
     product.reference_yield_reason === 'partial_history' ? '部分历史 · ' : ''
   return `${prefix}可用窗口 ${windows} · ${policy}`
+}
+
+function holdingStatusLabel(
+  product: ReturnAttribution['product_evidence']['products'][number],
+): string {
+  return product.holding_status === 'held' ? '当前持有' : '已赎回'
+}
+
+function holdingDetail(
+  product: ReturnAttribution['product_evidence']['products'][number],
+): string {
+  return product.holding_status === 'held'
+    ? `当前本金 ¥${formatMoney(product.current_holding_amount)}`
+    : '已退出当前持仓，保留历史归因'
+}
+
+function targetRelationLabel(
+  amount: number | null,
+): string {
+  if (amount === null) return '不可估算'
+  if (Math.abs(amount) < 0.005) return '接近3%目标'
+  return amount > 0 ? '高于3%目标' : '低于3%目标'
 }
 
 function barStyle(component: ReturnAttributionComponent): Record<string, string> {
@@ -445,11 +477,12 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
     <details class="ra-products">
       <summary>
         <span>
-          <span class="ra-kicker">PRODUCT EVIDENCE</span>
-          <strong>逐产品证据与选择贡献</strong>
+          <span class="ra-kicker">PRODUCT ATTRIBUTION</span>
+          <strong>逐产品收益与3%目标贡献</strong>
           <small>
-            {{ attribution.product_evidence.products.length }} 只产品 ·
-            期限调整参考年化覆盖
+            {{ productStatusCounts.held }} 只当前持有 ·
+            {{ productStatusCounts.redeemed }} 只已赎回 ·
+            参考年化覆盖
             {{ formatPct(attribution.product_evidence.reference_yield_coverage_pct, 2) }}
           </small>
         </span>
@@ -457,32 +490,46 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
       </summary>
       <div class="ra-product-body">
         <div class="ra-product-summary">
-          <span>
-            <small>账户收益事实</small>
+          <span class="is-fact">
+            <small>账本实际收益</small>
             <strong>{{
               signedMoney(attribution.product_evidence.account_pnl)
             }}</strong>
+            <em>观察期账户收益合计</em>
           </span>
-          <span>
-            <small>产品入账合计</small>
+          <span class="is-evidence">
+            <small>产品明细合计</small>
             <strong>{{
               signedMoney(
                 attribution.product_evidence.recorded_product_pnl,
               )
             }}</strong>
+            <em>逐产品收益事实汇总</em>
           </span>
-          <span>
-            <small>证据差异</small>
+          <span
+            class="is-difference"
+            :class="productCoverageTone"
+          >
+            <small>核对结果</small>
             <strong :class="productCoverageTone">
               {{
                 signedMoney(attribution.product_evidence.difference)
               }}
             </strong>
+            <em>
+              {{
+                Math.abs(attribution.product_evidence.difference) <= 0.01
+                  ? '产品与账本已核对一致'
+                  : '存在差异，先核查收益来源'
+              }}
+            </em>
           </span>
         </div>
         <p class="ra-evidence-note">
-          产品入账只用于核对覆盖度和解释来源，不再次计入账户总收益。
-          差异不自动补零或覆盖，需回到收益截图、产品收益档案和账户记录核查。
+          <strong>怎么看：</strong>
+          先确认“核对结果”为 ¥0.00；再按“与3%目标差额”从低到高检查。
+          负值表示该产品参考收益低于3%目标，正值表示高于目标。
+          这里是归因估算，不自动触发买卖。
         </p>
 
         <div
@@ -490,47 +537,73 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
           class="ra-product-table"
         >
           <div class="ra-product-row is-head" aria-hidden="true">
-            <span>产品</span>
-            <span>期限调整参考年化</span>
-            <span>选择贡献估算</span>
-            <span>产品入账收益</span>
+            <span>产品 / 当前状态</span>
+            <span>参考年化与参考收益</span>
+            <span>与3%目标差额</span>
+            <span>账本实际收益</span>
           </div>
           <div
             v-for="product in attribution.product_evidence.products"
             :key="product.product_code"
             class="ra-product-row"
+            :class="`is-${product.holding_status}`"
           >
-            <span data-label="产品">
-              <strong>{{ product.product_name }}</strong>
+            <span data-label="产品 / 当前状态">
+              <span class="ra-product-title">
+                <strong>{{ product.product_name }}</strong>
+                <em
+                  class="ra-holding-status"
+                  :class="`is-${product.holding_status}`"
+                >
+                  {{ holdingStatusLabel(product) }}
+                </em>
+              </span>
               <small>
                 {{ product.product_code }}
                 <template v-if="product.reference_data_date">
                   · 快照 {{ formatDateShort(product.reference_data_date) }}
                 </template>
               </small>
+              <small>{{ holdingDetail(product) }}</small>
             </span>
             <span
-              data-label="期限调整参考年化"
+              data-label="参考年化与参考收益"
               :data-reference-status="product.reference_yield_status"
               :data-reference-reason="product.reference_yield_reason || ''"
               :data-reference-policy-version="product.reference_yield_policy_version || ''"
             >
-              <strong>{{ referenceYieldLabel(product) }}</strong>
+              <span class="ra-metric-line">
+                <strong>{{ referenceYieldLabel(product) }}</strong>
+                <em>期限加权</em>
+              </span>
               <small>{{ referenceYieldHint(product) }}</small>
-            </span>
-            <span data-label="选择贡献估算">
-              <strong :class="amountTone(product.selection_estimate_pnl)">
-                {{ signedMoney(product.selection_estimate_pnl) }}
-              </strong>
-              <small>
-                参考收益
-                {{ signedMoney(product.reference_pnl) }}
+              <small class="ra-reference-amount">
+                参考收益 {{ signedMoney(product.reference_pnl) }}
               </small>
             </span>
-            <span data-label="产品入账收益">
-              <strong :class="amountTone(product.recorded_product_pnl)">
-                {{ signedMoney(product.recorded_product_pnl) }}
-              </strong>
+            <span data-label="与3%目标差额">
+              <span class="ra-metric-line">
+                <strong :class="amountTone(product.selection_estimate_pnl)">
+                  {{ signedMoney(product.selection_estimate_pnl) }}
+                </strong>
+                <em
+                  class="ra-contribution-status"
+                  :class="amountTone(product.selection_estimate_pnl)"
+                >
+                  {{ targetRelationLabel(product.selection_estimate_pnl) }}
+                </em>
+              </span>
+              <small>
+                同期3%目标 {{ signedMoney(product.target_pnl) }}
+              </small>
+            </span>
+            <span data-label="账本实际收益">
+              <span class="ra-metric-line">
+                <strong :class="amountTone(product.recorded_product_pnl)">
+                  {{ signedMoney(product.recorded_product_pnl) }}
+                </strong>
+                <em class="ra-fact-status">账本事实</em>
+              </span>
               <small>{{ product.recorded_days }} 个产品收益日</small>
             </span>
           </div>
@@ -1078,10 +1151,28 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
   background: var(--card);
 }
 
+.ra-product-summary span.is-fact {
+  border-color: rgba(var(--green-rgb), 0.24);
+  background:
+    linear-gradient(135deg, var(--green-wash), transparent 75%),
+    var(--card);
+}
+
+.ra-product-summary span.is-evidence {
+  border-color: rgba(var(--green-rgb), 0.18);
+}
+
 .ra-product-summary strong {
   color: var(--ink-soft);
   font-family: var(--mono);
   font-size: 12.5px;
+}
+
+.ra-product-summary em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
 }
 
 .ra-product-table {
@@ -1093,10 +1184,12 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
 
 .ra-product-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.35fr) repeat(3, minmax(120px, 1fr));
+  grid-template-columns:
+    minmax(230px, 1.55fr)
+    repeat(3, minmax(140px, 1fr));
   gap: 12px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1111,16 +1204,106 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
   font-weight: 650;
 }
 
+.ra-product-row:not(.is-head) {
+  transition: background-color 160ms ease;
+}
+
+.ra-product-row:not(.is-head):hover {
+  background: var(--card-soft);
+}
+
+.ra-product-row.is-redeemed {
+  background: var(--surface-quiet);
+}
+
+.ra-product-row.is-redeemed:hover {
+  background: color-mix(in srgb, var(--surface-quiet) 82%, var(--line));
+}
+
 .ra-product-row > span {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: 4px;
 }
 
 .ra-product-row strong {
   overflow-wrap: anywhere;
   color: var(--ink-soft);
   font-size: 12.5px;
+}
+
+.ra-product-title,
+.ra-metric-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  min-width: 0;
+}
+
+.ra-product-title strong {
+  flex: 1 1 180px;
+}
+
+.ra-holding-status,
+.ra-contribution-status,
+.ra-fact-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ra-holding-status.is-held {
+  border-color: rgba(var(--green-rgb), 0.24);
+  background: var(--gain-soft);
+  color: var(--gain);
+}
+
+.ra-holding-status.is-redeemed {
+  background: var(--surface-quiet);
+  color: var(--muted);
+}
+
+.ra-contribution-status.is-positive {
+  border-color: rgba(var(--green-rgb), 0.2);
+  background: var(--gain-soft);
+}
+
+.ra-contribution-status.is-negative {
+  border-color: rgba(166, 77, 64, 0.2);
+  background: var(--loss-soft);
+}
+
+.ra-contribution-status.is-neutral {
+  background: var(--surface-quiet);
+}
+
+.ra-fact-status {
+  background: var(--surface-quiet);
+  color: var(--muted);
+}
+
+.ra-metric-line > strong {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.ra-reference-amount {
+  color: var(--ink-soft);
+  font-weight: 650;
+}
+
+.ra-product-row.is-redeemed .ra-product-title strong {
+  color: var(--muted);
 }
 
 .ra-disclosures {
@@ -1176,7 +1359,9 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
   }
 
   .ra-product-row {
-    grid-template-columns: minmax(150px, 1.2fr) repeat(3, minmax(100px, 1fr));
+    grid-template-columns:
+      minmax(200px, 1.45fr)
+      repeat(3, minmax(125px, 1fr));
   }
 }
 
@@ -1239,6 +1424,11 @@ function barStyle(component: ReturnAttributionComponent): Record<string, string>
 
   .ra-reading-help > div {
     grid-template-columns: 1fr;
+  }
+
+  .ra-product-row.is-redeemed {
+    border-left: 3px solid var(--line-strong);
+    padding-left: 9px;
   }
 }
 </style>
