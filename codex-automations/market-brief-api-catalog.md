@@ -29,8 +29,6 @@
 | QDD-MB-12 | 2026-10-29 | BEA 发布日历 | `https://www.bea.gov/news/schedule` | 读取已确认的美国宏观发布日期与时间，美东时间换算为北京时间 |
 | QDD-MB-13 | 2026-10-29 | 本地报告索引 | `src/data/stockReports.json` | 只读；按 `date`、`priority`、`category`、`keywords`、`slug` 做确定性匹配 |
 | QDD-MB-14 | 2026-10-29 | 本地健康检查 | `http://127.0.0.1:8765/api/health` | HTTP 200 且 JSON `ok=true` |
-| QDD-MB-15 | 2026-10-29 | 港交所 Stock Connect 官方日度统计 | `https://www.hkex.com.hk/eng/csm/DailyStat/data_tab_daily_{YYYYMMDD}e.js`；可配合页面 `https://www.hkex.com.hk/Mutual-Market/Stock-Connect/Statistics/Historical-Daily?sc_lang=en` | 响应为 `tabData = [...]`；按 `market` 匹配 `SSE/SZSE Northbound/Southbound`，读取 `content[].table.schema` 与 `tr[].td`。2026-10-29 验证时北向仅提供 `Total Turnover`、`Total Trade Count`、`DQB`、`ETF Turnover`，不含买卖拆分或净额；不得把额度占位值或缺失净额写成 0 |
-| QDD-MB-16 | 2026-10-29 | 东方财富沪深港通底层交易报表 | `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_MUTUAL_DEAL_HISTORY&columns=ALL&pageNumber=1&pageSize=20&source=WEB&client=WEB&filter=(TRADE_DATE='YYYY-MM-DD')` | 读取 `result.data[]`；`MUTUAL_TYPE` 001/003/005 为沪股通/深股通/北向合计，002/004/006 为对应南向。2026-10-29 北向 `DEAL_AMT`、`DEAL_NUM` 有值，而 `NET_DEAL_AMT`、`BUY_AMT`、`SELL_AMT` 为 `null`；`RPT_MUTUAL_NETINFLOW_DETAILS` 也仅返回 `DIRECTION_TYPE=2` 南向。北向日度净额不可由此接口取得 |
 
 ## 新接口登记模板
 
