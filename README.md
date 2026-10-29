@@ -1,140 +1,90 @@
 # 钱多多
 
-钱多多是一个本地运行的个人财富工作台，左侧分为“理财”和“投资”两个模块。理财模块拆成收益概览、消息中心、每日记账、交易与持仓、产品与配置、复盘、决策与评估七个页面；投资模块包含每日市场简报、股票调研报告库与 A 股科技产业图谱。前端使用 Vue 3 + Vite + TypeScript，后端继续使用 Node.js 内置 HTTP 与 SQLite。数据只保存在本机，不上传账户信息。
+钱多多是本地运行的个人财富工作台，统一承载银行 R2/PR2 记账、投资资料、股票调研和报告发布。前端使用 Vue 3 + TypeScript，后端使用 Node.js 24+ 与内置 SQLite。账本和原始截图只保存在本机。
 
-> 第一次使用？先读 [使用手册（USAGE.md）](USAGE.md)：包含日常操作、R2 与投研流程、两个配套 skill 的用法和常用命令。
-
-> 要把项目分享给其他人？按 [环境初始化与分享指南（SETUP.md）](SETUP.md) 重建 skill、Codex 定时任务和应用设置；不要复制个人账本、成交截图或 API Key。
+- 使用与操作：[USAGE.md](USAGE.md)
+- 环境初始化与分享：[SETUP.md](SETUP.md)
+- Agent 执行规则：[AGENTS.md](AGENTS.md)
+- 长期契约：[MEMORY.md](MEMORY.md)
+- 定时任务：[codex-automations/README.md](codex-automations/README.md)
 
 ## 功能
 
-- 左侧菜单分为“理财”和“投资”两组并支持折叠：理财下是七个 R2 页面，消息中心显示统一未读徽标；投资下是每日简报、科技全景图与调研报告。
-- 每日市场简报以 `market-briefs/YYYY-MM-DD.md` 为唯一手工源文件，默认打开最新日期，只列出实际存在的日期；切换日期后按需读取并安全渲染对应 Markdown。页面适配浅色、深色和移动端，宽表只在表格区域内部滚动。
-- 支持浅色、深色和跟随系统三种主题模式：首次访问默认跟随系统，桌面侧栏可直接选择，移动端通过主题菜单切换并记住选择；跟随系统时会实时响应系统外观变化。深色主题采用石墨青灰，行情上涨/正收益使用绿色系、下跌/负收益使用红色系；账本、图表、报告正文与科技图谱使用同一套主题色板。
-- 本金作为独立账户管理：首次进入初始化起始本金和起始日期，后续用转入/转出维护；每日收益记录自动读取该日适用的本金。起始日之前的日期不属于收益账本，不计缺记、完整度或目标进度，也不能补记。
-- 记录每日收益、操作与备注；收益表单不再要求填写本金或 R2 流动性仓。收益日期由用户或截图提供，允许记录不晚于今天的日期；平台按“日期 + 金额”幂等处理，同金额视为已记录并忽略，不同金额只提醒、不覆盖。
-- 自动计算日收益率、累计收益、记录日参考净值、净值指数、最大回撤和近 7/30/90 日年化；日收益率以当日已确认持仓金额为分母，不使用包含未投资资金或临时桥接资金的本金账户余额。首页“已确认持仓净值”由已确认持仓本金和逐产品收益档案派生，待确认买入和已赎回产品不计入，银行快照仅用于对照。
-- 绘制累计收益曲线，以及每日收益柱状图和收益率折线；累计收益曲线不随本金变化调整。
-- 自动复盘：日卡显示当日收益、月累计、操作与备注；周卡按周一至周日统计账本期内收益、记录天数、连续负收益和操作次数；月卡显示年化、最大回撤、负收益天数占比、最好/最差单日、目标进度、环比和记录完整度。月中只显示“进行中”和参考区间；自起始日起可记录天数满 28 天且达到 20 条记录、月份已结束后才落最终评级，起始月可记录天数不足 28 天时不参与最终评级。
-- 日常操作收敛为：平台出现配置/换仓提案时先采纳或拒绝；完成交易后上传成交截图，再上传收益截图。采纳不会替你下单；平台负责交易匹配、偏差审计、持仓维护、追踪、评估和月/季复盘；识别歧义或平台看不到的事实时才进入消息中心补正。
-- 每笔买入、赎回和切换交易必须关联决策日志，待确认交易也不例外；只登记交易流水、持仓或本金变化不算处理完成。
-- 消息中心统一聚合决策提案、交易截图、收益截图、待确认交易、对账异常、自动评估、产品事件、持仓复核、复盘草稿和平台提醒，支持直接采纳/拒绝提案、来源分组、待处理/提醒/已处理筛选、已读/未读、稍后提醒和深链到原模块。
-- 逐产品收益档案按产品代码和收益日期保存持仓金额、当日收益、来源截图与修正审计；完全赎回后历史仍保留。逐产品收益是账户日总账的唯一来源，`daily_records.daily_pnl` 按当日产品合计自动物化。对账按归属日等待当日持仓产品的最大 T+N；已见产品先计入总账，后续到账自动重算，最终仍缺产品或投影完整性异常才进入消息中心。
-- 自动评估：先检查提案采纳、交易匹配和执行偏差，再在买入日检查决策完整性与期限桶，持有期按月检查组合收益/流动性/产品事件，到期或赎回按实际年化与期限 hurdle 评价；高置信度自动写入，低置信度进入待确认队列，可撤销并恢复原评价。页面默认每个决策阶段只展示最新结论，并明确下一次更新条件；旧规则版本和已撤销记录收进“全部审计历史”。
-- 自动复盘：本地服务每 5 分钟巡检到期、待确认、对账、评估和草稿；月度/季度草稿自动汇总并预填五问，通知按事件去重，Codex 判断队列持久保存。
-- 交易流水是持仓的唯一事实源：买入生成批次，赎回按批次先进先出匹配并计算已实现盈亏；这里的“未赎回成本本金”是买入成本减已匹配赎回本金，不是账户余额或当前市值。待确认买入只占额度，待确认赎回不改持仓，均不提前进入成本结构、期限阶梯和流动性比例。
-- 交易收件箱与收益收件箱支持本地拖入招行截图：交易 OCR 读取金额、产品、日期和状态，收益 OCR 读取披露日期与昨日/当日收益；高置信度结果自动入账，冲突或歧义才要求补正。原图只保存在 `data/trade-inbox/` 和 `data/income-inbox/`，不上传银行。
-- 支持修改、删除记录，支持导出台账 CSV。
-- 每日记录支持 10/20/50/全部条数、上一页/下一页和页码快速跳转；点击日期、当日收益、日收益率、持仓金额、记录日参考净值表头即可切换排序和升降序。
-- 展示带数据日期、来源提示和风险边界的 R2 产品观察池；默认按近 1 年收益率降序，支持按近 1/3/6/12 月收益率切换升序或降序。
+- 理财模块包含收益概览、消息中心、每日记账、交易与持仓、产品与配置、复盘、决策与评估七个页面。
+- 本金独立维护，交易由确认记录生成持仓；买入、赎回和切换必须关联决策与证据截图。
+- 逐产品日收益是账户收益事实源，账户日总账在同一事务内重算；收益披露和缺口由消息中心统一提醒。
+- 产品池、期限桶、持仓复核、决策提案、自动评估、月度五问和季度复盘均在应用内完成。
+- 投资模块包含每日市场简报、股票调研报告库和 A 股科技产业图谱。
+- 支持浅色、深色和跟随系统主题；账本、报告和科技图谱使用同一套主题契约。
+- 报告和科技图谱可生成独立的 GitHub Pages 公开静态站点，R2 数据不进入公开产物。
 
-## R2 页面分区
+## 页面
 
-原来的单页账本按“用户任务 + 数据维护域”拆成七个页面。`/` 和 `/ledger` 都会进入收益概览，旧书签不需要改。
+| 模块 | 路由 | 主要内容 |
+| --- | --- | --- |
+| 收益概览 | `/ledger/overview` | 目标、收益、净值、截图入口和待办 |
+| 消息中心 | `/ledger/inbox` | 待补事实、提醒、确认和深链 |
+| 每日记账 | `/ledger/daily` | 成交/收益截图、例外补正、每日记录、本金 |
+| 交易与持仓 | `/ledger/trades` | 当前持仓净值、交易收件箱、流水和结构 |
+| 产品与配置 | `/ledger/products` | 产品池、配置、持仓复核、额度与事件 |
+| 复盘 | `/ledger/review` | 日/周/月评分、月度五问和季度复盘 |
+| 决策与评估 | `/ledger/evaluation` | 决策日志、提案、自动评估和预测校准 |
+| 每日市场简报 | `/investment/briefs` | 按日期读取收盘简报 |
+| 调研报告库 | `/investment/research` | 报告筛选、全文检索和阅读 |
+| A 股科技图谱 | `/investment/tech-map` | 脑图、树状和表格三种视图 |
 
-| 页面 | 路由 | 只回答的问题 | 主要模块 | 数据维护域 |
-| --- | --- | --- | --- | --- |
-| 收益概览 | `/ledger/overview` | 现在整体怎样、还差哪两张截图 | 3% 目标、5 项 KPI、两类截图入口、消息中心、累计收益曲线、每日收益图 | 只读汇总 |
-| 消息中心 | `/ledger/inbox` | 平台现在需要我补什么事实 | 待处理、提醒、已处理、来源分组、搜索、稍后提醒 | 统一消息索引与状态，不改账本事实 |
-| 每日记账 | `/ledger/daily` | 交易和收益截图上传了吗 | 成交截图、收益截图、例外补正、每日记录表、本金账户 | 收益记录、收益截图、本金账户 |
-| 交易与持仓 | `/ledger/trades` | 当前市值、截图校正、交易流水、持仓结构 | 当前已确认持仓净值、交易收件箱、交易流水、单只与期限桶结构、发行方展示 | `lib/holding-valuation-store.js`、`lib/trade-store.js` |
-| 产品与配置 | `/ledger/products` | 买什么、买多少、持有的要不要换 | 持仓复核与替换、动态配置、候选池、额度核验、全部产品、产品事件 | `lib/products.js`、`lib/holdings-review.js`、产品事件 |
-| 复盘 | `/ledger/review` | 日/周/月评分与五问怎么写 | 复盘时间轴、自动复盘评分、月度五问、季度复盘 | `lib/metrics.js`、`lib/review-store.js` |
-| 决策与评估 | `/ledger/evaluation` | 当时为什么做、事后怎么评 | 决策日志、自动评估 | 决策日志、`lib/automation-store.js` |
+`/` 和 `/ledger` 进入收益概览，`/investment` 进入调研报告库。
 
-`src/views/r2/R2LayoutView.vue` 根据当前页面请求 `/api/dashboard/sections` 所需的分区，Pinia store 把分区合并进共享状态；切换页面只刷新对应分区，不再为每个页面下载完整 Dashboard。页面外壳在 `src/components/r2/`，页面样式在 `src/styles/r2-pages.css` 和 `src/styles/inbox.css`。两个截图收件箱默认只显示待处理项，已处理截图折叠；复盘页的月度五问和季度复盘默认折叠为摘要。
+## 技术架构
 
-产品与配置页按“配置目标与期限桶、观察名单、当前持仓 vs 同桶候选、分配假设、额度核验、风险边界”拆成模块卡；目标产品卡片已移除，产品金额和交易建议由决策模块承接。持仓复核先给当前持仓与首选候选的并排对比条（期限调整参考年化、`yield_status`、年化差、切换等待、有效计息、预计多赚、盈亏平衡和门槛），再列前 3 个同桶候选。短、中、长期限桶固定按 30、100、360 天统一复利计算；本次切换的当前产品赎回确认、到账和候选产品申购确认时间不计收益。T+N 未核验时按当前产品赎回 T+1、到账 T+0、候选申购 T+1 估算，并明确标“估算”；候选申购确认可逐只覆盖和核验为 T+0/T+1/T+2/T+3，核验后显示“已核验”。到期后的自动续作不重复扣空档，估算等待期不会通过执行闸门。结论区分“继续持有/观察/建议替换”，锁定期内只显示“到期后可替换”和到期计划。可直接把替换理由、等待状态与验证日写入决策日志；观察名单产品可点击查看收益、期限、评分、额度和分配原因。复盘页按“复盘节奏、自动复盘评分与记录、月度五问、季度复盘”拆成模块卡。
-
-## 技术栈
-
-- Vue 3，Composition API，`<script setup lang="ts">`
-- Vite + TypeScript
-- Pinia
-- Vue Router
-- Node.js 24+、内置 `node:sqlite`
-
-后端入口与基础设施：
-
-- `server.js`：启动入口和兼容导出。
-- `server/app.js`：应用工厂。
-- `server/http/`：Router、路由清单、响应、静态文件和 middleware。
-- `server/lifecycle.js`：数据库、HTTP Server、调度器与优雅关闭。
-- `server/modules/`：已迁移的业务域门面、路由与查询服务。
-- 当前已迁移：dashboard、data-trust、operations、products、notifications、capital、ledger、product-valuations、trades、income、decisions、proposals、evaluations、reviews、research。
-- OCR 适配器位于 `server/infrastructure/ocr/`，`lib/ocr.js` 保留兼容导出。
-- 调度器支持失败重试与状态诊断；服务停止会取消重试并终止 OCR 子进程。
-- 数据库恢复使用 WAL 一致安全快照、`quick_check` 和临时文件验证。
-- 运行日志会对常见 token、password 和 API key 格式脱敏。
-- 后端 API 已全部由 `server/modules/` 的域路由接管，旧的 legacy handler 已删除。
-- 文档分类、权威顺序和归档规则见 [文档地图](docs/README.md)；架构审计、测试与生产验收见 [后端重构最终报告](docs/archive/refactor-2026-10/final-report.md) 和 [生产重启验收](docs/archive/refactor-2026-10/14-production-acceptance.md)。尚未解决的事务、读路径和运维风险仍以 [TODO.md](TODO.md) 的 `TD-REF-*` 状态为准。
-
-前端目录：
-
-```text
-src/
-  api/            API 请求封装
-  components/     页面组件
-  composables/    格式化、图表布局、Toast 等复用逻辑
-  router/         Vue Router
-  stores/         Pinia 全局状态
-  styles/         全局样式
-  types/          TypeScript 类型
-  views/          路由页面
-```
+- 前端使用 Vue 3 Composition API、Vite、TypeScript、Pinia 和 Vue Router。
+- 后端是模块化单体：`server.js` 管理生命周期，`server/app.js` 装配应用，业务域位于 `server/modules/`，基础设施位于 `server/infrastructure/`。
+- HTTP 路由统一在 `server/http/routes.js` 登记；业务写入由 service 管理事务，SQLite repository/adapter 复用 `lib/*-store.js`。
+- R2 页面按需加载 Dashboard 分区，避免每次切换页面下载完整快照。
+- OCR 适配器位于 `server/infrastructure/ocr/`；截图原图、交易、收益、审计和运行状态保存在本地。
+- 后端数据可信链保留事实、证据、修订和审计之间的关联。
+- R2 财务口径见 [MEMORY.md](MEMORY.md)，完整 API 参考见 [USAGE.md](USAGE.md#14-api-参考)。
 
 ## 启动
 
-要求 Node.js 24 或更高版本（使用内置 `node:sqlite`）。
-
-首次使用先安装依赖：
+要求 Node.js 24 或更高版本。
 
 ```powershell
 npm install
 ```
 
-日常直接双击 `start.bat`。脚本会自动构建前端并启动 `http://127.0.0.1:8765`，这是稳定的生产模式。
+日常生产模式双击 `start.bat`，或运行：
 
-需要修改 Vue、TypeScript 或 CSS 并自动热更新时，双击 `start-dev.bat`，或运行：
+```powershell
+npm start
+```
+
+页面为 `http://127.0.0.1:8765`，数据库为 `data/r2_ledger.sqlite`。
+
+开发模式双击 `start-dev.bat`，或运行：
 
 ```powershell
 npm run dev:all
 ```
 
-开发模式页面为 <http://127.0.0.1:5173>。如果 `8765` 后端尚未运行，脚本会同时用 `node --watch` 启动后端；Vue/CSS 修改由 Vite HMR 即时更新，`server.js`、`server/` 和 `lib/` 的后端依赖修改会自动重启后端。
+开发页为 `http://127.0.0.1:5173`。Vite 将 `/api` 代理到 `8765`，前后端文件变化会相应热更新或重启。
 
-也可以手动分两个终端启动：
+也可以分终端启动：
 
 ```powershell
-# 终端 1：启动 API 和 SQLite 后端
 npm run server
-
-# 终端 2：启动 Vite 开发服务器
 npm run dev
 ```
 
-打开 <http://127.0.0.1:5173>。Vite 会把 `/api` 代理到 `http://127.0.0.1:8765`。手动启动后端时，`server.js`、`server/` 或 `lib/` 修改后需要重启后端。
+## 生产守护
 
-生产构建与启动：
-
-```powershell
-npm run build
-npm run server
-```
-
-或使用 `npm start` 一次完成构建和服务启动。数据库文件在 `data/r2_ledger.sqlite`。
-
-## 生产守护部署（Windows）
-
-首次部署或发布新版本时运行：
+首次部署或发布新版本：
 
 ```powershell
 npm run prod:deploy
 ```
 
-脚本会依次执行生产构建、回归测试、登录自启注册、后台 Supervisor 启动和健康检查。登录自启优先注册为单次计划任务 `QianDuoDuo-AutoStart`；当前账户没有计划任务权限时回退到用户 Startup 快捷方式。两者都只在当前用户登录时触发一次，没有周期重复、健康巡检或看门狗循环；Supervisor 负责当前运行期间重启异常退出的 Node 子进程。`prod:stop` 会同时停用登录自启，`prod:start` 会重新启用。
-
-日常运维命令：
+日常运维：
 
 ```powershell
 npm run prod:status
@@ -143,253 +93,113 @@ npm run prod:restart
 npm run prod:stop
 ```
 
-收益口径只读验收：
+登录自启只执行一次 `daemon.ps1 -Action start`；Supervisor 负责当前运行期间 Node 子进程异常退出后的重启。`prod:stop` 同时停用登录自启，`prod:start` 重新启用。服务只监听 `127.0.0.1`。
+
+只读验收和样本外观察：
 
 ```powershell
 npm run yield:verify
-npm run yield:verify -- --json
-```
-
-该命令只执行 GET 请求并读取本地 PID、stderr 和 stop marker，不调用写接口、不打开数据库。默认检查 Health、产品、收益概览、决策评估、`r2-dynamic-v4 + r2-term-yield-v1 + B`、四桶权重、cash 排除、持仓/归因审计字段以及 Supervisor 运行状态。
-
-样本外观察命令：
-
-```powershell
 npm run yield:observe
 npm run yield:observe:review
 ```
 
-观察规格、固定 689 只产品 cohort 和周台账位于 `data/yield-observations/`。规格冻结后，只有产品数据日不同、间隔 5–10 天、固定 cohort 覆盖达标且内部不变量通过的快照才会追加为独立样本。少于 4 个保持 `collecting`，4–7 个仅在预注册异常时复核，8 个里程碑也须复核并请用户决定；超过周窗口为 `cadence_broken`，台账完整性失败为 `ledger_invalid`。参数复核继续使用同一固定 cohort，任何观察都不会自动修改正式权重、配置或提案。
+生产文件：
 
-- 生产地址：`http://127.0.0.1:8765`
 - 守护脚本：`scripts/daemon.ps1`
 - 部署脚本：`scripts/deploy-production.ps1`
-- PID 文件：`run/daemon.pid`、`run/server.pid`；Node 自己写入服务 PID，Supervisor 用 `$LASTEXITCODE` 记录真实退出码
-- 日志目录：`logs/`（`daemon.log` 记录守护事件，`server-*.out.log` / `server-*.err.log` 记录 Node 输出）
-- 服务只监听 `127.0.0.1`；`prod:stop` 会停止并暂时禁用自动巡检，`prod:start` 会重新启用。
-- 可使用 `npm run test:daemon` 在临时目录和隔离端口验证优雅退出、正常崩溃和强制终止的退出码记录，不影响生产数据库。
+- PID：`run/daemon.pid`、`run/server.pid`
+- 日志：`logs/daemon.log`、`logs/server-*.out.log`、`logs/server-*.err.log`
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env`，按需修改：
+复制 `.env.example` 为 `.env`，按需配置：
 
 ```dotenv
 VITE_API_BASE_URL=
 VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 ```
 
-- `VITE_API_BASE_URL`：生产环境 API 前缀；留空表示与页面同源。
-- `VITE_API_PROXY_TARGET`：Vite 开发服务器的 API 代理目标。
-- `R2_TRADE_INBOX_DIR`：成交截图归档目录，默认 `data/trade-inbox/`。
-- `R2_OCR=0`：关闭本地 OCR；截图仍会归档，可手工填写交易字段。
+- `VITE_API_BASE_URL`：生产 API 前缀；留空表示与页面同源。
+- `VITE_API_PROXY_TARGET`：开发服务器代理目标。
+- `R2_TRADE_INBOX_DIR`：成交截图归档目录。
+- `R2_OCR=0`：关闭本地 OCR，截图仍可归档并人工校正。
 
-`R2_*` 是 Node 服务进程的环境变量，不写入 Vite 使用的 `.env`；需要时在启动脚本或系统环境变量中设置。
+`R2_*` 是 Node 服务环境变量，不写入 Vite 使用的 `.env`。
 
-## 已安装的 npm 包
+## 记账与评估
 
-运行时依赖：
+- `起始本金`是进入账本时已有的 R2 本金；`起始日期`之前的记录不纳入收益、缺记、完整度或目标。
+- 转入/转出只改变本金，不计当日收益，并按日期重算本金快照。
+- 当日持仓金额来自已确认且尚未赎回的买入成本；待确认交易和临时桥接本金不计入。
+- 日收益率使用当日已确认持仓金额，不使用本金账户余额。
+- `记录日参考净值`是当日本金加截至该日累计收益，只用于历史曲线和按日分析。
+- 当前持仓净值是未赎回确认持仓本金加逐产品累计收益；银行快照只作对照证据。
+- 逐产品收益按分保存，账户日收益由当日产品合计物化；对账按收益归属日和披露 T+N 处理。
 
-- `marked`
-- `dompurify`
-- `vue`
-- `pinia`
-- `vue-router`
+自动评估按买入日、持有期和到期/赎回三个阶段执行，默认组合目标 3%，期限 hurdle 为短期 2.5%、中期 2.8%、长期 3.0%。低置信度、证据不足或与手工评价冲突的结果进入待确认队列，可撤销。
 
-开发依赖：
+## 每日市场简报
 
-- `vite`
-- `@vitejs/plugin-vue`
-- `typescript`
-- `vue-tsc`
-- `@types/node`
+- 入口：`/investment/briefs`，可用 `?date=YYYY-MM-DD` 定位。
+- 源文件：`market-briefs/YYYY-MM-DD.md`，只列出实际存在的日期。
+- 内容固定为市场概览、风格与板块、关键事件、报告库联动、下一交易日关注和一句话结论。
+- Codex 任务 `a` 每天 18:00 检查交易日；数据、构建和健康检查通过后提交当天简报及本次接口目录增量并推送 upstream。
+- 已用接口保存在 `codex-automations/market-brief-api-catalog.md`；新接口验证、参数化和去重后追加。
+- 简报不进入 R2 账本、报告清单或 GitHub Pages。
 
-项目没有通过 CDN 引入第三方库，也没有 jQuery 插件。
+## 股票研究与报告
 
-## 记账口径
+股票、主题、产业链、候选对比和公司事件研究统一使用 `serenity-skill`。默认生成静态 HTML 报告并进入报告库；用户明确要求“只分析、不要生成文件”时才省略。
 
-- `起始本金`：进入账本时已有的 R2 本金，不含累计收益和组合外应急金。
-- `起始日期`：本金开始进入账本的日期，起始日本身可以记录收益；起始日前没有收益属于正常状态，不纳入任何复盘统计。
-- `转入/转出`：只改变本金，不计入当日收益；系统会按日期重算历史记录中的本金快照。
-- `当日本金`：起始本金 + 该日期及之前的累计转入 − 累计转出，由本金账户自动计算。
-- `当日持仓金额`：按交易确认日汇总当日未赎回的已确认买入成本；待确认交易和临时桥接本金不计入。
-- `当日收益`：当天收益金额，亏损填负数。
-- `最近披露日提醒`：页面仍以昨日作为日常缺记提醒参考，但收益日期以用户提供为准；允许补记不晚于今天的日期。API 不按产品 T+1/T+2 延迟调整或拒绝该日期。
-- `收益幂等`：同一日期已有相同金额时不重复写入；已有不同金额时不覆盖原记录，并写入消息中心等待人工确认。`0` 元是有效收益值，用户或银行页面明确确认无收益时必须记录。
-- `记录日参考净值`：该日本金 + 截至该日累计收益，只用于历史账本曲线和按日收益分析。
-- `已确认持仓净值`：当前未赎回确认持仓本金加逐产品累计收益；待确认买入、临时桥接本金、已赎回产品和账户外资金不计入。没有银行市值快照也照常派生，快照只用于按需银行对照证据；交易确认后旧快照仅保留为历史记录，不要求每日更新。
-- 逐产品收益按分保存和汇总，不保留四位小数；推算净值与银行对照值相差不超过 ¥0.01 时按舍入差异处理，不生成异常或反向调整产品收益。
-- `日收益率`：当日收益 ÷ 当日已确认持仓金额。
-- `月收益率`：当月累计收益 ÷ 当月平均已确认持仓金额；当前未结束月份标记为“月中参考”。
-- 每日记录不包含 `R2 流动性仓` / `cash_balance`。
+- 报告源文件：`report/*.html`
+- 独立归档：`research/index.html`
+- 应用阅读页：`/investment/research/:slug`
+- 报告清单：`src/data/stockReports.json`
+- 构建产物：`src/data/reportDocs/`、`src/data/reportSearch.json`、`public/research/media/`
 
-月度评级标准：低于 0.16% 为不及格，0.16% 为及格，0.20% 为良好，0.25% 为优秀，0.30% 及以上为卓越。自本金起始日起可记录天数不足 28 天，或账本期内记录少于 20 条时，只标记“样本不足/进行中”，不参与最终评级。起始日前的日期不计缺记，也不能补记。
+发布命令：
 
-页面右上角导出的 CSV 字段为 `date,principal,daily_pnl,action,notes`，可直接用于技能的 `review.py`；缺少 `cash_balance` 时按“无流动性仓”处理。
+```powershell
+npm run research:publish
+```
 
-## 复盘与评估
+命令会重建导航、清单、Vue 文档、检索索引和媒体，执行构建并重启本地服务。页面需要同时通过浅色/深色、桌面/移动和质量闸门后再提交。
 
-常态工作流是“平台提出有证据的决策提案 → 用户在消息中心或决策与评估页采纳/拒绝 → 用户自行在招行 App 执行 → 上传成交截图 → 平台匹配已采纳决策、审计偏差并持续追踪”。当前可分配资金大于 0 时生成买入提案，持仓达到替换门槛时生成换仓提案。提案不会自动生成交易，也不会代替用户采纳。
+GitHub Pages：
 
-手工登记交易前仍需先写本次决策；完成买入/赎回后拖入成交截图，再上传收益截图。评估结果和周期复盘分别进入“决策与评估”和“复盘”；交易、持仓、产品事件回到各自页面。截图无法读取用户原始理由时，平台会检查是否能匹配已采纳提案；没有匹配时才建立并关联“计划外、待补证据”的临时决策。
+```powershell
+npm run pages:build
+```
 
-高置信度成交截图会按截图状态自动确认并进入持仓；识别不确定的截图进入交易收件箱校正。收益截图只要能确认日期和至少一条产品明细，平台就归档产品事实并按当日产品合计创建或更新 `daily_records`；账户金额若出现，仅作可选核对。没有产品明细时不生成账户收益。对账按收益归属日等待应持有产品的最大 T+N，已到账产品先进入总账，最终披露后仍缺产品或投影完整性异常才提示；产品缺失不会自行推断为 0 或视为赎回，用户或银行页面明确确认无收益时才记录 0 元。产品修正保留审计。特殊事项只作为例外事实补充，自动评估会读取其中的高影响事件。
+公开站点只包含报告库、全部源报告、报告导航和科技图谱三视图。入口为 `https://pjimming.github.io/qianduoduo/research/`。
 
-- **决策日志**：记录买入、赎回、切换或观察的理由、预期、证据日期、验证日期、失效条件、实际结果和事后评价。页面显示“证据完整/待补证据”；不完整决策不能通过买入日流程检查。事后评价分四类，其中“流程错误，结果好”会被单独标黄，因为它最容易让人误以为流程有效。
-- **决策提案**：`lib/decision-proposal-store.js` 管理 `decision_proposals`。待采纳提案有独立有效期和证据快照；采纳后生成正式决策并标记“已采纳，待执行”；拒绝不生成决策。已采纳但尚未交易时可取消，已有交易关联时不能直接取消。
-- **交易流水**：每笔未撤销交易都必须关联决策。手工交易和交易收件箱可以选用已有决策，也可以先填写本次决策；没有显式关联时，服务端会立即建立不完整临时决策并纳入通知，不会等到确认后再补。赎回支持部分赎回，并按买入批次先进先出匹配；实际到账金额与赎回成本的差额计入已实现盈亏。已撤销交易保留原始记录和修改留痕；已关联交易的决策不能直接删除。
-- **交易收件箱**：拖入 PNG/JPEG/WebP 成交截图后进入人工校正；一张图含多笔时可用 `node scripts/split-trade-rows.mjs <图片> <输出目录>` 自动按行切分。视觉写入走 `POST /api/trades/inbox/:id/vision-apply`，接口会用本地 OCR 的金额与代码做交叉校验，两者冲突、产品未收录或找不到匹配交易时一律 409 拒绝，转人工确认。同一图片按 SHA-256 去重，同一笔业务按交易日期、类型、产品、金额和状态去重；截图显示“已确认”时会把同字段的待确认交易直接匹配并确认，避免迁移记录重复入账。已处理或已忽略且未被正式事实引用的原图默认在 180 天后清理；已被事实引用的证据永久保留。
-- **持仓结构**：持仓由已确认买入批次自动推导，不再手工维护快照；自动计算最大单只成本占比、短期评分桶（1–30 天）成本占比、短期流动性子集（7–30 天）、现有日开金额与占比、未来 12 个月到期阶梯和到期未赎回提醒。发行方名称、金额和占比只展示当前持仓状态，不参与筛选、目标分配、买入门槛、持仓限制、决策提案或自动评估。本项目新增日开额度固定为 0%，现有日开只作为迁移事实，不抵作 7–30 天流动性。“未赎回成本本金”不是账户余额或当前市值。期限 0 表示日开，不生成到期日。
-- **产品事件**：记录费率、经理、底层、赎回规则、额度等变化，可标记“待复核/已处理”；高影响且待复核的事件会单独提示。
-- **逐产品收益**：从一张收益截图中按已确认持仓代码拆分多只产品，持仓页可查看累计个人收益、档案/持有天数、负收益天数、最差单日和逐日记录；已赎回产品仍保留历史并单独标记。短样本不直接生成稳定年化，也不把产品记录当成账户收益的新增项。
-- **自动评估**：按买入日、持有期月度、到期/赎回三个节点生成评估。买入日先检查决策是否具备理由、预期、证据日期、验证日期和失效条件，再检查期限桶、短期桶下限、日开新增额度为 0% 和单只上限；持有期以组合级收益为主，逐产品每日收益作为个人持有表现和异常证据；到期/赎回用批次本金、持有天数、到账金额计算实际年化。评估记录规则版本、证据、置信度和写入前后快照，可撤销。
-- **月度五问 / 季度复盘**：按周期保存五问或六问答案、结论和“下月只改一件事”。月度结论会同步显示在月度评分卡的历史月份里，选中有“已复盘”标记的月份即可查看。
-- **时间轴**：按日、周、月、季显示当前该做哪一层；昨日作为常规缺记提醒参考，但用户可提供不晚于今天的实际收益日期。完全早于本金起始日的月份和季度标记为“未纳入复盘”，不会要求补写。
+## A 股科技图谱
 
-待确认、可撤单的交易只计入“待确认金额”，确认后才按确认日校准起息和到期日并进入已确认持仓；但待确认交易在落库时就会关联决策并进入买入日证据检查。已采纳提案会按交易方向、产品代码、金额和有效期自动匹配；产品与方向匹配且截图齐全时审计通过，金额在允许偏差内时记录调整，方向/产品不匹配或金额偏差过大时转为计划外决策。对账视图会提示缺少截图、截图金额或代码与流水不一致、待确认时间过长、赎回到账金额缺失和未处理截图。
-
-评估默认把 3% 当作组合进取目标；单只结果按期限 hurdle 判断：短期限 2.5%、中期限 2.8%、长期限 3.0%，可在“自动评估 → 评估设置”中修改。置信度默认达到 75% 才自动写入，低置信度、到账金额缺失或与手工评价冲突时留在 AI/平台队列，只有需要用户补事实的部分进入消息中心。未知结果或建议评价仍为“待评估”时禁止人工空确认；补齐交易、到账或决策证据后由下一次评估更新。所有自动评估都可以撤销，交易流水不会被自动删除。
-
-本地服务启动时补跑一次巡检，之后默认每 5 分钟运行；可在设置中调整间隔。交易截图、收益截图、评估复核和复盘总结会进入“Codex 判断队列”，桌面端未运行也不会丢失。已注册每日 21:00 的 Codex 定时任务“钱多多R2每日巡检（含AI队列与消息中心）”，先处理判断队列，再按 `meta.reporting_date` 检查最近已披露收益、逐产品收益和账户/产品对账；该日期按当前持仓最大 T+N 推算。产品-only 截图按已确认产品合计驱动账户总账，等待期后续到账自动重算；只有最终缺产品或投影完整性异常才提示，队列为空且无异常时保持安静。
-
-月度复盘可在“复盘 → 月度五问”一键导出 Markdown，内容包含月度指标、目标进度、环比、决策日志、产品事件、五问、结论和当前持仓快照。导出的持仓是导出时的当前快照，不是月末快照。
-
-## 产品观察池边界
-
-产品区不是实时行情，也不是买入建议。应用先加载 `data/cmb_r2_universe-YYYY-MM-DD.csv` 普通可买研究池，再按评分、期限桶、本金、已确认持仓、待确认买入、短期桶下限、未来现金流、单只/底层策略上限和逐只额度动态决定买什么、买多少；发行方字段只用于识别和展示，不参与上述约束。研究池按收益证据分为完整 1Y、缺 1Y 的 6M 档、仅 3M、仅 1M 新品观察和无有效收益五档。“期限调整参考年化”按桶计算：cash `1M 70% + 3M 30%`，short `1M 20% + 3M 50% + 6M 30%`，medium `3M 50% + 6M 30% + 1Y 20%`，long `3M 20% + 6M 40% + 1Y 40%`；缺失窗口按剩余权重重新归一化，不把缺失值当作 0，全部缺失时明确为“不可计算”。`weighted_yield_pct` 与参考年化是完全一致的兼容别名。6M 档和仅有 3M 档均可参与评分，但单只最多 10%、同类合计最多 20%；仅有 1M 的产品只作人工新品观察，不自动分配。本项目新增日开目标固定为 0%，`target3` 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实，不进入新增配置。完整研究池可在“查看全部产品”中分别按产品代码、产品名称和发行方搜索，并通过期限、数据深度两个多选下拉组合过滤，再逐只打开产品详情。当前规则继续剔除美元、私行/私银/私享/尊享/企享/专属/私募产品；前视扣分采用 B 方案：short/medium 在 `1Y−6M>1pp`、long 在 `>1.5pp` 时扣分，单次封顶 0.25。实时额度仍需在招行 App 核验；公开 CSV 缺失时只给分配上限并标记“额度未核验”。
-
-全量池由 `npm run r2:refresh-all`（`scripts/fetch-cmb-r2-all.cjs`）刷新：脚本读取招行理财产品统一查询平台公开接口，生成 `cmb_r2_all-*.csv`（全量原始）、`cmb_r2_universe-*.csv`（普通可买研究池）和 `cmb_r2_selected-*.csv`（研究观察池，不含资金分配），并刷新应用。也可以用 `R2_PRODUCT_CSV` 指定研究池路径。页面“刷新快照”会重新解析 `data/` 下日期最新的 universe CSV，找不到时回退到旧的 `cmb_r2_products*.csv`。
-
-购买前必须以招行 App、产品说明书和当日公告为准。R2/PR2 不等于保本，历史年化不代表未来收益。
-
-## 研究资料模块
-
-### 每日市场简报
-
-- 入口：`/investment/briefs`，位于左侧“投资”分组第一项；`?date=YYYY-MM-DD` 可直接定位指定日期。
-- 源文件：`market-briefs/YYYY-MM-DD.md`，只把符合日期格式且实际存在的文件加入日期选择器；默认打开最新一篇。
-- 定时生成：本机 Codex 任务 `a` 每天 18:00 检查交易日并生成当日 Markdown，完成后执行 `npm run build` 和健康检查；两项通过后只提交当天文件并推送到当前分支 upstream。周末、法定休市日或同日无变化时不生成空提交。
-- 渲染：页面抽取首个一级标题作为主标题，正文由 `marked` 转为 HTML，再经 `DOMPurify` 清理脚本、事件属性和不安全标签；Markdown 文件按日期动态加载，不一次性塞入主包。
-- 固定结构：市场概览、风格与板块、关键事件、报告库联动、下一交易日关注、一句话结论。数值缺失时写“未获取到”，推断与官方事实分开表达。
-- 读取与展示：日期切换同步写入 URL，刷新或直接打开链接仍停留在指定日期；桌面、390px 移动端、浅色和深色均应通过字号与横向溢出验收。
-- 发布边界：简报属于本机投资资料，不进入 `report/`、`stockReports.json`、独立报告库或 GitHub Pages Artifact，也不读取或写入 R2 账本。
-
-### 股票调研报告库
-
-- 入口：`/investment/research`，是左侧“投资”的默认页面；`/investment` 也会跳转到这里。
-- 内容：26 篇股票、产业链与板块调研报告，按发布时间倒序排列；支持元数据筛选、正文全文检索（命中后跳到对应章节）、研究优先级标签。
-- 详情：`/investment/research/:slug`，报告由 Vue 直接渲染（无 iframe），打开即为报告正文；顶部提供返回报告库和可搜索的报告切换器，左侧目录可折叠并随滚动高亮当前章节，另支持阅读进度、`←/→` 切换报告和打印。
-- 源文件：报告统一放在本工作区 `report/`；独立报告库归档页为 `research/index.html`。
-- 工作流：股票、主题、产业链、候选公司对比和事件研究默认直接生成 HTML 报告并发布；快速扫描和事件更新同样进入报告库，除非用户明确要求只做分析、不生成文件。
-- 数据：`src/data/stockReports.json` 由清单脚本从 `report/` 生成，包含标题、日期、分类、摘要、关键词和研究优先级。
-- 应用内文档：`src/data/reportDocs/<slug>.json` 保存正文与作用域化 CSS，`src/data/reportSearch.json` 是正文检索索引，`public/research/media/` 存放从报告里外置并转为 WebP 的图片；三者都由 `scripts/build-report-docs.mjs` 生成，不要手工编辑。
-- 静态边界：应用不生成、不托管也不支持 `public/research/stocks/`、`public/research/scripts/report-nav.js` 或 `/research/stocks/*`；报告只通过 Vue 阅读页访问。`research/index.html` 保留为可直接打开的本地归档页，使用工作区源导航；应用服务收到该路径时重定向到 `/investment/research`。
-- 发布：新增或修改报告后，在根目录运行 `npm run research:publish`。该命令会更新独立归档导航、重建应用报告清单与 Vue 文档，并完成构建和本地生产服务重启。
-- GitHub Pages：`npm run pages:build` 生成严格白名单站点，只包含独立报告库、全部 `report/*.html`、报告导航和科技图谱脑图/树状/表格三版。入口为 `https://pjimming.github.io/qianduoduo/research/`；每篇报告和三版科技图谱都有原生返回首页链接，相对路径同时兼容本地 `file://` 和 Pages 子路径。
-- 公开边界：Pages Artifact 不包含 `data/`、R2 账本或截图、API/服务端代码、Vue 构建物和未列入白名单的科技图谱文件。`.github/workflows/deploy-pages.yml` 在 `main` 更新相关文件时自动部署并复核白名单。
-- 边界：报告内容为公开信息研究整理，不构成投资建议，也不进入 R2 收益账本、产品池排序或选品结论。
-
-**新增一篇报告的成本与约束**
-
-- 仍然只需在 `report/` 放一个 HTML，然后执行 `npm run research:publish`；目录、全文检索、图片 WebP 化、导航和图谱联动都会自动生成。
-- 报告必须是静态 HTML：不能包含 `<script>`、内联事件（如 `onclick`）或 `javascript:` 链接，否则发布会在转换阶段报错。
-- 每篇需自带 `<style>`；图片会被抽取并转为 WebP（质量 88，`sharp` 不可用时保留原图）。
-- 科技图谱只识别 `keywords` 里的股票代码；只在正文出现的代码，用 `<!-- rpnav-keywords: 002414 -->` 补充。
-- 截至 2026-10-28 为 26 篇：报告转换通常在 1 秒左右、完整发布约 10–20 秒；当前正文索引构建产物约 877 KiB，报告数量到 50 篇以上时需要重新评估索引拆分。
-
-### A股科技图谱
-
-- 入口：`/investment/tech-map`，可从报告库页或左侧“投资”进入；旧地址 `/research/tech-map` 会自动跳转。
-- 内容：A股科技全景图，包含脑图、树状和表格三种原生 Vue 视图；静态快照为 2026-09-16，覆盖 8 大门类、40 个子行业、156 个细分方向和 750 家代表公司。
-- 数据与组件：数据在 `src/data/techmap.json`，类型和统计在 `src/data/techmap.ts`，视图组件在 `src/components/techmap/`，共享样式在 `src/styles/techmap.css`。
-- 交互：脑图支持滚轮/按钮缩放、拖拽、逐级展开、搜索定位和适应屏幕；树状支持逐级折叠、全部展开和只留骨架；表格支持门类筛选、方向/公司搜索。三种视图均支持打印当前视图，页面支持全屏查看和 `?view=canvas|tree|table` 视图切换。
-- 布局：采用紧凑标题、顶部视图切换栏和全高内容区；桌面端三种视图填满剩余视口，移动端树状与表格使用页面自然滚动。
-- 边界：该模块是 A 股产业资料，不属于 R2 理财产品，不进入收益账本、产品池排序或选品结论，也不构成投资建议。
-- 归档：`public/research/techmap/` 保留原始静态 HTML，仅作资料来源归档；三版固定工具条保留原生“返回首页”入口和脑图/树状/表格切换。
-- 更新：更新 `src/data/techmap.json` 中的快照，并同步核对类型、统计和 `test/techmap.test.mjs` 的数量断言；数据日期与风险边界不得随意改变。
+入口为 `/investment/tech-map`，数据来自 `src/data/techmap.json`，提供脑图、树状和表格视图。图谱属于 A 股产业资料，不进入 R2 账本或产品配置。
 
 ## 数据与接口
 
-- `GET /api/dashboard`：兼容入口，纯读取完整 Dashboard；R2 页面首屏不再调用该完整接口。
-- `GET /api/dashboard/sections?include=summary,ledger`：按需组合只读分区；`include` 支持 `summary`、`overview`、`ledger`、`trades`、`products`、`evaluation`、`inbox`。
-- `GET /api/dashboard/summary|overview|ledger|trades|products|evaluation|inbox`：读取单个只读分区。七页分别加载概览、收益与复盘、产品与持仓、评估和消息中心所需数据。
-- `POST /api/dashboard/refresh`：显式执行决策提案、提醒生命周期和消息中心投影，并返回刷新后的完整 Dashboard 兼容响应。服务启动、后台巡检和写操作完成后也会自动投影。
-- `GET /api/review/workspace`：复盘与评估数据（决策、交易流水、收件箱、自动推导持仓、事件、五问、季度清单、持仓汇总、对账和时间轴）。
-- `GET /api/automation/workspace`：自动评估、通知、草稿、任务队列、设置和调度状态。
-- `GET /api/calibration/monthly?month=YYYY-MM`：按预测类型和置信度分桶的月度校准，包含命中率、待验证、失效、误差来源和逐条记录。
-- `GET /api/calibration/predictions/:id`：下钻单条预测的预测版本、实际结果和证据摘要。
-- `POST /api/calibration/predictions/:id/confirm`：人工确认低置信度预测的 `hit` 或 `miss`；未确认结果不计入命中率。
-- `GET /api/decision-proposals`：待采纳、已采纳待执行、已执行及历史提案。
-- `POST /api/decision-proposals/:id/adopt|reject`：采纳或拒绝提案；采纳只生成待执行决策，不创建交易。
-- `POST /api/automation/run`：立即在独立 worker 中运行一次本地自动化巡检；硬超时、执行中防重入和关闭终止由统一 runner 处理。
-- `PUT /api/automation/settings`：修改目标年化、期限 hurdle、流动性/单只上限、置信度门槛和巡检间隔。
-- `POST /api/evaluations/:id/apply|undo`：人工确认或撤销一条评估。
-- `POST /api/notifications/:id/read|unread|resolve`、`POST /api/notifications/read-all`：处理提醒。
-- `POST /api/automation/jobs/:id/resolve`：标记 Codex 判断任务完成、跳过或失败。
-- `GET/POST /api/review/drafts/:type/:period/generate|confirm`：读取、生成或确认月度/季度复盘草稿。
-- `GET/POST /api/trades`：读取交易总览或新增交易。
-- `PUT /api/trades/:id`：修改交易并写入审计留痕。
-- `POST /api/trades/:id/confirm|cancel`：确认或撤销交易。
-- `GET /api/trades/:id/audit`：读取单笔交易的修改留痕。
-- `GET/POST /api/trades/inbox`：读取收件箱或上传成交截图（JSON Base64，单张不超过 10 MB）。
-- `PUT /api/trades/inbox/:id`：保存人工校正后的识别字段。
-- `POST /api/trades/inbox/:id/apply|ignore`：生成/匹配交易或忽略截图。
-- `POST /api/trades/inbox/:id/vision-apply`：按视觉识别的字段写入，并用 OCR 金额/代码交叉校验；冲突、产品未收录或无匹配交易时返回 409。
-- `GET /api/trades/inbox/:id/image`：读取本地归档截图。
-- `POST /api/trades/inbox/prune`：清理 30–3650 天前已处理或已忽略的原图。
-- `GET/POST /api/income/inbox`：读取收益截图收件箱或上传收益截图。
-- `POST /api/income/inbox/:id/apply|ignore`：归档已确认产品明细并自动按产品合计创建或更新账户总账，或忽略截图；截图中的账户金额只作可选核对，不能覆盖产品汇总。
-- `GET /api/product-valuations?product_code=...`：读取逐产品收益摘要、完整逐日记录、覆盖区间和修正审计；不传代码时返回近期对账结果。
-- `POST /api/product-valuations`、`PUT /api/product-valuations/:id`：补录或修正产品收益，并写入审计留痕。合并收益可传 `covered_yield_dates` 或 `coverage_start_date + coverage_end_date`；区间必须包含该记录自身的 `yield_date`，只表示来源覆盖，金额只记最后归属日，不向前几日补 0、均分或复制。错误区间可用 `clear_coverage=true` 撤回，审计和备注均保留撤回标记。
-- `GET/POST /api/holding-valuations`：读取由持仓本金和逐产品收益派生的当前净值及银行对照结果，或追加快照；银行快照不再决定主净值，总市值必填，逐产品明细可选但填写时必须覆盖全部当前确认持仓并与总额一致。
-- `POST /api/holding-valuations/evidence`、`GET /api/holding-valuations/evidence/:id/image`：保存或读取可选银行持仓截图，快照写入时通过 `evidence_id` 绑定。
-- `POST/PUT/DELETE /api/review/decisions`：决策日志的增改删。
-- `POST /api/review/decisions/:id/predictions`：追加一条不可改写历史的新预测版本；旧版本和结果继续保留。
-- `POST/PUT/DELETE /api/review/holdings`：兼容旧接口，实际写入或撤销买入交易，持仓仍由流水推导。
-- `POST/PUT/DELETE /api/review/events`：产品事件的增改删。
-- `PUT /api/review/notes/:month`：保存指定月份的月度五问。
-- `PUT /api/review/quarterly/:quarter`：保存指定季度的复盘清单。
-- `GET /api/review/export?month=YYYY-MM`：导出指定月份的 Markdown 复盘。
-- `POST /api/capital/init`：首次初始化起始本金。
-- `PUT /api/capital/init`：调整起始本金，并重算历史本金快照。
-- `POST /api/capital/events`：记录转入或转出。
-- `DELETE /api/capital/events/:id`：删除一笔转入或转出。
-- `POST /api/products/refresh`：重新读取本地产品 CSV，替换当前产品快照。
-- `PUT /api/holding-reviews/:code`：保存单只产品的赎回 T+N、到账 T+N、候选申购确认 T+N、费用、下一赎回开放日和核验日期。实际使用期限桶固定的 `30/100/360` 天复利比较，T+N 计算本次切换等待期并从有效计息天数扣除；未核验时使用带 `estimated` 标识的默认估算。旧的 `idle_days`、`compare_horizon_days` 和设置级 `min_gain_amount` 请求会被拒绝，返回重算后的完整工作台。
-- `GET /api/dashboard/products` 的 `workspace.holding_reviews`：逐只持仓的候选、盈亏平衡、数据缺口、提醒与最近替换决策；完整兼容响应仍位于 `GET /api/dashboard`。
-- `GET /api/backups`：列出本地数据库备份。
-- `POST /api/backups`：立即生成当天备份（每天启动时也会自动生成一次）。
-- `POST /api/records`：按收益日期幂等新增；同日期同金额返回 `duplicate`，不同金额返回 `conflict` 并生成消息中心提醒，不覆盖原记录。
-- `PUT /api/records/:date`：修改指定日期记录。
-- `DELETE /api/records/:date`：删除指定日期记录。
-- `GET /api/export.csv`：导出台账 CSV。
-- `POST /api/inbox/confirmations`：写入 Codex 待确认事项。临时桥接本金需传 `metadata.capital_bridge`，包含金额、转入/转出日期、目标本金和已有决策 ID；逐产品收益待补需传 `metadata.product_income_requirement={product_code,yield_date}`。两类提醒都会在对应正式事实完成后自动关闭。
+主要数据源：
 
-服务默认只监听 `127.0.0.1`，不要把它直接暴露到公网。需要换端口时可设置 `PORT` 环境变量。
+- R2 账本：`data/r2_ledger.sqlite`
+- 产品快照：`data/cmb_r2_*.csv`
+- 市场简报：`market-briefs/*.md`
+- 调研报告：`report/*.html`
+- 科技图谱：`src/data/techmap.json`
 
-写接口只接受同源请求和 `application/json`，避免浏览器里的其他网页直接改动本地账本。
+完整 API、请求字段和返回口径统一维护在 [USAGE.md](USAGE.md#14-api-参考)，避免 README 与代码各维护一份。
 
-## 数据备份
+## 备份与测试
 
-服务每次启动会在 `data/backups/` 生成当天的 `r2_ledger-YYYY-MM-DD.sqlite`，默认保留最近 45 份。也可以手动操作：
+服务启动时生成当天 SQLite 备份，默认保留最近 45 份：
 
 ```powershell
 npm run db:list
 npm run db:backup
-npm run db:preflight:data-trust
-npm run db:migrate:data-trust
-npm run db:verify:data-trust
-npm run prod:stop
-npm run db:restore -- 2026-10-18
-npm run prod:restart
+npm run db:restore -- YYYY-MM-DD
 ```
 
-恢复前会自动保留一份 `pre-restore-*.sqlite`；服务运行中会拒绝恢复。
-
-财富数据可信度迁移必须在生产服务停止后显式执行；生产启动使用
-`migrationPolicy=require`，迁移未完成会拒绝启动。`npm run db:rollback:data-trust`
-可把数据库恢复到最近一次 `pre-data-trust-v1-*` 备份，并自动保留恢复前安全副本。
-
-## 测试
+常用验证：
 
 ```powershell
 npm test
@@ -399,4 +209,4 @@ node --experimental-test-coverage --test
 npm audit --omit=dev
 ```
 
-`npm test` 覆盖 API 兼容、模块路由归属、应用启动/关闭、SQLite 迁移、WAL 备份与恢复、本金快照、交易幂等、部分赎回与持仓批次、交易/收益收件箱去重、OCR 生命周期、事务失败回滚、证据来源链、人工校正版本、并发 apply、调度器失败重试、多产品收益对账、决策提案/评估/复盘、每日简报 Markdown 契约、研究静态隔离、产品排序和科技图谱完整性。`npm run check` 执行 Vue TypeScript 检查与全部 Node.js 语法检查；`npm run test:e2e` 自动构建后用本机 Chrome/Edge 验证七个 R2 入口、双截图入口、来源与修订弹窗、消息中心、提案、复盘、产品收益、持仓复核、交易、收件箱、自动评估、每日简报日期切换、报告阅读器和错误兜底。`node --experimental-test-coverage --test` 输出覆盖率；`npm audit --omit=dev` 检查生产依赖漏洞。
+测试使用临时 SQLite 和受控目录，不读写正式账本。
