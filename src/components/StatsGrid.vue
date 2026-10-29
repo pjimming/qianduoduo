@@ -26,27 +26,8 @@ const window30 = computed(() => props.windows['30'])
 const annualized = computed(() => window30.value.annualized_pct)
 const valuationBadge = computed(() => {
   if (!props.valuation.available) return '暂无确认持仓'
-  const date = props.valuation.income_as_of_date
-    ? formatDateShort(props.valuation.income_as_of_date)
-    : '暂无收益记录'
-  if (props.valuation.bank_reconciliation.status === 'mismatch') {
-    return `${date} · 银行对照有差异`
-  }
-  return `收益至 ${date}`
-})
-
-const valuationSub = computed(() => {
-  if (!props.valuation.available) {
-    return '尚无已确认产品持仓'
-  }
-  return `本金 ¥${formatMoney(
-    props.valuation.active_cost,
-  )} + 产品收益 ${formatSignedMoney(
-    props.valuation.product_income,
-  )} · 待确认 ¥${formatMoney(
-    props.valuation.pending_buy_amount,
-    0,
-  )} 未计入`
+  if (!props.valuation.income_as_of_date) return '暂无收益记录'
+  return `收益截至 ${formatDateShort(props.valuation.income_as_of_date)}`
 })
 
 const annualizedSub = computed(() => {
@@ -93,9 +74,9 @@ function tone(value: number | null): string {
 <template>
   <section class="stats-grid" aria-label="收益概览">
     <article class="stat-card stat-primary">
-      <div class="stat-head">
+      <div class="stat-head stat-primary-head">
         <span>已确认持仓净值</span>
-        <span class="soft-badge">{{ valuationBadge }}</span>
+        <span class="soft-badge stat-date-badge">{{ valuationBadge }}</span>
       </div>
       <strong class="stat-value">
         {{
@@ -104,9 +85,39 @@ function tone(value: number | null): string {
             : '—'
         }}
       </strong>
-      <p class="stat-sub">{{ valuationSub }}</p>
-      <svg class="stat-spark" viewBox="0 0 180 44" aria-hidden="true">
-        <template v-if="sparkline">
+      <div
+        v-if="valuation.available && valuation.current_value !== null"
+        class="stat-primary-breakdown"
+        aria-label="已确认持仓构成"
+      >
+        <span class="stat-primary-metric">
+          <span>本金</span>
+          <strong>¥{{ formatMoney(valuation.active_cost) }}</strong>
+        </span>
+        <span class="stat-primary-metric is-gain">
+          <span>产品收益</span>
+          <strong>{{ formatSignedMoney(valuation.product_income) }}</strong>
+        </span>
+      </div>
+      <p v-else class="stat-sub">尚无已确认产品持仓</p>
+      <p
+        v-if="
+          valuation.available &&
+          valuation.bank_reconciliation.status === 'mismatch'
+        "
+        class="stat-primary-alert"
+      >
+        <span class="stat-primary-alert-mark" aria-hidden="true">!</span>
+        <span>银行对照有差异</span>
+      </p>
+      <div v-if="sparkline" class="stat-spark-band">
+        <span class="stat-spark-label">收益走势</span>
+        <svg
+          class="stat-spark"
+          viewBox="0 0 180 44"
+          role="img"
+          aria-label="已确认持仓收益走势"
+        >
           <defs>
             <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="var(--green)" stop-opacity=".24" />
@@ -130,8 +141,8 @@ function tone(value: number | null): string {
             stroke="var(--chart-point)"
             stroke-width="1.2"
           />
-        </template>
-      </svg>
+        </svg>
+      </div>
     </article>
 
     <article class="stat-card">

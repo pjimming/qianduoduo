@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+} from 'vue'
 import type { CSSProperties } from 'vue'
 import type { LedgerRecord, RangeValue } from '@/types/dashboard'
 import {
@@ -23,6 +30,10 @@ import {
 
 const props = defineProps<{
   records: LedgerRecord[]
+  range: RangeValue
+}>()
+const emit = defineEmits<{
+  'update:range': [value: RangeValue]
 }>()
 
 const ranges: Array<{ value: RangeValue; label: string }> = [
@@ -32,7 +43,6 @@ const ranges: Array<{ value: RangeValue; label: string }> = [
   { value: 'all', label: '全部' },
 ]
 
-const range = ref<RangeValue>(30)
 const host = ref<HTMLDivElement | null>(null)
 const wrapper = ref<HTMLDivElement | null>(null)
 const svg = ref<SVGSVGElement | null>(null)
@@ -44,7 +54,7 @@ const activeRecord = ref<LedgerRecord | null>(null)
 const activePoint = ref<ChartPoint<LedgerRecord> | null>(null)
 let observer: ResizeObserver | null = null
 
-const chartRecords = computed(() => rangeRecords(props.records, range.value))
+const chartRecords = computed(() => rangeRecords(props.records, props.range))
 const height = computed(() => (width.value < 760 ? 300 : 340))
 
 interface AxisLabel {
@@ -225,7 +235,7 @@ const rangeSummary = computed(() => {
 })
 
 function setRange(value: RangeValue): void {
-  range.value = value
+  emit('update:range', value)
   tooltipVisible.value = false
 }
 
@@ -275,6 +285,14 @@ function measure(): void {
   width.value = Math.max(320, host.value.clientWidth || 900)
 }
 
+watch(
+  () => props.range,
+  () => {
+    tooltipVisible.value = false
+    activePoint.value = null
+  },
+)
+
 onMounted(() => {
   measure()
   if (host.value) {
@@ -302,6 +320,7 @@ onUnmounted(() => {
           :key="item.value"
           type="button"
           :class="{ 'is-active': range === item.value }"
+          :aria-pressed="range === item.value"
           @click="setRange(item.value)"
         >
           {{ item.label }}

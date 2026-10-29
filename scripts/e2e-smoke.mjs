@@ -861,15 +861,74 @@ async function main() {
       () => document.documentElement.dataset.theme === 'dark',
     )
 
-    const currentValueCard =
-      (await page.locator('.stat-primary').textContent()) ?? ''
+    const currentValueCard = page.locator('.stat-primary')
+    const currentValueCardText = (await currentValueCard.textContent()) ?? ''
     assert(
-      currentValueCard.includes('已确认持仓净值') &&
-        currentValueCard.includes('¥3,002.02') &&
-        currentValueCard.includes('待确认 ¥0 未计入'),
-      `首页没有使用逐产品收益推算净值：${currentValueCard}`,
+      currentValueCardText.includes('已确认持仓净值') &&
+        currentValueCardText.includes('收益截至') &&
+        currentValueCardText.includes('¥3,002.02') &&
+        currentValueCardText.includes('本金') &&
+        currentValueCardText.includes('产品收益') &&
+        !currentValueCardText.includes('待确认') &&
+        !currentValueCardText.includes('未计入'),
+      `首页持仓净值卡展示不正确：${currentValueCardText}`,
+    )
+    const currentValueCardLayout = await currentValueCard.evaluate((card) => {
+      const breakdown = card.querySelector('.stat-primary-breakdown')
+      const chart = card.querySelector('.stat-spark')
+      if (!breakdown) return null
+      const cardRect = card.getBoundingClientRect()
+      const breakdownRect = breakdown.getBoundingClientRect()
+      const chartRect = chart?.getBoundingClientRect() ?? null
+      return {
+        noOverflow: card.scrollWidth <= card.clientWidth + 1,
+        chartBelowBreakdown:
+          !chartRect || breakdownRect.bottom <= chartRect.top + 0.5,
+        chartInsideCard:
+          !chartRect ||
+          (chartRect.left >= cardRect.left - 0.5 &&
+            chartRect.right <= cardRect.right + 0.5 &&
+            chartRect.bottom <= cardRect.bottom + 0.5),
+      }
+    })
+    assert(
+      currentValueCardLayout?.noOverflow &&
+        currentValueCardLayout.chartBelowBreakdown &&
+        currentValueCardLayout.chartInsideCard,
+      `首页持仓净值卡内容重叠或溢出：${JSON.stringify(currentValueCardLayout)}`,
     )
     await assertFontFloor(page, '.stats-grid', '收益概览桌面端')
+    const assetRangeGroup = page.locator('[data-range-group="assets"]')
+    const pnlRangeGroup = page.locator('[data-range-group="pnl"]')
+    const activeRangeText = async (group) =>
+      (
+        (await group.locator('button[aria-pressed="true"]').textContent()) ??
+        ''
+      ).trim()
+    assert(
+      (await activeRangeText(assetRangeGroup)) === '30天' &&
+        (await activeRangeText(pnlRangeGroup)) === '30天',
+      '两张收益图初始时间范围没有保持一致',
+    )
+    await assetRangeGroup.getByRole('button', { name: '7天' }).click()
+    assert(
+      (await activeRangeText(assetRangeGroup)) === '7天' &&
+        (await activeRangeText(pnlRangeGroup)) === '7天',
+      '累计收益图切换时间范围后，每日收益图没有联动',
+    )
+    await pnlRangeGroup.getByRole('button', { name: '90天' }).click()
+    assert(
+      (await activeRangeText(assetRangeGroup)) === '90天' &&
+        (await activeRangeText(pnlRangeGroup)) === '90天',
+      '每日收益图切换时间范围后，累计收益图没有联动',
+    )
+    await pnlRangeGroup.getByRole('button', { name: '全部' }).click()
+    assert(
+      (await activeRangeText(assetRangeGroup)) === '全部' &&
+        (await activeRangeText(pnlRangeGroup)) === '全部',
+      '两张收益图没有同步切换到全部区间',
+    )
+    await assetRangeGroup.getByRole('button', { name: '30天' }).click()
     const pnlChart = page
       .locator('.chart-panel')
       .filter({ hasText: '每日收益与收益率' })
@@ -1044,6 +1103,38 @@ async function main() {
     }
     await assertFontFloor(page, '.return-attribution', '目标差距归因桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
+    const mobileCurrentValueCardLayout = await currentValueCard.evaluate(
+      (card) => {
+        const breakdown = card.querySelector('.stat-primary-breakdown')
+        const chart = card.querySelector('.stat-spark')
+        if (!breakdown) return null
+        const cardRect = card.getBoundingClientRect()
+        const breakdownRect = breakdown.getBoundingClientRect()
+        const chartRect = chart?.getBoundingClientRect() ?? null
+        return {
+          noCardOverflow: card.scrollWidth <= card.clientWidth + 1,
+          noPageOverflow:
+            document.documentElement.scrollWidth <= window.innerWidth + 1,
+          chartBelowBreakdown:
+            !chartRect || breakdownRect.bottom <= chartRect.top + 0.5,
+          chartInsideCard:
+            !chartRect ||
+            (chartRect.left >= cardRect.left - 0.5 &&
+              chartRect.right <= cardRect.right + 0.5 &&
+              chartRect.bottom <= cardRect.bottom + 0.5),
+        }
+      },
+    )
+    assert(
+      mobileCurrentValueCardLayout?.noCardOverflow &&
+        mobileCurrentValueCardLayout.noPageOverflow &&
+        mobileCurrentValueCardLayout.chartBelowBreakdown &&
+        mobileCurrentValueCardLayout.chartInsideCard,
+      `移动端持仓净值卡内容重叠或溢出：${JSON.stringify(
+        mobileCurrentValueCardLayout,
+      )}`,
+    )
+    await assertFontFloor(page, '.stat-primary', '收益概览移动端持仓卡')
     await assertNoLargeLightSurface(
       page,
       '.return-attribution',

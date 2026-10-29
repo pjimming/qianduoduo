@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import HeroSection from '@/components/HeroSection.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import AssetChart from '@/components/AssetChart.vue'
 import PnlChart from '@/components/PnlChart.vue'
 import ReturnAttributionPanel from '@/components/r2/ReturnAttributionPanel.vue'
-import type { DashboardPayload } from '@/types/dashboard'
+import type { DashboardPayload, RangeValue } from '@/types/dashboard'
 
 const props = defineProps<{
   dashboard: DashboardPayload
 }>()
+
+const chartRange = ref<RangeValue>(30)
 
 const pendingInbox = computed(
   () =>
@@ -35,6 +37,10 @@ const pendingProposals = computed(
   () => props.dashboard.decision_proposals.summary.pending,
 )
 const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
+
+function setChartRange(value: RangeValue): void {
+  chartRange.value = value
+}
 
 const shortcuts = computed(() => [
   {
@@ -77,8 +83,16 @@ const shortcuts = computed(() => [
     />
 
     <section class="r2-overview-charts" aria-label="收益图表">
-      <AssetChart :records="dashboard.records" />
-      <PnlChart :records="dashboard.records" />
+      <AssetChart
+        :records="dashboard.records"
+        :range="chartRange"
+        @update:range="setChartRange"
+      />
+      <PnlChart
+        :records="dashboard.records"
+        :range="chartRange"
+        @update:range="setChartRange"
+      />
     </section>
 
     <div

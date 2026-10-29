@@ -2414,6 +2414,22 @@ button.hr-compare-name {
   height: 34px;
 }
 
+.r2-page.r2-page-overview .stats-grid .stat-primary-breakdown {
+  margin-top: 8px;
+}
+
+.r2-page.r2-page-overview .stats-grid .stat-primary .stat-spark {
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  height: 34px;
+  opacity: 1;
+}
+
+.r2-page.r2-page-overview .stats-grid .stat-spark-band {
+  margin-top: auto;
+}
+
 .r2-overview-charts {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2471,6 +2487,20 @@ button.hr-compare-name {
   .r2-page-overview .r2-overview-charts .chart-wrap,
   .r2-page-overview .r2-overview-charts .chart-wrap-tall {
     height: 300px;
+  }
+}
+
+@media (max-width: 620px) {
+  .r2-page.r2-page-overview .stats-grid .stat-primary {
+    min-height: 0;
+  }
+
+  .r2-page.r2-page-overview .stats-grid .stat-primary-breakdown {
+    gap: 4px 12px;
+  }
+
+  .r2-page.r2-page-overview .stats-grid .stat-spark-band {
+    margin-top: 10px;
   }
 }
 
