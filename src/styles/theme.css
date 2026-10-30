@@ -1047,6 +1047,33 @@ html[data-theme='dark'] body {
   border-bottom-color: #55788d;
 }
 
+/* 安培龙报告：覆盖研究正文自己的浅色调色板，保留信息层级与状态语义。 */
+:root[data-theme='dark'] .rp-doc.ampron-report {
+  --ink: #eef2f2;
+  --ink2: #c8d2d2;
+  --ink3: #9ba7a8;
+  --line: #333d40;
+  --line2: #2c3335;
+  --bg: #141719;
+  --card: #1d2225;
+  --soft: #181d1f;
+  --navy: #eef2f2;
+  --blue: #a7d2e8;
+  --gold: #d8bd7b;
+  --red: #ff9c90;
+  --green: #91d5b4;
+  --amber: #e5c88e;
+  --ok-bg: #183128;
+  --ok-line: #34634f;
+  --watch-bg: #30291c;
+  --watch-line: #6e5b32;
+  --red-bg: #3a2422;
+  --red-line: #75413d;
+  --hero-1: #0d1823;
+  --hero-2: #173044;
+  --hero-3: #1b5261;
+}
+
 /* 正海磁材报告：在现有报告阅读器深色框架内补齐自定义卡片与状态色。 */
 :root[data-theme='dark'] .rp-doc.zhenghai-report {
   --ink3: #9ba7a8;
