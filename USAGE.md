@@ -176,7 +176,7 @@ node scripts/split-trade-rows.mjs <图片> <输出目录>
 - 持仓由确认买入批次和赎回匹配自动推导。
 - “未赎回成本本金”是确认买入金额减已匹配赎回本金，不是余额或当前市值。
 - 当前持仓净值 = 确认持仓本金 + 逐产品累计个人收益。
-- 银行持仓截图只作对照证据；没有快照也能派生当前净值。
+- 当前净值只按未赎回确认持仓本金和逐产品累计收益派生，不再维护银行市值对照。
 
 结构检查包括：
 
@@ -446,8 +446,8 @@ Pages 只承载公开研究内容，不包含 R2 数据、账户事实、截图�
 - `POST /api/income/inbox/:id/apply|ignore`：归档产品收益或忽略截图。
 - `GET /api/product-valuations?product_code=...`：逐产品收益、覆盖区间和修正审计。
 - `POST /api/product-valuations`、`PUT /api/product-valuations/:id`：补录或修正产品收益。
-- `GET/POST /api/holding-valuations`：读取派生当前净值或追加快照。
-- `POST /api/holding-valuations/evidence`、`GET /api/holding-valuations/evidence/:id/image`：保存或读取银行对照截图。
+- `GET/POST /api/holding-valuations`：兼容读取派生当前净值；历史快照能力不再由工作台界面使用。
+- `POST /api/holding-valuations/evidence`、`GET /api/holding-valuations/evidence/:id/image`：兼容保留历史银行对照截图。
 
 ### 决策、事件、本金和产品
 

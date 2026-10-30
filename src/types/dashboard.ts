@@ -1733,55 +1733,6 @@ export interface ProductValuationMutationResponse {
   dashboard: DashboardPayload
 }
 
-export interface HoldingValuationItemInput {
-  product_code: string
-  product_name?: string
-  market_value: number
-}
-
-export interface HoldingValuationInput {
-  as_of_date: string
-  total_value: number
-  source?: string
-  evidence_id?: number | null
-  notes?: string
-  items?: HoldingValuationItemInput[]
-}
-
-export interface HoldingValuationMutationResponse {
-  snapshot: {
-    id: number
-    as_of_date: string
-    as_of_at: string
-    total_value: number
-    source: string
-    evidence_id: number | null
-    notes: string
-    items: HoldingValuationItem[]
-  }
-  created: boolean
-  dashboard: DashboardPayload
-}
-
-export interface HoldingValuationEvidence {
-  id: number
-  evidence_type: string
-  source_channel: string
-  sha256: string
-  original_name: string
-  storage_namespace: string
-  storage_name: string
-  mime: string
-  bytes: number
-  available: boolean
-  status: string
-}
-
-export interface HoldingValuationEvidenceUploadResponse {
-  evidence: HoldingValuationEvidence
-  duplicate: boolean
-}
-
 export interface ProductYieldSettingInput {
   yield_lag_days: number
   source: Exclude<ProductYieldLagSource, 'default'>

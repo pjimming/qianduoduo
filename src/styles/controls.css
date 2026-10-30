@@ -419,33 +419,6 @@
   color: var(--gain);
 }
 
-.stat-primary-alert {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  gap: 6px;
-  margin: 8px 0 0;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--amber-soft);
-  color: var(--amber);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.stat-primary-alert-mark {
-  display: inline-grid;
-  width: 16px;
-  height: 16px;
-  place-items: center;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1;
-}
-
 .stat-spark-band {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

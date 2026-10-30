@@ -20,6 +20,7 @@
 - 财务写入、截图重放和任务重试必须幂等，通过唯一约束、事务和可恢复状态收敛到同一已提交事实。
 - 财富数据可信链使用 `evidence_assets`、`evidence_events`、`fact_revisions`、`fact_evidence_links`；生产启动要求迁移完成，`R2_DATA_TRUST_MODE` 默认 `shadow`，关闭模式只做逻辑热回滚。
 - `GET /api/dashboard` 保留完整兼容响应；`/api/dashboard/sections` 和各分区接口提供同一只读快照。持久化投影通过 `POST /api/dashboard/refresh`、启动、巡检或写后流程完成，不塞进 GET。
+- 银行市值对照已从工作台前端退役；历史快照、原证据表和兼容接口保留，不参与当前净值、收益计算或用户提示。
 - 自动化 cycle 在独立 worker 运行，由主进程管理超时、防重入、终止和中断恢复；长任务不在 HTTP 或调度线程直接执行。
 - Codex 任务名称、时间、模型和完整提示词以 `codex-automations/README.md` 和本机实际任务定义为准；本文件只记录稳定职责。
 

@@ -621,9 +621,9 @@ async function main() {
     repository.holdingValuationStore.createSnapshot(
       {
         as_of_date: '2026-10-24',
-        total_value: 3003.03,
+        total_value: 3103.03,
         source: 'user-confirmed',
-        notes: 'E2E 银行对照市值',
+        notes: 'E2E 已退役银行对照市值',
       },
       { today: '2026-10-24' },
     )
@@ -727,6 +727,10 @@ async function main() {
 
     await page.goto(`${base}/`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.stats-grid')
+    assert(
+      !(await page.locator('.stats-grid').innerText()).includes('银行对照'),
+      '收益概览仍显示已退役的银行对照告警',
+    )
     assert(
       new URL(page.url()).pathname === '/ledger/overview',
       '根路径应重定向到收益概览',
@@ -1545,10 +1549,11 @@ async function main() {
       (await page.locator('#current-value').textContent()) ?? ''
     assert(
       currentValuationPanel.includes('¥3,003.02') &&
-        currentValuationPanel.includes('银行对照') &&
-        currentValuationPanel.includes('¥3,003.03') &&
-        currentValuationPanel.includes('银行对照一致 ±¥0.01'),
-      `持仓净值派生或银行对照不正确：${currentValuationPanel}`,
+        currentValuationPanel.includes('按产品收益推算') &&
+        !currentValuationPanel.includes('银行对照') &&
+        !currentValuationPanel.includes('¥3,103.03') &&
+        !currentValuationPanel.includes('查看银行原始证据'),
+      `持仓净值派生或银行对照移除不完整：${currentValuationPanel}`,
     )
     assert(
       (await page.locator('.back-to-top').count()) === 0,

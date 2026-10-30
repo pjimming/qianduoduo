@@ -310,6 +310,7 @@ a.r2-head-chip:hover {
 
 .pv-card {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 7px;
   min-width: 0;
   padding: 13px;

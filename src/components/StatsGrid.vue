@@ -100,16 +100,6 @@ function tone(value: number | null): string {
         </span>
       </div>
       <p v-else class="stat-sub">尚无已确认产品持仓</p>
-      <p
-        v-if="
-          valuation.available &&
-          valuation.bank_reconciliation.status === 'mismatch'
-        "
-        class="stat-primary-alert"
-      >
-        <span class="stat-primary-alert-mark" aria-hidden="true">!</span>
-        <span>银行对照有差异</span>
-      </p>
       <div v-if="sparkline" class="stat-spark-band">
         <span class="stat-spark-label">收益走势</span>
         <svg

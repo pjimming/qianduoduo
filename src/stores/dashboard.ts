@@ -18,9 +18,6 @@ import type {
   HoldingInput,
   HoldingMutationResponse,
   HoldingReviewSettingInput,
-  HoldingValuationInput,
-  HoldingValuationEvidenceUploadResponse,
-  HoldingValuationMutationResponse,
   IncomeCaptureResponse,
   IncomeApplyResponse,
   IncomeInboxParsed,
@@ -245,34 +242,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     })
     dashboard.value = response.dashboard
     return response.dashboard
-  }
-
-  async function saveHoldingValuation(
-    input: HoldingValuationInput,
-  ): Promise<HoldingValuationMutationResponse> {
-    const response = await apiRequest<HoldingValuationMutationResponse>(
-      '/api/holding-valuations',
-      {
-        method: 'POST',
-        body: JSON.stringify(input),
-      },
-    )
-    dashboard.value = response.dashboard
-    return response
-  }
-
-  async function uploadHoldingValuationEvidence(input: {
-    filename: string
-    mime: string
-    data: string
-  }): Promise<HoldingValuationEvidenceUploadResponse> {
-    return apiRequest<HoldingValuationEvidenceUploadResponse>(
-      '/api/holding-valuations/evidence',
-      {
-        method: 'POST',
-        body: JSON.stringify(input),
-      },
-    )
   }
 
   async function loadAutomation(): Promise<AutomationWorkspace> {
@@ -867,8 +836,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     refreshProducts,
     updateAllocationSettings,
     saveHoldingReviewSetting,
-    saveHoldingValuation,
-    uploadHoldingValuationEvidence,
     loadAutomation,
     loadCalibration,
     confirmCalibrationPrediction,

@@ -11,51 +11,19 @@ const props = defineProps<{
   valuation: CurrentHoldingsValuation
 }>()
 
-const bank = computed(() => props.valuation.bank_reconciliation)
-
 const statusLabel = computed(() => {
   if (!props.valuation.available) return '暂无确认持仓'
-  if (props.valuation.stale_reasons.length) return '推算净值需复核'
-  if (bank.value.status === 'mismatch') return '银行对照有差异'
-  if (bank.value.status === 'rounding') return '银行对照一致 ±¥0.01'
-  if (bank.value.status === 'matched') return '银行对照一致'
-  return '净值按产品收益推算'
+  if (props.valuation.missing_income_product_codes.length) {
+    return '部分产品收益待补'
+  }
+  return '按产品收益推算'
 })
 
 const statusTone = computed(() => {
-  if (
-    bank.value.status === 'mismatch' ||
-    props.valuation.stale_reasons.length
-  ) {
+  if (props.valuation.missing_income_product_codes.length) {
     return 'is-warn'
   }
   return 'is-ok'
-})
-
-const bankStatusLabel = computed(() => {
-  if (bank.value.status === 'missing') return '未录入（可选）'
-  if (bank.value.status === 'outdated') return '历史快照（无需更新）'
-  if (bank.value.status === 'mismatch') return '有差异，需复核'
-  if (bank.value.status === 'rounding') return '一致 ±¥0.01'
-  return '一致'
-})
-
-const bankContextNote = computed(() => {
-  if (bank.value.status === 'missing') {
-    return '银行对照是可选证据，未录入不影响按产品收益推算的当前净值。'
-  }
-  if (bank.value.status === 'outdated') {
-    const latestChangeDate = props.valuation.latest_confirmed_change_date
-    return `银行快照早于最近确认交易${
-      latestChangeDate ? `（${formatDateShort(latestChangeDate)}）` : ''
-    }；它只保留为历史证据，无需每日更新，也不参与当前差额计算。`
-  }
-  return ''
-})
-
-const differenceLabel = computed(() => {
-  if (bank.value.difference === null) return '—'
-  return formatSignedMoney(bank.value.difference)
 })
 
 const coverageNote = computed(() => {
@@ -148,70 +116,10 @@ const coverageNote = computed(() => {
         =
         ¥{{ formatMoney(valuation.current_value ?? 0) }}
       </strong>
-      <small>金额按分记录和汇总；银行对照差异不超过 ¥0.01 视为舍入差异。</small>
+      <small>金额按分记录，并按逐产品收益档案汇总。</small>
     </div>
 
     <p class="nav-note">{{ coverageNote }}</p>
-
-    <div class="nav-bank" :class="statusTone">
-      <div>
-        <span>银行对照（可选）</span>
-        <strong>
-          {{
-            bank.available && bank.bank_value !== null
-              ? `¥${formatMoney(bank.bank_value)}`
-              : '尚未录入'
-          }}
-        </strong>
-      </div>
-      <div>
-        <span>对照日期</span>
-        <strong>
-          {{ bank.as_of_date ? formatDateShort(bank.as_of_date) : '—' }}
-        </strong>
-      </div>
-      <div>
-        <span>推算 − 银行</span>
-        <strong>{{ differenceLabel }}</strong>
-      </div>
-      <div>
-        <span>对照状态</span>
-        <strong>{{ bankStatusLabel }}</strong>
-      </div>
-      <a
-        v-if="bank.evidence_id"
-        :href="`/api/holding-valuations/evidence/${bank.evidence_id}/image`"
-        target="_blank"
-        rel="noreferrer"
-      >
-        查看银行原始证据
-      </a>
-    </div>
-
-    <div v-if="bankContextNote" class="rw-alerts">
-      <span class="rw-alert is-info">{{ bankContextNote }}</span>
-    </div>
-    <div
-      v-if="bank.status === 'mismatch' && bank.stale_reasons.length"
-      class="rw-alerts"
-    >
-      <span
-        v-for="reason in bank.stale_reasons"
-        :key="reason"
-        class="rw-alert is-warn"
-      >
-        {{ reason }}
-      </span>
-    </div>
-    <div v-if="valuation.stale_reasons.length" class="rw-alerts">
-      <span
-        v-for="reason in valuation.stale_reasons"
-        :key="reason"
-        class="rw-alert is-warn"
-      >
-        {{ reason }}
-      </span>
-    </div>
 
     <div class="nav-components">
       <div class="nav-components-head">
@@ -286,11 +194,6 @@ const coverageNote = computed(() => {
   color: #a33d23;
 }
 
-.nav-status.is-note {
-  background: #fff3e4;
-  color: #9a5a12;
-}
-
 .nav-hero {
   display: grid;
   grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.5fr);
@@ -308,7 +211,6 @@ const coverageNote = computed(() => {
 .nav-facts span,
 .nav-formula span,
 .nav-formula small,
-.nav-bank span,
 .nav-components-head span,
 .nav-components td small {
   color: #65746e;
@@ -348,8 +250,7 @@ const coverageNote = computed(() => {
   background: rgba(255, 255, 255, 0.86);
 }
 
-.nav-facts strong,
-.nav-bank strong {
+.nav-facts strong {
   color: #263b34;
   font-size: 14px;
 }
@@ -378,33 +279,6 @@ const coverageNote = computed(() => {
   padding: 9px 12px;
   border-radius: 9px;
   background: #f5f8f6;
-}
-
-.nav-bank {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 12px 14px;
-  border: 1px solid #dfe9e4;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.nav-bank > div {
-  display: grid;
-  gap: 3px;
-}
-
-.nav-bank.is-warn {
-  border-color: #f0c9bd;
-  background: #fffaf8;
-}
-
-.nav-bank a {
-  color: var(--green);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .nav-components {
@@ -471,10 +345,6 @@ const coverageNote = computed(() => {
   }
 
   .nav-facts {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .nav-bank {
     grid-template-columns: 1fr 1fr;
   }
 
