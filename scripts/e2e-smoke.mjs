@@ -3049,6 +3049,82 @@ async function main() {
     )
     await errorPage.close()
 
+    for (const [index, date] of [
+      '2026-09-02',
+      '2026-09-03',
+      '2026-09-04',
+      '2026-09-05',
+    ].entries()) {
+      const response = await fetch(`${base}/api/capital/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_date: date,
+          event_type: 'deposit',
+          amount: 100 + index,
+          note: `E2E 本金变动 ${index + 1}`,
+        }),
+      })
+      assert(response.status === 201, `无法创建第 ${index + 1} 笔本金变动`)
+    }
+
+    for (const scenario of [
+      { theme: 'light', width: 1280, height: 900, label: '桌面浅色' },
+      { theme: 'dark', width: 1280, height: 900, label: '桌面深色' },
+      { theme: 'light', width: 390, height: 844, label: '移动浅色' },
+      { theme: 'dark', width: 390, height: 844, label: '移动深色' },
+    ]) {
+      await page.setViewportSize({
+        width: scenario.width,
+        height: scenario.height,
+      })
+      await page.evaluate((theme) => {
+        localStorage.setItem('qianduoduo:theme:v1', theme)
+      }, scenario.theme)
+      await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
+      await page.waitForSelector('#capitalEventList .capital-event-item')
+      const capitalHistory = await page
+        .locator('#capitalEventList')
+        .evaluate((list) => {
+          const listRect = list.getBoundingClientRect()
+          const items = Array.from(
+            list.querySelectorAll('.capital-event-item'),
+          ).map((item) => {
+            const rect = item.getBoundingClientRect()
+            return {
+              top: rect.top,
+              bottom: rect.bottom,
+            }
+          })
+          return {
+            count: items.length,
+            clientHeight: list.clientHeight,
+            scrollHeight: list.scrollHeight,
+            allItemsInside: items.every(
+              (item) =>
+                item.top >= listRect.top - 1 &&
+                item.bottom <= listRect.bottom + 1,
+            ),
+          }
+        })
+      assert(
+        capitalHistory.count === 4,
+        `${scenario.label}本金变动数量不正确：${capitalHistory.count}`,
+      )
+      assert(
+        capitalHistory.scrollHeight <= capitalHistory.clientHeight + 1 &&
+          capitalHistory.allItemsInside,
+        `${scenario.label}最近本金变动没有完整展示：${JSON.stringify(capitalHistory)}`,
+      )
+      await assertFontFloor(page, '#capitalPanel', `本金变动${scenario.label}`)
+      assert(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+        `本金变动${scenario.label}出现横向溢出`,
+      )
+    }
+
     assert(
       consoleErrors.length === 0,
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
