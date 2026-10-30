@@ -19,7 +19,7 @@
 | QDD-MB-02 | 2026-10-29 | 腾讯指数历史与复核 | `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={symbol},day,{start},{end},{count},qfq` | `symbol` 为 `sh000001`、`sz399001`、`sz399006`、`sh000688`、`sh000300`；读取 `day` 和 `qt`，日期用 `YYYY-MM-DD` |
 | QDD-MB-03 | 2026-10-29 | 上交所股票日终统计 | `https://query.sse.com.cn/commonQuery.do?sqlId=COMMON_SSE_SJ_GPSJ_CJGK_MRGK_C&PRODUCT_CODE=17&type=inParams&SEARCH_DATE=YYYY-MM-DD`；Header `Referer: https://www.sse.com.cn/` | `PRODUCT_CODE=17` 为股票合计，读取 `result[].TRADE_AMT`（亿元）和 `TRADE_DATE` |
 | QDD-MB-04 | 2026-10-29 | 深交所证券类别统计 | `https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1803_sczm&TABKEY=tab1&txtQueryDate=YYYY-MM-DD`；Header `Referer: https://www.szse.cn/` | 读取 `data[]` 中“股票”的 `cjje`（亿元）；含存托凭证，B 股单列，ETF 在基金项下 |
-| QDD-MB-05 | 2026-10-29 | 全 A 涨跌家数 | `https://push2.eastmoney.com/api/qt/clist/get?pn={page}&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048&fields=f3,f12,f14` | 单页约 100 只，按 `pn` 翻页；统计有效 `f3` 的正、负、零；含北交所和 ST，不含 B 股与 ETF |
+| QDD-MB-05 | 2026-10-29 | 全 A 涨跌家数（备用） | `https://push2.eastmoney.com/api/qt/clist/get?pn={page}&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048&fields=f3,f12,f14` | 单页约 100 只，按 `pn` 翻页；统计有效 `f3` 的正、负、零；含北交所和 ST，不含 B 股与 ETF。2026-10-30 连续重试仍断连，当前仅作备用 |
 | QDD-MB-06 | 2026-10-29 | 涨停结构 | `https://push2ex.eastmoney.com/getTopicZTPool?ut=7eea3edcaed734bea9cbfc24409ed989&dpt=wz.ztzt&Pageindex=0&pagesize=500&sort=fbt%3Aasc&date=YYYYMMDD` | 读取 `data.tc`；日期用 `YYYYMMDD` |
 | QDD-MB-07 | 2026-10-29 | 跌停结构 | `https://push2ex.eastmoney.com/getTopicDTPool?ut=7eea3edcaed734bea9cbfc24409ed989&dpt=wz.ztzt&Pageindex=0&pagesize=500&sort=fund%3Aasc&date=YYYYMMDD` | 读取 `data.tc`；日期用 `YYYYMMDD` |
 | QDD-MB-08 | 2026-10-29 | 固定行业分类 | `https://vip.stock.finance.sina.com.cn/q/view/newSinaHy.php` | 解析 `S_Finance_bankuai_sinaindustry`；逗号字段索引 1 为行业名、5 为涨跌幅、7 为成交额；约 49 个宽行业，`次新股`非行业 |
@@ -29,6 +29,7 @@
 | QDD-MB-12 | 2026-10-29 | BEA 发布日历 | `https://www.bea.gov/news/schedule` | 读取已确认的美国宏观发布日期与时间，美东时间换算为北京时间 |
 | QDD-MB-13 | 2026-10-29 | 本地报告索引 | `src/data/stockReports.json` | 只读；按 `date`、`priority`、`category`、`keywords`、`slug` 做确定性匹配 |
 | QDD-MB-14 | 2026-10-29 | 本地健康检查 | `http://127.0.0.1:8765/api/health` | HTTP 200 且 JSON `ok=true` |
+| QDD-MB-17 | 2026-10-30 | 全 A 涨跌家数（主用） | 总数：`https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeStockCount?node=hs_a`；分页：`https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page={page}&num=100&sort=symbol&asc=1&node=hs_a&symbol=&_s_r_a=page`；Header `Referer: https://vip.stock.finance.sina.com.cn/mkt/` | 总数接口返回 JSON 字符串；分页按 `page` 从 1 取至声明总数覆盖，`num=100`，读取 `symbol`、`code`、`name`、`changepercent`、`ticktime`，按 `symbol` 去重后统计正、负、零值。`hs_a` 覆盖沪深北 A 股和 ST，不含 B 股与 ETF；快照日期须用核心指数行情时间戳复核。失败时回退 QDD-MB-05，仍失败则写“未获取到”，不按涨跌停家数推算 |
 
 ## 新接口登记模板
 
