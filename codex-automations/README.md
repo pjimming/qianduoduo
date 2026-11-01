@@ -19,7 +19,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `a` | 钱多多A股收盘每日简报 | 每天 18:00 | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2-2` | 钱多多R2每日巡检（含AI队列与消息中心） | 每天 21:00 | `RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
+| `r2-2` | 钱多多R2工作日巡检（含AI队列与消息中心） | 周一至周五 21:00，法定节假日跳过 | `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 | `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
 
@@ -74,9 +74,10 @@
 
 提示词：[r2-out-of-sample.md](r2-out-of-sample.md)
 
-### `r2-2` — 钱多多R2每日巡检（含AI队列与消息中心）
+### `r2-2` — 钱多多R2工作日巡检（含AI队列与消息中心）
 
-- 每天 21:00 先调用 `POST /api/dashboard/refresh`，再读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
+- 周一至周五 21:00 运行；周六、周日由 RRULE 排除，周一至周五先按 `Asia/Shanghai` 用国务院办公厅当前年度安排或中国政府网正式通知核验法定节假日，放假日静默退出，不调用 API、不刷新投影、不写消息、不发卡片；
+- 节后首个工作日按账本当前累计状态照常巡检，不追补周末调休上班日；通过运行日闸门后先调用 `POST /api/dashboard/refresh`，再读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
 - 第 0 步处理 Codex 判断队列：`screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
 - 第 1–8 步巡检账户收益、逐产品收益档案与账户/产品对账、待确认交易、收件箱、交易对账、到期、现有日开迁移事实、自动评估、复盘节点和服务状态；替换候选写明证据档位、缺失周期与单只 10% 执行闸门；
 - 月度复盘中读取预测校准结果，区分命中、未命中、失效、待验证和未执行；数据不足或未执行不得计入命中率；
@@ -209,7 +210,7 @@ cwds = ["<WORKSPACE>"]
 
 ## 7. 当前环境快照
 
-截至 2026-10-29：
+截至 2026-10-31：
 
 | 项目 | 当前值 |
 | --- | --- |
@@ -217,6 +218,7 @@ cwds = ["<WORKSPACE>"]
 | 本地服务 | `http://127.0.0.1:8765` |
 | 时区 | `Asia/Shanghai` |
 | Codex 定时任务 | 5 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
+| R2 巡检节奏 | `r2-2` 周一至周五 21:00；法定节假日静默跳过 |
 | 生产守护 | Supervisor 运行中，Health OK |
 | 登录自启 | 当前用户 Startup 快捷方式，单次触发，无周期巡检 |
 | 应用自动化 | 目标 3.0%，短/中/长 hurdle 2.5/2.8/3.0%，单只上限 30%，短期桶下限 30%，新增日开 0%，置信度 75%，巡检 5 分钟；包含逐产品收益对账和现有日开迁移提示 |

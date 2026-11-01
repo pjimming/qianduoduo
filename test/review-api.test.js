@@ -144,7 +144,10 @@ test('review API stores decisions, holdings, events, notes and exports Markdown'
   assert.equal(noteResponse.status, 200);
   const notePayload = await noteResponse.json();
   assert.equal(notePayload.note.answers.length, 5);
-  assert.equal(notePayload.dashboard.workspace.notes.length, 1);
+  const savedSeptemberNote = notePayload.dashboard.workspace.notes.find(
+    (note) => note.month === '2026-09',
+  );
+  assert.equal(savedSeptemberNote?.answers.length, 5);
 
   const quarterlyResponse = await postJson(
     `${base}/api/review/quarterly/2026-Q3`,
@@ -162,7 +165,14 @@ test('review API stores decisions, holdings, events, notes and exports Markdown'
   assert.equal(dashboard.workspace.decisions.length, 1);
   assert.equal(dashboard.workspace.holdings.length, 1);
   assert.equal(dashboard.workspace.events.length, 1);
-  assert.equal(dashboard.workspace.notes.length, 1);
+  assert.ok(
+    dashboard.workspace.notes.some(
+      (note) =>
+        note.month === '2026-09' &&
+        note.conclusion === '9 月执行正常' &&
+        note.answers.length === 5,
+    ),
+  );
   assert.equal(dashboard.workspace.quarterly.length, 1);
   assert.equal(dashboard.workspace.timeline.nodes.length, 4);
 

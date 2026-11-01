@@ -205,7 +205,10 @@ test('API supports dashboard, create, duplicate guard, update, export and delete
   assert.equal(created.dashboard.summary.total_pnl, 54);
   assert.equal(created.record.principal, 550000);
   assert.equal(created.dashboard.capital.current_principal, 550000);
-  assert.equal(created.dashboard.review.current_month.month, '2026-10');
+  const createdRecordMonth = created.dashboard.review.monthly.find(
+    (month) => month.month === '2026-10',
+  );
+  assert.equal(createdRecordMonth?.month, '2026-10');
   assert.equal(created.dashboard.review.daily.month_pnl, 54);
   assert.equal(
     created.dashboard.workspace.return_attribution.period.record_days,

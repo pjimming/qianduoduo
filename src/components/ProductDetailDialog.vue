@@ -183,11 +183,6 @@ function oneYearLabel(product: Product): string {
               <small>{{ referenceYieldHint(product) }}</small>
             </div>
             <div class="detail-item">
-              <span>兼容加权年化</span>
-              <strong>{{ referenceYieldLabel(product) }}</strong>
-              <small>字段与期限调整参考年化完全一致</small>
-            </div>
-            <div class="detail-item">
               <span>成立以来</span><strong>{{ pct(product.return_since_inception) }}</strong>
             </div>
             <div class="detail-item">
