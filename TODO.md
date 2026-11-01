@@ -4,12 +4,6 @@
 
 ## 待办
 
-- **`TD-OPS-002` 生产独立托管与故障自恢复**
-  - 将钱多多生产服务从 Codex 会话进程树中迁出，由独立 Windows 计划任务或 Windows 服务托管，确保 Codex 会话退出、重新启动或清理终端子进程时不会连带停止生产服务。
-  - 增加持续健康检查与失败重启：Supervisor 或 Server 消失、健康接口失败时能够自动恢复；同时保留防重复实例、退避重启、停止标记和受控发布能力。
-  - 修正 `prod:status` 的运行态与自启状态口径，避免仅凭快捷方式存在就显示“自启已启用”，并能区分独立托管、实际运行和最近一次恢复结果。
-  - 交付需覆盖安装/卸载、登录与已登录状态、强杀 Supervisor、Node 崩溃、健康接口超时、重复启动和 `prod:stop` 隔离测试；不得使用真实账本做破坏性测试。
-
 - **`TD-YIELD-002` 收益口径收口与跨系统对齐（进行中，阶段 1–5 完成，阶段 6 进行中）**
   - 以已上线的 `r2-dynamic-v4 + r2-term-yield-v1 + front_load_scheme=B` 为唯一基准，补齐 `TD-YIELD-001` 上线后的跨系统一致性、边界语义、审计元数据、自动验收和样本外观察。
   - 重点范围：R2 Skill 与 Python 脚本同步；`unknown` 期限排除；`1–30 / 31–100 / 101+` 文案与可评分统计；持仓复核/提案/收益归因的策略版本和可用窗口；不可计算原因映射；只读生产验收脚本。
@@ -26,6 +20,16 @@
   - 完整规格：[TD-YIELD-002 完整规格](docs/tasks/active/TD-YIELD-002/TD-YIELD-002.md)
 
 ## 近期完成（2026）
+
+- **2026-11-01 `TD-OPS-002` 生产独立登录托管**
+  - 新增当前用户计划任务 `QianDuoDuo-Production`，只有登录触发一次；Supervisor 和 Node Server 从 Codex 会话进程树迁出，运行来源记录为 `task-scheduler`。
+  - 按用户体验要求移除分钟健康巡检和外部 Watchdog。登录任务由 `scripts/production-bootstrap-template.vbs` 生成 `C:\ProgramData\QianDuoDuoProduction` 下的 ASCII 隐藏启动器，经 `wscript.exe //B` 启动一次 PowerShell，安装、卸载、测试和启动子进程均隐藏窗口。
+  - Supervisor 存活期间继续对 Node 崩溃执行 2/4/8/16/32/60 秒递增退避；Supervisor 本身消失后不后台自动恢复，由下次登录或显式 `prod:start` 处理。
+  - `prod:stop` 写持久 `run/host.stop`、停止运行时但保留托管安装；登录启动尊重停止意图。`prod:start` 清除意图并通过计划任务启动，`prod:install`/`prod:uninstall` 独立管理计划任务。
+  - `prod:status` 校验任务动作、用户和唯一登录触发器，分别显示 Hosting、Auto-start、Bootstrap、Independent、Intent、Health 和最近启动结果；旧 Startup 快捷方式迁移为 `.legacy-disabled`，不再参与自启判断。
+  - 验证：`npm run check`、380/380 `npm test`、`npm run build`、完整 `npm run test:e2e`、`npm run test:daemon` 和 `npm run test:host` 全部通过。托管测试使用临时目录、`18766` 端口和一次性任务，覆盖安装/卸载、唯一登录触发、已登录启动、旧手工运行时迁移、重复启动、Node 崩溃重启、停止隔离、无周期恢复和显式恢复。
+  - 正式生产已重启：计划任务 `Ready`、唯一 `MSFT_TaskLogonTrigger`、动作为 `wscript.exe`、无下次运行时间；隐藏启动器日志显示 `-WindowStyle Hidden` 且退出码 `0`。`prod:status` 显示 `Independent=yes`、Health OK、Supervisor 来源 `task-scheduler`；Supervisor 父进程已退出，Server/监听 PID 均为 `14316`，最新 stderr 0 字节且无 `host.stop`。
+  - 完整规格：[TD-OPS-002](docs/tasks/archive/2026/TD-OPS-002/TD-OPS-002.md)；架构契约：[production-host.md](docs/architecture/production-host.md)。
 
 - **2026-11-01 产品快照支持未开放产品只读展示**
   - 产品快照页新增“显示未开放产品”复选框，按需读取独立只读接口并支持代码、名称、发行方和期限筛选；未开放行明确标记“仅展示”，不提供研究详情入口。
@@ -175,11 +179,11 @@
   - 完成全页面深色表面复检，清理本金账户、配置摘要、报告库跨链入口、科技图谱树状根节点以及候选项、设置表单、产品弹窗和来源追溯弹窗中残留的浅色背景，并将账本、复盘历史等悬浮态改为深色交互底色；E2E 的浅色表面检查同时覆盖纯色、渐变与悬浮态。
   - 验证：`npm run check`、231 项 `npm test`、`npm run build`、`npm run test:e2e` 全部通过；E2E 覆盖桌面与移动切换、刷新持久化、全部主页面、报告切换器、科技图谱三种视图及主要弹窗的深色表面检查，并保持 12px 字号下限。
 
-- **2026-10-24 `TD-OPS-001` 以登录自启替代外部 Watchdog**
+- **2026-10-24 `TD-OPS-001` 以登录自启替代外部 Watchdog（历史，已由 `TD-OPS-002` 取代）**
   - 删除 `scripts/install-watchdog.ps1`，移除 Supervisor 对 Windows 计划任务和登录启动快捷方式的创建、启用、禁用及状态展示逻辑。
   - 新增登录自启：优先注册单次任务 `QianDuoDuo-AutoStart`；当前账户无计划任务权限时回退到 Startup 快捷方式。两者都只在当前用户登录时执行一次 `daemon.ps1 -Action start`，没有重复触发、健康巡检或看门狗循环。
-  - `prod:deploy` 注册登录自启、重启 Supervisor 并检查健康；`prod:stop` 停用自启，`prod:start` 重新启用。本机当前使用 Startup 快捷方式。
-  - 本机旧 `QianDuoDuo-Production` 计划任务保持注销。保留 Supervisor 对异常退出 Node 子进程的重启能力。
+  - 当时 `prod:deploy` 注册登录自启、重启 Supervisor 并检查健康；`prod:stop` 停用自启，`prod:start` 重新启用。该口径已于 2026-11-01 被隐藏登录计划任务取代，仍保持单次启动、无分钟巡检。
+  - 当时旧的计划任务保持注销。当前有效口径以 `TD-OPS-002`、`MEMORY.md` 和代码为准。
   - 验证：`npm run check`、229 项 `npm test`、`npm run test:daemon`、生产构建、`npm run test:e2e` 全部通过；停止服务后直接启动 Startup 快捷方式可恢复 Health OK，且隔离测试不会改动生产自启状态。
 
 - **2026-10-24 `TD-R2-NAV-001` 当前已确认持仓净值**

@@ -5,8 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-$DaemonScript = Join-Path $PSScriptRoot 'daemon.ps1'
-$AutoStartScript = Join-Path $PSScriptRoot 'install-autostart.ps1'
+$ProductionHostScript = Join-Path $PSScriptRoot 'production-host.ps1'
 $PowerShellExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
 Set-Location -LiteralPath $Root
@@ -41,23 +40,22 @@ if (-not $SkipTests) {
   Write-Host '2/4 Tests skipped.'
 }
 
-Write-Host '3/4 Stopping the previous supervisor and installing login auto-start...'
-& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $DaemonScript -Action stop -Port $Port -Root $Root
-& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $AutoStartScript -Port $Port -Root $Root
+Write-Host '3/4 Installing the independent Windows production host...'
+& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $ProductionHostScript -Action install -Port $Port -Root $Root
 if ($LASTEXITCODE -ne 0) {
-  throw 'Login auto-start installation failed.'
+  throw 'Independent production host installation failed.'
 }
 
 Write-Host '4/4 Starting production and checking health...'
-& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $DaemonScript -Action start -Port $Port -Root $Root
+& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $ProductionHostScript -Action start -Port $Port -Root $Root
 if ($LASTEXITCODE -ne 0) {
   throw 'Production process failed to start.'
 }
 
-& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $DaemonScript -Action status -Port $Port -Root $Root
+& $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $ProductionHostScript -Action status -Port $Port -Root $Root
 
 Write-Host ''
 Write-Host 'Production deployment complete.'
 Write-Host "URL:  http://127.0.0.1:$Port"
 Write-Host "Logs: $Root\logs"
-Write-Host 'Login auto-start: configured (one trigger, no periodic watchdog)'
+Write-Host 'Hosting: Windows Task Scheduler (single hidden logon bootstrap; no periodic probe)'

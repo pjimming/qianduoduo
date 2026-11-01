@@ -92,9 +92,13 @@ npm run prod:status
 npm run prod:start
 npm run prod:restart
 npm run prod:stop
+npm run prod:install
+npm run prod:uninstall
 ```
 
-登录自启只执行一次 `daemon.ps1 -Action start`；Supervisor 负责当前运行期间 Node 子进程异常退出后的重启。`prod:stop` 同时停用登录自启，`prod:start` 重新启用。服务只监听 `127.0.0.1`。
+生产由当前用户 Windows 计划任务 `QianDuoDuo-Production` 独立托管：只在用户登录时通过无控制台的 `wscript.exe` 启动器隐藏运行一次，拉起 Supervisor 后退出，不执行定时健康巡检，也不会周期弹出 PowerShell。运行期间由 Supervisor 负责 Node 子进程异常退出后的递增退避重启。
+
+`prod:deploy` 构建、测试、安装/更新计划任务并通过任务启动生产；`prod:install` 和 `prod:uninstall` 用于单独管理托管。`prod:stop` 写入持久停止意图后仍保留已安装任务，但登录任务不会拉起服务；`prod:start` 清除停止意图并通过计划任务启动。服务只监听 `127.0.0.1`。
 
 只读验收和样本外观察：
 
@@ -107,9 +111,13 @@ npm run yield:observe:review
 生产文件：
 
 - 守护脚本：`scripts/daemon.ps1`
+- 独立登录托管：`scripts/production-host.ps1`
+- 隐藏启动模板：`scripts/production-bootstrap-template.vbs`
 - 部署脚本：`scripts/deploy-production.ps1`
 - PID：`run/daemon.pid`、`run/server.pid`
-- 日志：`logs/daemon.log`、`logs/server-*.out.log`、`logs/server-*.err.log`
+- 托管状态：`run/host.json`、`run/host-state.json`、`run/supervisor.json`
+- 停止意图：`run/host.stop`
+- 日志：`logs/host.log`、`logs/daemon.log`、`logs/server-*.out.log`、`logs/server-*.err.log`
 
 ## 环境变量
 

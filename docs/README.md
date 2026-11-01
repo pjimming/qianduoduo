@@ -24,6 +24,8 @@
 
 `codex-automations/` 保持独立，因为它承载可执行的定时任务提示词；`public/research/techmap/README.md` 保持在其数据目录旁，不并入通用文档区。
 
+生产独立登录托管和运行时状态契约见 [production-host.md](architecture/production-host.md)。
+
 ## 维护规则
 
 - 活动任务只通过 `TODO.md` 建立和追踪，规格文件放在 `docs/tasks/active/<TASK_ID>/`。

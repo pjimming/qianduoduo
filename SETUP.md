@@ -270,7 +270,7 @@ npm run research:publish
 
 ### 6.1 最小方式
 
-双击 `start.bat`。适合偶尔使用；关闭窗口或注销后服务停止。
+双击 `start.bat`。脚本会构建并通过独立生产托管启动，浏览器随后打开；生产进程不再依附启动窗口。
 
 ### 6.2 当前机器的方式
 
@@ -281,17 +281,17 @@ npm run prod:start
 npm run prod:status
 ```
 
-状态显示 Supervisor、当前用户登录自启和 Health。登录自启优先使用单次任务 `QianDuoDuo-AutoStart`；当前账户没有计划任务权限时使用 Startup 快捷方式。两种方式都只触发一次，不执行周期巡检。
+状态同时显示计划任务定义、唯一登录触发、实际 Supervisor/Server、独立来源、停止意图和最近一次隐藏启动结果。当前用户计划任务为 `QianDuoDuo-Production`；仅存在同名任务或旧 Startup 快捷方式不会被报告为有效自启。
 
-### 6.3 带登录自启的完整部署方式
+### 6.3 独立托管完整部署
 
 ```powershell
 npm run prod:deploy
 ```
 
-它会构建、跑测试、停止旧守护、注册当前用户登录自启，再启动 Supervisor 并检查健康状态。首次注册计划任务需要权限；权限不足时自动使用当前用户 Startup 快捷方式。
+它会构建、跑测试、注册/更新当前用户计划任务，再通过任务启动 Supervisor 并检查健康状态。首次安装或更新任务需要 UAC；当前用户必须能注册本机任务。
 
-登录后会自动启动一次服务，不安装 Watchdog。机器重启并完成用户登录后，无需手动执行 `prod:start`。
+计划任务只在登录时由无控制台的 VBS 启动器隐藏运行一次，拉起 Supervisor 后退出，不弹出 PowerShell 控制台，也不执行分钟巡检。运行期间 Supervisor 对 Node 异常退出执行递增退避重启；Supervisor 本身消失时需显式运行 `prod:start`。机器重启并完成用户登录后，无需手动执行 `prod:start`。
 
 ### 6.4 停止与重启
 
@@ -300,7 +300,7 @@ npm run prod:stop
 npm run prod:restart
 ```
 
-`prod:stop` 会停用登录自启；`prod:restart` 停止后重新启用；`prod:start` 也会恢复自启。
+`prod:stop` 写入 `run/host.stop` 并停止运行时，计划任务仍保留但后续登录启动会隔离；`prod:start` 清除停止意图并通过任务恢复，`prod:restart` 依次执行两者。完全移除托管使用 `npm run prod:uninstall`。
 
 ---
 

@@ -490,7 +490,13 @@ npm run prod:status
 npm run prod:start
 npm run prod:restart
 npm run prod:stop
+npm run prod:install
+npm run prod:uninstall
 ```
+
+生产托管使用当前用户计划任务 `QianDuoDuo-Production`，只包含当前用户登录触发。安装器从 `scripts/production-bootstrap-template.vbs` 生成 ASCII 路径下的隐藏启动器，计划任务通过 `wscript.exe //B` 在无控制台窗口运行一次 PowerShell 并拉起 Supervisor，此后不执行定时健康巡检。计划任务动作、触发器和运行账号不匹配时，`prod:status` 会报告托管定义不匹配，不会仅凭同名任务或快捷方式声称自启已启用。
+
+`prod:stop` 写入 `run/host.stop` 并让隐藏登录任务停止运行时，但保留托管安装；登录任务再次触发时看到停止意图会静默退出。`prod:start` 清除该标记并通过计划任务重新启动。`prod:install`/`prod:uninstall` 管理计划任务本身。Supervisor 存活期间负责 Node 异常退出；本机不额外巡检或自动恢复 Supervisor。
 
 数据库备份：
 
@@ -510,10 +516,12 @@ npm test
 npm run build
 npm run test:e2e
 node --experimental-test-coverage --test
+npm run test:daemon
+npm run test:host
 npm audit --omit=dev
 ```
 
-测试使用临时 SQLite 和受控目录，不读写正式账本。
+`test:host` 使用临时目录、临时端口和一次性计划任务，覆盖安装/卸载、唯一登录触发、已登录启动、重复启动、Node 崩溃重启、停止隔离、无周期恢复和显式重启，不读写正式账本。
 
 ## 16. 定时任务
 
@@ -533,7 +541,7 @@ npm audit --omit=dev
 
 | 现象 | 处理 |
 | --- | --- |
-| 页面打不开 | 运行 `npm run prod:status`，再按需 `npm run prod:start` |
+| 页面打不开 | 运行 `npm run prod:status`；先看“Hosting / Independent / Intent / Last start”，再按需 `npm run prod:install` 或 `npm run prod:start` |
 | API 不通 | 检查 `http://127.0.0.1:8765/api/health` 和 `logs/server-*.err.log` |
 | 截图识别不确定 | 在截图收件箱人工校正，保留原图 |
 | 收益缺口未关闭 | 检查产品代码、收益日期、覆盖日期和披露 T+N |

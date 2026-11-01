@@ -74,7 +74,8 @@
 ## 5. 运行、测试与 Git
 
 - 生产入口为 `http://127.0.0.1:8765`，开发入口为 `http://127.0.0.1:5173`。日常使用 `npm run prod:deploy|status|start|stop|restart`。
-- 登录自启只执行一次生产守护启动，不额外创建周期健康巡检或外部 Watchdog。
+- 生产由当前用户 Windows 计划任务 `QianDuoDuo-Production` 独立托管：只有登录触发一次；安装器从 `scripts/production-bootstrap-template.vbs` 在 `C:\ProgramData\QianDuoDuoProduction` 生成 ASCII 路径启动器，由 `wscript.exe //B` 隐藏运行 PowerShell 拉起 Supervisor，不得周期巡检或弹出控制台窗口。任务动作、用户或触发器不匹配时 `prod:status` 不得声称自启已启用。
+- Supervisor 存活期间负责 Node 异常退出与递增退避重启；按用户要求不额外巡检或自动恢复 Supervisor。`prod:stop` 只写持久 `run/host.stop` 并停止运行时，不注销已安装任务；登录启动必须尊重停止意图，`prod:start` 清除意图后通过计划任务拉起。
 - 后端检查按改动范围运行 `npm run check`、`npm test`、`npm run build`；涉及 HTTP、生命周期或 UI 时运行 `npm run test:e2e`；财务不变量使用覆盖率测试；依赖变化运行 `npm audit --omit=dev`。
 - 测试必须使用临时 SQLite 和受控文件目录，不清理或改写正式账本。
 - Git 忽略 SQLite、WAL/SHM、备份、交易/收益截图、`.env`、`dist/`、`node_modules/`、`run/`、`logs/` 和报告构建产物。

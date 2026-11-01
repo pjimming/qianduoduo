@@ -60,14 +60,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8765/api/health' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {}; exit 1" >nul 2>nul
-if not errorlevel 1 (
-  start "" "http://127.0.0.1:8765"
-  exit /b 0
+echo Starting the independent production host...
+call "%NPM_CMD%" run prod:start
+if errorlevel 1 (
+  echo Production startup failed. Run "npm run prod:status" for details.
+  pause
+  exit /b 1
 )
 
-set NODE_NO_WARNINGS=1
-start "" powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Milliseconds 900; Start-Process 'http://127.0.0.1:8765'"
-"%NODE_EXE%" server.js
-
-pause
+start "" "http://127.0.0.1:8765"
+exit /b 0

@@ -33,7 +33,9 @@
 - 财务写入保持幂等，并由业务用例明确拥有事务边界。重复请求、重复截图、任务重试和异常退出统一收敛到一个已提交结果；通过唯一约束、事务和可恢复状态保证账本完整。
 - 写操作在对应业务用例中完成持久化，读取接口返回当前状态。
 - 后端交付按改动范围至少运行 `npm run check`、`npm test` 和 `npm run build`；涉及 HTTP、生命周期或 UI 时运行 `npm run test:e2e`；涉及财务不变量时运行 `node --experimental-test-coverage --test`；依赖变化时运行 `npm audit --omit=dev`。测试必须使用临时 SQLite 和受控文件目录。
-- `prod:restart` 和 `prod:stop` 在用户授权或当前任务需要时执行。重启后检查 `prod:status`、健康接口、关键 API、stderr 日志和残留 stop marker。
+- 生产由当前用户 Windows 计划任务 `QianDuoDuo-Production` 独立托管，只有登录触发一次；安装器必须从 `scripts/production-bootstrap-template.vbs` 生成 `C:\ProgramData\QianDuoDuoProduction` 下的 ASCII 路径启动器，经 `wscript.exe //B` 无控制台启动一次 Supervisor，提升权限的安装/卸载/测试子进程也必须隐藏窗口。不得恢复分钟健康巡检或外部 Watchdog；Supervisor 存活期间自行处理 Node 异常退出。`prod:install`/`prod:uninstall` 管理托管，`prod:start`/`prod:restart` 必须经计划任务启动。`prod:stop` 写入持久 `run/host.stop` 并保留托管安装，登录启动不得绕过该停止意图。
+- `prod:status` 必须同时校验任务动作、唯一登录触发器和用户定义，以及独立 Supervisor 来源、实际 Health 和最近启动结果；不得仅凭同名任务、同名快捷方式或 PID 文件声称自启或独立托管正常。
+- `prod:restart` 和 `prod:stop` 在用户授权或当前任务需要时执行。重启后检查 `prod:status`、`run/host-state.json`、健康接口、关键 API、stderr 日志和残留 stop marker；托管故障测试使用临时目录、端口和一次性计划任务。
 
 ## 5. R2 收益账本与定时任务
 
