@@ -10,11 +10,10 @@ import type {
   InboxSeverity,
 } from '@/types/dashboard'
 
-type InboxFilter = 'pending' | 'reminders' | 'handled'
+type InboxFilter = 'pending' | 'reminders'
 const tabs: Array<{ key: InboxFilter; label: string }> = [
   { key: 'pending', label: '待处理' },
   { key: 'reminders', label: '提醒' },
-  { key: 'handled', label: '已处理' },
 ]
 
 const props = defineProps<{
@@ -36,11 +35,9 @@ const summary = computed(() => center.value.summary)
 const filterCounts = computed(() => ({
   pending: summary.value.pending_count,
   reminders: summary.value.reminder_count,
-  handled: summary.value.handled_count,
 }))
 
 const sourceItems = computed(() => {
-  if (filter.value === 'handled') return center.value.handled
   if (filter.value === 'reminders') return center.value.reminders
   return center.value.pending
 })
@@ -185,7 +182,7 @@ async function rejectProposal(item: InboxItem): Promise<void> {
         <h1>消息中心</h1>
         <p>
           平台已经自动汇总交易、收益、持仓、产品事件、评估与复盘。
-          这里只显示需要你补事实、做最后确认或知悉的异常。
+          这里只显示需要你补事实、做最后确认或知悉的异常；处理完成后会自动清理。
         </p>
       </div>
       <div class="inbox-hero-stats">
@@ -239,13 +236,17 @@ async function rejectProposal(item: InboxItem): Promise<void> {
 
     <section v-if="groups.length === 0" class="inbox-empty">
       <strong>
-        {{ filter === 'handled' ? '还没有已处理记录' : '当前没有需要你处理的消息' }}
+        {{
+          filter === 'pending'
+            ? '当前没有需要你处理的消息'
+            : '当前没有提醒'
+        }}
       </strong>
       <p>
         {{
           filter === 'pending'
             ? '平台会自动继续追踪；新的异常或确认点出现后会出现在这里。'
-            : '切换筛选可以查看其他消息。'
+            : '已处理完成的消息会自动清理；新的提醒出现后会显示在这里。'
         }}
       </p>
     </section>
@@ -270,7 +271,6 @@ async function rejectProposal(item: InboxItem): Promise<void> {
             {
               'is-unread': !item.read_at,
               'is-snoozed': item.status === 'snoozed',
-              'is-resolved': item.status === 'resolved',
             },
           ]"
         >
@@ -347,9 +347,6 @@ async function rejectProposal(item: InboxItem): Promise<void> {
             </button>
             <span v-if="item.due_at">截止 {{ item.due_at }}</span>
             <span v-if="item.snoozed_until">稍后至 {{ item.snoozed_until }}</span>
-            <span v-if="item.resolved_at">
-              已处理 {{ formatDateShort(item.resolved_at.slice(0, 10)) }}
-            </span>
           </div>
         </article>
       </div>

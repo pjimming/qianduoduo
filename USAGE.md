@@ -167,7 +167,7 @@ node scripts/split-trade-rows.mjs <图片> <输出目录>
 
 日常提醒日使用 `meta.reporting_date = today - max(当前持仓 yield_lag_days)`；没有当前持仓时才使用昨天。
 
-消息中心中的补事实或最终确认事项通过 `POST /api/inbox/confirmations` 持久化，并使用确定性 `dedupe_key` 去重。
+消息中心中的补事实或最终确认事项通过 `POST /api/inbox/confirmations` 持久化，并使用确定性 `dedupe_key` 去重。消息中心只保留待处理和稍后提醒；事项处理完成或来源消失后，对应 `inbox_items` 投影会自动删除，底层通知、事实和审计记录不受影响。
 
 ## 7. 持仓结构与产品配置
 

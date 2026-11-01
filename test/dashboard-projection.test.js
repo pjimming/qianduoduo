@@ -194,8 +194,9 @@ test('capital bridge reminders resolve only after matching deposit, withdrawal a
       item.metadata.notification_id === matching.id &&
       item.status === 'resolved',
   );
-  assert.ok(resolvedInbox);
-  assert.ok(resolvedInbox.resolved_at);
+  assert.equal(resolvedInbox, undefined);
+  assert.deepEqual(dashboard.inbox_center.handled, []);
+  assert.equal(dashboard.inbox_center.summary.handled_count, 0);
   const enriched = byId.get(matching.id).data.capital_bridge;
   assert.equal(enriched.target_principal, 30000);
   assert.equal(enriched.decision_id, decision.id);

@@ -234,7 +234,7 @@ test('a projection mismatch remains visible as a repair action', () => {
   assert.match(mismatch.summary, /差额 -¥0\.01/);
 });
 
-test('inbox sync replaces old daily items with a group and resolves it automatically', (t) => {
+test('inbox sync replaces old daily items with a group and deletes it after resolution', (t) => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'r2-inbox-reconciliation-'),
   );
@@ -283,13 +283,74 @@ test('inbox sync replaces old daily items with a group and resolves it automatic
   repository.inboxCenter.sync(dashboardWithReconciliations([]));
   const completed = repository.inboxCenter.getWorkspace('2026-10-28');
   assert.equal(
-    completed.items.find((item) => item.id === grouped.id).status,
-    'resolved',
+    completed.items.some((item) => item.id === grouped.id),
+    false,
   );
+  assert.deepEqual(completed.handled, []);
+  assert.equal(completed.summary.handled_count, 0);
   assert.equal(
     completed.pending.some(
       (item) => item.source_type === 'product_valuation_reconciliation',
     ),
     false,
+  );
+  assert.equal(
+    repository.db
+      .prepare('SELECT 1 FROM inbox_items WHERE id = ?')
+      .get(grouped.id),
+    undefined,
+  );
+
+  repository.inboxCenter.sync(
+    dashboardWithReconciliations([productReconciliation('2026-10-24')]),
+  );
+  const reopened = repository.inboxCenter
+    .getWorkspace('2026-10-28')
+    .pending.find(
+      (item) => item.source_type === 'product_valuation_reconciliation',
+    );
+  assert.ok(reopened);
+  assert.notEqual(reopened.id, grouped.id);
+});
+
+test('inbox sync purges resolved projections created by older releases', (t) => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'r2-inbox-resolved-cleanup-'),
+  );
+  const repository = openDatabase({
+    dbPath: path.join(directory, 'test.sqlite'),
+    productCsvPath: null,
+    logger: { warn() {}, info() {} },
+  });
+  t.after(() => {
+    repository.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  repository.inboxCenter.sync(
+    dashboardWithReconciliations([productReconciliation('2026-10-24')]),
+  );
+  const item = repository.inboxCenter
+    .getWorkspace('2026-10-28')
+    .pending.find(
+      (entry) => entry.source_type === 'product_valuation_reconciliation',
+    );
+  assert.ok(item);
+  repository.db
+    .prepare(
+      `UPDATE inbox_items
+       SET status = 'resolved', resolved_at = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .run('2026-10-28T00:00:00.000Z', '2026-10-28T00:00:00.000Z', item.id);
+
+  repository.inboxCenter.sync(dashboardWithReconciliations([]));
+  const workspace = repository.inboxCenter.getWorkspace('2026-10-28');
+  assert.deepEqual(workspace.items, []);
+  assert.deepEqual(workspace.handled, []);
+  assert.equal(
+    repository.db.prepare('SELECT COUNT(*) AS count FROM inbox_items').get()
+      .count,
+    0,
   );
 });

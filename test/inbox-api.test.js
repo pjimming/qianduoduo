@@ -40,7 +40,7 @@ function postJson(url, body = {}, method = 'POST') {
 }
 
 test('message center aggregates, reads, snoozes and resolves a pending trade', async (t) => {
-  const { base } = await startTestServer(t);
+  const { base, repository } = await startTestServer(t);
   const today = todayShanghai();
   await postJson(`${base}/api/capital/init`, {
     initial_principal: 30000,
@@ -103,7 +103,15 @@ test('message center aggregates, reads, snoozes and resolves a pending trade', a
   const resolved = finalDashboard.inbox_center.items.find(
     (item) => item.id === pending.id,
   );
-  assert.equal(resolved.status, 'resolved');
+  assert.equal(resolved, undefined);
+  assert.deepEqual(finalDashboard.inbox_center.handled, []);
+  assert.equal(finalDashboard.inbox_center.summary.handled_count, 0);
+  assert.equal(
+    repository.db
+      .prepare('SELECT 1 FROM inbox_items WHERE id = ?')
+      .get(pending.id),
+    undefined,
+  );
 });
 
 test('confirmation API publishes deduplicated action items to the message center', async (t) => {
@@ -274,8 +282,8 @@ test('product income reminders resolve after the matching yield is recorded', as
   const resolvedItems = valuationPayload.dashboard.inbox_center.items.filter(
     (item) => notificationIds.includes(item.metadata.notification_id),
   );
-  assert.equal(resolvedItems.length, 2);
-  assert.ok(resolvedItems.every((item) => item.status === 'resolved'));
+  assert.equal(resolvedItems.length, 0);
+  assert.deepEqual(valuationPayload.dashboard.inbox_center.handled, []);
   assert.ok(
     repository.automationStore
       .listNotifications()

@@ -21,6 +21,12 @@
 
 ## 近期完成（2026）
 
+- **2026-11-01 消息中心已处理消息自动清理**
+  - 消息中心只保留待处理和稍后提醒；来源事项消失或处理完成后，直接删除 `inbox_items` 对应投影，并在每次刷新、启动和状态投影时清扫旧版本遗留的 `resolved` 行。底层通知、事实、证据和审计记录保持不变。
+  - 前端移除“已处理”页签和记录展示，明确提示完成后自动清理；API 保留空的 `handled` / `handled_count` 兼容字段，避免旧调用方失效。
+  - 验证：`npm run check`、381/381 `npm test`、`npm run build` 和完整 `npm run test:e2e` 全部通过。
+  - 生产重启前已完成当日数据库备份；重启后 33 条旧已处理投影清理为 0，11 条待处理和 2 条稍后提醒保持不变，`/api/inbox` 返回 13 条当前消息，Health OK、独立托管正常且最新 stderr 为 0 字节。
+
 - **2026-11-01 `TD-OPS-002` 生产独立登录托管**
   - 新增当前用户计划任务 `QianDuoDuo-Production`，只有登录触发一次；Supervisor 和 Node Server 从 Codex 会话进程树迁出，运行来源记录为 `task-scheduler`。
   - 按用户体验要求移除分钟健康巡检和外部 Watchdog。登录任务由 `scripts/production-bootstrap-template.vbs` 生成 `C:\ProgramData\QianDuoDuoProduction` 下的 ASCII 隐藏启动器，经 `wscript.exe //B` 启动一次 PowerShell，安装、卸载、测试和启动子进程均隐藏窗口。

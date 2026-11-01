@@ -1818,6 +1818,14 @@ async function main() {
       (await page.locator('.inbox-source-group').count()) >= 2,
       '消息中心没有按来源分组',
     )
+    const inboxTabLabels = await page
+      .locator('.inbox-tabs [role="tab"]')
+      .allTextContents()
+    assert(
+      inboxTabLabels.length === 2 &&
+        inboxTabLabels.every((label) => !label.includes('已处理')),
+      `消息中心仍保留已处理页签：${inboxTabLabels.join(' / ')}`,
+    )
     const proposalMessage = page
       .locator('.inbox-message')
       .filter({ hasText: 'E2E 资金冗余产品' })

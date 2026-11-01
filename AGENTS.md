@@ -56,6 +56,7 @@
 
 - `r2-2` 在周一至周五 21:00 运行；先按 `Asia/Shanghai` 核验中国大陆法定节假日安排，周末和法定放假日静默跳过，不刷新投影、不写消息、不发送卡片。节后首个工作日按账本当前累计状态照常巡检，不追补周末调休上班日。
 - `r2-2`、`r2-3` 从 Dashboard 的产品估值、对账和披露策略字段读取当前状态；相同缺口按日期区间合并，事实补齐后由消息中心投影关闭。
+- 消息中心只保留待处理和稍后提醒；来源事项消失或处理完成后，直接删除 `inbox_items` 中的已处理投影。底层通知、事实、证据和审计记录按各自生命周期保留。
 - 需要用户补事实或最终确认的事项通过 `POST /api/inbox/confirmations` 持久化，使用确定性 `dedupe_key`；已存在同一对账事项时只引用，不重复创建。
 - 修改 Codex 定时任务时，同步更新 `codex-automations/market-daily-brief.md`、`codex-automations/market-brief-api-catalog.md`、`codex-automations/README.md`、根目录 `README.md`、`USAGE.md`、`MEMORY.md` 和本机实际任务定义。实际任务通过 Codex 自动化工具更新。
 
