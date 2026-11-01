@@ -150,7 +150,7 @@ async function refreshSnapshot(): Promise<void> {
   try {
     const response = await dashboardStore.refreshProducts()
     show(
-      `已重新读取 ${response.refreshed} 只产品 · 快照 ${
+      `已重新读取开放研究池 ${response.refreshed} 只 · 快照 ${
         response.dashboard.meta.product_snapshot_date || '待核'
       } · 历史业绩 ${response.dashboard.meta.product_history_date || '待核'}`,
       { duration: 4600 },
@@ -543,6 +543,7 @@ async function saveQuotas(): Promise<void> {
       :products="products"
       :snapshot-date="dashboard.meta.product_snapshot_date"
       :history-date="dashboard.meta.product_history_date"
+      :snapshot-source="dashboard.meta.product_csv"
       @detail="openProductDetail"
     />
 

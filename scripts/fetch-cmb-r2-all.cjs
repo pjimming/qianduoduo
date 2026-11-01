@@ -6,6 +6,7 @@
  *   data/cmb_r2_all-YYYY-MM-DD.csv       全量原始结果
  *   data/cmb_r2_universe-YYYY-MM-DD.csv  普通可买候选池
  *   data/cmb_r2_selected-YYYY-MM-DD.csv  研究观察池（不含资金分配）
+ *   data/cmb_r2_snapshot-YYYY-MM-DD.csv  应用快照（开放 + 未开放展示记录）
  *
  * 只使用公开接口，不登录账户、不抓取实时额度、不替用户下单。
  */
@@ -306,7 +307,7 @@ async function captureAuth(page) {
   return auth;
 }
 
-async function queryPage(page, state, pageNo) {
+async function queryPage(page, state, pageNo, status = '1') {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(API, {
       method: 'POST',
@@ -327,7 +328,7 @@ async function queryPage(page, state, pageNo) {
         type: 'PN',
         isOwn: 'C',
         isPublic: 'Z',
-        status: '1',
+        status,
         riskLevel: 'R2',
         crossFinance: 'Z',
         obligate: '',
@@ -358,24 +359,51 @@ async function main() {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155.0.0.0 Safari/537.36',
     });
     const state = { auth: await captureAuth(page) };
-    const first = await queryPage(page, state, 1);
-    const totalPages = first.totalPage || Math.ceil(first.totalSize / 50);
-    const rawProducts = [...(first.list || [])];
-    for (let pageNo = 2; pageNo <= totalPages; pageNo += 1) {
-      const data = await queryPage(page, state, pageNo);
-      rawProducts.push(...(data.list || []));
+    const queryAll = async (status) => {
+      const first = await queryPage(page, state, 1, status);
+      const totalPages =
+        first.totalPage || Math.ceil(first.totalSize / 50);
+      const rows = [...(first.list || [])];
+      for (let pageNo = 2; pageNo <= totalPages; pageNo += 1) {
+        const data = await queryPage(page, state, pageNo, status);
+        rows.push(...(data.list || []));
+      }
+      return rows;
+    };
+
+    const rawProducts = await queryAll('1');
+    let rawUnopened = [];
+    let unopenedError = null;
+    try {
+      rawUnopened = await queryAll('2');
+    } catch (error) {
+      unopenedError =
+        error instanceof Error ? error.message : String(error);
     }
 
     const products = rawProducts.map(toProduct).filter((product) => product.code);
+    const unopenedProducts = rawUnopened
+      .map(toProduct)
+      .filter((product) => product.code);
     const universe = products.filter(isProductPoolEligible);
     const view = buildProductView(universe);
     const today = todayShanghai();
     const allPath = path.join(DATA_DIR, `cmb_r2_all-${today}.csv`);
     const universePath = path.join(DATA_DIR, `cmb_r2_universe-${today}.csv`);
     const selectedPath = path.join(DATA_DIR, `cmb_r2_selected-${today}.csv`);
+    const snapshotPath = path.join(DATA_DIR, `cmb_r2_snapshot-${today}.csv`);
+    const snapshotProducts = [
+      ...new Map(
+        [...products, ...unopenedProducts].map((product) => [
+          product.code,
+          product,
+        ]),
+      ).values(),
+    ];
     writeCsv(allPath, products);
     writeCsv(universePath, universe);
     writeCsv(selectedPath, view.observation_list);
+    writeCsv(snapshotPath, snapshotProducts);
     let observation;
     try {
       observation = captureObservationFromFile({
@@ -406,11 +434,19 @@ async function main() {
         {
           today,
           total: products.length,
+          unopened: unopenedProducts.length,
+          snapshot_total: snapshotProducts.length,
+          unopened_error: unopenedError,
           universe: universe.length,
           selected: view.observation_list.length,
           bucket_counts: view.stats.bucket_counts,
           selected_codes: view.observation_list.map((product) => product.code),
-          files: { allPath, universePath, selectedPath },
+          files: {
+            allPath,
+            universePath,
+            selectedPath,
+            snapshotPath,
+          },
           observation: observation
             ? {
                 status: observation.status,

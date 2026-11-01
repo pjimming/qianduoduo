@@ -10,6 +10,13 @@ function createProductsRoutes({
 }) {
   return [
     {
+      method: 'GET',
+      path: '/api/products/unopened',
+      handler(request, response) {
+        sendJson(response, 200, products.listUnopenedProducts());
+      },
+    },
+    {
       method: 'POST',
       path: '/api/products/refresh',
       async handler(request, response) {

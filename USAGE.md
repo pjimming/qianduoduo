@@ -199,7 +199,12 @@ npm run r2:refresh-all
 
 - `cmb_r2_all-*.csv`：公开全量；
 - `cmb_r2_universe-*.csv`：普通可买研究池；
-- `cmb_r2_selected-*.csv`：研究观察池。
+- `cmb_r2_selected-*.csv`：研究观察池；
+- `cmb_r2_snapshot-*.csv`：应用组合快照，包含开放与未开放产品。
+
+“查看全部产品”默认只显示开放研究池。勾选“显示未开放产品”后，页面按需读取
+`GET /api/products/unopened` 并追加未开放记录；这些记录明确标记“仅展示”，不参与评分、
+研究候选、金额配置、提案或持仓复核。
 
 期限调整参考年化按期限桶加权：
 
@@ -462,6 +467,7 @@ Pages 只承载公开研究内容，不包含 R2 数据、账户事实、截图�
 - `POST /api/capital/events`：记录转入/转出。
 - `DELETE /api/capital/events/:id`：删除转入/转出。
 - `POST /api/products/refresh`：重新读取本地产品快照。
+- `GET /api/products/unopened`：只读加载未开放产品展示快照，不参与决策。
 - `PUT /api/holding-reviews/:code`：保存单只产品 T+N、费用和核验状态。
 
 ### 记录、备份和消息

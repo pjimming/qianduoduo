@@ -1836,6 +1836,41 @@ export interface Product {
   reference_target_gap_pct: number | null
 }
 
+export interface UnopenedSnapshotProduct {
+  name: string
+  code: string
+  short_name: string
+  issuer: string
+  risk_level: string
+  product_type: string
+  term_days: number | null
+  bucket: ProductBucket
+  evidence_tier: ProductEvidenceTier
+  evidence_label: string
+  min_amount: number | null
+  annualized_yield: number | null
+  benchmark: string
+  return_1m: number | null
+  return_3m: number | null
+  return_6m: number | null
+  return_1y: number | null
+  return_since_inception: number | null
+  status: string
+  source: string
+  data_date: string
+  notes: string
+  history_months: number | null
+  fee_bps: number | null
+  next_open_date: string
+  display_only: true
+}
+
+export interface UnopenedSnapshotResponse {
+  products: UnopenedSnapshotProduct[]
+  count: number
+  snapshot_date: string | null
+}
+
 export interface ProductAllocationBucket {
   key: 'short' | 'medium' | 'long'
   label: string

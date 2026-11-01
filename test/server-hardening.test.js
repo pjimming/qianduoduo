@@ -40,6 +40,32 @@ test('product CSV discovery prefers the ordinary universe over the selected file
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('product CSV discovery uses the combined snapshot only when unopened display is requested', () => {
+  const root = tempDir();
+  const dataDir = path.join(root, 'data');
+  fs.mkdirSync(dataDir);
+  fs.writeFileSync(
+    path.join(dataDir, 'cmb_r2_universe-2026-10-30.csv'),
+    'name,code\n',
+  );
+  fs.writeFileSync(
+    path.join(dataDir, 'cmb_r2_snapshot-2026-10-31.csv'),
+    'name,code\n',
+  );
+
+  assert.equal(
+    path.basename(resolveProductCsv(root)),
+    'cmb_r2_universe-2026-10-30.csv',
+  );
+  assert.equal(
+    path.basename(
+      resolveProductCsv(root, { includeUnopened: true }),
+    ),
+    'cmb_r2_snapshot-2026-10-31.csv',
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test('daily backup creates one snapshot per day and lists it', () => {
   const directory = tempDir();
   const repository = openDatabase({

@@ -208,6 +208,58 @@ test('product pool rejects invalid term-day encodings and keeps 0/100 boundaries
   );
 });
 
+test('unopened snapshot records stay outside decisions and candidates', () => {
+  const base = {
+    name: '测试固收产品',
+    short_name: '',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    currency_code: '10',
+    pub_prv: 'A',
+    soc_tag: 'C',
+    product_type: '代销理财',
+    term_days: 7,
+    score: null,
+    min_amount: 1,
+    annualized_yield: 2.8,
+    benchmark: '测试基准',
+    return_1m: 2.8,
+    return_3m: 2.7,
+    return_6m: 2.6,
+    return_1y: null,
+    return_since_inception: 2.5,
+    source: 'test',
+    data_date: '2026-10-29',
+    notes: '',
+    capacity: null,
+    history_months: 8,
+    fee_bps: 27,
+    next_open_date: '',
+  };
+  const open = {
+    ...base,
+    code: 'OPEN001',
+    status: '开放中',
+  };
+  const closed = {
+    ...base,
+    code: '120019K',
+    status: '未开放',
+  };
+  const view = buildProductView([open, closed]);
+
+  assert.deepEqual(
+    view.all.map((item) => item.code),
+    ['OPEN001'],
+  );
+  assert.equal(view.watchlist.some((item) => item.code === '120019K'), false);
+  assert.equal(
+    view.observation_list.some((item) => item.code === '120019K'),
+    false,
+  );
+  assert.equal(view.stats.total, 1);
+});
+
 test('product view loads the ordinary universe and allocates dynamically', () => {
   const products = loadProductsFromCsv(csvPath);
   const view = buildProductView(products, { principal: 30000 });

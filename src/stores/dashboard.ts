@@ -28,6 +28,7 @@ import type {
   ProductEventInput,
   ProductEventMutationResponse,
   ProductRefreshResponse,
+  UnopenedSnapshotResponse,
   ProductValuationDetail,
   ProductValuationInput,
   ProductValuationMutationResponse,
@@ -213,6 +214,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     })
     dashboard.value = response.dashboard
     return response
+  }
+
+  async function loadUnopenedProducts(): Promise<UnopenedSnapshotResponse> {
+    return apiRequest<UnopenedSnapshotResponse>('/api/products/unopened')
   }
 
   async function updateAllocationSettings(
@@ -834,6 +839,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     createCapitalEvent,
     deleteCapitalEvent,
     refreshProducts,
+    loadUnopenedProducts,
     updateAllocationSettings,
     saveHoldingReviewSetting,
     loadAutomation,

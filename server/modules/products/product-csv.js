@@ -31,6 +31,8 @@ function resolveProductCsv(rootDir, options = {}) {
       )[0]?.filePath;
 
   return (
+    (options.includeUnopened &&
+      newest(/^cmb_r2_snapshot.*\.csv$/i)) ||
     newest(/^cmb_r2_universe.*\.csv$/i) ||
     newest(/^cmb_r2_products.*\.csv$/i) ||
     path.join(dataDir, 'cmb_r2_universe.csv')

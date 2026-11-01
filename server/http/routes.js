@@ -23,6 +23,7 @@ const API_ROUTE_PATTERNS = Object.freeze([
   ['POST', '/api/capital/events'],
   ['DELETE', /^\/api\/capital\/events\/\d+$/],
 
+  ['GET', '/api/products/unopened'],
   ['POST', '/api/products/refresh'],
   ['PUT', '/api/products/allocation'],
   ['PUT', /^\/api\/holding-reviews\/[^/]+$/],

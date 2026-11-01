@@ -21,8 +21,21 @@ const emit = defineEmits<{
   record: [date: string]
 }>()
 
+function defaultReviewMonth(): string {
+  const current = props.review.current_month
+  const reportingMonth = props.reportingDate.slice(0, 7)
+  if (
+    current?.is_before_start &&
+    current.month !== reportingMonth &&
+    props.review.monthly.some((item) => item.month === reportingMonth)
+  ) {
+    return reportingMonth
+  }
+  return current?.month ?? props.review.monthly[0]?.month ?? ''
+}
+
 const selectedMonth = ref<string>(
-  props.review.current_month?.month ?? props.review.monthly[0]?.month ?? '',
+  defaultReviewMonth(),
 )
 
 const gradeClassMap: Record<string, string> = {
@@ -74,8 +87,7 @@ watch(
   () => history.value.map((item) => item.month),
   (months) => {
     if (!selectedMonth.value || !months.includes(selectedMonth.value)) {
-      selectedMonth.value =
-        props.review.current_month?.month ?? history.value[0]?.month ?? ''
+      selectedMonth.value = defaultReviewMonth()
     }
   },
   { immediate: true },
@@ -206,30 +218,38 @@ const recordProgress = computed(() =>
     : 0,
 )
 const recentDays = computed(() => {
-  if (!monthly.value || monthly.value.elapsed_days <= 0 || monthly.value.is_before_start) {
+  if (!monthly.value) return []
+  const recentMonth =
+    monthly.value.is_current &&
+    !props.reportingDate.startsWith(monthly.value.month)
+      ? history.value.find(
+          (item) => item.month === props.reportingDate.slice(0, 7),
+        ) ?? monthly.value
+      : monthly.value
+  if (recentMonth.elapsed_days <= 0 || recentMonth.is_before_start) {
     return []
   }
   const days = []
-  const [year, month] = monthly.value.month.split('-').map(Number)
+  const [year, month] = recentMonth.month.split('-').map(Number)
   const totalDays = new Date(Date.UTC(year, month, 0)).getUTCDate()
-  const elapsedDays = monthly.value.is_current
-    ? props.reportingDate.startsWith(monthly.value.month)
-      ? Math.min(Number(props.reportingDate.slice(8, 10)), totalDays)
-      : 0
+  const elapsedDays = recentMonth.is_current
+    ? Math.min(Number(props.reportingDate.slice(8, 10)), totalDays)
     : totalDays
   const startDay =
-    monthly.value.account_start_date?.startsWith(monthly.value.month)
-      ? Number(monthly.value.account_start_date.slice(8, 10))
+    recentMonth.account_start_date?.startsWith(recentMonth.month)
+      ? Number(recentMonth.account_start_date.slice(8, 10))
       : 1
   const start = Math.max(startDay, elapsedDays - 6)
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
   for (let day = start; day <= elapsedDays; day += 1) {
-    const date = `${monthly.value.month}-${String(day).padStart(2, '0')}`
+    const date = `${recentMonth.month}-${String(day).padStart(2, '0')}`
     days.push({
       date,
       day,
       weekday: weekdays[new Date(`${date}T00:00:00Z`).getUTCDay()],
-      status: recordedSet.value.has(date) ? 'recorded' : 'missing',
+      status: (recentMonth.recorded_dates || []).includes(date)
+        ? 'recorded'
+        : 'missing',
     })
   }
   return days

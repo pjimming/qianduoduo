@@ -72,7 +72,9 @@ const researchService = createResearchService({
   rootDir: ROOT,
   staticService,
 });
-const DEFAULT_PRODUCT_CSV = resolveProductCsv(ROOT);
+const DEFAULT_PRODUCT_CSV = resolveProductCsv(ROOT, {
+  includeUnopened: true,
+});
 
 function registerModuleRoutes(router, definitions, migrated) {
   for (const definition of definitions) {
@@ -155,7 +157,8 @@ function createRequestHandler(repository, options = {}) {
       ...createProductsRoutes({
         products,
         dashboardQuery,
-        productCsvPath: () => resolveProductCsv(ROOT),
+        productCsvPath: () =>
+          resolveProductCsv(ROOT, { includeUnopened: true }),
       }),
       ...createProductValuationsRoutes(productValuations),
       ...createTradesRoutes(trades),
@@ -244,6 +247,7 @@ module.exports = {
   createServer,
   dashboardPayload,
   isAllowedOrigin,
-  resolveProductCsv: (rootDir = ROOT) => resolveProductCsv(rootDir),
+  resolveProductCsv: (rootDir = ROOT, options = {}) =>
+    resolveProductCsv(rootDir, options),
   validateRecordPayload,
 };

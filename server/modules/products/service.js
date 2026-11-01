@@ -2,6 +2,12 @@
 
 const { parseYmd, todayShanghai } = require('../../../lib/metrics');
 const {
+  EVIDENCE_POLICY,
+  bucketForTerm,
+  isProductPoolEligible,
+  returnEvidenceTier,
+} = require('../../../lib/products');
+const {
   DAILY_OPEN_TARGET_PCT,
 } = require('../../../lib/r2-policy');
 
@@ -11,12 +17,70 @@ function validationError(message) {
   return error;
 }
 
+function toUnopenedSnapshotProduct(product) {
+  const evidenceTier = returnEvidenceTier(product);
+  return {
+    name: product.name,
+    code: product.code,
+    short_name: product.short_name,
+    issuer: product.issuer,
+    risk_level: product.risk_level,
+    product_type: product.product_type,
+    term_days: product.term_days,
+    bucket: bucketForTerm(product.term_days),
+    evidence_tier: evidenceTier,
+    evidence_label: EVIDENCE_POLICY[evidenceTier].label,
+    min_amount: product.min_amount,
+    annualized_yield: product.annualized_yield,
+    benchmark: product.benchmark,
+    return_1m: product.return_1m,
+    return_3m: product.return_3m,
+    return_6m: product.return_6m,
+    return_1y: product.return_1y,
+    return_since_inception: product.return_since_inception,
+    status: product.status,
+    source: product.source,
+    data_date: product.data_date,
+    notes: product.notes,
+    history_months: product.history_months,
+    fee_bps: product.fee_bps,
+    next_open_date: product.next_open_date,
+    display_only: true,
+  };
+}
+
 function createProductsService(repository, options = {}) {
   if (!repository) throw new Error('products 服务需要 repository');
   const todayProvider = options.todayProvider || todayShanghai;
 
   function refresh(productCsvPath) {
-    return repository.refreshProducts(productCsvPath);
+    repository.refreshProducts(productCsvPath);
+    return repository
+      .listProducts()
+      .filter(isProductPoolEligible).length;
+  }
+
+  function listUnopenedProducts() {
+    const products = repository
+      .listProducts()
+      .filter((product) => /未开放/.test(product.status || ''))
+      .map(toUnopenedSnapshotProduct)
+      .sort(
+        (left, right) =>
+          right.data_date.localeCompare(left.data_date) ||
+          left.name.localeCompare(right.name, 'zh-CN'),
+      );
+    const snapshotDate =
+      products
+        .map((product) => product.data_date)
+        .filter(Boolean)
+        .sort()
+        .at(-1) || null;
+    return {
+      products,
+      count: products.length,
+      snapshot_date: snapshotDate,
+    };
   }
 
   function validateAllocationInput(body) {
@@ -205,6 +269,7 @@ function createProductsService(repository, options = {}) {
 
   return {
     refresh,
+    listUnopenedProducts,
     saveAllocationSettings,
     saveHoldingReviewSetting,
     validateAllocationInput,

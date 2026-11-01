@@ -7,8 +7,10 @@ import type {
   ProductSortKey,
   ProductView,
   SortDirection,
+  UnopenedSnapshotProduct,
 } from '@/types/dashboard'
 import { formatPct, formatTerm } from '@/composables/useFormatters'
+import { useDashboardStore } from '@/stores/dashboard'
 
 const props = defineProps<{
   open: boolean
@@ -17,6 +19,7 @@ const props = defineProps<{
   products: ProductView
   snapshotDate: string | null
   historyDate: string | null
+  snapshotSource: string | null
 }>()
 
 const emit = defineEmits<{
@@ -24,6 +27,9 @@ const emit = defineEmits<{
   detail: [product: Product]
 }>()
 
+type ProductDialogItem = Product | UnopenedSnapshotProduct
+
+const dashboardStore = useDashboardStore()
 const dialogRef = ref<HTMLDialogElement | null>(null)
 const tableWrapRef = ref<HTMLDivElement | null>(null)
 const suspendedForDetail = ref(false)
@@ -33,6 +39,13 @@ let savedScrollLeft = 0
 let savedProductCode = ''
 const sortKey = ref<ProductSortKey>('reference_yield_pct')
 const sortDirection = ref<SortDirection>('desc')
+const showUnopened = ref(false)
+const unopenedLoaded = ref(false)
+const unopenedLoading = ref(false)
+const unopenedError = ref('')
+const unopenedProducts = ref<UnopenedSnapshotProduct[]>([])
+const currentPage = ref(1)
+const pageSize = 100
 type QuickFilterField = 'code' | 'name' | 'issuer'
 type FilterField = QuickFilterField | 'term' | 'evidence'
 type FilterOption = {
@@ -100,9 +113,22 @@ const sortColumns: Array<{
   { key: 'return_1y', label: '近 1 年' },
 ]
 
+function isDisplayOnly(product: ProductDialogItem): product is UnopenedSnapshotProduct {
+  return 'display_only' in product && product.display_only === true
+}
+
+const allProducts = computed<ProductDialogItem[]>(() => {
+  if (!showUnopened.value) return props.products.all
+  const productsByCode = new Map<string, ProductDialogItem>()
+  for (const product of [...props.products.all, ...unopenedProducts.value]) {
+    productsByCode.set(product.code, product)
+  }
+  return [...productsByCode.values()]
+})
+
 const codeOptions = computed(() =>
   uniqueOptions(
-    props.products.all.map((product) => ({
+    allProducts.value.map((product) => ({
       value: product.code,
       label: product.code,
       detail: product.name,
@@ -115,7 +141,7 @@ const codeOptions = computed(() =>
 
 const nameOptions = computed(() =>
   uniqueOptions(
-    props.products.all.map((product) => ({
+    allProducts.value.map((product) => ({
       value: product.name,
       label: product.name,
       detail: `${product.code} · ${product.issuer}`,
@@ -127,7 +153,7 @@ const nameOptions = computed(() =>
 
 const issuerOptions = computed(() =>
   uniqueOptions(
-    props.products.all.map((product) => ({
+    allProducts.value.map((product) => ({
       value: product.issuer,
       label: product.issuer,
       searchText: product.issuer,
@@ -136,7 +162,7 @@ const issuerOptions = computed(() =>
 )
 
 const filteredProducts = computed(() =>
-  props.products.all.filter(
+  allProducts.value.filter(
     (product) => {
       return (
         matchesFieldFilter(
@@ -167,10 +193,16 @@ const filteredProducts = computed(() =>
 )
 
 const subtitle = computed(
-  () =>
-    `普通可买 R2 研究池 · 快照 ${props.snapshotDate || '待核'} · 历史业绩 ${
-      props.historyDate || '待核'
-    } · 共 ${props.products.all.length} 只`,
+  () => {
+    const unopenedText = showUnopened.value
+      ? unopenedLoading.value
+        ? '未开放加载中'
+        : `未开放 ${unopenedProducts.value.length} 只`
+      : '未开放未显示'
+    return `开放 R2 研究池 ${props.products.all.length} 只 · ${unopenedText} · 快照 ${
+      props.snapshotDate || '待核'
+    } · 历史业绩 ${props.historyDate || '待核'}`
+  },
 )
 
 const hasActiveFilters = computed(
@@ -187,8 +219,8 @@ const hasActiveFilters = computed(
 
 const filterCount = computed(() =>
   hasActiveFilters.value
-    ? `${filteredProducts.value.length} / ${props.products.all.length} 只`
-    : `${props.products.all.length} 只`,
+    ? `${filteredProducts.value.length} / ${allProducts.value.length} 只`
+    : `${allProducts.value.length} 只`,
 )
 
 const termSummary = computed(() =>
@@ -219,15 +251,33 @@ const sortStateText = computed(() => {
   return `当前：${productSortLabels[sortKey.value]} · ${directionText}`
 })
 
-function compareProducts(a: Product, b: Product): number {
+function sortValue(product: ProductDialogItem): number | null {
+  switch (sortKey.value) {
+    case 'term':
+      return product.term_days
+    case 'return_1m':
+      return product.return_1m
+    case 'return_3m':
+      return product.return_3m
+    case 'return_6m':
+      return product.return_6m
+    case 'return_1y':
+      return product.return_1y
+    case 'reference_yield_pct':
+    case 'weighted_yield_pct':
+      return isDisplayOnly(product) ? null : product.reference_yield_pct
+  }
+}
+
+function compareProducts(a: ProductDialogItem, b: ProductDialogItem): number {
   const nameCompare = a.name.localeCompare(b.name, 'zh-CN')
   if (sortKey.value === 'term') {
     const diff = (a.term_days ?? 9999) - (b.term_days ?? 9999)
     if (diff !== 0) return sortDirection.value === 'asc' ? diff : -diff
     return nameCompare
   }
-  const aValue = a[sortKey.value]
-  const bValue = b[sortKey.value]
+  const aValue = sortValue(a)
+  const bValue = sortValue(b)
   const aMissing = !Number.isFinite(aValue)
   const bMissing = !Number.isFinite(bValue)
   if (aMissing || bMissing) {
@@ -240,6 +290,80 @@ function compareProducts(a: Product, b: Product): number {
 }
 
 const sortedProducts = computed(() => [...filteredProducts.value].sort(compareProducts))
+const pageCount = computed(() =>
+  Math.max(1, Math.ceil(sortedProducts.value.length / pageSize)),
+)
+const pagedProducts = computed(() => {
+  if (!showUnopened.value || sortedProducts.value.length <= pageSize) {
+    return sortedProducts.value
+  }
+  const start = (currentPage.value - 1) * pageSize
+  return sortedProducts.value.slice(start, start + pageSize)
+})
+const pageStart = computed(() =>
+  sortedProducts.value.length === 0
+    ? 0
+    : Math.min(
+        sortedProducts.value.length,
+        (currentPage.value - 1) * pageSize + 1,
+      ),
+)
+const pageEnd = computed(() =>
+  Math.min(currentPage.value * pageSize, sortedProducts.value.length),
+)
+
+async function loadUnopenedProducts(): Promise<void> {
+  if (unopenedLoading.value) return
+  unopenedLoading.value = true
+  unopenedError.value = ''
+  try {
+    const response = await dashboardStore.loadUnopenedProducts()
+    unopenedProducts.value = response.products
+    unopenedLoaded.value = true
+  } catch (error) {
+    unopenedLoaded.value = false
+    unopenedError.value =
+      error instanceof Error ? error.message : '未开放产品读取失败'
+  } finally {
+    unopenedLoading.value = false
+  }
+}
+
+watch(showUnopened, (enabled) => {
+  currentPage.value = 1
+  if (enabled && !unopenedLoaded.value) void loadUnopenedProducts()
+})
+
+watch(
+  () => props.snapshotSource,
+  () => {
+    unopenedLoaded.value = false
+    unopenedProducts.value = []
+    if (showUnopened.value) void loadUnopenedProducts()
+  },
+)
+
+watch(
+  [
+    codeSearch,
+    nameSearch,
+    issuerSearch,
+    selectedCodes,
+    selectedNames,
+    selectedIssuers,
+    selectedTerms,
+    selectedEvidence,
+    sortKey,
+    sortDirection,
+  ],
+  () => {
+    currentPage.value = 1
+  },
+)
+
+watch(pageCount, (count) => {
+  if (currentPage.value > count) currentPage.value = count
+})
 
 watch(
   () => props.open,
@@ -318,7 +442,8 @@ async function resumePool(): Promise<void> {
   findProductButton(savedProductCode)?.focus({ preventScroll: true })
 }
 
-function openDetail(product: Product): void {
+function openDetail(product: ProductDialogItem): void {
+  if (isDisplayOnly(product)) return
   if (props.detailOpen) return
   capturePoolPosition(product.code)
   suspendedForDetail.value = true
@@ -749,7 +874,7 @@ function resetFilters(): void {
   closeAllFilterMenus()
 }
 
-function oneYearLabel(product: Product): string {
+function oneYearLabel(product: ProductDialogItem): string {
   if (product.return_1y !== null) return formatPct(product.return_1y, 2)
   if (Number.isFinite(product.history_months) && (product.history_months ?? 0) < 12) {
     return '未满1年'
@@ -775,7 +900,7 @@ function onDialogClick(event: MouseEvent): void {
     <div class="dialog-head">
       <div>
         <p class="kicker">历史快照</p>
-        <h2>普通可买 R2 研究池</h2>
+        <h2>R2 产品快照</h2>
         <p>{{ subtitle }}</p>
       </div>
       <button class="icon-button" type="button" aria-label="关闭" @click="requestClose">
@@ -785,6 +910,37 @@ function onDialogClick(event: MouseEvent): void {
       </button>
     </div>
     <div class="dialog-filter-bar">
+      <div class="snapshot-scope-row">
+        <label class="snapshot-scope-toggle">
+          <input
+            v-model="showUnopened"
+            type="checkbox"
+            data-testid="show-unopened-products"
+          />
+          <span>显示未开放产品</span>
+        </label>
+        <span class="snapshot-scope-note">
+          仅用于查询和阅读，不参与评分、研究候选、金额配置、提案或持仓复核。
+        </span>
+        <span v-if="unopenedLoading" class="snapshot-scope-status" role="status">
+          正在读取未开放快照…
+        </span>
+        <span
+          v-else-if="unopenedError"
+          class="snapshot-scope-status is-error"
+          role="alert"
+        >
+          {{ unopenedError }}
+          <button type="button" @click="loadUnopenedProducts">重试</button>
+        </span>
+        <span
+          v-else-if="showUnopened"
+          class="snapshot-scope-status"
+          data-testid="unopened-product-count"
+        >
+          已载入 {{ unopenedProducts.length }} 只未开放产品
+        </span>
+      </div>
       <div class="product-filter-grid">
         <div class="filter-field" data-filter="code">
           <span id="product-filter-code-label">产品代码</span>
@@ -1312,7 +1468,11 @@ function onDialogClick(event: MouseEvent): void {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="product in sortedProducts" :key="product.code">
+          <tr
+            v-for="product in pagedProducts"
+            :key="product.code"
+            :class="{ 'is-display-only': isDisplayOnly(product) }"
+          >
             <td>
               <span
                 class="term-badge"
@@ -1322,6 +1482,7 @@ function onDialogClick(event: MouseEvent): void {
             </td>
             <td class="product-name-cell">
               <button
+                v-if="!isDisplayOnly(product)"
                 type="button"
                 class="product-name-button"
                 :data-product-code="product.code"
@@ -1332,13 +1493,25 @@ function onDialogClick(event: MouseEvent): void {
                 <span>{{ product.code }} · {{ product.risk_level || '风险待核' }}</span>
                 <span class="product-detail-link">查看详情 →</span>
               </button>
+              <div
+                v-else
+                class="product-name-static"
+                :data-product-code="product.code"
+              >
+                <strong>{{ product.name }}</strong>
+                <span>{{ product.code }} · {{ product.risk_level || '风险待核' }}</span>
+                <span>未开放记录 · 仅展示</span>
+              </div>
             </td>
             <td class="align-right money-cell">
-              {{
-                product.reference_yield_status === 'available'
-                  ? formatPct(product.reference_yield_pct, 2)
-                  : '不可计算'
-              }}
+              <template v-if="isDisplayOnly(product)">仅展示</template>
+              <template v-else>
+                {{
+                  product.reference_yield_status === 'available'
+                    ? formatPct(product.reference_yield_pct, 2)
+                    : '不可计算'
+                }}
+              </template>
             </td>
             <td class="align-right money-cell">{{ formatPct(product.return_1m, 2) }}</td>
             <td class="align-right money-cell">{{ formatPct(product.return_3m, 2) }}</td>
@@ -1346,6 +1519,14 @@ function onDialogClick(event: MouseEvent): void {
             <td class="align-right money-cell">{{ oneYearLabel(product) }}</td>
             <td>
               <span
+                v-if="isDisplayOnly(product)"
+                class="status-pill is-unopened"
+                data-display-only="true"
+              >
+                未开放 · 仅展示
+              </span>
+              <span
+                v-else
                 class="status-pill"
                 :class="{
                   'is-new': product.evidence_tier !== 'full_1y',
@@ -1362,14 +1543,49 @@ function onDialogClick(event: MouseEvent): void {
           </tr>
           <tr v-if="sortedProducts.length === 0">
             <td class="product-filter-empty" colspan="8">
-              没有符合当前搜索和筛选条件的产品。
+              <template v-if="!showUnopened">
+                没有符合当前搜索和筛选条件的产品；如怀疑产品当前未开放，请勾选“显示未开放产品”后重试。
+              </template>
+              <template v-else>
+                没有符合当前搜索和筛选条件的产品。
+              </template>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+    <div
+      v-if="showUnopened && sortedProducts.length > pageSize"
+      class="snapshot-pager"
+      aria-label="产品快照分页"
+    >
+      <span>
+        显示第 {{ pageStart }}–{{ pageEnd }} 条，共 {{ sortedProducts.length }}
+        条
+      </span>
+      <div>
+        <button
+          class="button button-ghost button-small"
+          type="button"
+          :disabled="currentPage <= 1"
+          @click="currentPage -= 1"
+        >
+          上一页
+        </button>
+        <span>第 {{ currentPage }} / {{ pageCount }} 页</span>
+        <button
+          class="button button-ghost button-small"
+          type="button"
+          :disabled="currentPage >= pageCount"
+          @click="currentPage += 1"
+        >
+          下一页
+        </button>
+      </div>
+    </div>
     <p class="dialog-note">
-      这里展示人民币、公募、R2/PR2、开放中的普通可买产品。缺 1Y 或仅有 3M（低置信）
+      默认展示人民币、公募、R2/PR2、开放中的普通可买产品。勾选后追加同口径的未开放产品，
+      这些记录只用于查询和阅读，不进入评分、研究候选、金额配置、提案或持仓复核。缺 1Y 或仅有 3M（低置信）
       的产品可以进入评分，但分别受 10% 单只、20% 合计上限约束；仅有 1M
       的新品只作观察，不自动分配。任何产品在买入前都要重新核对风险等级、实时额度、费率、赎回规则和产品说明书。
     </p>
@@ -1386,6 +1602,61 @@ function onDialogClick(event: MouseEvent): void {
   gap: 12px;
   padding: 16px 26px 13px;
   background: linear-gradient(180deg, var(--card) 0%, var(--card-soft) 155%);
+}
+
+.snapshot-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  min-height: 32px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.snapshot-scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.snapshot-scope-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.snapshot-scope-note,
+.snapshot-scope-status {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.snapshot-scope-status {
+  margin-left: auto;
+}
+
+.snapshot-scope-status.is-error {
+  color: var(--danger, #b42318);
+}
+
+.snapshot-scope-status button {
+  margin-left: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .product-filter-grid {
@@ -1954,6 +2225,49 @@ function onDialogClick(event: MouseEvent): void {
   color: var(--green);
   font-family: var(--sans);
   font-weight: 650;
+}
+
+.product-name-static {
+  display: grid;
+  gap: 2px;
+  padding: 4px 6px;
+}
+
+.product-name-static strong {
+  color: var(--ink);
+}
+
+.product-name-static span:last-child {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.product-table tr.is-display-only {
+  background: color-mix(in srgb, var(--card-soft) 76%, transparent);
+}
+
+.status-pill.is-unopened {
+  border-color: var(--line-strong);
+  background: var(--card-soft);
+  color: var(--muted);
+}
+
+.snapshot-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 26px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.snapshot-pager > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
 @media (max-width: 1000px) {

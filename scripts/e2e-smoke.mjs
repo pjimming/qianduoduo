@@ -187,7 +187,7 @@ async function main() {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'r2-e2e-'))
   const repository = openDatabase({
     dbPath: path.join(directory, 'e2e.sqlite'),
-    productCsvPath: resolveProductCsv(root),
+    productCsvPath: resolveProductCsv(root, { includeUnopened: true }),
     logger: { warn() {} },
   })
   const server = createServer({ repository })
@@ -2556,6 +2556,91 @@ async function main() {
       '普通可买候选池移动端出现页面级横向溢出',
     )
     await page.setViewportSize({ width: 1280, height: 900 })
+    await poolDialog.getByRole('button', { name: '重置筛选' }).click()
+
+    const unopenedSnapshot = await fetch(
+      `${base}/api/products/unopened`,
+    ).then((response) => response.json())
+    assert(
+      unopenedSnapshot.count > 0,
+      '未开放产品只读接口没有返回快照记录',
+    )
+    assert(
+      unopenedSnapshot.products.every(
+        (product) =>
+          product.display_only === true &&
+          product.status === '未开放',
+      ),
+      '未开放产品只读接口混入了可决策产品',
+    )
+    const unopenedTarget =
+      unopenedSnapshot.products.find(
+        (product) => product.code === '120019K',
+      ) ?? unopenedSnapshot.products[0]
+    const dashboardBeforeUnopened = await fetch(
+      `${base}/api/dashboard/sections?include=products`,
+    ).then((response) => response.json())
+    assert(
+      !dashboardBeforeUnopened.products.all.some(
+        (product) => product.code === unopenedTarget.code,
+      ),
+      '未开放产品进入了开放研究池',
+    )
+
+    const showUnopened = poolDialog.getByRole('checkbox', {
+      name: '显示未开放产品',
+    })
+    await showUnopened.check()
+    await page.waitForFunction(
+      (count) =>
+        document.querySelector(
+          '[data-testid="unopened-product-count"]',
+        )?.textContent?.includes(String(count)),
+      unopenedSnapshot.count,
+      { timeout: 10000 },
+    )
+    await codeSearch.fill(unopenedTarget.code)
+    const unopenedRow = poolDialog.locator(
+      `.product-name-static[data-product-code="${unopenedTarget.code}"]`,
+    )
+    await unopenedRow.waitFor()
+    const unopenedRowText = (await unopenedRow.textContent()) ?? ''
+    assert(
+      unopenedRowText.includes('未开放') &&
+        unopenedRowText.includes('仅展示'),
+      '未开放产品没有显示仅展示状态',
+    )
+    assert(
+      (await poolDialog
+        .locator(
+          `.product-name-button[data-product-code="${unopenedTarget.code}"]`,
+        )
+        .count()) === 0,
+      '未开放产品仍可打开研究详情',
+    )
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertFontFloor(
+      page,
+      '.snapshot-scope-row',
+      '未开放快照开关移动端',
+    )
+    assert(
+      await showUnopened.isVisible(),
+      '移动端未开放快照开关不可见',
+    )
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '未开放快照移动端出现页面级横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await codeSearch.fill('')
+    await showUnopened.uncheck()
+    assert(
+      (await unopenedRow.count()) === 0,
+      '取消勾选后未开放产品仍留在列表中',
+    )
     await poolDialog.locator('.dialog-head .icon-button').click()
     await page.waitForSelector('.product-dialog:not(.product-detail-dialog)[open]', {
       state: 'detached',
@@ -3130,7 +3215,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

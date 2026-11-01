@@ -182,7 +182,7 @@ npm run pages:build
 主要数据源：
 
 - R2 账本：`data/r2_ledger.sqlite`
-- 产品快照：`data/cmb_r2_*.csv`
+- 产品快照：`data/cmb_r2_*.csv`；开放候选池使用 `cmb_r2_universe-*.csv`，应用组合快照使用 `cmb_r2_snapshot-*.csv`，其中未开放记录仅用于查询展示。
 - 市场简报：`market-briefs/*.md`
 - 调研报告：`report/*.html`
 - 科技图谱：`src/data/techmap.json`
