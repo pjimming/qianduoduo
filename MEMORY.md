@@ -66,7 +66,7 @@
 ## 4. 投研与报告
 
 - 个股、主题、产业链、候选对比和公司事件研究以 `serenity-skill` 为唯一工作流；先读 `SKILL.md`，再按需读取 references 和 assets。
-- 每日市场简报使用 `/investment/briefs` 和 `market-briefs/YYYY-MM-DD.md`，不调用 Serenity。固定六部分、双源核对、来源可追溯；任务接口和发布规则见 `codex-automations/market-daily-brief.md` 与 `codex-automations/market-brief-api-catalog.md`。
+- 每日市场简报使用 `/investment/briefs` 和 `market-briefs/YYYY-MM-DD.md`，不调用 Serenity。固定六部分、双源核对、来源可追溯；风格与板块分别使用新浪固定行业涨跌和东方财富行业板块第三方估算的主力净流入/流出，核对资金流快照日期与时间后单独排名。任务接口和发布规则见 `codex-automations/market-daily-brief.md` 与 `codex-automations/market-brief-api-catalog.md`。
 - 股票报告唯一可编辑源是 `report/*.html`；独立归档页是 `research/index.html`，应用阅读页是 `/investment/research/:slug`。
 - `npm run research:publish` 重建报告库导航、`src/data/stockReports.json`、Vue 文档、检索索引和媒体。生成物不手工编辑。
 - 报告以事实、解释和推断分离为核心；Serenity 证据阶梯、市场叙事与资金结构、五红灯和退出条件按 AGENTS 与 skill 执行。
