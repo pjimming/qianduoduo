@@ -669,6 +669,9 @@ test('zero remaining quota blocks candidate execution readiness', () => {
     today: '2026-10-20',
   });
   assert.equal(review.candidates[0].execution_ready, false);
+  assert.equal(review.candidates[0].verdict, 'watch');
+  assert.equal(review.verdict, 'watch');
+  assert.match(review.summary, /额度已核验为 0/);
   assert.ok(
     review.candidates[0].data_gaps.some((gap) => /额度售罄或为 0/.test(gap)),
   );
