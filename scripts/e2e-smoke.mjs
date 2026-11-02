@@ -1604,10 +1604,21 @@ async function main() {
       '发行方占比仍被标记为警告色',
     )
     const tradesTerminology = (await page.locator('#trades').textContent()) || ''
+    const ambiguousRealizedLabelIndex =
+      tradesTerminology.indexOf('已实现收益')
     assert(
       tradesTerminology.includes('累计已实现盈亏') &&
-        !tradesTerminology.includes('已实现收益'),
-      '交易流水仍在使用有歧义的“已实现收益”名称',
+        ambiguousRealizedLabelIndex === -1,
+      `交易流水术语校验失败：hasCanonical=${
+        tradesTerminology.includes('累计已实现盈亏')
+      }; ambiguousIndex=${ambiguousRealizedLabelIndex}; text=${
+        ambiguousRealizedLabelIndex >= 0
+          ? tradesTerminology.slice(
+              Math.max(0, ambiguousRealizedLabelIndex - 40),
+              ambiguousRealizedLabelIndex + 60,
+            )
+          : tradesTerminology.slice(0, 360)
+      }`,
     )
     assert(
       (await page.locator('.product-valuation-panel .pv-card').count()) === 2,

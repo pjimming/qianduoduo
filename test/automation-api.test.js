@@ -43,7 +43,7 @@ test('automation API persists strategy fields, evaluates, applies and undoes', a
   const decisionResponse = await postJson(`${base}/api/review/decisions`, {
     date: '2026-10-01',
     product_name: '测试组合',
-    action: '买入',
+    action: '切换',
     reason: '按策略配置',
     expectation: '持有到期达到目标',
     invalidation_condition: '实际年化低于目标或期限桶偏离计划时重新评估',

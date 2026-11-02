@@ -2,6 +2,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { todayShanghai } = require('../../../lib/metrics');
+const {
+  ensureTradeStrategyBinding: ensureBinding,
+} = require('../../../lib/trade-strategy-binding');
 
 function createTradesRepository(repository) {
   if (!repository) throw new Error('trades repository 需要 repository');
@@ -18,6 +22,16 @@ function createTradesRepository(repository) {
   }
   function selectInboxEvent(id, event) {
     return repository.dataTrustStore.selectInboxEvent('trade', id, event);
+  }
+  function ensureTradeStrategyBinding(trade, today) {
+    return ensureBinding({
+      trade,
+      today,
+      listDecisions: () => repository.listDecisions(),
+      tradeStore: repository.tradeStore,
+      decisionProposalStore: repository.decisionProposalStore,
+      automationStore: repository.automationStore,
+    });
   }
   return {
     inboxDir: repository.tradeInboxDir,
@@ -64,6 +78,10 @@ function createTradesRepository(repository) {
         }
         const result = repository.tradeStore.applyInbox(id, fields);
         if (!result) return result;
+        result.trade = ensureTradeStrategyBinding(
+          result.trade,
+          options.today,
+        );
         const lineage = repository.dataTrustStore.getInboxLineage(
           'trade',
           id,
@@ -110,17 +128,26 @@ function createTradesRepository(repository) {
         };
       });
     },
-    cancelTrade(id, note) {
-      return repository.tradeStore.cancelTrade(id, note);
+    cancelTrade(id, note, today = todayShanghai()) {
+      return withDataTrustTransaction(() => {
+        const trade = repository.tradeStore.cancelTrade(id, note);
+        return trade ? ensureTradeStrategyBinding(trade, today) : null;
+      });
     },
-    confirmTrade(id, date, note) {
-      return repository.tradeStore.confirmTrade(id, date, note);
+    confirmTrade(id, date, note, today = todayShanghai()) {
+      return withDataTrustTransaction(() => {
+        const trade = repository.tradeStore.confirmTrade(id, date, note);
+        return trade ? ensureTradeStrategyBinding(trade, today) : null;
+      });
     },
     createHolding(holding) {
       return repository.createHolding(holding);
     },
-    createTrade(input, note) {
-      return repository.tradeStore.createTrade(input, note);
+    createTrade(input, note, today = todayShanghai()) {
+      return withDataTrustTransaction(() => {
+        const trade = repository.tradeStore.createTrade(input, note);
+        return ensureTradeStrategyBinding(trade, today);
+      });
     },
     deleteHolding(id) {
       return repository.deleteHolding(id);
@@ -247,8 +274,11 @@ function createTradesRepository(repository) {
     updateInbox(id, input) {
       return repository.tradeStore.updateInbox(id, input);
     },
-    updateTrade(id, input, note) {
-      return repository.tradeStore.updateTrade(id, input, note);
+    updateTrade(id, input, note, today = todayShanghai()) {
+      return withDataTrustTransaction(() => {
+        const trade = repository.tradeStore.updateTrade(id, input, note);
+        return trade ? ensureTradeStrategyBinding(trade, today) : null;
+      });
     },
     withDataTrustTransaction,
   };

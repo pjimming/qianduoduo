@@ -112,6 +112,7 @@ function selectDashboardSection(payload, section) {
           holdings: workspace.holdings,
           holdings_summary: workspace.holdings_summary,
           trades: workspace.trades,
+          decisions: workspace.decisions,
           timeline: workspace.timeline,
           product_valuation_summary: workspace.product_valuation_summary,
           product_valuation_summaries: workspace.product_valuation_summaries,

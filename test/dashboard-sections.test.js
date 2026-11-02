@@ -49,6 +49,10 @@ test('dashboard sections compose to the compatible full payload', (t) => {
     full.workspace.trades,
   );
   assert.deepEqual(
+    query.getSection('trades').workspace.decisions,
+    full.workspace.decisions,
+  );
+  assert.deepEqual(
     query.getSection('evaluation').workspace.decisions,
     full.workspace.decisions,
   );

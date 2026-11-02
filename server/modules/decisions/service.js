@@ -25,6 +25,43 @@ function createDecisionsService({
     return result.value;
   }
 
+  function linkedStrategyChanged(before, next) {
+    const stable = (value) => JSON.stringify(value ?? null);
+    for (const key of [
+      'date',
+      'product_name',
+      'action',
+      'strategy_version',
+      'target_annualized',
+      'bucket_plan',
+      'evaluation_at',
+    ]) {
+      if (stable(before[key]) !== stable(next[key])) return true;
+    }
+    for (const key of [
+      'proposal_id',
+      'proposal_type',
+      'holding_lot_id',
+      'holding_code',
+      'candidate_code',
+      'product_code',
+      'current_product_code',
+      'candidate_product_code',
+      'target_product_code',
+      'trade_id',
+      'screenshot_id',
+      'expected_legs',
+    ]) {
+      if (
+        stable(before.review_meta?.[key]) !==
+        stable(next.review_meta?.[key])
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   async function evaluate(trigger) {
     if (automationRunner) {
       await automationRunner.run({
@@ -46,7 +83,17 @@ function createDecisionsService({
   }
 
   async function updateDecision(id, body) {
-    const decision = decisionsRepository.updateDecision(id, validate(body));
+    const before = decisionsRepository.findDecision(id);
+    if (!before) throw decisionError(404, '没有找到这条决策记录');
+    const value = validate(body);
+    const linked = decisionsRepository.findLinkedTrade(id);
+    if (linked && linkedStrategyChanged(before, value)) {
+      throw decisionError(
+        409,
+        `决策 #${id} 已关联交易 #${linked.id}，策略、动作、产品或交易腿不可改写；请新建决策后改绑`,
+      );
+    }
+    const decision = decisionsRepository.updateDecision(id, value);
     if (!decision) throw decisionError(404, '没有找到这条决策记录');
     await evaluate('decision-update');
     return {

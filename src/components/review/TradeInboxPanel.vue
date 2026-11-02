@@ -406,7 +406,8 @@ function addDays(date: string, days: number): string {
                   :key="decision.id"
                   :value="decision.id"
                 >
-                  {{ decision.date }} · {{ decision.product_name }}
+                  {{ decision.date }} · {{ decision.product_name }} · 策略
+                  {{ decision.strategy_version }}
                 </option>
               </select>
             </label>

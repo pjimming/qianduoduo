@@ -1066,6 +1066,19 @@
   white-space: normal;
 }
 
+.rw-strategy-text {
+  display: block;
+  margin-top: 5px;
+  color: var(--green);
+  font-size: 12px !important;
+  white-space: normal;
+}
+
+.rw-strategy-text.is-missing {
+  color: var(--danger-ink);
+  font-weight: 650;
+}
+
 .rw-dropzone {
   display: flex;
   flex-direction: column;

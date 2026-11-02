@@ -41,6 +41,11 @@ const traceFactKey = ref('')
 const traceTitle = ref('')
 const form = reactive<DecisionInput>(emptyForm())
 const target3Locked = computed(() => /r2-3pct|target3/i.test(form.strategy_version))
+const strategyLocked = computed(
+  () =>
+    editingId.value !== null &&
+    props.trades.some((trade) => trade.decision_id === editingId.value),
+)
 
 watch(
   () => form.strategy_version,
@@ -512,15 +517,21 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
       <div class="rw-form-grid">
         <label class="rw-field">
           <span>日期</span>
-          <input v-model="form.date" type="date" required />
+          <input v-model="form.date" type="date" required :disabled="strategyLocked" />
         </label>
         <label class="rw-field">
           <span>产品名称</span>
-          <input v-model="form.product_name" type="text" maxlength="100" required />
+          <input
+            v-model="form.product_name"
+            type="text"
+            maxlength="100"
+            required
+            :disabled="strategyLocked"
+          />
         </label>
         <label class="rw-field">
           <span>动作</span>
-          <select v-model="form.action">
+          <select v-model="form.action" :disabled="strategyLocked">
             <option v-for="action in actions" :key="action" :value="action">{{ action }}</option>
           </select>
         </label>
@@ -532,7 +543,12 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
         </label>
         <label class="rw-field">
           <span>策略版本</span>
-          <input v-model="form.strategy_version" type="text" maxlength="60" />
+          <input
+            v-model="form.strategy_version"
+            type="text"
+            maxlength="60"
+            :disabled="strategyLocked"
+          />
         </label>
         <label class="rw-field">
           <span>目标年化（%）</span>
@@ -542,7 +558,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
             min="0.1"
             max="20"
             step="0.1"
-            :disabled="target3Locked"
+            :disabled="target3Locked || strategyLocked"
           />
         </label>
         <label class="rw-field">
@@ -561,7 +577,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
             min="0"
             max="100"
             step="1"
-            :disabled="target3Locked"
+            :disabled="target3Locked || strategyLocked"
           />
         </label>
         <label class="rw-field">
@@ -572,7 +588,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
             min="0"
             max="100"
             step="1"
-            :disabled="target3Locked"
+            :disabled="target3Locked || strategyLocked"
           />
         </label>
         <label class="rw-field">
@@ -583,13 +599,23 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
             min="0"
             max="100"
             step="1"
-            :disabled="target3Locked"
+            :disabled="target3Locked || strategyLocked"
           />
         </label>
         <label class="rw-field">
           <span>单只上限（%）</span>
-          <input v-model.number="form.bucket_plan.max_single" type="number" min="0" max="100" step="1" />
+          <input
+            v-model.number="form.bucket_plan.max_single"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            :disabled="strategyLocked"
+          />
         </label>
+        <p v-if="strategyLocked" class="rw-form-hint is-wide">
+          该决策已绑定交易，日期、动作、产品、策略版本和期限桶已冻结。需要调整策略时，请新建决策并改绑交易。
+        </p>
         <p class="rw-form-hint is-wide">
           本项目日开新增额度固定为 0%；`r2-3pct-v1` / target3 固定为短期 30% / 中期 35% / 长期 35%。
           现有日开持仓只作为真实持仓事实保留，按赎回规则迁移。

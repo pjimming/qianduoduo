@@ -80,7 +80,11 @@ function createTradesService({
     ensureDecision(value);
     let trade;
     try {
-      trade = tradesRepository.createTrade(value, '页面手工录入');
+      trade = tradesRepository.createTrade(
+        value,
+        '页面手工录入',
+        todayProvider(),
+      );
     } catch (error) {
       storeError(error);
     }
@@ -104,6 +108,7 @@ function createTradesService({
         id,
         value,
         body.note || '页面修改',
+        todayProvider(),
       );
     } catch (error) {
       storeError(error);
@@ -126,6 +131,7 @@ function createTradesService({
         id,
         confirmDate,
         body.note || '页面确认',
+        today,
       );
     } catch (error) {
       storeError(error);
@@ -140,6 +146,7 @@ function createTradesService({
       trade = tradesRepository.cancelTrade(
         id,
         String(body.note || '页面撤销'),
+        todayProvider(),
       );
     } catch (error) {
       storeError(error);
@@ -356,6 +363,7 @@ function createTradesService({
           requestId,
           actorType: 'human',
           actorRef: 'trade-inbox-apply',
+          today: todayProvider(),
         });
       });
     } catch (error) {
@@ -515,6 +523,7 @@ function createTradesService({
           requestId,
           actorType: 'vision-model',
           actorRef: 'trade-vision-apply',
+          today: todayProvider(),
         });
       });
     } catch (error) {

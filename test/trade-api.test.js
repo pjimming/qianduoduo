@@ -60,6 +60,36 @@ function tradePayload(overrides = {}) {
   };
 }
 
+function decisionPayload(overrides = {}) {
+  return {
+    date: '2026-10-01',
+    product_name: '招银理财90天',
+    action: '买入',
+    reason: '证据充分，按目标组合建仓',
+    expectation: '持有至到期并达到期限 hurdle',
+    invalidation_condition: '产品风险、费率或赎回规则发生不利变化',
+    actual_result: '',
+    strategy_version: 'r2-3pct-v1',
+    target_annualized: 3,
+    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+    evaluation_at: ['buy_day', 'holding', 'maturity'],
+    evidence_date: '2026-10-01',
+    verify_date: '2026-12-30',
+    review_meta: {
+      expected_legs: [
+        {
+          side: 'buy',
+          product_code: '120056A',
+          product_name: '招银理财90天',
+          amount: 10000,
+        },
+      ],
+    },
+    rating: '待评估',
+    ...overrides,
+  };
+}
+
 test('trade API keeps pending out of holdings and updates after confirm/redeem', async (t) => {
   const { base } = await startTestServer(t);
   await postJson(`${base}/api/capital/init`, {
@@ -197,6 +227,86 @@ test('trade inbox dedupes image hashes and applies corrected fields', async (t) 
     6000,
   );
   assert.equal(appliedPayload.dashboard.workspace.holdings_summary.total_amount, 0);
+});
+
+test('trade creation rolls back when an automatic strategy binding cannot be completed', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  repository.automationStore.ensureTradeDecisions = () => {
+    throw new Error('策略绑定不可用');
+  };
+  const response = await postJson(
+    `${base}/api/trades`,
+    tradePayload({ decision_id: null }),
+  );
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /策略绑定不可用/);
+  assert.equal(repository.tradeStore.listTrades().length, 0);
+  assert.equal(repository.listDecisions().length, 0);
+});
+
+test('trade strategy binding validates the decision leg and freezes strategy identity', async (t) => {
+  const { base, repository } = await startTestServer(t);
+  const decisionResponse = await postJson(
+    `${base}/api/review/decisions`,
+    decisionPayload(),
+  );
+  assert.equal(decisionResponse.status, 201);
+  const decision = (await decisionResponse.json()).decision;
+
+  const tradeResponse = await postJson(
+    `${base}/api/trades`,
+    tradePayload({ decision_id: decision.id }),
+  );
+  assert.equal(tradeResponse.status, 201);
+  const trade = (await tradeResponse.json()).trade;
+  assert.equal(trade.decision_id, decision.id);
+
+  const otherDecisionResponse = await postJson(
+    `${base}/api/review/decisions`,
+    decisionPayload({
+      product_name: '招银理财14天',
+      review_meta: {
+        expected_legs: [
+          {
+            side: 'buy',
+            product_code: '120026A',
+            product_name: '招银理财14天',
+            amount: 10000,
+          },
+        ],
+      },
+    }),
+  );
+  assert.equal(otherDecisionResponse.status, 201);
+  const otherDecision = (await otherDecisionResponse.json()).decision;
+
+  const rebind = await postJson(
+    `${base}/api/trades/${trade.id}`,
+    { decision_id: otherDecision.id },
+    'PUT',
+  );
+  assert.equal(rebind.status, 400);
+  assert.match((await rebind.json()).error, /策略腿不一致/);
+  assert.equal(repository.tradeStore.getTrade(trade.id).decision_id, decision.id);
+
+  const strategyChange = await postJson(
+    `${base}/api/review/decisions/${decision.id}`,
+    {
+      ...decisionPayload(),
+      strategy_version: 'custom-ladder-v2',
+      target_annualized: 3.1,
+      bucket_plan: { short: 35, medium: 35, long: 30, max_single: 30 },
+    },
+    'PUT',
+  );
+  assert.equal(strategyChange.status, 409);
+  assert.match((await strategyChange.json()).error, /已关联交易/);
+  assert.equal(
+    repository
+      .listDecisions()
+      .find((item) => item.id === decision.id).strategy_version,
+    'r2-3pct-v1',
+  );
 });
 
 test('trade reconciliation flags missing screenshots and stale pending trades', async (t) => {

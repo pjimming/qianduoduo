@@ -58,6 +58,7 @@ const traceOpen = ref(false)
 const traceFactKey = ref('')
 const traceTitle = ref('')
 const form = reactive<TradeForm>(emptyForm())
+const availableDecisions = computed(() => props.decisions || [])
 
 const filteredTrades = computed(() => {
   if (statusFilter.value === 'all') return props.overview.trades
@@ -78,6 +79,17 @@ const filters = computed(() => [
     count: props.overview.summary.cancelled_count,
   },
 ])
+
+function decisionFor(trade: TradeTransaction): DecisionEntry | null {
+  return availableDecisions.value.find((item) => item.id === trade.decision_id) || null
+}
+
+function strategyBindingLabel(trade: TradeTransaction): string {
+  const decision = decisionFor(trade)
+  return decision
+    ? `决策 #${decision.id} · 策略 ${decision.strategy_version}`
+    : '策略未绑定'
+}
 
 function emptyForm(type: TradeType = 'buy'): TradeForm {
   return {
@@ -461,8 +473,12 @@ function addDays(date: string, days: number): string {
           <span>关联决策</span>
           <select v-model="form.decision_id">
             <option value="">新建本次决策（必填）</option>
-            <option v-for="item in decisions" :key="item.id" :value="String(item.id)">
-              {{ item.date }} · {{ item.product_name }}
+            <option
+              v-for="item in availableDecisions"
+              :key="item.id"
+              :value="String(item.id)"
+            >
+              {{ item.date }} · {{ item.product_name }} · 策略 {{ item.strategy_version }}
             </option>
           </select>
         </label>
@@ -526,7 +542,8 @@ function addDays(date: string, days: number): string {
         </label>
       </div>
       <p class="rw-form-hint">
-        新交易必须先选择已有决策或填写本次决策；保存时先写决策，再关联交易。
+        新交易必须先选择已有决策或填写本次决策；平台在交易落库的同一事务内校验策略版本、
+        动作、产品和交易腿，任一不一致都会整体回滚。
         赎回按买入批次先进先出匹配；待确认交易不会进入持仓。
       </p>
       <div class="rw-form-actions">
@@ -591,6 +608,12 @@ function addDays(date: string, days: number): string {
                   #{{ allocation.buy_trade_id }} ¥{{ formatMoney(allocation.principal, 0) }}
                   / 已实现盈亏 ¥{{ formatMoney(allocation.realized_pnl, 2) }}
                 </span>
+              </small>
+              <small
+                class="rw-strategy-text"
+                :class="{ 'is-missing': !decisionFor(trade) }"
+              >
+                {{ strategyBindingLabel(trade) }}
               </small>
             </td>
             <td class="is-number">

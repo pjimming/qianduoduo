@@ -193,9 +193,13 @@ test('review API stores decisions, holdings, events, notes and exports Markdown'
     `${base}/api/review/decisions/${decisionPayload.decision.id}`,
     { method: 'DELETE' },
   );
-  assert.equal(deleteResponse.status, 200);
-  const deleted = await deleteResponse.json();
-  assert.equal(deleted.dashboard.workspace.decisions.length, 0);
+  assert.equal(deleteResponse.status, 409);
+  assert.match((await deleteResponse.json()).error, /已关联交易/);
+  assert.equal(
+    (await fetch(`${base}/api/dashboard`).then((response) => response.json()))
+      .workspace.decisions.length,
+    1,
+  );
 });
 
 test('review API rejects invalid holding and event payloads', async (t) => {
