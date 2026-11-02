@@ -31,6 +31,7 @@
 | QDD-MB-13 | 2026-10-29 | 本地报告索引 | `src/data/stockReports.json` | 只读；按 `date`、`priority`、`category`、`keywords`、`slug` 做确定性匹配 |
 | QDD-MB-14 | 2026-10-29 | 本地健康检查 | `http://127.0.0.1:8765/api/health` | HTTP 200 且 JSON `ok=true` |
 | QDD-MB-17 | 2026-10-30 | 全 A 涨跌家数（主用） | 总数：`https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeStockCount?node=hs_a`；分页：`https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page={page}&num=100&sort=symbol&asc=1&node=hs_a&symbol=&_s_r_a=page`；Header `Referer: https://vip.stock.finance.sina.com.cn/mkt/` | 总数接口返回 JSON 字符串；分页按 `page` 从 1 取至声明总数覆盖，`num=100`，读取 `symbol`、`code`、`name`、`changepercent`、`ticktime`，按 `symbol` 去重后统计正、负、零值。`hs_a` 覆盖沪深北 A 股和 ST，不含 B 股与 ETF；快照日期须用核心指数行情时间戳复核。失败时回退 QDD-MB-05，仍失败则写“未获取到”，不按涨跌停家数推算 |
+| QDD-MB-18 | 2026-11-02 | 国家统计局年度发布日历 | `https://www.stats.gov.cn/sj/fbrc/bnxxfb/` | 读取“2026年国家统计局主要统计信息发布日程表”，包括指标、月份、日期和发布时间；用于判断下一交易日是否存在已排定的例行数据发布。日程不等同于实际披露，临时公告和正文仍以 QDD-MB-10 及当日发布页核对；缺失时写“待披露”，不得据标题推断数值 |
 
 ## 新接口登记模板
 
