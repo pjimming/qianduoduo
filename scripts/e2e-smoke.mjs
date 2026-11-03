@@ -283,6 +283,8 @@ async function main() {
           latestBriefText.includes('政策面信号') &&
           latestBriefText.includes('估值参考') &&
           latestBriefText.includes('后续影响与展望') &&
+          latestBriefText.includes('短期（1-2 周）') &&
+          latestBriefText.includes('中期（1-3 个月）') &&
           latestBriefText.includes('结论') &&
           (await page.locator('.briefs-heading h1').innerText()).includes(
             briefDates[0],

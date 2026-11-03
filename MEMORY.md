@@ -66,7 +66,7 @@
 ## 4. 投研与报告
 
 - 个股、主题、产业链、候选对比和公司事件研究以 `serenity-skill` 为唯一工作流；先读 `SKILL.md`，再按需读取 references 和 assets。
-- 每日市场简报使用 `/investment/briefs` 和 `market-briefs/YYYY-MM-DD.md`，不调用 Serenity。固定八章为收盘概览、市场为何这样走？、结构性亮点：当日 1–2 点结论、关键资金信号、政策面信号、估值参考、后续影响与展望、结论；第三章标题直接概括当天最重要的 1–2 个结构变化，不预设“高切低”，没有明确结构时写“未形成明确结构”。报告库联动嵌入相关亮点或展望。行情双源核对、来源可追溯，行业涨跌与东方财富第三方估算资金流分别排名。任务接口和发布规则见 `codex-automations/market-daily-brief.md` 与 `codex-automations/market-brief-api-catalog.md`。
+- 每日市场简报使用 `/investment/briefs` 和 `market-briefs/YYYY-MM-DD.md`，不调用 Serenity。固定八章为收盘概览、市场为何这样走？、结构性亮点：当日 1–2 点结论、关键资金信号、政策面信号、估值参考、后续影响与展望、结论；第三章标题直接概括当天最重要的 1–2 个结构变化，不预设“高切低”，“后续影响与展望”固定分设“短期（1-2 周）”和“中期（1-3 个月）”。报告库联动嵌入相关亮点或展望。行情双源核对、来源可追溯，行业涨跌与东方财富第三方估算资金流分别排名。任务接口和发布规则见 `codex-automations/market-daily-brief.md` 与 `codex-automations/market-brief-api-catalog.md`。
 - 股票报告唯一可编辑源是 `report/*.html`；独立归档页是 `research/index.html`，应用阅读页是 `/investment/research/:slug`。
 - `npm run research:publish` 重建报告库导航、`src/data/stockReports.json`、Vue 文档、检索索引和媒体。生成物不手工编辑。
 - 报告以事实、解释和推断分离为核心；Serenity 证据阶梯、市场叙事与资金结构、五红灯和退出条件按 AGENTS 与 skill 执行。
