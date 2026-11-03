@@ -275,8 +275,14 @@ async function main() {
       const latestBriefText =
         (await page.locator('.brief-markdown').innerText()) ?? ''
       assert(
-        latestBriefText.includes('市场概览') &&
-          latestBriefText.includes('一句话结论') &&
+        latestBriefText.includes('收盘概览') &&
+          latestBriefText.includes('市场为何这样走？') &&
+          latestBriefText.includes('结构性亮点：资金高切低的三个承接方向') &&
+          latestBriefText.includes('关键资金信号') &&
+          latestBriefText.includes('政策面信号') &&
+          latestBriefText.includes('估值参考') &&
+          latestBriefText.includes('后续影响与展望') &&
+          latestBriefText.includes('结论') &&
           (await page.locator('.briefs-heading h1').innerText()).includes(
             briefDates[0],
           ),
