@@ -6,7 +6,7 @@
 | 名称 | 钱多多R2工作日巡检（含AI队列与消息中心） |
 | 时间 | 周一至周五 21:00（Asia/Shanghai；法定节假日跳过） |
 | RRULE | `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=21;BYMINUTE=0;BYSECOND=0` |
-| 模型 | `deepseek-flash` |
+| 模型 | `gpt-6.1-sol` |
 | Reasoning | `high` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |

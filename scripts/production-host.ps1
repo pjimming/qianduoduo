@@ -16,6 +16,7 @@ param(
   [string]$TaskName = 'QianDuoDuo-Production',
   [int]$HealthTimeoutSeconds = 3,
   [int]$GracefulStopTimeoutMs = 10000,
+  [string]$LegacyStartupDirectory = '',
   [switch]$SkipElevation,
   [switch]$Json
 )
@@ -26,6 +27,10 @@ if (-not $Root) {
   $Root = Split-Path -Parent $PSScriptRoot
 }
 $Root = [System.IO.Path]::GetFullPath($Root)
+if (-not $LegacyStartupDirectory) {
+  $LegacyStartupDirectory = [Environment]::GetFolderPath('Startup')
+}
+$LegacyStartupDirectory = [System.IO.Path]::GetFullPath($LegacyStartupDirectory)
 
 $RunDir = Join-Path $Root 'run'
 $LogDir = Join-Path $Root 'logs'
@@ -49,6 +54,7 @@ $TickLauncher = Join-Path $TickLauncherDir "tick-$TaskName.vbs"
 $TickLauncherLog = Join-Path $LogDir 'launcher.log'
 $DefaultTaskName = 'QianDuoDuo-Production'
 $LegacyTaskName = 'QianDuoDuo-AutoStart'
+$LegacyStartupArchiveDir = Join-Path $RunDir 'legacy-startup'
 
 function Ensure-Directories {
   New-Item -ItemType Directory -Force -Path $RunDir, $LogDir | Out-Null
@@ -312,6 +318,9 @@ function Invoke-ElevatedHostAction {
     '-HealthTimeoutSeconds', "$HealthTimeoutSeconds",
     '-GracefulStopTimeoutMs', "$GracefulStopTimeoutMs"
   )
+  if ($LegacyStartupDirectory) {
+    $arguments += @('-LegacyStartupDirectory', ('"{0}"' -f $LegacyStartupDirectory))
+  }
   $process = Start-Process `
     -FilePath $PowerShellExe `
     -ArgumentList $arguments `
@@ -362,26 +371,42 @@ function Grant-CurrentUserTaskAccess {
   }
 }
 
-function Remove-LegacyAutoStart {
-  if ($TaskName -ne $DefaultTaskName -or $Port -ne 8765) {
-    return
-  }
+function Move-LegacyStartupShortcuts {
+  $legacyNames = @(
+    'QianDuoDuo Production.lnk',
+    'QianDuoDuo Production.lnk.legacy-disabled'
+  )
+  foreach ($name in $legacyNames) {
+    $source = Join-Path $LegacyStartupDirectory $name
+    if (-not (Test-Path -LiteralPath $source)) {
+      continue
+    }
 
-  $legacyTask = Get-ScheduledTask -TaskName $LegacyTaskName -ErrorAction SilentlyContinue
-  if ($legacyTask) {
-    Unregister-ScheduledTask -TaskName $LegacyTaskName -Confirm:$false -ErrorAction Stop
-    Write-HostLog "removed legacy scheduled task=$LegacyTaskName"
-  }
-
-  $shortcut = Join-Path ([Environment]::GetFolderPath('Startup')) 'QianDuoDuo Production.lnk'
-  $disabledShortcut = "$shortcut.legacy-disabled"
-  if (Test-Path -LiteralPath $shortcut) {
-    Move-Item -LiteralPath $shortcut -Destination $disabledShortcut -Force
-    Write-HostLog "disabled legacy startup shortcut=$shortcut"
+    New-Item -ItemType Directory -Force -Path $LegacyStartupArchiveDir | Out-Null
+    $destination = Join-Path $LegacyStartupArchiveDir $name
+    if (Test-Path -LiteralPath $destination) {
+      $suffix = Get-Date -Format 'yyyyMMddHHmmssfff'
+      $destination = '{0}.{1}' -f $destination, $suffix
+    }
+    Move-Item -LiteralPath $source -Destination $destination -ErrorAction Stop
+    Write-HostLog "moved legacy startup file out of Startup source=$source destination=$destination"
   }
 }
 
+function Remove-LegacyAutoStart {
+  if ($TaskName -eq $DefaultTaskName -and $Port -eq 8765) {
+    $legacyTask = Get-ScheduledTask -TaskName $LegacyTaskName -ErrorAction SilentlyContinue
+    if ($legacyTask) {
+      Unregister-ScheduledTask -TaskName $LegacyTaskName -Confirm:$false -ErrorAction Stop
+      Write-HostLog "removed legacy scheduled task=$LegacyTaskName"
+    }
+  }
+
+  Move-LegacyStartupShortcuts
+}
+
 function Install-Host {
+  Move-LegacyStartupShortcuts
   $existing = Get-TaskSnapshot
   if (
     $existing.installed -and
@@ -529,6 +554,7 @@ function Invoke-Bootstrap {
   $state = Read-HostState
   $state.last_bootstrap_at = (Get-Date).ToUniversalTime().ToString('o')
   try {
+    Move-LegacyStartupShortcuts
     if (Test-Path -LiteralPath $HostStopFile) {
       $runtime = Get-RuntimeSnapshot
       if ($runtime.supervisor_pid -or $runtime.server_pid) {

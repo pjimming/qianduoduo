@@ -16,6 +16,8 @@ $launcherDir = Join-Path `
   'QianDuoDuoProduction'
 $tickLauncher = Join-Path $launcherDir "tick-$taskName.vbs"
 $tickLauncherLog = Join-Path $testRoot 'logs\launcher.log'
+$testStartupDir = Join-Path $testRoot 'startup'
+$legacyStartupArchiveDir = Join-Path $testRoot 'run\legacy-startup'
 
 $resolvedTmp = [System.IO.Path]::GetFullPath($tmpRoot)
 $resolvedTest = [System.IO.Path]::GetFullPath($testRoot)
@@ -26,6 +28,15 @@ if (Test-Path -LiteralPath $resolvedTest) {
   Remove-Item -LiteralPath $resolvedTest -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path (Join-Path $testRoot 'dist'), (Join-Path $testRoot 'scripts') | Out-Null
+New-Item -ItemType Directory -Force -Path $testStartupDir | Out-Null
+Set-Content `
+  -LiteralPath (Join-Path $testStartupDir 'QianDuoDuo Production.lnk') `
+  -Value 'legacy shortcut fixture' `
+  -Encoding UTF8
+Set-Content `
+  -LiteralPath (Join-Path $testStartupDir 'QianDuoDuo Production.lnk.legacy-disabled') `
+  -Value 'disabled legacy shortcut fixture' `
+  -Encoding UTF8
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\daemon.ps1') -Destination $daemonScript
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\production-host.ps1') -Destination $hostScript
 Copy-Item `
@@ -75,6 +86,7 @@ function Invoke-HostCommand {
     -Root $testRoot `
     -Port "$Port" `
     -TaskName $taskName `
+    -LegacyStartupDirectory $testStartupDir `
     @Arguments 2>&1
   return [pscustomobject]@{
     exit_code = $LASTEXITCODE
@@ -195,6 +207,15 @@ try {
   }
   if (-not (Test-Path -LiteralPath $tickLauncher)) {
     throw 'Hidden launcher was not generated.'
+  }
+  $startupFiles = @(Get-ChildItem -LiteralPath $testStartupDir -Force -ErrorAction SilentlyContinue)
+  if ($startupFiles.Count -ne 0) {
+    throw "Legacy startup files remained in the Startup directory: $($startupFiles.Name -join ', ')"
+  }
+  foreach ($legacyName in @('QianDuoDuo Production.lnk', 'QianDuoDuo Production.lnk.legacy-disabled')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $legacyStartupArchiveDir $legacyName))) {
+      throw "Legacy startup file was not archived outside Startup: $legacyName"
+    }
   }
   $results.install = 'ok'
 

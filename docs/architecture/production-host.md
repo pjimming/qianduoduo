@@ -26,6 +26,7 @@
 | `run/host.json` | 最近一次有效托管配置：任务名、隐藏启动器、用户、根目录和端口 |
 | `run/host-state.json` | 最近一次登录 bootstrap 或受控停止的结果和 PID 快照 |
 | `run/host.stop` | 持久停止意图。存在时登录启动必须静默退出 |
+| `run/legacy-startup/` | 从 Windows Startup 目录迁出的旧快捷方式备份 |
 | `run/supervisor.json` | 当前 Supervisor 的 PID、父进程、来源、根目录和端口 |
 | `run/daemon.pid`、`run/server.pid` | 运行时 PID；只用于进程查找 |
 | `logs/launcher.log` | 登录启动器写入命令完成情况和退出码 |
@@ -42,6 +43,7 @@
 - `start_failed`：显式或登录启动失败，记录错误但不在后台重试。
 - Node 正常崩溃：Supervisor 记录退出码，按 2/4/8/16/32/60 秒递增退避重启。
 - Supervisor 缺失：不自动恢复，等待下次登录或显式 `prod:start`。
+- 旧 `QianDuoDuo Production.lnk` 及其 `.legacy-disabled` 副本会被移出 Windows Startup 目录并归档到 `run/legacy-startup/`；不得只改扩展名后留在原目录，否则 Shell 可能在登录时调用“选取应用”。
 
 ## 运维命令
 
@@ -60,5 +62,5 @@ npm run prod:status
 
 - Windows PowerShell 5.1 脚本全部通过语法解析。
 - VBS 契约验证：窗口样式 `0`、PowerShell `-WindowStyle Hidden`、相对脚本路径和退出码返回。
-- 独立托管测试：临时目录、临时端口和一次性计划任务，覆盖安装/卸载、唯一登录触发、已登录启动、旧手工运行时迁移、重复启动、Node 崩溃重启、无周期恢复、停止隔离和显式恢复。
+- 独立托管测试：临时目录、临时端口、临时 Startup 目录和一次性计划任务，覆盖安装/卸载、唯一登录触发、旧快捷方式移出 Startup、已登录启动、旧手工运行时迁移、重复启动、Node 崩溃重启、无周期恢复、停止隔离和显式恢复。
 - 测试不得使用 `data/r2_ledger.sqlite`、正式截图目录、正式端口或正式计划任务名称。

@@ -529,7 +529,7 @@ test('a later merged update covers prior dates without duplicating account incom
     product_name: '招银理财14天',
     holding_amount: 3000,
     daily_pnl: 0.58,
-    notes: '收益明细说明该次更新覆盖10月24日至26日。',
+    // No manual coverage annotation: Monday supplies the default.
   });
   assert.deepEqual(merged.valuation.covered_yield_dates, [
     '2026-10-24',

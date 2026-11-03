@@ -4,10 +4,23 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   appendCoverageNote,
+  effectiveCoveredYieldDates,
+  weekendDisclosureBase,
   coverageFromInput,
   markCoverageCleared,
   parseCoveredYieldDates,
 } = require('../lib/product-income-coverage');
+
+test('Monday covers weekend by default while explicit split or withdrawal wins', () => {
+  assert.deepEqual(effectiveCoveredYieldDates('', '2026-11-02'),
+    ['2026-10-31', '2026-11-01', '2026-11-02']);
+  assert.deepEqual(effectiveCoveredYieldDates('', '2026-11-03'), []);
+  assert.deepEqual(effectiveCoveredYieldDates(markCoverageCleared(''), '2026-11-02'), []);
+  assert.deepEqual(effectiveCoveredYieldDates('覆盖收益日期：2026-11-02。', '2026-11-02'), ['2026-11-02']);
+  assert.equal(weekendDisclosureBase('2026-10-31'), '2026-11-02');
+  assert.equal(weekendDisclosureBase('2026-11-01'), '2026-11-02');
+  assert.equal(weekendDisclosureBase('2026-11-03'), '2026-11-03');
+});
 
 test('coverage parser recognizes existing Chinese merged-update notes', () => {
   assert.deepEqual(

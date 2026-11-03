@@ -11,17 +11,19 @@
 
 自动化 cycle 在独立 worker 中运行，主进程持有硬超时、防重入、终止和中断恢复边界。手动运行、交易写后评估和后台定时巡检共用同一 runner。
 
+用户安排（2026-11-04）：暂停全部 5 个 Codex 定时任务并保留配置，检验 DSH 效果；恢复须由用户另行确认，不自动恢复。
+
 ## 1. 任务清单
 
 时区统一为 `Asia/Shanghai`。工作目录统一为项目根目录，当前机器是 `D:\codex\钱多多财富工作台`；换机器时替换为实际路径。
 
 | ID（本机） | 名称 | 时间 | RRULE | 模型 | Reasoning | 执行环境 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `a` | 钱多多A股收盘每日简报 | 每天 18:00 | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2-2` | 钱多多R2工作日巡检（含AI队列与消息中心） | 周一至周五 21:00，法定节假日跳过 | `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
-| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `deepseek-flash` | `high` | `local` | `ACTIVE` |
+| `a` | 钱多多A股收盘每日简报 | 每天 18:00 | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `PAUSED` |
+| `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `gpt-6.1-sol` | `high` | `local` | `PAUSED` |
+| `r2-2` | 钱多多R2工作日巡检（含AI队列与消息中心） | 周一至周五 21:00，法定节假日跳过 | `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `PAUSED` |
+| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `PAUSED` |
+| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `gpt-6.1-sol` | `high` | `local` | `PAUSED` |
 
 > `ID` 是当前机器上 `%USERPROFILE%\.codex\automations\<id>\automation.toml` 的目录名。新建任务时 Codex 可能生成不同的 ID，**以任务名称、时间、提示词和运行配置为准**，不要为了复刻 ID 去手工改 Codex 内部目录。
 >
@@ -43,7 +45,8 @@
 
 - 每天 18:00 先用交易所日历或当日官方行情确认今天确为交易日；周末、法定休市或无法确认收盘数据时不创建文件、不发送例行简报；
 - 不调用 `$serenity-skill`；直接按本任务固定的来源、口径和证据规则交叉核对主要指数和成交额，无法确认的涨跌家数或资金流写“未获取到”，不猜数；
-- 生成或幂等覆盖 `market-briefs/YYYY-MM-DD.md`，固定为收盘概览、市场为何这样走？、结构性亮点：当日 1–2 点结论、关键资金信号、政策面信号、估值参考、后续影响与展望、结论八章；结构性亮点标题由当天盘面决定，后续影响与展望固定分设“短期（1-2 周）”和“中期（1-3 个月）”；
+- 生成或幂等覆盖 `market-briefs/YYYY-MM-DD.md`，固定为收盘概览、市场为何这样走？、结构性亮点：当日 1–2 点结论、关键资金信号、政策面信号、估值参考、后续影响与展望、结论八章；结构性亮点标题由当天盘面决定，后续影响与展望固定分设“短期（1-2 周）”和“中期（1-3 个月）”； 结构性亮点必须同时包含“强势板块”和“弱势板块”两个三级小节，各列至少一个相对强势、相对弱势方向，结合涨跌幅、成交或资金证据说明；普涨或普跌时使用相对强弱，数据不足写“未获取到”，不得硬凑或将弱势写成买入机会。
+- 估值参考允许读取并分析市场分析师文章、券商研报和可靠财经媒体原文，不要求交易所或指数公司官方披露；注明作者/机构、原文链接、文章发布日期、估值数据截至日和指标口径（如 PE TTM、静态/预测 PE、PB，以及分位区间和方法）。允许统计口径差异，逐项标注并统一提示“统计口径可能存在差异，仅供参考”，不同来源不强行拼接或直接比较。可引用最近可得数据，明确其与简报日期的时差；文章未披露的字段写“未获取到”，不猜测，不把旧数据当成当日估值。区分文章观点与本稿分析，不能只凭搜索摘要填数。
 - 报告联动只读取 `src/data/stockReports.json` 并按代码、分类或明确关键词确定性匹配，最多 3 篇；没有可靠匹配时明确写“未匹配”；
 - 规范文件内置已验证的新浪/腾讯指数接口、沪深交易所日终接口、东方财富全 A 广度、涨跌停池与行业板块资金流、新浪固定行业分类，以及央行、统计局、Fed、BEA 和本地报告/健康检查入口；行业资金流明确为第三方主力净流入估算，注明请求头、分页和日期参数，减少每日重新搜索；
 - 运行中发现新的已验证可复用接口时，按主机与路径去重后写入 `market-brief-api-catalog.md`，记录请求头、日期/分页参数、字段、口径和失败回退，并在任务记忆写一行摘要；
@@ -126,7 +129,7 @@
 7. 保存并启用；
 8. 先手动运行一次，确认能读到本地 API，再等下一次定时触发。
 
-如果你的 Codex 没有 `deepseek-flash`，选择同等能力、支持工具调用的模型，并把 reasoning 设为 `high`。模型名是当前环境快照，不是项目的硬依赖。
+如果你的 Codex 没有 `gpt-6.1-sol`，选择同等能力、支持工具调用的模型，并把 reasoning 设为 `high`。模型名是当前环境快照，不是项目的硬依赖。
 
 ### 3.3 替换占位符
 
@@ -208,7 +211,17 @@ target = { type = "project", project_id = "<本机项目 ID>" }
 cwds = ["<WORKSPACE>"]
 ```
 
-## 7. 当前环境快照
+## 7. DSH 侧镜像（方案 B，可选）
+
+DSH 原生定时任务是会话级提醒：绑定创建它的会话，每次触发只向原会话追加提醒消息，不支持「每次新会话运行」，也没有暂停态。要在 DSH 里得到接近 Codex 的定时执行，用「专用会话 + 每轮新子代理」：专用会话里放 5 条提醒，每条只派发 `subagent`（不用 `subagent_fork`），业务仍由 `codex-automations/*.md` 的提示词驱动。
+
+- 安装步骤与逐条 prompt：`codex-automations/dsh-reminder-setup.md`。
+- 提醒只能绑定创建它的会话，安装清单必须在新会话里执行。
+- 与 Codex 同时启用会重复执行（发卡、发布、提交），先停掉其中一边。
+- 桌面端关闭时不执行，重开只补最近一次漏触发；提醒激活期间该会话不能归档。
+- **当前状态（2026-11-04）**：DSH 侧 5 条已安装并 `active`；Codex 侧 5 条已全部 `PAUSED`，由 DSH 接管。
+
+## 8. 当前环境快照
 
 截至 2026-11-01：
 
@@ -217,7 +230,7 @@ cwds = ["<WORKSPACE>"]
 | 工作区 | `D:\codex\钱多多财富工作台` |
 | 本地服务 | `http://127.0.0.1:8765` |
 | 时区 | `Asia/Shanghai` |
-| Codex 定时任务 | 5 个，全部 `ACTIVE`、`deepseek-flash`、`local` |
+| Codex 定时任务 | 2026-11-04 已全部暂停（`PAUSED`），保留 `gpt-6.1-sol`、`local` 和原配置；用户检验 DSH 后另行决定恢复，不自动恢复 |
 | R2 巡检节奏 | `r2-2` 周一至周五 21:00；法定节假日静默跳过 |
 | 生产守护 | Supervisor 运行中，Health OK |
 | 独立托管 | 当前用户计划任务 `QianDuoDuo-Production`，仅登录触发一次并通过隐藏 WScript 拉起 Supervisor；无分钟巡检，`prod:stop` 通过持久停止意图隔离 |

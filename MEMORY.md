@@ -6,6 +6,8 @@
 
 ## 1. 工作区边界
 
+- 定时任务执行方切换决定（2026-11-04）：用户检验 DSH 期间，Codex 的 5 个定时任务暂停、保留配置，不自动恢复；恢复须由用户另行确认，避免两端重复执行。实际状态以本机任务定义为准。
+
 - 钱多多是本地个人财富工作台，统一承载银行 R2/PR2 记账、投资资料、股票研究和报告发布。
 - R2 账本只处理银行 R2/PR2 本金、交易、收益、持仓、复盘和产品研究；股票报告与科技图谱不进入 R2 账本、产品池排序或选品结论，R2 数据也不用于股票估值。
 - 不登录银行账户，不保存密码，不代替用户下单、赎回、转账、删除事实或发送外部消息。额度、费率、风险等级和赎回规则以招行 App、产品说明书和当日公告为准。
@@ -23,6 +25,7 @@
 - 银行市值对照已从工作台前端退役；历史快照、原证据表和兼容接口保留，不参与当前净值、收益计算或用户提示。
 - 自动化 cycle 在独立 worker 运行，由主进程管理超时、防重入、终止和中断恢复；长任务不在 HTTP 或调度线程直接执行。
 - Codex 任务名称、时间、模型和完整提示词以 `codex-automations/README.md` 和本机实际任务定义为准；本文件只记录稳定职责。
+- 切换 Codex 供应商后须同步核对定时任务模型与历史会话恢复元数据，不能只修改全局 `config.toml`；修复前备份，保留聊天正文和归档状态。
 
 ## 3. R2 账本口径
 
@@ -39,6 +42,7 @@
 - `product_daily_valuations` 是收益唯一事实源，`daily_records` 是逐日账户总账投影。每个 `yield_date` 的账户收益必须等于当日全部产品收益按分汇总。
 - 产品事实以 `(product_code, yield_date)` 唯一，保留持仓金额、来源截图、披露覆盖日期、置信度、备注和修正审计。
 - `covered_yield_dates` 只表示来源覆盖，不转移金额；合并收益只记自身归属日，不为覆盖日补 0、均分或复制。
+- 周一收益默认覆盖紧邻的周六、周日，适用于已有与新增记录的读取和对账，不改写历史事实；用户明确拆分时按实际收益日期分别记录，显式覆盖或撤回优先。周末缺口等待周一加产品 T+N 的披露窗口结束后再提示，无需用户逐次查找周末收益。
 - 产品新增、修正、补录、批次重放和删除都在同一 SQLite 事务内按最终集合重算账户日记录；投影失败时产品写入整体回滚。
 - 本金未初始化、收益日早于起始日或本金为 0 时延迟账户投影并注明原因，不伪造差额。本金读取异常必须回滚。
 - 0 元收益只有在用户或银行页面明确确认时写入。赎回状态以确认的赎回交易为准。
@@ -66,7 +70,8 @@
 ## 4. 投研与报告
 
 - 个股、主题、产业链、候选对比和公司事件研究以 `serenity-skill` 为唯一工作流；先读 `SKILL.md`，再按需读取 references 和 assets。
-- 每日市场简报使用 `/investment/briefs` 和 `market-briefs/YYYY-MM-DD.md`，不调用 Serenity。固定八章为收盘概览、市场为何这样走？、结构性亮点：当日 1–2 点结论、关键资金信号、政策面信号、估值参考、后续影响与展望、结论；第三章标题直接概括当天最重要的 1–2 个结构变化，不预设“高切低”，“后续影响与展望”固定分设“短期（1-2 周）”和“中期（1-3 个月）”。报告库联动嵌入相关亮点或展望。行情双源核对、来源可追溯，行业涨跌与东方财富第三方估算资金流分别排名。任务接口和发布规则见 `codex-automations/market-daily-brief.md` 与 `codex-automations/market-brief-api-catalog.md`。
+- 每日市场简报使用 `/investment/briefs` 和 `market-briefs/YYYY-MM-DD.md`，不调用 Serenity。固定八章为收盘概览、市场为何这样走？、结构性亮点：当日 1–2 点结论、关键资金信号、政策面信号、估值参考、后续影响与展望、结论；第三章标题直接概括当天最重要的 1–2 个结构变化，不预设“高切低”，“后续影响与展望”固定分设“短期（1-2 周）”和“中期（1-3 个月）”。报告库联动嵌入相关亮点或展望。行情双源核对、来源可追溯，行业涨跌与东方财富第三方估算资金流分别排名。任务接口和发布规则见 `codex-automations/market-daily-brief.md` 与 `codex-automations/market-brief-api-catalog.md`。 结构性亮点必须同时包含“强势板块”和“弱势板块”两个三级小节，各列至少一个相对强势、相对弱势方向，结合涨跌幅、成交或资金证据说明；普涨或普跌时使用相对强弱，数据不足写“未获取到”，不得硬凑或将弱势写成买入机会。
+- 估值参考允许读取并分析市场分析师文章、券商研报和可靠财经媒体原文，不要求交易所或指数公司官方披露；注明作者/机构、原文链接、文章发布日期、估值数据截至日和指标口径（如 PE TTM、静态/预测 PE、PB，以及分位区间和方法）。允许统计口径差异，逐项标注并统一提示“统计口径可能存在差异，仅供参考”，不同来源不强行拼接或直接比较。可引用最近可得数据，明确其与简报日期的时差；文章未披露的字段写“未获取到”，不猜测，不把旧数据当成当日估值。区分文章观点与本稿分析，不能只凭搜索摘要填数。
 - 股票报告唯一可编辑源是 `report/*.html`；独立归档页是 `research/index.html`，应用阅读页是 `/investment/research/:slug`。
 - `npm run research:publish` 重建报告库导航、`src/data/stockReports.json`、Vue 文档、检索索引和媒体。生成物不手工编辑。
 - 报告以事实、解释和推断分离为核心；Serenity 证据阶梯、市场叙事与资金结构、五红灯和退出条件按 AGENTS 与 skill 执行。
@@ -75,7 +80,7 @@
 ## 5. 运行、测试与 Git
 
 - 生产入口为 `http://127.0.0.1:8765`，开发入口为 `http://127.0.0.1:5173`。日常使用 `npm run prod:deploy|status|start|stop|restart`。
-- 生产由当前用户 Windows 计划任务 `QianDuoDuo-Production` 独立托管：只有登录触发一次；安装器从 `scripts/production-bootstrap-template.vbs` 在 `C:\ProgramData\QianDuoDuoProduction` 生成 ASCII 路径启动器，由 `wscript.exe //B` 隐藏运行 PowerShell 拉起 Supervisor，不得周期巡检或弹出控制台窗口。任务动作、用户或触发器不匹配时 `prod:status` 不得声称自启已启用。
+- 生产由当前用户 Windows 计划任务 `QianDuoDuo-Production` 独立托管：只有登录触发一次；安装器从 `scripts/production-bootstrap-template.vbs` 在 `C:\ProgramData\QianDuoDuoProduction` 生成 ASCII 路径启动器，由 `wscript.exe //B` 隐藏运行 PowerShell 拉起 Supervisor，不得周期巡检或弹出控制台窗口。任务动作、用户或触发器不匹配时 `prod:status` 不得声称自启已启用。旧 Startup 快捷方式必须移到 `run/legacy-startup/`，不得只是改名为 `.legacy-disabled` 后留在 Startup 目录，以免登录时触发“选取应用”弹窗。
 - Supervisor 存活期间负责 Node 异常退出与递增退避重启；按用户要求不额外巡检或自动恢复 Supervisor。`prod:stop` 只写持久 `run/host.stop` 并停止运行时，不注销已安装任务；登录启动必须尊重停止意图，`prod:start` 清除意图后通过计划任务拉起。
 - 后端检查按改动范围运行 `npm run check`、`npm test`、`npm run build`；涉及 HTTP、生命周期或 UI 时运行 `npm run test:e2e`；财务不变量使用覆盖率测试；依赖变化运行 `npm audit --omit=dev`。
 - 测试必须使用临时 SQLite 和受控文件目录，不清理或改写正式账本。
