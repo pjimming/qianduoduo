@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const chartRange = ref<RangeValue>(30)
+const chartHoverDate = ref<string | null>(null)
 
 const pendingInbox = computed(
   () =>
@@ -39,7 +40,12 @@ const pendingProposals = computed(
 const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
 
 function setChartRange(value: RangeValue): void {
+  chartHoverDate.value = null
   chartRange.value = value
+}
+
+function setChartHoverDate(value: string | null): void {
+  chartHoverDate.value = value
 }
 
 const shortcuts = computed(() => [
@@ -86,12 +92,16 @@ const shortcuts = computed(() => [
       <AssetChart
         :records="dashboard.records"
         :range="chartRange"
+        :active-date="chartHoverDate"
         @update:range="setChartRange"
+        @hover-date="setChartHoverDate"
       />
       <PnlChart
         :records="dashboard.records"
         :range="chartRange"
+        :active-date="chartHoverDate"
         @update:range="setChartRange"
+        @hover-date="setChartHoverDate"
       />
     </section>
 

@@ -21,7 +21,9 @@ import {
 } from '@/composables/useFormatters'
 import {
   chartGeometry,
+  nearestChartPoint,
   niceTicks,
+  overviewChartMargins,
   xAxisIndices,
   type ChartPoint,
   type ChartMargins,
@@ -30,9 +32,11 @@ import {
 const props = defineProps<{
   records: LedgerRecord[]
   range: RangeValue
+  activeDate?: string | null
 }>()
 const emit = defineEmits<{
   'update:range': [value: RangeValue]
+  'hover-date': [value: string | null]
 }>()
 
 const ranges: Array<{ value: RangeValue; label: string }> = [
@@ -48,10 +52,8 @@ const svg = ref<SVGSVGElement | null>(null)
 const tooltip = ref<HTMLDivElement | null>(null)
 const width = ref(700)
 const height = ref(312)
-const tooltipVisible = ref(false)
 const tooltipStyle = ref<CSSProperties>({ left: '0px', top: '0px' })
-const activeRecord = ref<LedgerRecord | null>(null)
-const activePoint = ref<AssetPoint | null>(null)
+const pointerHovered = ref(false)
 let observer: ResizeObserver | null = null
 
 const chartRecords = computed(() => rangeRecords(props.records, props.range))
@@ -70,7 +72,7 @@ interface AxisLabel {
 
 const model = computed(() => {
   if (!chartRecords.value.length) return null
-  const margins: ChartMargins = { top: 18, right: 22, bottom: 34, left: 66 }
+  const margins: ChartMargins = overviewChartMargins(width.value)
   const geometry = chartGeometry(chartRecords.value, width.value, height.value, margins)
   const values = chartRecords.value.map((record) => record.cumulative_pnl)
   const rawMin = Math.min(0, ...values)
@@ -137,6 +139,17 @@ const model = computed(() => {
   }
 })
 
+const activePoint = computed<AssetPoint | null>(() => {
+  if (!props.activeDate || !model.value) return null
+  return (
+    model.value.points.find(
+      (point) => point.record.date === props.activeDate,
+    ) ?? null
+  )
+})
+const activeRecord = computed(() => activePoint.value?.record ?? null)
+const tooltipVisible = computed(() => Boolean(activePoint.value))
+
 const rangeLabel = computed(() => {
   if (!chartRecords.value.length) return '暂无记录'
   const first = chartRecords.value[0]
@@ -157,32 +170,16 @@ const rangeDelta = computed(() => {
 })
 
 function setRange(value: RangeValue): void {
+  pointerHovered.value = false
+  emit('hover-date', null)
   emit('update:range', value)
-  tooltipVisible.value = false
 }
 
-async function updateTooltip(event: PointerEvent): Promise<void> {
-  const current = model.value
-  if (!current || !svg.value || !wrapper.value) return
-  const rect = svg.value.getBoundingClientRect()
-  const pointerX = ((event.clientX - rect.left) / rect.width) * current.width
-  let nearest = current.points[0]
-  let distance = Number.POSITIVE_INFINITY
-  for (const point of current.points) {
-    const currentDistance = Math.abs(point.x - pointerX)
-    if (currentDistance < distance) {
-      distance = currentDistance
-      nearest = point
-    }
-  }
-  if (!nearest) return
-  activeRecord.value = nearest.record
-  activePoint.value = nearest
-  tooltipVisible.value = true
-  await nextTick()
-  const wrapperRect = wrapper.value.getBoundingClientRect()
-  const localX = event.clientX - wrapperRect.left
-  const localY = event.clientY - wrapperRect.top
+function applyTooltipPosition(
+  localX: number,
+  localY: number,
+  wrapperRect: DOMRect,
+): void {
   const tooltipWidth = Math.min(220, tooltip.value?.offsetWidth || 190)
   let left = localX + 15
   if (left + tooltipWidth + 8 > wrapperRect.width) {
@@ -197,9 +194,35 @@ async function updateTooltip(event: PointerEvent): Promise<void> {
   tooltipStyle.value = { left: `${left}px`, top: `${top}px` }
 }
 
+async function positionTooltipAtPoint(point: AssetPoint): Promise<void> {
+  const current = model.value
+  if (!current || !wrapper.value) return
+  const wrapperRect = wrapper.value.getBoundingClientRect()
+  const localX = (point.x / current.width) * wrapperRect.width
+  const localY = (point.y / current.height) * wrapperRect.height
+  applyTooltipPosition(localX, localY, wrapperRect)
+}
+
+async function updateTooltip(event: PointerEvent): Promise<void> {
+  const current = model.value
+  if (!current || !svg.value || !wrapper.value) return
+  const rect = svg.value.getBoundingClientRect()
+  const pointerX = ((event.clientX - rect.left) / rect.width) * current.width
+  const nearest = nearestChartPoint(current.points, pointerX)
+  if (!nearest) return
+  pointerHovered.value = true
+  emit('hover-date', nearest.record.date)
+  await nextTick()
+  if (!tooltipVisible.value) return
+  const wrapperRect = wrapper.value.getBoundingClientRect()
+  const localX = event.clientX - wrapperRect.left
+  const localY = event.clientY - wrapperRect.top
+  applyTooltipPosition(localX, localY, wrapperRect)
+}
+
 function hideTooltip(): void {
-  tooltipVisible.value = false
-  activePoint.value = null
+  pointerHovered.value = false
+  emit('hover-date', null)
 }
 
 function measure(): void {
@@ -212,8 +235,17 @@ function measure(): void {
 watch(
   () => props.range,
   () => {
-    tooltipVisible.value = false
-    activePoint.value = null
+    pointerHovered.value = false
+  },
+)
+
+watch(
+  [() => props.activeDate, () => model.value],
+  async ([activeDate]) => {
+    const point = activePoint.value
+    if (!activeDate || pointerHovered.value || !point) return
+    await nextTick()
+    await positionTooltipAtPoint(point)
   },
 )
 
@@ -267,6 +299,10 @@ onUnmounted(() => {
           v-else
           ref="svg"
           :viewBox="`0 0 ${model.width} ${model.height}`"
+          data-chart="assets"
+          :data-plot-left="model.margins.left"
+          :data-plot-right="model.width - model.margins.right"
+          :data-hover-date="activeRecord?.date ?? ''"
           role="img"
           aria-label="累计收益曲线"
         >
@@ -340,6 +376,7 @@ onUnmounted(() => {
             font-size="12"
             :text-anchor="label.anchor"
             font-family="Cascadia Mono, Consolas, monospace"
+            class="chart-x-label"
           >
             {{ label.text }}
           </text>
@@ -352,6 +389,7 @@ onUnmounted(() => {
               stroke="var(--chart-crosshair)"
               stroke-width="1"
               stroke-dasharray="3 4"
+              data-chart-crosshair="assets"
             />
             <circle
               :cx="activePoint.x"
@@ -379,6 +417,8 @@ onUnmounted(() => {
         v-show="tooltipVisible && activeRecord"
         ref="tooltip"
         class="chart-tooltip"
+        data-chart-tooltip="assets"
+        :data-hover-date="activeRecord?.date ?? ''"
         :style="tooltipStyle"
       >
         <template v-if="activeRecord">

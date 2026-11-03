@@ -60,6 +60,29 @@ export function niceTicks(
   return { min: niceMin, max: niceMax, ticks }
 }
 
+export function overviewChartMargins(width: number): ChartMargins {
+  if (width < 520) {
+    return { top: 18, right: 54, bottom: 34, left: 62 }
+  }
+  return { top: 18, right: 78, bottom: 34, left: 86 }
+}
+
+export function nearestChartPoint<TRecord>(
+  points: Array<ChartPoint<TRecord>>,
+  pointerX: number,
+): ChartPoint<TRecord> | null {
+  let nearest: ChartPoint<TRecord> | null = null
+  let distance = Number.POSITIVE_INFINITY
+  for (const point of points) {
+    const currentDistance = Math.abs(point.x - pointerX)
+    if (currentDistance < distance) {
+      distance = currentDistance
+      nearest = point
+    }
+  }
+  return nearest
+}
+
 export function chartGeometry<T extends { date: string }>(
   records: T[],
   width: number,

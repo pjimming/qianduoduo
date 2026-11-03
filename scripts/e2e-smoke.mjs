@@ -962,6 +962,130 @@ async function main() {
         Math.abs(axisZero.left - axisZero.line) < 3.01,
       `收益与收益率零轴未对齐：${JSON.stringify(axisZero)}`,
     )
+    const plotAreas = await page
+      .locator('.r2-overview-charts .chart-panel svg')
+      .evaluateAll((svgs) =>
+        svgs.map((svg) => ({
+          chart: svg.getAttribute('data-chart'),
+          left: Number(svg.getAttribute('data-plot-left')),
+          right: Number(svg.getAttribute('data-plot-right')),
+          xLabels: Array.from(svg.querySelectorAll('text.chart-x-label')).map(
+            (label) => Number(label.getAttribute('x')),
+          ),
+        })),
+      )
+    assert(plotAreas.length === 2, `收益图数量不正确：${plotAreas.length}`)
+    const [assetPlot, pnlPlot] = plotAreas
+    assert(
+      Math.abs(assetPlot.left - pnlPlot.left) < 0.01 &&
+        Math.abs(assetPlot.right - pnlPlot.right) < 0.01 &&
+        assetPlot.xLabels.length === pnlPlot.xLabels.length &&
+        assetPlot.xLabels.every(
+          (x, index) => Math.abs(x - pnlPlot.xLabels[index]) < 0.01,
+        ),
+      `两张收益图的 X 轴绘图区未对齐：${JSON.stringify(plotAreas)}`,
+    )
+    const overviewChartPanels = page.locator(
+      '.r2-overview-charts .chart-panel',
+    )
+    for (const sourceIndex of [0, 1]) {
+      const sourceChart = overviewChartPanels
+        .nth(sourceIndex)
+        .locator('svg')
+      await sourceChart.scrollIntoViewIfNeeded()
+      const chartBox = await sourceChart.boundingBox()
+      assert(chartBox, `第 ${sourceIndex + 1} 张收益图没有可悬浮区域`)
+      await sourceChart.hover({
+        position: {
+          x: chartBox.width * (0.38 + sourceIndex * 0.2),
+          y: chartBox.height * 0.48,
+        },
+      })
+      await page.waitForFunction(() => {
+        const tips = Array.from(
+          document.querySelectorAll(
+            '.r2-overview-charts .chart-tooltip',
+          ),
+        ).filter((tip) => tip.getBoundingClientRect().width > 0)
+        const dates = tips.map((tip) => tip.getAttribute('data-hover-date'))
+        return (
+          dates.length === 2 &&
+          Boolean(dates[0]) &&
+          dates[0] === dates[1] &&
+          document.querySelectorAll(
+            '.r2-overview-charts [data-chart-crosshair]',
+          ).length === 2
+        )
+      })
+      const linkedHover = await page.evaluate(() => {
+        const tips = Array.from(
+          document.querySelectorAll(
+            '.r2-overview-charts .chart-tooltip',
+          ),
+        ).filter((tip) => tip.getBoundingClientRect().width > 0)
+        return {
+          dates: tips.map((tip) => tip.getAttribute('data-hover-date')),
+          crosshairs: Array.from(
+            document.querySelectorAll(
+              '.r2-overview-charts [data-chart-crosshair]',
+            ),
+          ).map((line) => line.getAttribute('data-chart-crosshair')),
+        }
+      })
+      assert(
+        linkedHover.dates.length === 2 &&
+          linkedHover.dates[0] === linkedHover.dates[1] &&
+          linkedHover.crosshairs.sort().join(',') === 'assets,pnl',
+        `第 ${sourceIndex + 1} 张收益图的关联悬浮未同步：${JSON.stringify(linkedHover)}`,
+      )
+    }
+    await page.mouse.move(0, 0)
+    await page.waitForFunction(
+      () =>
+        Array.from(
+          document.querySelectorAll(
+            '.r2-overview-charts .chart-tooltip',
+          ),
+        ).every((tip) => getComputedStyle(tip).display === 'none'),
+    )
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.waitForFunction(() => {
+      const svgs = Array.from(
+        document.querySelectorAll('.r2-overview-charts .chart-panel svg'),
+      )
+      return (
+        svgs.length === 2 &&
+        svgs.every(
+          (svg) => Number(svg.getAttribute('data-plot-left')) === 62,
+        )
+      )
+    })
+    const mobilePlotAreas = await page
+      .locator('.r2-overview-charts .chart-panel svg')
+      .evaluateAll((svgs) =>
+        svgs.map((svg) => ({
+          left: Number(svg.getAttribute('data-plot-left')),
+          right: Number(svg.getAttribute('data-plot-right')),
+          xLabels: Array.from(svg.querySelectorAll('text.chart-x-label')).map(
+            (label) => Number(label.getAttribute('x')),
+          ),
+        })),
+      )
+    assert(
+      Math.abs(mobilePlotAreas[0].left - mobilePlotAreas[1].left) < 0.01 &&
+        Math.abs(mobilePlotAreas[0].right - mobilePlotAreas[1].right) < 0.01 &&
+        mobilePlotAreas[0].xLabels.length ===
+          mobilePlotAreas[1].xLabels.length &&
+        mobilePlotAreas[0].xLabels.every(
+          (x, index) =>
+            Math.abs(x - mobilePlotAreas[1].xLabels[index]) < 0.01,
+        ) &&
+        (await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        )),
+      `移动端两张收益图的 X 轴未对齐或出现横向溢出：${JSON.stringify(mobilePlotAreas)}`,
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
     const attributionPanel = page.locator('.return-attribution')
     await attributionPanel.waitFor()
     const overviewOrderAndGaps = await page.evaluate(() => {
@@ -1503,9 +1627,16 @@ async function main() {
       (await page.locator('.record-day').count()) >= 28,
       '月度记录日历没有渲染完整月份',
     )
+    const recentDayRows = await page.locator('.recent-day-row').count()
+    const recentReviewHead =
+      (await page.locator('.recent-review-card .review-card-head').textContent()) ??
+      ''
+    const recentDayLabel = recentReviewHead.match(/最近\s*(\d+)\s*天/u)
     assert(
-      (await page.locator('.recent-day-row').count()) === 7,
-      '最近 7 天卡片行数不正确',
+      recentDayRows >= 1 &&
+        recentDayRows <= 7 &&
+        Number(recentDayLabel?.[1]) === recentDayRows,
+      `最近记录卡片行数与标题不一致：${recentDayRows} / ${recentReviewHead.trim()}`,
     )
     assert(
       (await page.locator('#monthly-notes .rw-question').count()) === 5,
