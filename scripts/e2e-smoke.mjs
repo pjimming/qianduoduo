@@ -277,7 +277,8 @@ async function main() {
       assert(
         latestBriefText.includes('收盘概览') &&
           latestBriefText.includes('市场为何这样走？') &&
-          latestBriefText.includes('结构性亮点：资金高切低的三个承接方向') &&
+          latestBriefText.includes('结构性亮点：') &&
+          !latestBriefText.includes('结构性亮点：资金高切低的三个承接方向') &&
           latestBriefText.includes('关键资金信号') &&
           latestBriefText.includes('政策面信号') &&
           latestBriefText.includes('估值参考') &&
