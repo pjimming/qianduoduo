@@ -6,8 +6,8 @@
 | 名称 | 钱多多R2周五结构巡检 |
 | 时间 | 每周五 18:30（Asia/Shanghai） |
 | RRULE | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` |
-| 模型 | `gpt-6.1-sol` |
-| Reasoning | `high` |
+| 模型 | `gpt-6.1-terra` |
+| Reasoning | `medium` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |
 | 状态 | `ACTIVE` |

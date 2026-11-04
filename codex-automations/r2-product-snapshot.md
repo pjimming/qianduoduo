@@ -6,8 +6,8 @@
 | 名称 | R2产品快照每周更新 |
 | 时间 | 每周一 08:30（Asia/Shanghai） |
 | RRULE | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` |
-| 模型 | `gpt-6.1-sol` |
-| Reasoning | `high` |
+| 模型 | `gpt-6-luna` |
+| Reasoning | `medium` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |
 | 状态 | `ACTIVE` |

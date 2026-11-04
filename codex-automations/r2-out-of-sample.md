@@ -6,7 +6,7 @@
 | 名称 | 钱多多R2样本外观察 |
 | 时间 | 每周一 08:45（Asia/Shanghai） |
 | RRULE | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` |
-| 模型 | `gpt-6.1-sol` |
+| 模型 | `gpt-6-luna` |
 | Reasoning | `high` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |

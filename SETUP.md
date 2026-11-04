@@ -382,7 +382,7 @@ http://127.0.0.1:8765/investment/research
 | 对方打开页面是空账本 | 正常；让对方初始化自己的本金和收益 |
 | 定时任务不触发 | 确认 Codex 桌面端在运行、任务已启用、时区正确 |
 | 定时任务读不到数据 | 先启动本地服务，检查 `8765/api/health` |
-| 提示模型不存在 | 换同等能力模型，保持 high reasoning |
+| 提示模型不存在 | 按[定时任务配置表](codex-automations/README.md#1-任务清单)选择支持工具调用、能力相近的模型和对应推理档位 |
 | skill 没触发 | 确认两个 skill 已安装，并用 `$skill-name` 显式点名 |
 | 周报读不到产品快照 | 把提示词里的 `cmb_r2_products` 改成 `cmb_r2_selected`（精选）或 `cmb_r2_universe`（全量候选） |
 | Windows 计划任务安装失败 | `prod:deploy` 会回退到 Startup 快捷方式；也可只用 `prod:start` |

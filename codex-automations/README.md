@@ -11,7 +11,7 @@
 
 自动化 cycle 在独立 worker 中运行，主进程持有硬超时、防重入、终止和中断恢复边界。手动运行、交易写后评估和后台定时巡检共用同一 runner。
 
-用户安排（2026-11-04）：恢复 Codex 的 5 个定时任务。已核对本机任务均为 `ACTIVE`。
+本机配置核对（2026-11-05）：5 个任务均为 `ACTIVE`，模型和推理档位按下表配置。
 
 ## 1. 任务清单
 
@@ -19,15 +19,15 @@
 
 | ID（本机） | 名称 | 时间 | RRULE | 模型 | Reasoning | 执行环境 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `a` | 钱多多A股收盘每日简报 | 每天 18:00 | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `ACTIVE` |
-| `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `gpt-6.1-sol` | `high` | `local` | `ACTIVE` |
+| `a` | 钱多多A股收盘每日简报 | 每天 18:00 | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` | `gpt-6.1-sol` | `medium` | `local` | `ACTIVE` |
+| `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `gpt-6-luna` | `medium` | `local` | `ACTIVE` |
 | `r2-2` | 钱多多R2工作日巡检（含AI队列与消息中心） | 周一至周五 21:00，法定节假日跳过 | `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `ACTIVE` |
-| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `ACTIVE` |
-| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `gpt-6.1-sol` | `high` | `local` | `ACTIVE` |
+| `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `gpt-6.1-terra` | `medium` | `local` | `ACTIVE` |
+| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `gpt-6-luna` | `high` | `local` | `ACTIVE` |
 
 > `ID` 是当前机器上 `%USERPROFILE%\.codex\automations\<id>\automation.toml` 的目录名。新建任务时 Codex 可能生成不同的 ID，**以任务名称、时间、提示词和运行配置为准**，不要为了复刻 ID 去手工改 Codex 内部目录。
 >
-> `r2` 任务当前开启了 `auto_archive`，用于避免每周任务占满列表；它不影响任务逻辑，新环境可按自己的习惯设置。
+> 可按使用习惯设置任务结果的自动归档。
 
 运行依赖：
 
@@ -130,7 +130,7 @@
 7. 保存并启用；
 8. 先手动运行一次，确认能读到本地 API，再等下一次定时触发。
 
-如果你的 Codex 没有 `gpt-6.1-sol`，选择同等能力、支持工具调用的模型，并把 reasoning 设为 `high`。模型名是当前环境快照，不是项目的硬依赖。
+如果账号无法使用表中的模型，选择支持工具调用且能力相近的模型，按该任务配置相应推理档位。
 
 ### 3.3 替换占位符
 
@@ -180,7 +180,7 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 | 任务到点没跑 | Codex 桌面端未运行，或任务被暂停 | 打开 Codex，检查任务状态 |
 | 任务跑了但读不到数据 | 本地服务 `8765` 未启动 | `npm run prod:start` 或双击 `start.bat` |
 | 提示项目不存在 | 工作区没有在 Codex 中打开，或路径变了 | 重新打开项目，更新任务的 working directory |
-| 提示模型不存在 | 换了账号或模型目录 | 选择同等能力模型，保持 high reasoning |
+| 提示模型不存在 | 换了账号或模型目录 | 按任务配置表选择能力相近的模型和对应推理档位 |
 | 周报读不到产品快照 | 最新 `cmb_r2_universe-*.csv` 未生成或应用未刷新 | 检查 `r2` 任务、`data/` 快照和 `/api/dashboard` 的 `meta.product_csv` |
 | 任务重复发消息 | 应用通知未去重，或手动运行+定时运行叠加 | 检查 `/api/automation/workspace` 的 notifications 和 runs |
 | 任务改了不该改的数据 | 提示词边界被忽略 | 暂停任务，恢复原状态，重新粘贴完整提示词 |
@@ -206,7 +206,7 @@ prompt = """<从对应 .md 文件复制>"""
 status = "ACTIVE"
 rrule = "<RRULE>"
 model = "<模型名>"
-reasoning_effort = "high"
+reasoning_effort = "<任务推理档位>"
 execution_environment = "local"
 target = { type = "project", project_id = "<本机项目 ID>" }
 cwds = ["<WORKSPACE>"]
@@ -231,7 +231,7 @@ DSH 原生定时任务是会话级提醒：绑定创建它的会话，每次触�
 | 工作区 | `D:\codex\钱多多财富工作台` |
 | 本地服务 | `http://127.0.0.1:8765` |
 | 时区 | `Asia/Shanghai` |
-| Codex 定时任务 | 本机 5 条均为 `ACTIVE`，沿用 `gpt-6.1-sol`、`local` 和原日程 |
+| Codex 定时任务 | 运行配置见本页任务清单 |
 | R2 巡检节奏 | `r2-2` 周一至周五 21:00；法定节假日静默跳过 |
 | 生产守护 | Supervisor 运行中，Health OK |
 | 独立托管 | 当前用户计划任务 `QianDuoDuo-Production`，仅登录触发一次并通过隐藏 WScript 拉起 Supervisor；无分钟巡检，`prod:stop` 通过持久停止意图隔离 |

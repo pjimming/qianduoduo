@@ -7,7 +7,7 @@
 | 时间 | 每天 18:00（Asia/Shanghai） |
 | RRULE | `RRULE:FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0` |
 | 模型 | `gpt-6.1-sol` |
-| Reasoning | `high` |
+| Reasoning | `medium` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |
 | 状态 | `ACTIVE` |
