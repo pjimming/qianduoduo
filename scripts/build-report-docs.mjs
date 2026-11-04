@@ -342,7 +342,8 @@ function buildSearchSections(html) {
 async function extractReport(html, fileName) {
   const slug = fileName.replace(/\.html$/i, '')
   const title = textOnly(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? slug)
-  const displayTitle = title
+  const rpnavTitle = textOnly(html.match(/<!--\s*rpnav-title:\s*([\s\S]*?)\s*-->/i)?.[1] ?? '')
+  const displayTitle = (rpnavTitle || title)
     .replace(/\s*[|·｜]\s*\d{4}-\d{2}-\d{2}\s*$/, '')
     .replace(/（\d{4}-\d{2}-\d{2}）\s*$/, '')
     .trim()
