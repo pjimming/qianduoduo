@@ -107,6 +107,13 @@ function scopeSelector(selector) {
 
   if (/^(?::root|html|body)$/.test(value)) return scopeRoot
 
+  // 报告内的深色变量原本挂在 :root[data-theme] 上；应用阅读器把正文挂到
+  // .rp-doc 里，必须改写成应用根节点的主题标记，否则深色规则永远不生效。
+  const themeRoot = /^:root\[data-theme=["']?(dark|light)["']?\]/.exec(value)
+  if (themeRoot) {
+    return `html[data-theme="${themeRoot[1]}"] ${scopeRoot}`
+  }
+
   const leadingRoot = /^(?::root|html|body)(?=[\s>+~.#:[*])/.exec(value)
   if (leadingRoot) {
     return value.replace(/^(?::root|html|body)/, scopeRoot)
@@ -146,6 +153,12 @@ function scopeBlock(css) {
     if (header.startsWith('@')) {
       const separator = header.search(/[\s({]/)
       const name = header.slice(1, separator === -1 ? undefined : separator).toLowerCase()
+      // 应用内主题只认 html[data-theme]，不能跟随操作系统的
+      // prefers-color-scheme：否则浅色应用 + 深色系统的用户会看到深色正文。
+      if (name === 'media' && /prefers-color-scheme/i.test(header)) {
+        index = close + 1
+        continue
+      }
       if (['media', 'supports', 'container', 'layer'].includes(name)) {
         output += `${prelude}{${scopeBlock(body)}}`
       } else {

@@ -115,6 +115,20 @@ test('report CSS is scoped into the reader root', () => {
   assert.doesNotMatch(css, /(^|})\s*body\s*\{/)
 })
 
+test('report dark theme follows the app theme instead of the OS preference', () => {
+  const css = scopeReportCss(`
+    :root { --ink: #111; }
+    :root[data-theme="dark"] { --ink: #eee; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --ink: #ddd; }
+    }
+  `)
+
+  assert.match(css, /html\[data-theme="dark"\] \.rp-doc\s*\{/)
+  assert.doesNotMatch(css, /prefers-color-scheme/)
+  assert.doesNotMatch(css, /\.rp-doc:not\(\[data-theme="light"\]\)/)
+})
+
 test('every stock report has a generated Vue document', () => {
   const documentFiles = readdirSync(documentRoot)
     .filter((file) => file.endsWith('.json'))
