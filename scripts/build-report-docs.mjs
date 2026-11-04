@@ -111,7 +111,8 @@ function scopeSelector(selector) {
   // .rp-doc 里，必须改写成应用根节点的主题标记，否则深色规则永远不生效。
   const themeRoot = /^:root\[data-theme=["']?(dark|light)["']?\]/.exec(value)
   if (themeRoot) {
-    return `html[data-theme="${themeRoot[1]}"] ${scopeRoot}`
+    const rest = value.slice(themeRoot[0].length)
+    return `html[data-theme="${themeRoot[1]}"] ${scopeRoot}${rest}`
   }
 
   const leadingRoot = /^(?::root|html|body)(?=[\s>+~.#:[*])/.exec(value)

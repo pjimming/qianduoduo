@@ -119,12 +119,14 @@ test('report dark theme follows the app theme instead of the OS preference', () 
   const css = scopeReportCss(`
     :root { --ink: #111; }
     :root[data-theme="dark"] { --ink: #eee; }
+    :root[data-theme="dark"] .section { background: #000; }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) { --ink: #ddd; }
     }
   `)
 
   assert.match(css, /html\[data-theme="dark"\] \.rp-doc\s*\{/)
+  assert.match(css, /html\[data-theme="dark"\] \.rp-doc \.section\s*\{/)
   assert.doesNotMatch(css, /prefers-color-scheme/)
   assert.doesNotMatch(css, /\.rp-doc:not\(\[data-theme="light"\]\)/)
 })
