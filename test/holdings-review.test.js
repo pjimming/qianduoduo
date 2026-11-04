@@ -494,8 +494,8 @@ test('daily-open holding uses the fixed short-bucket horizon and open-day remind
     today: '2026-10-20',
   });
   assert.equal(review.horizon_days, 30);
-  assert.equal(review.reminder.level, 'window');
-  assert.match(review.reminder.text, /赎回开放日/);
+  assert.equal(review.reminder.level, 'none');
+  assert.match(review.reminder.text, /默认不赎回/);
 });
 
 test('daily-open holding compares with the short bucket instead of other daily-open products', () => {
@@ -600,15 +600,15 @@ test('long-bucket products use the fixed 360-day horizon instead of their own te
   assert.equal(review.candidates[0].comparison_days, 360);
 });
 
-test('maturity inside 14 days creates a replacement window reminder', () => {
+test('maturity inside 14 days keeps a neutral rollover note', () => {
   const review = buildHoldingReview({
     holding: holding({ maturity_date: '2026-11-02' }),
     products: [],
     universe: [current()],
     today: '2026-10-20',
   });
-  assert.equal(review.reminder.level, 'window');
-  assert.match(review.reminder.text, /替换\/续作比较窗口/);
+  assert.equal(review.reminder.level, 'none');
+  assert.match(review.reminder.text, /按默认续作继续持有/);
 });
 
 test('an unverified redemption rule uses a labelled estimate and still computes candidate economics', () => {

@@ -354,3 +354,85 @@ test('inbox sync purges resolved projections created by older releases', (t) => 
     0,
   );
 });
+
+test('rollover decisions hide maturity reminders and matured evaluation notices', () => {
+  const rolloverDecision = {
+    id: 15,
+    review_meta: {
+      rollover: true,
+      holding_code: 'JX040210',
+      matured_trade_ids: [7, 11],
+    },
+  };
+  const items = makeSourceItems({
+    meta: {
+      today: '2026-11-04',
+      reporting_date: '2026-11-02',
+      has_reporting_record: true,
+    },
+    capital: { initialized: true },
+    workspace: {
+      decisions: [rolloverDecision],
+      holding_reviews: [
+        {
+          lot_id: '7:JX040210',
+          product_code: 'JX040210',
+          product_name: '建信理财嘉鑫固收类最低持有7天产品第6期',
+          verdict: 'watch',
+          maturity_date: '2026-10-30',
+          reminder: {
+            level: 'urgent',
+            kind: 'maturity',
+            text: '已到期 5 天，需处理赎回或续作',
+          },
+          decision: rolloverDecision,
+        },
+        {
+          lot_id: '13:120019K',
+          product_code: '120019K',
+          product_name: '招银理财招睿添金7天持有期9号固定收益类理财计划',
+          verdict: 'hold',
+          maturity_date: '2026-11-10',
+          reminder: {
+            level: 'window',
+            kind: 'maturity',
+            text: '距到期 6 天，进入替换/续作比较窗口',
+          },
+          decision: null,
+        },
+      ],
+      trades: {
+        trades: [
+          { id: 7, product_code: 'JX040210' },
+          { id: 11, product_code: 'JX040210' },
+          { id: 12, product_code: 'JX040210' },
+          { id: 15, product_code: 'JX040210' },
+        ],
+      },
+    },
+    automation: {
+      pending_evaluations: [
+        { ...pendingEvaluation(20, 2), trade_id: 7 },
+        { ...pendingEvaluation(30, 3), trade_id: 11 },
+        { ...pendingEvaluation(33, 9), trade_id: 15 },
+        {
+          ...pendingEvaluation(34, 3),
+          trade_id: 12,
+          summary:
+            '建信理财嘉鑫固收类最低持有7天产品第6期 已于 2026-11-09 到期，仍显示 4000.00 元本金未赎回；实际年化和资金可用性需要赎回/到账记录。',
+        },
+      ],
+      drafts: [],
+      notifications: [],
+    },
+  });
+  const reviews = items.filter((item) => item.source_type === 'holding_review');
+  assert.equal(reviews.length, 0, '到期与赎回窗口默认续作，不再生成提醒');
+  const evaluations = items.filter((item) => item.source_type === 'evaluation');
+  assert.equal(evaluations.length, 1);
+  assert.equal(evaluations[0].metadata.evaluation_id, 33);
+  assert.ok(
+    evaluations.every((item) => item.metadata.evaluation_id !== 34),
+    '同一续作产品后续批次的到期未赎回提醒应被隐藏',
+  );
+});

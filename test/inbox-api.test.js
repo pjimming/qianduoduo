@@ -412,7 +412,7 @@ test('product valuation API stores an explicitly confirmed zero yield', async (t
   assert.equal(summary.latest_daily_pnl, 0);
 });
 
-test('non-replace holding review still creates a review-window reminder', () => {
+test('maturity review reminders no longer create inbox items', () => {
   const items = makeSourceItems({
     meta: { today: '2026-10-21' },
     workspace: {
@@ -425,23 +425,11 @@ test('non-replace holding review still creates a review-window reminder', () => 
           verdict_label: '继续持有',
           reminder: {
             level: 'window',
-            text: '距到期 12 天，进入替换/续作比较窗口',
+            kind: 'maturity',
+            text: '距到期 12 天，按默认续作继续持有',
           },
           horizon_days: 30,
-          top_candidate_code: 'JX040213',
-          candidates: [
-            {
-              code: 'JX040213',
-              name: '建信理财嘉鑫固收类最低持有30天产品第9期',
-              comparison_days: 30,
-              switch_wait_days: 2,
-              switch_wait_status: 'verified',
-              effective_days: 28,
-              min_gain_amount: 1,
-              execution_ready: false,
-              switch: { difference: 6.85 },
-            },
-          ],
+          candidates: [],
           thresholds: { min_gain_amount: 1 },
           redemption: { redeemable_now: true },
           verify_date: '2026-11-05',
@@ -450,14 +438,11 @@ test('non-replace holding review still creates a review-window reminder', () => 
     },
     automation: {},
   });
-  const item = items.find((entry) => entry.source_type === 'holding_review');
-  assert.ok(item);
-  assert.equal(item.title, '持仓进入复核窗口');
-  assert.match(item.summary, /招银理财招睿添利日开1号A/);
-  assert.match(item.summary, /距到期 12 天/);
-  assert.equal(item.action_label, '查看持仓复核');
-  assert.equal(item.metadata.verdict, 'hold');
-  assert.equal(item.due_at, '2026-11-05');
+  assert.equal(
+    items.filter((entry) => entry.source_type === 'holding_review').length,
+    0,
+    '到期默认续作，窗口提醒不再进入消息中心',
+  );
 });
 
 test('a loss-making switch suppresses the duplicate reminder after maturity', () => {

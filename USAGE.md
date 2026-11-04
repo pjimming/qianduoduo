@@ -454,6 +454,7 @@ Pages 只承载公开研究内容，不包含 R2 数据、账户事实、截图�
 
 - `GET/POST /api/income/inbox`：读取或上传收益截图。
 - `POST /api/income/inbox/:id/apply|ignore`：归档产品收益或忽略截图。
+- `npm run income:entry -- run/income.json [--apply]`：收益截图一键入账；默认 dry-run 做冲突预检和 T+N 覆盖检查，加 `--apply` 才上传并 apply，随后打印当日账户、对账状态和账户汇总。`--template` 打印规格骨架。
 - `GET /api/product-valuations?product_code=...`：逐产品收益、覆盖区间和修正审计。
 - `POST /api/product-valuations`、`PUT /api/product-valuations/:id`：补录或修正产品收益。
 - `GET/POST /api/holding-valuations`：兼容读取派生当前净值；历史快照能力不再由工作台界面使用。
