@@ -1,6 +1,6 @@
 # 每日市场简报接口目录
 
-执行安排（2026-11-04）：用户检验 DSH 期间，Codex 的全部 5 个定时任务暂停并保留配置，不自动恢复；本目录的数据接口和采集口径保持有效。
+执行安排（2026-11-04）：本机 Codex 简报任务已启用，沿用每天 18:00 的日程。
 
 运行配置以 `README.md` 与本机实际任务定义为准；供应商切换只调整任务模型，不改变本目录的数据接口和采集口径。
 
@@ -51,6 +51,8 @@
 | QDD-MB-27 | 2026-11-03 | 东方财富 7×24 快讯 | `https://newsapi.eastmoney.com/kuaixun/v1/getlist_102_ajaxResult_{count}_{page}_.html`；Header `Referer: https://finance.eastmoney.com/` | `count` 为期望条数、`page` 从 1 开始。响应为 `<script>` 风格文本，去掉前缀 `var ajaxResult=` 后解析 JSON；读取 `LivesList[]` 的 `id`、`url_w`、`title`、`digest`、`showtime`。属于第三方快讯，不能直接替代公告或官方正文 |
 | QDD-MB-28 | 2026-11-03 | 雪球批量实时行情 | 先在同一会话 `GET https://xueqiu.com/` 获取公开会话 Cookie，再 `GET https://stock.xueqiu.com/v5/stock/batch/quote.json?symbol={symbols}`；Header `Referer: https://xueqiu.com/` | `symbols` 为逗号分隔的 `SH000001,SZ399001`。响应 `data.items[].quote` 含 `symbol`、`name`、`current`、`percent`、`chg`、`timestamp`（Unix 毫秒）、`amount`、`volume` 等。会话令牌只运行时获取，不记录 Cookie；失败时回退 QDD-MB-01/02 |
 | QDD-MB-29 | 2026-11-03 | 雪球 7×24 快讯 | 先在同一会话 `GET https://xueqiu.com/` 获取公开会话 Cookie，再 `GET https://xueqiu.com/statuses/livenews/list.json?count={count}&max_id={max_id}`；Header `Referer: https://xueqiu.com/` | 首次 `max_id=-1`，后续使用响应 `next_max_id`。`items[]` 含 `id`、`text`、`target`、`created_at`（Unix 毫秒）、`status_id`、`reply_count`、`share_count`；`count` 不保证严格限制返回数，应本地截断。社区快讯须回到原始公告或权威来源核验 |
+| QDD-MB-30 | 2026-11-04 | 百分位网指数估值 | `GET https://baifenwei.com/index/{slug}/`；无需登录或专用请求头；`slug` 取 `hs300`、`cyb`、`kc50`；无日期参数或分页 | 读取 HTML 估值卡片的 PE/PB/PS 与历史分位，解析内嵌 `var d` JSON 的 `date`、`pe_pct`、`pb_pct`、`ps_pct`、`point`。图表为展示序列，勿据此重算完整历史分位。数据日期以最后一条有效记录为准；前值注明时差，晚于简报日或字段不符时回退其他可核验来源。11 月 4 日晚间已验证当日数据，18:00 可得性待观察。 |
+| QDD-MB-31 | 2026-11-04 | 百分位网 A 股恐贪指数 | `GET https://baifenwei.com/data/fear-greed/series-full-1.json`；无需登录或专用请求头；固定近一年日序列，无日期参数或分页 | `mode=full_daily`，`points[]` 为 `[交易日期,分数]`，`generated_at` 为文件生成时间。用交易日期匹配简报日期；缺当日值则标注“未获取到”，可另列已核实的最近前值及日期。仅作站方自定义情绪指标；11 月 4 日晚间已验证，18:00 可得性待观察。 |
 
 ## 新接口登记模板
 
