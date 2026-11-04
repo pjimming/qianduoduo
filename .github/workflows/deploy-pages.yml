@@ -9,6 +9,7 @@ on:
       - "package.json"
       - "research/index.html"
       - "scripts/build-pages-site.mjs"
+      - "scripts/build-report-docs.mjs"
       - "scripts/report-nav.js"
       - "src/data/stockReports.json"
       - "report/**"
