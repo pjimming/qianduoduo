@@ -197,6 +197,17 @@ async function main() {
     .filter((file) => /^\d{4}-\d{2}-\d{2}\.md$/u.test(file))
     .map((file) => file.slice(0, -3))
     .sort((left, right) => right.localeCompare(left))
+  const briefHeadline = (date) => {
+    const source = readFileSync(
+      path.join(root, 'market-briefs', `${date}.md`),
+      'utf8',
+    )
+    return (
+      source
+        .match(/^>[ \t]*今日标题[：:][ \t]*(.+?)[ \t]*$/mu)?.[1]
+        .replace(/\s+/gu, ' ') ?? ''
+    )
+  }
 
   const browser = await chromium.launch({ executablePath, headless: true })
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
@@ -220,10 +231,36 @@ async function main() {
         .innerText()).includes('每日简报'),
       '投资菜单第一项应为“每日简报”',
     )
-    assert(
-      (await page.title()).includes('每日市场简报'),
-      '每日简报页面标题不正确',
-    )
+    if (briefDates.length) {
+      const latestHeadline = briefHeadline(briefDates[0])
+      assert(latestHeadline, '最新简报缺少“今日标题”')
+      await page.waitForFunction(
+        (headline) =>
+          document.querySelector('.briefs-heading h1')?.textContent?.trim() ===
+          headline,
+        latestHeadline,
+      )
+      assert(
+        (await page.title()) === `${latestHeadline} · 每日市场简报`,
+        '每日简报浏览器标题应使用当日标题',
+      )
+      assert(
+        (await page.locator('.briefs-heading h1').innerText()).trim() ===
+          latestHeadline,
+        '每日简报页头应显示“今日标题”',
+      )
+      assert(
+        (await page.locator('.briefs-kicker').innerText()).includes(
+          briefDates[0],
+        ),
+        '每日简报页眉应显示所选日期',
+      )
+    } else {
+      assert(
+        (await page.title()).includes('每日市场简报'),
+        '每日简报页面标题不正确',
+      )
+    }
     if (!briefDates.length) {
       await page.waitForSelector('.briefs-message')
       const emptyText = (await page.locator('.briefs-message').innerText()) ?? ''
@@ -286,9 +323,8 @@ async function main() {
           latestBriefText.includes('短期（1-2 周）') &&
           latestBriefText.includes('中期（1-3 个月）') &&
           latestBriefText.includes('结论') &&
-          (await page.locator('.briefs-heading h1').innerText()).includes(
-            briefDates[0],
-          ),
+          (await page.locator('.briefs-heading h1').innerText()).trim() ===
+            briefHeadline(briefDates[0]),
         '最新 Markdown 简报正文没有完整渲染',
       )
       await assertFontFloor(page, '.briefs-page', '每日简报桌面端')
@@ -300,6 +336,8 @@ async function main() {
       )
 
       if (briefDates[1]) {
+        const nextHeadline = briefHeadline(briefDates[1])
+        assert(nextHeadline, `${briefDates[1]} 简报缺少“今日标题”`)
         await page
           .locator('.briefs-date-picker select')
           .selectOption(briefDates[1])
@@ -309,17 +347,26 @@ async function main() {
           briefDates[1],
         )
         await page.waitForFunction(
-          (date) =>
+          (headline) =>
             document
               .querySelector('.briefs-heading h1')
-              ?.textContent?.includes(date),
-          briefDates[1],
+              ?.textContent?.trim() === headline,
+          nextHeadline,
+        )
+        await page.waitForFunction(
+          (headline) => document.title === `${headline} · 每日市场简报`,
+          nextHeadline,
         )
         assert(
-          (await page.locator('.briefs-heading h1').innerText()).includes(
+          (await page.locator('.briefs-kicker').innerText()).includes(
             briefDates[1],
           ),
-          '切换日期后没有渲染指定日期的 Markdown',
+          '切换日期后页眉没有显示指定日期',
+        )
+        assert(
+          (await page.locator('.briefs-heading h1').innerText()).trim() ===
+            nextHeadline,
+          '切换日期后没有渲染指定日期的当日标题',
         )
       }
 

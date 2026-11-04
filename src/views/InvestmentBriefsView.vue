@@ -13,6 +13,7 @@ const selectedDate = ref(
   normalizeRouteDate() ?? marketBriefEntries[0]?.date ?? '',
 )
 const renderedTitle = ref('')
+const headline = ref('')
 const markdownHtml = shallowRef('')
 const hasTables = ref(false)
 const loading = ref(false)
@@ -37,9 +38,13 @@ const olderDate = computed(
       : undefined,
 )
 const visibleTitle = computed(
+  () => headline.value || renderedTitle.value || '每日市场简报',
+)
+const visibleKicker = computed(
   () =>
-    renderedTitle.value ||
-    (selectedDate.value ? `${formatDate(selectedDate.value)} 市场简报` : '每日市场简报'),
+    `DAILY MARKET NOTE · ${
+      selectedDate.value ? formatDate(selectedDate.value) : '收盘后更新'
+    }`,
 )
 
 function formatDate(date: string): string {
@@ -64,6 +69,7 @@ async function loadSelectedBrief(): Promise<void> {
   const entry = selectedEntry.value
   if (!entry) {
     renderedTitle.value = ''
+    headline.value = ''
     markdownHtml.value = ''
     hasTables.value = false
     return
@@ -77,11 +83,13 @@ async function loadSelectedBrief(): Promise<void> {
     if (sequence !== requestSequence.value) return
     const rendered = renderMarketBrief(source)
     renderedTitle.value = rendered.title
+    headline.value = rendered.headline
     markdownHtml.value = rendered.html
     hasTables.value = rendered.hasTables
   } catch (error) {
     if (sequence !== requestSequence.value) return
     renderedTitle.value = ''
+    headline.value = ''
     markdownHtml.value = ''
     hasTables.value = false
     errorMessage.value =
@@ -125,7 +133,6 @@ watch(
 )
 
 onMounted(() => {
-  document.title = '钱多多 · 投资 · 每日市场简报'
   const routeDate = normalizeRouteDate()
   const latestDate = marketBriefEntries[0]?.date
   if (routeDate && routeDate !== selectedDate.value) {
@@ -134,16 +141,26 @@ onMounted(() => {
     selectedDate.value = latestDate
   }
 })
+
+watch(
+  [headline, selectedDate],
+  () => {
+    document.title = headline.value
+      ? `${headline.value} · 每日市场简报`
+      : '钱多多 · 投资 · 每日市场简报'
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <section class="briefs-page">
     <header class="briefs-head">
       <div class="briefs-heading">
-        <p class="research-kicker">DAILY MARKET NOTE · 收盘后更新</p>
+        <p class="research-kicker briefs-kicker">{{ visibleKicker }}</p>
         <h1>{{ visibleTitle }}</h1>
         <p class="briefs-lede">
-          一页读取市场状态、关键事件、报告库关联与下一交易日关注点
+          每日市场简报 · 一页读取市场状态、关键事件、报告库关联与下一交易日关注点
           <span>· {{ marketBriefEntries.length }} 篇本地 Markdown</span>
         </p>
       </div>

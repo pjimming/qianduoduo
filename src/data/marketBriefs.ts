@@ -11,9 +11,14 @@ export interface MarketBriefEntry {
 
 export interface RenderedMarketBrief {
   title: string
+  headline: string
   html: string
   hasTables: boolean
 }
+
+// 简报正文以 `> 今日标题：……` 提供不超过 20 字的当日结论，
+// 页面用它作为主标题；日期由页眉和日期选择器呈现。
+const headlinePattern = /^>\s*今日标题[：:]\s*(.+?)\s*$/mu
 
 const markdownModules = import.meta.glob(
   '../../market-briefs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md',
@@ -65,11 +70,21 @@ function cleanMarkdownTitle(value: string): string {
 
 export function renderMarketBrief(source: string): RenderedMarketBrief {
   const normalized = source.replace(/\r\n?/gu, '\n')
-  const titleMatch = normalized.match(/^\s*#\s+(.+?)\s*(?:\n|$)/u)
+  const headlineMatch = normalized.match(headlinePattern)
+  const headline = cleanMarkdownTitle(headlineMatch?.[1] ?? '').replace(
+    /\s+/gu,
+    ' ',
+  )
+  const withoutHeadline = headlineMatch
+    ? `${normalized.slice(0, headlineMatch.index!)}${normalized.slice(
+        headlineMatch.index! + headlineMatch[0].length,
+      )}`
+    : normalized
+  const titleMatch = withoutHeadline.match(/^\s*#\s+(.+?)\s*(?:\n|$)/u)
   const title = cleanMarkdownTitle(titleMatch?.[1] ?? '')
   const body = titleMatch
-    ? normalized.slice(titleMatch.index! + titleMatch[0].length)
-    : normalized
+    ? withoutHeadline.slice(titleMatch.index! + titleMatch[0].length)
+    : withoutHeadline
   const rawHtml = marked.parse(body, {
     async: false,
     gfm: true,
@@ -104,6 +119,7 @@ export function renderMarketBrief(source: string): RenderedMarketBrief {
 
   return {
     title,
+    headline,
     html: template.innerHTML,
     hasTables,
   }

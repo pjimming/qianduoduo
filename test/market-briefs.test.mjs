@@ -56,6 +56,17 @@ test('market brief Markdown files use valid unique trading-date names and the fi
       `${file} 应有一个一级标题`,
     )
 
+    const headlineMatch = markdown.match(
+      /^>[ \t]*今日标题[：:][ \t]*(.+?)[ \t]*$/mu,
+    )
+    assert.ok(headlineMatch, `${file} 缺少“> 今日标题：”当日标题`)
+    const headline = headlineMatch[1].replace(/\s+/gu, ' ')
+    assert.ok(headline.length > 0, `${file} 今日标题不能为空`)
+    assert.ok(
+      [...headline].length <= 20,
+      `${file} 今日标题超过 20 字：${headline}`,
+    )
+
     const headings = sectionHeadings(markdown)
     if (date < currentFormatStart) {
       assert.deepEqual(headings, legacySections, `${file} 历史六章节顺序不正确`)
