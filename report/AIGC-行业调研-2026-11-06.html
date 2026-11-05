@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIGC｜行业调研｜2026-11-06</title>
+<meta name="description" content="AIGC 产能革命已发生、利润革命未发生：2026Q3 应用端收入翻倍但集体亏损，100 元流水约 70 元投流、20 元平台、制作方不足 10 元；能确认赚钱的是算力（协创 PE 19.7x）与订阅（金山），内容股 100-1500x PE 在为叙事付费。">
+<!-- rpnav-published: 2026-11-06 00:16 -->
+<!-- rpnav-title: AIGC｜产能革命已至，利润革命未至 -->
+<!-- rpnav-tag: AIGC -->
+<!-- rpnav-summary: AIGC 产能革命已发生、利润革命未发生：2026Q3 应用端收入翻倍但集体亏损，100 元流水约 70 元投流、20 元平台、制作方不足 10 元；能确认赚钱的是算力（协创 PE 19.7x）与订阅（金山），内容股 100-1500x PE 在为叙事付费。 -->
+<!-- rpnav-keywords: AIGC AI应用 AI短剧 漫剧 算力 昆仑万维 300418 协创数据 300857 金山办公 688111 科大讯飞 002230 芒果超媒 300413 -->
+<!-- rpnav-priority: 高 -->
+<!-- rpnav-priority-detail: 研究优先级：协创数据、金山办公高于科大讯飞，科大讯飞高于昆仑万维，昆仑万维高于芒果超媒；排序依据为利润与现金流兑现度、瓶颈位置、估值容错和证据可验证性，不代表投资评级。 -->
+<style>
+:root{
+  --ink:#14212a;--muted:#5b6b76;--line:#d9e2e7;--paper:#f5f7f5;--card:#ffffff;
+  --navy:#0f2d3d;--navy2:#173f52;--teal:#0f7b6c;--teal-soft:#e6f4f0;
+  --gold:#9a6b12;--gold-soft:#fbf3df;--red:#b23a2f;--red-soft:#fbeae7;
+  --blue:#2f5f9e;--blue-soft:#eaf1fa;--shadow:0 10px 30px rgba(15,45,61,.07)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.75;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-wrap:break-word
+}
+a{color:var(--teal);text-decoration:none;border-bottom:1px solid rgba(15,123,108,.28)}
+a:hover{border-bottom-color:var(--teal)}
+.rp-wrap{max-width:1180px;margin:0 auto;padding:24px 22px 60px}
+.rp-home-link{display:inline-block;margin:4px 0 18px;font-size:12.5px;color:var(--muted);border:0}
+.rp-home-link:hover{color:var(--teal)}
+.rp-hero{
+  background:linear-gradient(135deg,#0f2d3d 0%,#173f52 55%,#0f5b55 100%);
+  color:#f4fbf9;border-radius:18px;padding:38px 38px 30px;position:relative;overflow:hidden;
+  box-shadow:var(--shadow)
+}
+.rp-hero:after{
+  content:"";position:absolute;right:-80px;top:-90px;width:320px;height:320px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.14),transparent 65%)
+}
+.rp-eyebrow{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:#9fd9cf;font-weight:700;margin:0 0 10px}
+.rp-hero h1{font-size:34px;line-height:1.25;margin:0 0 14px;letter-spacing:-.01em;font-weight:800;color:#f4fbf9}
+.rp-hero .rp-sub{font-size:15.5px;line-height:1.8;color:#d9eeea;margin:0 0 18px;max-width:980px}
+.rp-meta{display:flex;flex-wrap:wrap;gap:8px;position:relative;z-index:1}
+.rp-chip{display:inline-block;font-size:12px;line-height:1.4;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.1);color:#e8f6f2;border:1px solid rgba(255,255,255,.18)}
+.rp-section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px 32px;margin:22px 0;box-shadow:var(--shadow)}
+.rp-chapter-no{font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--teal);text-transform:uppercase;margin:0 0 6px}
+h2{font-size:24px;line-height:1.35;margin:0 0 14px;color:var(--navy);letter-spacing:-.01em}
+h3{font-size:17px;line-height:1.45;margin:22px 0 8px;color:var(--navy2)}
+h4{font-size:14px;margin:14px 0 6px;color:var(--navy2)}
+p{margin:9px 0}
+ul,ol{margin:8px 0 8px 20px;padding:0}
+li{margin:5px 0}
+strong{color:var(--navy)}
+.rp-takeaway{
+  background:linear-gradient(90deg,var(--teal-soft),#f7fbf9);border-left:4px solid var(--teal);
+  padding:15px 18px;border-radius:0 10px 10px 0;font-size:14.5px;line-height:1.8;margin:16px 0 20px;color:#123b35
+}
+.rp-verdict{background:var(--gold-soft);border:1px solid #ead8b2;border-radius:12px;padding:14px 18px;margin:18px 0;font-size:13.5px;line-height:1.8}
+.rp-verdict b{color:#6d4a0c}
+.rp-grid{display:grid;gap:14px;margin:16px 0}
+.rp-grid.rp-four{grid-template-columns:repeat(4,1fr)}
+.rp-grid.rp-three{grid-template-columns:repeat(3,1fr)}
+.rp-grid.rp-two{grid-template-columns:repeat(2,1fr)}
+.rp-kpi{background:#fbfcfb;border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+.rp-kpi .rp-label{font-size:12px;color:var(--muted);margin:0 0 4px}
+.rp-kpi .rp-value{font-size:23px;font-weight:800;line-height:1.25;color:var(--navy);letter-spacing:-.01em}
+.rp-kpi .rp-note{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.5}
+.rp-kpi .rp-value.rp-down{color:var(--red)}
+.rp-kpi .rp-value.rp-up{color:var(--teal)}
+.rp-callout{background:var(--blue-soft);border:1px solid #cfe0f3;border-radius:12px;padding:14px 17px;margin:16px 0;font-size:13.5px;line-height:1.8}
+.rp-callout b{color:var(--blue)}
+.rp-warn{background:var(--red-soft);border:1px solid #f0c9c3;border-radius:12px;padding:14px 17px;margin:16px 0;font-size:13.5px;line-height:1.8}
+.rp-warn b{color:var(--red)}
+.rp-goodbox{background:var(--teal-soft);border:1px solid #c8e6df;border-radius:12px;padding:14px 17px;margin:16px 0;font-size:13.5px;line-height:1.8}
+.rp-table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:14px 0;background:var(--card);-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:12.5px;line-height:1.55}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#f2f7f5;color:var(--navy);font-size:12px;font-weight:800;white-space:nowrap;position:sticky;top:0;z-index:1}
+tr:last-child td{border-bottom:0}
+tr:nth-child(even) td{background:#fcfdfc}
+td.rp-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.rp-wide{min-width:1040px}
+table.rp-mid{min-width:980px}
+.rp-tag{display:inline-block;font-size:12px;line-height:1.35;padding:2px 7px;border-radius:999px;font-weight:700;white-space:nowrap;border:1px solid transparent}
+.rp-tag.rp-high,.rp-tag.rp-good{background:#e3f4ee;color:#0c6b5b;border-color:#b9e3d7}
+.rp-tag.rp-mid{background:#fbf3df;color:#7a540c;border-color:#ecd7a8}
+.rp-tag.rp-low,.rp-tag.rp-bad{background:#fbeae7;color:#9a2f25;border-color:#efc4bd}
+.rp-tag.rp-neutral{background:#eef2f4;color:#4d5c66;border-color:#d7e0e5}
+.rp-src{display:block;font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+.rp-note{font-size:12px;color:var(--muted);line-height:1.7}
+.rp-chain{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:16px 0}
+.rp-node{background:#fbfcfb;border:1px solid var(--line);border-radius:11px;padding:12px 11px;min-height:150px;font-size:12.5px;line-height:1.6}
+.rp-node b{display:block;font-size:13px;color:var(--navy);margin-bottom:4px}
+.rp-node .rp-small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.rp-node.rp-bottleneck{border-color:#e2bd72;background:#fffaf0;box-shadow:inset 0 3px 0 #d9a441}
+.rp-node.rp-bottleneck b{color:#7a540c}
+.rp-stock-card{border:1px solid var(--line);border-radius:14px;padding:18px 19px;margin:16px 0;background:#fcfdfc}
+.rp-stock-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
+.rp-stock-head h3{margin:0;font-size:19px}
+.rp-stock-head .rp-ticker{font-size:12.5px;color:var(--muted);font-weight:600;margin-left:6px}
+.rp-stock-head .rp-quote{font-size:12.5px;color:var(--muted)}
+.rp-stock-card .rp-lead{font-size:13.5px;color:#24414d;margin:6px 0 10px}
+.rp-stock-card ul{margin:6px 0 6px 18px}
+.rp-stock-card li{font-size:13px;line-height:1.7}
+.rp-compact li{margin:3px 0}
+.rp-two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.rp-mini-card{background:#fbfcfb;border:1px solid var(--line);border-radius:11px;padding:13px 14px;font-size:13px;line-height:1.7}
+.rp-mini-card b{display:block;color:var(--navy);margin-bottom:4px}
+.rp-breadth-bar{display:grid;grid-template-columns:120px 1fr 64px;align-items:center;gap:10px;margin:8px 0;font-size:12.5px}
+.rp-bar-track{height:9px;background:#e8eef0;border-radius:999px;overflow:hidden}
+.rp-bar-up{height:100%;background:var(--teal);border-radius:999px}
+.rp-bar-down{height:100%;background:var(--red);border-radius:999px}
+.rp-bar-text{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.rp-alloc{display:flex;height:30px;border-radius:8px;overflow:hidden;margin:12px 0 6px;border:1px solid var(--line)}
+.rp-alloc span{display:flex;align-items:center;justify-content:center;font-size:11.5px;color:#fff;font-weight:700;white-space:nowrap}
+.rp-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin:4px 0 10px}
+.rp-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+.rp-timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.rp-tl{background:#fbfcfb;border:1px solid var(--line);border-radius:11px;padding:12px 13px}
+.rp-tl .rp-date{font-size:12px;color:var(--muted)}
+.rp-tl .rp-val{font-size:20px;font-weight:800;color:var(--navy);margin:2px 0}
+.rp-tl .rp-desc{font-size:12px;color:var(--muted);line-height:1.55}
+.rp-source-list{font-size:12.5px;line-height:1.75;color:#334b57}
+.rp-source-list li{margin:7px 0}
+.rp-foot{font-size:12px;color:var(--muted);line-height:1.7;margin:26px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+@media (max-width:900px){
+  .rp-wrap{padding:16px 14px 40px}
+  .rp-hero{padding:26px 20px 22px;border-radius:14px}
+  .rp-hero h1{font-size:26px}
+  .rp-hero .rp-sub{font-size:14px}
+  .rp-section{padding:22px 18px;border-radius:13px}
+  .rp-grid.rp-four{grid-template-columns:repeat(2,1fr)}
+  .rp-grid.rp-three{grid-template-columns:1fr}
+  .rp-two-col{grid-template-columns:1fr}
+  .rp-chain{grid-template-columns:repeat(3,1fr)}
+  .rp-timeline{grid-template-columns:1fr}
+  table{font-size:12px}
+}
+@media (max-width:600px){
+  .rp-hero h1{font-size:23px}
+  .rp-grid.rp-four{grid-template-columns:1fr 1fr}
+  .rp-chain{grid-template-columns:repeat(2,1fr)}
+  .rp-stock-head{flex-direction:column;align-items:flex-start}
+  .rp-kpi .rp-value{font-size:20px}
+  .rp-breadth-bar{grid-template-columns:96px 1fr 54px}
+  .rp-section{padding:20px 15px}
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --ink:#e6eef2;--muted:#9fb0ba;--line:#2a3a44;--paper:#0c1418;--card:#121d23;
+    --navy:#e9f2f6;--navy2:#cfe0e8;--teal:#63cfc0;--teal-soft:#13312d;
+    --gold:#e0b15e;--gold-soft:#2d2515;--red:#f0a196;--red-soft:#351f1c;
+    --blue:#9cc0ee;--blue-soft:#17283a;--shadow:0 10px 30px rgba(0,0,0,.35)
+  }
+  body{background:var(--paper);color:var(--ink)}
+  .rp-hero{background:linear-gradient(135deg,#0a1d27,#12313d 55%,#0d3f3a);color:#eaf7f4}
+  .rp-hero h1{color:#f4fbf9}
+  .rp-hero .rp-sub{color:#cfe6e1}
+  .rp-section,.rp-table-wrap{background:var(--card);border-color:var(--line)}
+  .rp-kpi,.rp-node,.rp-stock-card,.rp-mini-card,.rp-tl{background:#16232a;border-color:var(--line)}
+  .rp-kpi .rp-value,.rp-tl .rp-val{color:var(--navy)}
+  th{background:#1a2a32;color:#e3eef3}
+  tr:nth-child(even) td{background:#152128}
+  td,th{border-color:var(--line)}
+  .rp-takeaway{background:linear-gradient(90deg,#12312d,#152128);color:#d6efe9;border-left-color:var(--teal)}
+  .rp-verdict{background:#2b2416;border-color:#5a4a25;color:#e9dcc1}
+  .rp-verdict b{color:#f0c878}
+  .rp-callout{background:#17283a;border-color:#2c4560;color:#dbe8f5}
+  .rp-callout b{color:#a9c9f1}
+  .rp-warn{background:#351f1c;border-color:#5c332e;color:#f3d9d4}
+  .rp-warn b{color:#f0a196}
+  .rp-goodbox{background:#13312d;border-color:#2c4f47;color:#d6efe9}
+  .rp-node.rp-bottleneck{background:#2b2416;border-color:#6b5528;box-shadow:inset 0 3px 0 #c59a45}
+  .rp-node.rp-bottleneck b{color:#f0c878}
+  .rp-tag.rp-high,.rp-tag.rp-good{background:#123a32;color:#8fe0cf;border-color:#23594d}
+  .rp-tag.rp-mid{background:#332a17;color:#e8c47a;border-color:#5c4a25}
+  .rp-tag.rp-low,.rp-tag.rp-bad{background:#351f1c;color:#f0a196;border-color:#5c332e}
+  .rp-tag.rp-neutral{background:#1d2a31;color:#b7c6cf;border-color:#33454f}
+  .rp-bar-track{background:#26343c}
+  a{color:#7fd4c8;border-bottom-color:rgba(127,212,200,.35)}
+  a:hover{border-bottom-color:#7fd4c8}
+  .rp-stock-card .rp-lead{color:#c3d3db}
+  .rp-source-list{color:#c3d3db}
+  .rp-foot{color:var(--muted);border-top-color:var(--line)}
+  .rp-home-link{color:var(--muted)}
+}
+
+/* App 阅读器深色：构建会剥离 prefers-color-scheme，这里改用 html[data-theme] 作用域 */
+:root[data-theme='dark']{
+  --ink:#e6eef2;--muted:#9fb0ba;--line:#2a3a44;--paper:#0c1418;--card:#121d23;
+  --navy:#e9f2f6;--navy2:#cfe0e8;--teal:#63cfc0;--teal-soft:#13312d;
+  --gold:#e0b15e;--gold-soft:#2d2515;--red:#f0a196;--red-soft:#351f1c;
+  --blue:#9cc0ee;--blue-soft:#17283a;--shadow:0 10px 30px rgba(0,0,0,.35)
+}
+:root[data-theme='dark'] .rp-hero{background:linear-gradient(135deg,#0a1d27,#12313d 55%,#0d3f3a);color:#eaf7f4}
+:root[data-theme='dark'] .rp-hero h1{color:#f4fbf9}
+:root[data-theme='dark'] .rp-hero .rp-sub{color:#cfe6e1}
+:root[data-theme='dark'] .rp-section,
+:root[data-theme='dark'] .rp-table-wrap{background:var(--card);border-color:var(--line)}
+:root[data-theme='dark'] .rp-kpi,
+:root[data-theme='dark'] .rp-node,
+:root[data-theme='dark'] .rp-stock-card,
+:root[data-theme='dark'] .rp-mini-card,
+:root[data-theme='dark'] .rp-tl{background:#16232a;border-color:var(--line)}
+:root[data-theme='dark'] .rp-kpi .rp-value,
+:root[data-theme='dark'] .rp-tl .rp-val{color:var(--navy)}
+:root[data-theme='dark'] th{background:#1a2a32;color:#e3eef3}
+:root[data-theme='dark'] tr:nth-child(even) td{background:#152128}
+:root[data-theme='dark'] td,
+:root[data-theme='dark'] th{border-color:var(--line)}
+:root[data-theme='dark'] .rp-takeaway{background:linear-gradient(90deg,#12312d,#152128);color:#d6efe9;border-left-color:var(--teal)}
+:root[data-theme='dark'] .rp-verdict{background:#2b2416;border-color:#5a4a25;color:#e9dcc1}
+:root[data-theme='dark'] .rp-verdict b{color:#f0c878}
+:root[data-theme='dark'] .rp-callout{background:#17283a;border-color:#2c4560;color:#dbe8f5}
+:root[data-theme='dark'] .rp-callout b{color:#a9c9f1}
+:root[data-theme='dark'] .rp-warn{background:#351f1c;border-color:#5c332e;color:#f3d9d4}
+:root[data-theme='dark'] .rp-warn b{color:#f0a196}
+:root[data-theme='dark'] .rp-goodbox{background:#13312d;border-color:#2c4f47;color:#d6efe9}
+:root[data-theme='dark'] .rp-node.rp-bottleneck{background:#2b2416;border-color:#6b5528;box-shadow:inset 0 3px 0 #c59a45}
+:root[data-theme='dark'] .rp-node.rp-bottleneck b{color:#f0c878}
+:root[data-theme='dark'] .rp-tag.rp-high,
+:root[data-theme='dark'] .rp-tag.rp-good{background:#123a32;color:#8fe0cf;border-color:#23594d}
+:root[data-theme='dark'] .rp-tag.rp-mid{background:#332a17;color:#e8c47a;border-color:#5c4a25}
+:root[data-theme='dark'] .rp-tag.rp-low,
+:root[data-theme='dark'] .rp-tag.rp-bad{background:#351f1c;color:#f0a196;border-color:#5c332e}
+:root[data-theme='dark'] .rp-tag.rp-neutral{background:#1d2a31;color:#b7c6cf;border-color:#33454f}
+:root[data-theme='dark'] .rp-bar-track{background:#26343c}
+:root[data-theme='dark'] a{color:#7fd4c8;border-bottom-color:rgba(127,212,200,.35)}
+:root[data-theme='dark'] a:hover{border-bottom-color:#7fd4c8}
+:root[data-theme='dark'] .rp-stock-card .rp-lead{color:#c3d3db}
+:root[data-theme='dark'] .rp-source-list{color:#c3d3db}
+:root[data-theme='dark'] .rp-foot{color:var(--muted);border-top-color:var(--line)}
+:root[data-theme='dark'] .rp-home-link{color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="rp-wrap">
+  <a class="rp-home-link" href="../research/index.html" data-report-page-home>← 返回首页</a>
+
+  <header class="rp-hero">
+    <p class="rp-eyebrow">A 股 AIGC · 行业调研 · 2026-11-06</p>
+    <h1>产能革命已经发生，利润革命还没有</h1>
+    <p class="rp-sub">2026 年下半年，AIGC 主题从“算力硬件”切向“应用兑现”。但三季报给出的答案很冷：AI 让内容供给暴增、单价崩塌，钱被算力、投流和平台分走。A 股能确认赚到 AI 利润的，目前只有卖算力的协创数据和卖订阅的金山办公；内容应用收入翻倍、亏损也翻倍。这是一轮从“降本叙事”到“分配叙事”的切换，不是全面景气。</p>
+    <div class="rp-meta">
+      <span class="rp-chip">调研日期 2026-11-06</span>
+      <span class="rp-chip">行情截至 2026-11-05 收盘</span>
+      <span class="rp-chip">财务截至 2026-09-30</span>
+      <span class="rp-chip">板块样本 298 家</span>
+      <span class="rp-chip">币种 CNY</span>
+      <span class="rp-chip">方法：Serenity 产业链瓶颈分析 + 公司全景与阵型 + 市场叙事与资金结构 + 退出条件</span>
+    </div>
+  </header>
+
+  <section class="rp-section" id="conclusion">
+    <p class="rp-chapter-no">01 / 一页结论</p>
+    <h2>先找利润的捕获者，再谈叙事的纯度</h2>
+
+    <div class="rp-takeaway">
+      AIGC 的产业事实已经非常硬：用户 6.02 亿、日均词元调用 140 万亿、上半年抖音新增 AI 短剧/漫剧 22.19 万部。但利润事实同样硬：<strong>我们覆盖的内容应用公司，2026Q3 归母净利润全部为负或大幅下滑</strong>；100 元流水中约 70 元用于投流、20 元归平台，制作方拿不到 10 元。市场却仍按“AI 收入增速”定价——算力服务商协创数据 19.7 倍 PE，内容应用普遍 100–1500 倍 PE。研究上应优先看“谁在分配链上收租”，而不是“谁的故事最像 AI”。
+    </div>
+
+    <div class="rp-grid rp-four">
+      <div class="rp-kpi">
+        <p class="rp-label">AIGC 概念指数 886019</p>
+        <p class="rp-value rp-up">1966.55</p>
+        <p class="rp-note">11-05 收盘 +3.70%，成交 1618.77 亿元，主力净流入 69.32 亿元（同花顺口径）</p>
+      </div>
+      <div class="rp-kpi">
+        <p class="rp-label">板块估值（298 家）</p>
+        <p class="rp-value">67.82x</p>
+        <p class="rp-note">PE(TTM)，PB 3.01x，ROE 2.25%，资产负债率 51.91%——高估值、低盈利</p>
+      </div>
+      <div class="rp-kpi">
+        <p class="rp-label">成交占全 A 比重</p>
+        <p class="rp-value">7.6%</p>
+        <p class="rp-note">1618.77 亿 / 21179.53 亿；单一主题占到这一水平，属偏高区间（本稿测算）</p>
+      </div>
+      <div class="rp-kpi">
+        <p class="rp-label">应用层 100 元流水分配</p>
+        <p class="rp-value rp-down">&lt;10 元</p>
+        <p class="rp-note">投流约 70 元、平台约 20 元、制作方不足 10 元；分账单价已从 30–100 元降到 5–10 元</p>
+      </div>
+    </div>
+
+    <h3>三句话的主线</h3>
+    <ul>
+      <li><strong>需求是真的。</strong>截至 2025 年底生成式 AI 用户 6.02 亿、普及率 42.8%，相关应用使用时长同比 +176.7%；2026 年 3 月日均词元调用 140 万亿，两年增长超千倍；截至 2026 年 6 月累计 924 款生成式 AI 服务备案、573 款应用/功能登记。</li>
+      <li><strong>供给更真，所以单价塌了。</strong>2026 年上半年抖音新增 AI 短剧/漫剧 22.19 万部，播放破亿的仅 1055 部，爆款率 0.47%；万播分账从 2025 年的 30–100 元降到 2026 年 11 月的 5–10 元，尾部只有 1–2 元。</li>
+      <li><strong>利润不在制作端。</strong>单集算力成本从年初 17–19 元涨到年中 80–100 元，部分算力卡涨 34%、存储涨 30%、腾讯混元部分模型输入价涨 463%；投流占投入 82.5%。制作方同时被上游算力和下游流量挤压。</li>
+    </ul>
+
+    <h3>阵型概览：四个层级，四种定价</h3>
+    <div class="rp-grid rp-two">
+      <div class="rp-mini-card">
+        <b>第一阵型 · 兑现层</b>
+        利润与现金流已被 AI 需求直接推起来，估值可以用 PE 消化。<br>
+        代表：协创数据（算力云，PE 19.7x）、金山办公（订阅，PE 31.2x）。<br>
+        <span class="rp-tag rp-good">证据最强</span> <span class="rp-tag rp-mid">估值容错最高</span>
+      </div>
+      <div class="rp-mini-card">
+        <b>第二阵型 · 放量层</b>
+        收入高速增长，利润被研发、算力、销售费用吞噬，处于“规模换利润”阶段。<br>
+        代表：科大讯飞、万兴科技、易点天下。<br>
+        <span class="rp-tag rp-mid">收入已验证</span> <span class="rp-tag rp-low">利润未验证</span>
+      </div>
+      <div class="rp-mini-card">
+        <b>第三阵型 · 叙事层</b>
+        收入或流水高增，但亏损扩大，估值靠 ARR、流水、爆款和“AI+IP”期权。<br>
+        代表：昆仑万维、芒果超媒、中文在线、掌阅科技、上海电影、荣信文化。<br>
+        <span class="rp-tag rp-low">利润为负</span> <span class="rp-tag rp-mid">估值 100–1500x</span>
+      </div>
+      <div class="rp-mini-card">
+        <b>第四阵型 · 映射层</b>
+        AI 收入占比不足 1%、尚未确认收入，或仅有产品发布；股价由题材和资金驱动。<br>
+        代表：引力传媒、欢瑞世纪、利欧股份、浙文互联、博纳影业、新华都、豆神教育等。<br>
+        <span class="rp-tag rp-bad">证据最弱</span> <span class="rp-tag rp-neutral">交易属性</span>
+      </div>
+    </div>
+
+    <h3>重点公司与研究优先级</h3>
+    <div class="rp-table-wrap">
+      <table class="rp-mid">
+        <thead><tr><th>公司</th><th>一句定位</th><th>2026 年关键证据</th><th>估值（11-05）</th><th>研究优先级</th></tr></thead>
+        <tbody>
+          <tr><td><strong>协创数据</strong><br>300857</td><td>算力云服务 + 服务器再制造</td><td>前三季营收 196.10 亿（+135.39%）、归母 30.62 亿（+338.77%）；374.90 亿元算力云长单</td><td>802.6 亿市值<br>PE 19.7x</td><td><span class="rp-tag rp-high">1</span> 兑现度最高，杠杆也最高</td></tr>
+          <tr><td><strong>金山办公</strong><br>688111</td><td>办公订阅 + AI Agent</td><td>前三季营收 50.80 亿（+21.57%）；WPS 365 收入 2.70 亿（+33.83%）</td><td>1098.6 亿市值<br>PE 31.2x</td><td><span class="rp-tag rp-high">2</span> 商业模式最健康，AI 增量待验证</td></tr>
+          <tr><td><strong>科大讯飞</strong><br>002230</td><td>国产大模型 + 政企/教育/医疗</td><td>Q3 归母 +31.05%、扣非 -1.5 亿；经营现金流累计转正</td><td>940.4 亿市值<br>PE 322x</td><td><span class="rp-tag rp-mid">3</span> 收入质量修复，利润未验证</td></tr>
+          <tr><td><strong>昆仑万维</strong><br>300418</td><td>天工大模型 + AI 短剧/音乐/社交</td><td>前三季营收 89.37 亿（+53.96%）、扣非 -15.46 亿；销售费用 58.18 亿</td><td>513.4 亿市值<br>PE 1475x（失真）</td><td><span class="rp-tag rp-mid">4</span> 弹性最大，亏损也最大</td></tr>
+          <tr><td><strong>芒果超媒</strong><br>300413</td><td>长视频平台 + AI 内容</td><td>前三季归母 -79.01%；《后西游记》5 个交易日带动约 +50%</td><td>613.2 亿市值<br>PE 215.7x</td><td><span class="rp-tag rp-low">5</span> 稀缺入口，利润承压</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="rp-note">研究优先级表示下一步研究顺序，不代表投资评级；排序依据为利润与现金流兑现度、产业链瓶颈位置、估值容错和证据可验证性。</p>
+
+    <div class="rp-grid rp-three">
+      <div class="rp-mini-card">
+        <b>市场阶段</b>
+        扩散期后段：11-02 12 股涨停 → 11-04 板块 +4.63% → 11-05 +3.70%，成交占全 A 7.6%，小市值高换手补涨，业绩验证临近。
+      </div>
+      <div class="rp-mini-card">
+        <b>下一催化</b>
+        双十一 AI 营销数据、12 月中央经济工作会议、2027 年 1 月年报预告、CES 2027、平台分账规则、协创 80 亿定增注册。
+      </div>
+      <div class="rp-mini-card">
+        <b>核心退出信号</b>
+        应用公司 Q4 扣非亏损扩大；板块成交占比连续 3 日 &gt;10% 且指数不涨；算力租赁价格战；定增/减持密集。
+      </div>
+    </div>
+
+    <div class="rp-verdict">
+      <b>一句话判断：</b>这不是“AIGC 不行了”，而是“AIGC 的利润分配已经定型”。算力与平台拿走大部分租金，制作端只剩内容能力和分发能力的残值。A 股缺少平台型公司，所以主题的整体估值会长期高于利润兑现度；真正的超额收益来自两类：<strong>能算清 PE 的算力/订阅公司</strong>，以及<strong>能在分账单价下行中活下来的内容龙头</strong>。
+    </div>
+  </section>
+
+  <section class="rp-section" id="industry">
+    <p class="rp-chapter-no">02 / 产业事实与瓶颈地图</p>
+    <h2>瓶颈不在“能不能生产”，而在“谁来分发、谁来付算力”</h2>
+
+    <h3>2.1 需求：从“尝鲜”进入“日常使用”</h3>
+    <div class="rp-grid rp-four">
+      <div class="rp-kpi"><p class="rp-label">生成式 AI 用户（2025 年底）</p><p class="rp-value">6.02 亿</p><p class="rp-note">普及率 42.8%；相关应用使用时长同比 +176.7%</p></div>
+      <div class="rp-kpi"><p class="rp-label">日均词元调用（2026-03）</p><p class="rp-value">140 万亿</p><p class="rp-note">两年增长超千倍；2026-06 累计 924 款服务备案</p></div>
+      <div class="rp-kpi"><p class="rp-label">企业级 AI 智能体市场（2025）</p><p class="rp-value">212 亿元</p><p class="rp-note">具身智能 9150 亿元（+20.4%），AI 对全球 GDP 贡献预计 2030 年达 22.3 万亿美元</p></div>
+      <div class="rp-kpi"><p class="rp-label">短剧使用时长净增（2026-09）</p><p class="rp-value">133.29 亿h</p><p class="rp-note">短视频 +57.17 亿h，AIGC +9.78 亿h；在线视频 -13.8 亿h</p></div>
+    </div>
+    <p>需求端没有争议。真正的变化是<strong>使用时长结构</strong>：短剧、短视频、AIGC 在抢占在线视频的时长。2026 年 9 月，抖音集团前三大应用已经变成抖音（10.29 亿）、红果免费短剧（4.3 亿）、豆包（4.19 亿），红果超过豆包；海外短剧付费榜前十中国厂商占 9 席，活跃用户超 1.5 亿。这意味着 AIGC 在 C 端最先跑通的不是“通用助手”，而是<strong>被短剧/漫剧包裹的内容消费</strong>。</p>
+    <p class="rp-note">来源：2026 世界互联网大会蓝皮书（11-04）、QuestMobile《中国移动互联网秋季大报告》（11-04 引用）。</p>
+
+    <h3>2.2 产业链：六层结构，两处瓶颈</h3>
+    <div class="rp-chain">
+      <div class="rp-node rp-bottleneck"><b>算力 / IDC</b>GPU、服务器、智算中心、算力租赁<span class="rp-small">瓶颈：卡、电、能耗指标、资金</span></div>
+      <div class="rp-node"><b>模型层</b>基础大模型、多模态、API<span class="rp-small">A 股纯模型标的少，多与场景绑定</span></div>
+      <div class="rp-node"><b>工具 / Agent</b>办公、创作、营销、编程<span class="rp-small">变现最清晰：订阅 + 积分</span></div>
+      <div class="rp-node"><b>内容生产</b>短剧、漫剧、影视、游戏、IP<span class="rp-small">AI 降本最直接，进入门槛最低</span></div>
+      <div class="rp-node rp-bottleneck"><b>分发 / 平台</b>抖音、红果、快手、长视频<span class="rp-small">瓶颈：流量分配权与分账规则</span></div>
+      <div class="rp-node"><b>变现</b>广告、内购、订阅、分账<span class="rp-small">平台拿走大头，制作方议价弱</span></div>
+    </div>
+    <p>这张链条的关键不是“谁有 AI”，而是<strong>谁卡在瓶颈上</strong>。算力是瓶颈，所以算力服务商能收租；分发是瓶颈，所以平台能改分账规则；内容生产不是瓶颈——AI 把生产门槛打到很低，供给弹性接近无限，制作方反而失去了定价权。</p>
+
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
+        <thead><tr><th>层级</th><th>A 股代表</th><th>瓶颈</th><th>利润捕获</th><th>2026 年可核验证据</th><th>本稿判断</th></tr></thead>
+        <tbody>
+          <tr><td>算力 / IDC</td><td>协创数据、首都在线、并行科技</td><td>高端卡、电力、资金</td><td><strong>强</strong>：按算力/服务收费</td><td>协创前三季营收 +135.39%、归母 +338.77%；374.90 亿长单</td><td><span class="rp-tag rp-good">兑现</span></td></tr>
+          <tr><td>模型层</td><td>科大讯飞、昆仑万维、三六零</td><td>算力、数据、人才</td><td><strong>中</strong>：API/政企/订阅</td><td>讯飞星火 Token+Agent；昆仑天工 AI 收入 43.21 亿（+168.29%）</td><td><span class="rp-tag rp-mid">分化</span></td></tr>
+          <tr><td>工具 / Agent</td><td>金山办公、万兴科技、合合信息</td><td>产品力、渠道</td><td><strong>强</strong>：订阅续费</td><td>金山 WPS 365 +33.83%；万兴 AI 积分销售 +50%</td><td><span class="rp-tag rp-good">兑现</span></td></tr>
+          <tr><td>内容生产</td><td>中文在线、掌阅、光线、华策、博纳</td><td>无（供给过剩）</td><td><strong>弱</strong>：分账/票房</td><td>掌阅 2025 短剧收入 18.55 亿、推广费 19.86 亿、首亏</td><td><span class="rp-tag rp-low">增收不增利</span></td></tr>
+          <tr><td>分发 / 平台</td><td>芒果超媒（A 股稀缺）</td><td>流量分配权</td><td><strong>强</strong>：广告/会员/分账</td><td>芒果前三季归母 -79.01%；红果 MAU 4.3 亿</td><td><span class="rp-tag rp-mid">有入口、缺利润</span></td></tr>
+          <tr><td>营销 / 代理</td><td>易点天下、利欧股份、引力传媒</td><td>客户预算</td><td><strong>中</strong>：服务费/返点</td><td>易点 PE 112.6x；引力 AI 短剧收入 &lt;0.1%</td><td><span class="rp-tag rp-low">题材映射</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>2.3 瓶颈一：算力成本在涨，不是降</h3>
+    <p>市场习惯把 AI 当成“持续降本”的技术，但 2026 年的现实是<strong>推理成本先降后升</strong>。据蓝鲸/东方财富 11-05 的产业调研：AI 短剧单集算力成本从年初 17–19 元涨到年中 80–100 元，接近 4 倍；部分算力卡涨 34%、存储涨 30%；腾讯混元部分模型输入价上调 463%。原因不复杂——供给从“训练”转向“推理”，而推理需求是指数级的，高端算力与存储的扩产跟不上。</p>
+    <p>这直接改写了内容公司的单位经济：制作成本降了，但算力成本涨了；两者相抵，<strong>“AI 降本 20 倍”只存在于特定环节，不是全链条</strong>。昆仑万维说 AI 短剧成本较真人短剧降约 20 倍，但同期销售费用翻倍、扣非亏损 15.46 亿——降本被投流吃掉了。</p>
+
+    <h3>2.4 瓶颈二：分发与投流，拿走七成流水</h3>
+    <div class="rp-alloc">
+      <span style="width:70%;background:#b23a2f">投流 / 广告 约 70 元</span>
+      <span style="width:20%;background:#2f5f9e">平台 约 20 元</span>
+      <span style="width:10%;background:#0f7b6c">制作 &lt;10 元</span>
+    </div>
+    <div class="rp-legend"><span><i style="background:#b23a2f"></i>投流/广告</span><span><i style="background:#2f5f9e"></i>平台分成</span><span><i style="background:#0f7b6c"></i>制作方</span></div>
+    <p>这是本报告最重要的一张分配图：<strong>100 元短剧流水，约 70 元买流量、20 元归平台、制作方不到 10 元</strong>。投流占投入 82.5%，制作只占 7.5%。行业日投流 1.5–1.7 亿元，成熟团队 ROI 1.03–1.07，普通团队低于 0.8——也就是说，大部分制作方是在“用亏损换流水”。</p>
+    <p>更不利的是，平台还在下调分账：万播分账从 2025 年的 30–100 元降到 2026 年 11 月的 5–10 元，尾部只有 1–2 元。与此同时，2026 年上半年新增 22.19 万部 AI 短剧/漫剧，破亿播放仅 1055 部（0.47%），破千万 1.2 万部（5.8%）。<strong>供给暴增 + 爆款率极低 + 分账下行</strong>，三者叠加，内容端的利润率只会更薄。</p>
+    <p>利润分配大致是：算力 25–35%、平台 30–40%、制作 20–30%。A 股公司大多站在“制作 20–30%”这一档，却要承担 100% 的投流前置成本。</p>
+
+    <h3>2.5 替代路线与供给扩张</h3>
+    <div class="rp-two-col">
+      <div class="rp-mini-card">
+        <b>替代路线</b>
+        <ul class="rp-compact">
+          <li><strong>开源模型 / 自研模型：</strong>降低 API 成本，但推理算力仍要买。</li>
+          <li><strong>端侧 AI：</strong>把推理放到手机/PC/眼镜，绕开云端算力成本，适合工具类公司。</li>
+          <li><strong>出海：</strong>海外付费意愿更强，昆仑、万兴、易点均把增量放在海外；但海外投流同样贵。</li>
+          <li><strong>实拍 + AI 混合：</strong>中文在线裁员至少 25%，说明纯 AI 替代实拍并不经济。</li>
+        </ul>
+      </div>
+      <div class="rp-mini-card">
+        <b>供给扩张</b>
+        <ul class="rp-compact">
+          <li>内容：2026H1 抖音新增 22.19 万部 AI 短剧/漫剧，供给近乎无限。</li>
+          <li>算力：协创数据固定资产从 92.83 亿增至 238.22 亿，在建工程 36.16 亿；行业智算中心密集投产。</li>
+          <li>模型：截至 2026-06 累计 924 款生成式 AI 服务备案、573 款应用登记。</li>
+          <li>政策：国家人工智能应用中试基地、应用场景分类指引在推进，供给端继续扩容。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rp-callout">
+      <b>产业结论：</b>AI 把“生产”变成了自由竞争，把“算力”和“分发”变成了寡头。A 股的问题不是没有 AI 公司，而是<strong>大多数公司站在自由竞争的那一端</strong>。这决定了主题内部必然剧烈分层：算力/订阅吃利润，内容/营销吃估值。
+    </div>
+  </section>
+
+  <section class="rp-section" id="companies">
+    <p class="rp-chapter-no">03 / 公司全景、阵型与证据阶梯</p>
+    <h2>298 家成分股，真正能算清利润的不超过十家</h2>
+
+    <h3>3.1 公司全景</h3>
+    <p>下表按“证据强度”而非市值排序。主题收入暴露一栏只写公司已披露或可交叉验证的数据；未披露的一律写“未获取到”，不用产品发布替代收入。</p>
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
+        <thead><tr><th>公司（代码）</th><th>细分环节</th><th>产业角色</th><th>主题收入暴露</th><th>商业化阶段</th><th>证据</th><th>阵型</th><th>下一验证点</th></tr></thead>
+        <tbody>
+          <tr><td>协创数据 300857</td><td>算力云 / 服务器</td><td>算力服务商</td><td>算力相关驱动营收 +135%</td><td>收入/利润兑现</td><td><span class="rp-tag rp-good">强</span></td><td>一</td><td>374.9 亿订单执行、经营现金流</td></tr>
+          <tr><td>金山办公 688111</td><td>办公软件</td><td>订阅入口</td><td>WPS 365 +33.83%</td><td>收入/利润兑现</td><td><span class="rp-tag rp-good">强</span></td><td>一</td><td>AI ARPU、WPS 365 增速</td></tr>
+          <tr><td>科大讯飞 002230</td><td>模型 / 政企</td><td>全栈国产化</td><td>星火 Token + Agent</td><td>收入增长、扣非弱</td><td><span class="rp-tag rp-good">强</span></td><td>二</td><td>扣非、G 端回款</td></tr>
+          <tr><td>万兴科技 300624</td><td>创作工具</td><td>出海订阅</td><td>AI 积分销售 +50%</td><td>亏损收窄</td><td><span class="rp-tag rp-mid">中</span></td><td>二</td><td>扭亏、剧厂 ARR</td></tr>
+          <tr><td>易点天下 301171</td><td>AI 营销</td><td>出海投放</td><td>未获取到</td><td>收入增长</td><td><span class="rp-tag rp-mid">中</span></td><td>二</td><td>毛利率、AI 收入占比</td></tr>
+          <tr><td>昆仑万维 300418</td><td>模型 + 内容</td><td>全球化应用</td><td>天工 AI 占营收 48%、AI 短剧 17%</td><td>收入高增、亏损</td><td><span class="rp-tag rp-good">强</span></td><td>三</td><td>Q4 扣非、销售费用率</td></tr>
+          <tr><td>芒果超媒 300413</td><td>平台 / 内容</td><td>分发入口</td><td>未获取到</td><td>利润大幅下滑</td><td><span class="rp-tag rp-good">强</span></td><td>三</td><td>Q4 利润、会员/广告</td></tr>
+          <tr><td>中文在线 300364</td><td>网文 / 短剧</td><td>内容出海</td><td>未获取到</td><td>转亏</td><td><span class="rp-tag rp-mid">中</span></td><td>三</td><td>亏损收窄、裁员效果</td></tr>
+          <tr><td>掌阅科技 603533</td><td>阅读 / 短剧</td><td>内容 + 投流</td><td>2025 短剧收入 18.55 亿</td><td>亏损</td><td><span class="rp-tag rp-good">强</span></td><td>三</td><td>销售费用率、分账单价</td></tr>
+          <tr><td>上海电影 601595</td><td>IP / 影视</td><td>AI + IP</td><td>未获取到</td><td>早期</td><td><span class="rp-tag rp-mid">中</span></td><td>三</td><td>互动电影票房、AI 项目</td></tr>
+          <tr><td>荣信文化 301231</td><td>童书 / 漫剧</td><td>内容</td><td>漫剧毛利率 81.20%</td><td>早期</td><td><span class="rp-tag rp-mid">中</span></td><td>三</td><td>收入规模、销售费用</td></tr>
+          <tr><td>光线传媒 300251</td><td>影视</td><td>AI 动画</td><td>未获取到</td><td>早期</td><td><span class="rp-tag rp-mid">中</span></td><td>观察</td><td>AI 电影项目定档</td></tr>
+          <tr><td>首都在线 300846</td><td>IDC / 云</td><td>算力租赁</td><td>未获取到</td><td>亏损</td><td><span class="rp-tag rp-mid">中</span></td><td>观察</td><td>上架率、毛利率</td></tr>
+          <tr><td>并行科技 920493</td><td>超算云</td><td>算力服务</td><td>未获取到</td><td>收入</td><td><span class="rp-tag rp-mid">中</span></td><td>观察</td><td>算力利用率</td></tr>
+          <tr><td>博纳影业 001330</td><td>影视</td><td>内容</td><td>未获取到</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>AI 收入披露</td></tr>
+          <tr><td>慈文传媒 002343</td><td>影视</td><td>内容</td><td>未获取到</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>公告、换手结构</td></tr>
+          <tr><td>欢瑞世纪 000892</td><td>影视</td><td>内容</td><td>AI 短剧收入 &lt;1%</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>收入占比</td></tr>
+          <tr><td>引力传媒 603598</td><td>营销</td><td>代理</td><td>AI 短剧收入 &lt;0.1%</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>收入占比</td></tr>
+          <tr><td>浙文互联 600986</td><td>营销</td><td>代理</td><td>未获取到</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>PE 4361x 的消化</td></tr>
+          <tr><td>利欧股份 002131</td><td>数字营销</td><td>代理</td><td>AI 营销（未披露收入）</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>AI 收入披露</td></tr>
+          <tr><td>新华都 002264</td><td>电商</td><td>代运营</td><td>麦点 AIGC 暂未实现收入</td><td>开发</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>首单/首收入</td></tr>
+          <tr><td>创业黑马 300688</td><td>企业服务</td><td>培训</td><td>未获取到</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>公告</td></tr>
+          <tr><td>豆神教育 300010</td><td>教育</td><td>AI 学习</td><td>未获取到</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>收入拆分</td></tr>
+          <tr><td>德才股份 605287</td><td>建筑装饰</td><td>概念映射</td><td>未获取到</td><td>概念</td><td><span class="rp-tag rp-low">弱</span></td><td>四</td><td>公告</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="rp-note">“主题收入暴露”仅采用公司公告、财报或权威媒体披露的数据；“未获取到”表示未找到可核验的收入拆分，不代表没有 AI 业务。阵型分层依据为产业位置、利润捕获、商业化阶段和证据强度。</p>
+
+    <h3>3.2 五家重点公司</h3>
+
+    <div class="rp-stock-card">
+      <div class="rp-stock-head">
+        <h3>协创数据<span class="rp-ticker">300857</span></h3>
+        <span class="rp-quote">164.00 元 · 市值 802.6 亿 · PE 19.7x · PB 11.0x</span>
+      </div>
+      <p class="rp-lead">A 股 AIGC 里少数“AI 收入已经变成利润和现金流”的公司；代价是 85.8% 的资产负债率和 238 亿固定资产。</p>
+      <ul class="rp-compact">
+        <li><strong>证据：</strong>2026 前三季营收 196.10 亿元（+135.39%），归母 30.62 亿元（+338.77%），扣非 30.68 亿元（+348.99%）——扣非与归母几乎相等，利润不含水分；经营现金流 14.13 亿元（+202.84%）。</li>
+        <li><strong>订单：</strong>10-19 公告子公司协创智算与客户签署《算力云服务协议》，总额不超过 374.90 亿元（含税，60 个月，年均约 74.98 亿元，为 2025 年营收 122.36 亿元的 3.06 倍）；拟 33 亿元增资协创智算。</li>
+        <li><strong>资产负债表：</strong>总资产 531.05 亿元（较年初 +123.15%），固定资产 238.22 亿元、在建工程 36.16 亿元；短期借款 89.32 亿元、一年内到期非流动负债 79.69 亿元、长期借款 115.29 亿元、长期应付款 124.71 亿元，本稿合计有息类负债约 409 亿元；财务费用 10.30 亿元（利息费用 8.93 亿元）。资产负债率 85.8%（本稿按三季报计算）。</li>
+        <li><strong>缺口：</strong>应收账款 65.55 亿元，较年初 +164.5%，增速高于营收；374.9 亿长单的对手方信用、客户集中度未披露；80 亿元定增已获深交所受理（9-16），摊薄与项目回报率待验证。</li>
+        <li><strong>盈利路径：</strong>已交付集群进入计费 → 上架率/利用率提升 → 毛利率维持 30% 以上 → 利息覆盖；增量来自 374.9 亿订单和 33 亿增资。</li>
+        <li><strong>改变优先级：</strong>经营现金流/净利连续两季 &lt;0.4，或应收增速连续两季高于营收增速 30pct 且应收/营收 &gt;40% → 下调；订单执行超预期、定增落地且项目 IRR 可验证 → 上调。</li>
+      </ul>
+    </div>
+
+    <div class="rp-stock-card">
+      <div class="rp-stock-head">
+        <h3>金山办公<span class="rp-ticker">688111</span></h3>
+        <span class="rp-quote">236.75 元 · 市值 1098.6 亿 · PE 31.2x · PB 7.3x</span>
+      </div>
+      <p class="rp-lead">A 股最健康的 AI 订阅模型：收入连续增长、现金流好、AI 以“提价/加购”而非“烧钱”变现；缺点是 AI 增量还不足以改变估值。</p>
+      <ul class="rp-compact">
+        <li><strong>证据：</strong>2026 前三季营收 50.80 亿元（+21.57%），Q3 营收 17.66 亿元（+16.11%），调整后归母 5.39 亿元（+8.44%）；WPS 个人订阅 10.50 亿元（+16.78%），WPS 365 收入 2.70 亿元（+33.83%）。</li>
+        <li><strong>产品：</strong>发布 WPS Comate 组织级 AI 智能体、“灵犀”个人助理，AI 能力嵌入文档、表格、演示和协作。</li>
+        <li><strong>缺口：</strong>未单独披露 AI 收入或 AI ARPU，无法验证 AI 是否带来真实溢价；Q3 调整后净利增速 8.44% 低于营收 16.11%，说明 AI 投入在侵蚀利润率。</li>
+        <li><strong>估值口径：</strong>东财动态 PE 31.2x，按最新季度年化且含非经常性损益，扣非口径更高；不能简单按 31 倍理解。</li>
+        <li><strong>盈利路径：</strong>订阅 ARPU 提升 + WPS 365 企业渗透 + 信创替代；AI 是加价项，不是独立收入项。</li>
+        <li><strong>改变优先级：</strong>WPS 365 增速 &lt;25% 或个人订阅增速 &lt;12% → 下调；AI 功能单独收费且 ARPU 可验证 → 上调。</li>
+      </ul>
+    </div>
+
+    <div class="rp-stock-card">
+      <div class="rp-stock-head">
+        <h3>科大讯飞<span class="rp-ticker">002230</span></h3>
+        <span class="rp-quote">39.15 元 · 市值 940.4 亿 · PE 322x · PB 4.1x</span>
+      </div>
+      <p class="rp-lead">国产化叙事最完整、现金流在改善，但利润仍靠非经常性损益，属于“收入质量修复、利润尚未验证”。</p>
+      <ul class="rp-compact">
+        <li><strong>证据：</strong>Q3 营收 +7.99%，归母 +31.05%，扣非同比减少 1.5 亿元；Q3 研发投入超 17 亿元（占营收逾 25%）；G 端 -2.39%，教育/医疗 +20% 以上。</li>
+        <li><strong>现金流：</strong>Q3 销售回款 77.94 亿元，经营现金流为正，前三季累计转正——这是过去两年最明显的改善。</li>
+        <li><strong>产品/资本：</strong>10-22 发布“云+端”星火大模型（Token + Agent）；2026-04 完成 40 亿元定增（44.33 元/股，国家 AI 基金等 14 名投资者）。</li>
+        <li><strong>缺口：</strong>归母增长含国仪量子、优地上市公允价值变动（公允价值变动收益同比 +6446.91%）与投资收益同比 +816.17%，扣非下滑；G 端应收与回款周期长，具体余额未获取到。</li>
+        <li><strong>盈利路径：</strong>星火 API/一体机 + 教育医疗行业模型 + 央国企国产化替代；关键在扣非转正，而不是营收增速。</li>
+        <li><strong>改变优先级：</strong>扣非连续两季转正 → 上调；G 端收入继续负增长或应收周转天数上升 → 下调。</li>
+      </ul>
+    </div>
+
+    <div class="rp-stock-card">
+      <div class="rp-stock-head">
+        <h3>昆仑万维<span class="rp-ticker">300418</span></h3>
+        <span class="rp-quote">39.95 元 · 市值 513.4 亿 · PE 1475x（失真） · PB 3.7x</span>
+      </div>
+      <p class="rp-lead">A 股 AI 内容全球化收入弹性最大的标的，也是最典型的“增长不赚钱”：前三季营收 89.37 亿元，扣非亏 15.46 亿元，销售费用 58.18 亿元。</p>
+      <ul class="rp-compact">
+        <li><strong>证据：</strong>前三季营收 89.37 亿元（+53.96%），海外 87.06 亿元（+60.78%），天工 AI 收入 43.21 亿元（+168.29%，占营收 48%），Q3 毛利率 74.41%；天工 AI ARR 突破 8 亿美元。</li>
+        <li><strong>AI 短剧：</strong>2026-09 单月流水近 1 亿美元，DramaWave 海外 MAU 第一，9 月上新剧 95% 以上 AI 生成，成本较真人短剧降约 20 倍；2026H1 AI 短剧收入 15.35 亿元（+163.28%），占比 28.63%。</li>
+        <li><strong>利润：</strong>2026H1 归母 10.88 亿元、扣非 -4.57 亿元；前三季扣非 -15.46 亿元，销售费用 58.18 亿元（接近翻倍），Q3 单季销售费用 24.78 亿元、归母亏约 10 亿元。10-30 财报当日股价 -12.50%。</li>
+        <li><strong>缺口：</strong>收入与流水高度依赖投流，ROI 未披露；分账单价下行与算力成本上行会同时压缩毛利；利润含投资业务回暖，可持续性弱。</li>
+        <li><strong>盈利路径：</strong>海外订阅/内购 + 短剧分账 + 天工 API；关键在销售费用率能否从 65% 降下来。</li>
+        <li><strong>改变优先级：</strong>Q4 单季扣非亏损收窄至 5 亿元以内、销售费用率降至 55% 以下 → 上调；亏损继续扩大 → 下调至“财务证据不足”。</li>
+      </ul>
+    </div>
+
+    <div class="rp-stock-card">
+      <div class="rp-stock-head">
+        <h3>芒果超媒<span class="rp-ticker">300413</span></h3>
+        <span class="rp-quote">32.78 元 · 市值 613.2 亿 · PE 215.7x · PB 2.7x</span>
+      </div>
+      <p class="rp-lead">A 股最稀缺的“分发入口”，但 AI 降本没有转化为利润：前三季归母 -79.01%，市值仍给 216 倍 PE。</p>
+      <ul class="rp-compact">
+        <li><strong>证据：</strong>2026 前三季归母净利润 -79.01%；11-02 20cm 涨停，11-05 再涨 9.27%，成交 47.56 亿元、换手 15.10%。</li>
+        <li><strong>内容：</strong>《后西游记》8-31 上线（芒果灵创制作、字节 Seedance 支持），5 个交易日带动股价累涨约 50%；AIGC 全流程链路初步跑通。</li>
+        <li><strong>行业位置：</strong>2026-09 红果短剧 MAU 4.3 亿超过豆包 4.19 亿，在线视频总时长 -13.8 亿小时；长视频平台在时长争夺中处于守势。</li>
+        <li><strong>缺口：</strong>Q3 利润拆分、AI 内容成本节省规模未披露；会员与广告承压；分账与投流规则由字节等平台主导，芒果议价权有限。</li>
+        <li><strong>盈利路径：</strong>综艺/剧集 AI 制作降本 + 出海 + 会员提价；需要看到毛利率与经营现金流同步改善，而不是单部剧的播放量。</li>
+        <li><strong>改变优先级：</strong>全年归母转负或 Q4 扣非亏损扩大 → 下调；AI 制作成本节省可量化、毛利率回升 → 上调。</li>
+      </ul>
+    </div>
+
+    <h3>3.3 五红灯快筛</h3>
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
+        <thead><tr><th>公司</th><th>利润与现金流</th><th>应收与存货</th><th>利润质量</th><th>治理与股东</th><th>融资与资产负债表</th><th>结论</th></tr></thead>
+        <tbody>
+          <tr><td>协创数据</td><td><span class="rp-tag rp-good">未见异常</span><br>经营现金流 +202.84%</td><td><span class="rp-tag rp-mid">需关注</span><br>应收 +164.5%</td><td><span class="rp-tag rp-good">未见异常</span><br>扣非≈归母</td><td><span class="rp-tag rp-mid">需关注</span><br>80 亿定增、激励</td><td><span class="rp-tag rp-bad">红灯</span><br>负债率 85.8%</td><td>利润真实、杠杆高；以订单执行和现金流为条件</td></tr>
+          <tr><td>金山办公</td><td><span class="rp-tag rp-good">未见异常</span></td><td><span class="rp-tag rp-good">未见异常</span><br>订阅预收模式</td><td><span class="rp-tag rp-mid">需关注</span><br>含投资收益</td><td><span class="rp-tag rp-good">未见异常</span></td><td><span class="rp-tag rp-good">未见异常</span></td><td>财务最健康；AI 增量待验证</td></tr>
+          <tr><td>科大讯飞</td><td><span class="rp-tag rp-mid">需关注</span><br>扣非 -1.5 亿</td><td><span class="rp-tag rp-mid">需关注</span><br>G 端应收未获取到</td><td><span class="rp-tag rp-bad">红灯</span><br>公允价值收益</td><td><span class="rp-tag rp-good">未见异常</span><br>国家 AI 基金入股</td><td><span class="rp-tag rp-good">未见异常</span><br>40 亿定增完成</td><td>现金流改善，利润未验证</td></tr>
+          <tr><td>昆仑万维</td><td><span class="rp-tag rp-bad">红灯</span><br>扣非 -15.46 亿</td><td><span class="rp-tag rp-mid">需关注</span><br>具体余额未获取到</td><td><span class="rp-tag rp-bad">红灯</span><br>H1 靠投资</td><td><span class="rp-tag rp-mid">需关注</span><br>连续亏损</td><td><span class="rp-tag rp-mid">需关注</span><br>有息负债未获取到</td><td>两红，下调至“财务证据不足”</td></tr>
+          <tr><td>芒果超媒</td><td><span class="rp-tag rp-bad">红灯</span><br>归母 -79.01%</td><td><span class="rp-tag rp-mid">需关注</span><br>平台应收</td><td><span class="rp-tag rp-mid">需关注</span><br>Q3 拆分未披露</td><td><span class="rp-tag rp-good">未见异常</span><br>国资控股</td><td><span class="rp-tag rp-good">未见异常</span></td><td>一红，利润承压</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="rp-note">五红灯为 Serenity 财务快筛框架：利润与现金流、应收与存货、利润质量、治理与股东行为、融资与资产负债表。每项标注“未见异常/需关注/红灯”，依据为三季报及公告；“未获取到”表示该字段未在公开披露中找到，不作推测。</p>
+
+    <div class="rp-warn">
+      <b>研究优先级调整：</b>昆仑万维因“利润与现金流”“利润质量”两项红灯，按规则下调至“财务证据不足”，不作为当前重点候选；协创数据虽有一项红灯（杠杆），但利润与现金流可验证，维持第一优先级，并以订单执行、现金流/净利比作为跟踪条件。
+    </div>
+  </section>
+
+  <section class="rp-section" id="market">
+    <p class="rp-chapter-no">04 / 市场叙事与拥挤度</p>
+    <h2>交易的是“产能期权”，不是当期利润</h2>
+
+    <h3>4.1 行情节奏：三天完成一轮扩散</h3>
+    <div class="rp-timeline">
+      <div class="rp-tl"><div class="rp-date">2026-11-02</div><div class="rp-val">12 股涨停</div><div class="rp-desc">掌阅科技封单 1.90 亿元；AI 漫剧/短剧成为主线，板块情绪启动。</div></div>
+      <div class="rp-tl"><div class="rp-date">2026-11-04</div><div class="rp-val">+4.63%</div><div class="rp-desc">协创数据领涨；上证 +2.16%、深证成指 +4.22%；主力净流入 21.45 亿元。</div></div>
+      <div class="rp-tl"><div class="rp-date">2026-11-05</div><div class="rp-val">+3.70%</div><div class="rp-desc">成交 1618.77 亿元，6 股涨停（金融界口径），博纳影业封单 2.70 亿元。</div></div>
+    </div>
+    <p>11-05 同花顺 886019 收 1966.55 点，最高即收盘，说明尾盘仍在抢筹；成交额 1618.77 亿元，较前一日继续放大。金融界窄口径样本（8 只上涨、0 只下跌）显示换手率 6.76%、量比 1.23，属于典型的“放量扩散”。</p>
+    <p>但结构并不健康：涨幅榜前列几乎全是 20–100 亿流通市值的小票——福石控股（流通 43.02 亿，换手 29.08%）、品茗科技（53.94 亿，PE 998x）、奥雅股份（25.19 亿）、创业黑马（44.08 亿）、正和生态（22.27 亿）；大市值只有芒果超媒（流通 334.91 亿）进入前列。这是<strong>题材扩散，不是机构增配</strong>。</p>
+
+    <h3>4.2 资金结构：主力接筹，游资与散户离场</h3>
+    <div class="rp-table-wrap">
+      <table class="rp-mid">
+        <thead><tr><th>日期</th><th>板块涨跌</th><th>主力净流入</th><th>游资净流入</th><th>散户净流入</th><th>解读</th></tr></thead>
+        <tbody>
+          <tr><td>11-04</td><td>+4.63%</td><td>+21.45 亿</td><td>-5.48 亿</td><td>-15.97 亿</td><td>主力拉抬，游资/散户兑现</td></tr>
+          <tr><td>11-05</td><td>+3.70%</td><td>+40.76 亿（证券之星）<br>+69.32 亿（同花顺）</td><td>-18.26 亿</td><td>-22.50 亿</td><td>主力继续流入，短线资金加速撤离</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>两个口径的主力净流入差异较大（40.76 亿 vs 69.32 亿），原因是样本范围不同（证券之星为概念板块口径，同花顺为 886019 全部成分），但方向一致：<strong>大单在买，游资和散户在卖</strong>。这种结构通常出现在主题行情的“第二波”，由机构/游资接力推动，缺少产业资金锁仓。</p>
+    <p>机构存量并不健康：传媒 ETF 广发（512980，规模 46.84 亿元）近一年 -18.85%，仍是利欧股份最大的公募持有人；全市场仅 8 家公募重仓利欧。2026 年下半年公募从 AI 硬件转向应用（证券时报 9-07），但应用端持仓仍轻，更多是“试仓”而非“重仓”。这解释了为什么行情由小票和高换手个股领涨——<strong>机构没有足够的筹码砸，也没有足够的信心买</strong>。</p>
+
+    <h3>4.3 筹码与估值：极端分层</h3>
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
+        <thead><tr><th>公司</th><th>11-05 涨跌</th><th>换手率</th><th>流通市值</th><th>PE（动态）</th><th>2026 前三季归母</th><th>定价逻辑</th></tr></thead>
+        <tbody>
+          <tr><td>福石控股 300071</td><td>+20.05%</td><td>29.08%</td><td>43.02 亿</td><td>亏损</td><td>未获取到</td><td>小市值+AI 营销题材</td></tr>
+          <tr><td>品茗科技 688109</td><td>+19.99%</td><td>3.74%</td><td>53.94 亿</td><td>998.2x</td><td>未获取到</td><td>建筑软件+AI 映射</td></tr>
+          <tr><td>易点天下 301171</td><td>+12.28%</td><td>20.26%</td><td>173.00 亿</td><td>112.6x</td><td>未获取到</td><td>AI 营销出海</td></tr>
+          <tr><td>芒果超媒 300413</td><td>+9.27%</td><td>15.10%</td><td>334.91 亿</td><td>215.7x</td><td>-79.01%</td><td>平台+AI 内容</td></tr>
+          <tr><td>昆仑万维 300418</td><td>+4.36%</td><td>5.61%</td><td>469.20 亿</td><td>1475.6x</td><td>扣非 -15.46 亿</td><td>AI 全球化收入</td></tr>
+          <tr><td>科大讯飞 002230</td><td>+2.38%</td><td>1.61%</td><td>890.04 亿</td><td>322.2x</td><td>扣非 -1.5 亿（Q3）</td><td>国产模型+政企</td></tr>
+          <tr><td>金山办公 688111</td><td>+3.16%</td><td>1.42%</td><td>1098.55 亿</td><td>31.2x</td><td>调整后 5.39 亿（Q3）</td><td>订阅+AI 办公</td></tr>
+          <tr><td>协创数据 300857</td><td>+4.73%</td><td>5.22%</td><td>795.22 亿</td><td>19.7x</td><td>30.62 亿</td><td>算力服务兑现</td></tr>
+          <tr><td>上海电影 601595</td><td>+4.50%</td><td>4.92%</td><td>145.71 亿</td><td>590.3x</td><td>0.19 亿</td><td>AI+IP 期权</td></tr>
+          <tr><td>中文在线 300364</td><td>+4.54%</td><td>23.24%</td><td>179.55 亿</td><td>亏损</td><td>转亏</td><td>AI 短剧出海</td></tr>
+          <tr><td>掌阅科技 603533</td><td>+2.82%</td><td>20.50%</td><td>136.01 亿</td><td>亏损</td><td>亏损</td><td>短剧+阅读</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="rp-note">PE 为东方财富动态口径（总市值/年化最新季度净利），与同花顺 TTM 口径存在差异；亏损公司统一标注“亏损”。流通市值与换手率来自同花顺/东财 11-05 收盘。</p>
+    <p>这张表把分层讲得很清楚：<strong>算力 19.7x、订阅 31.2x、模型 322x、内容 100–1500x、亏损公司无法定价</strong>。市场并不是不知道应用端在亏钱，而是愿意为“AI 收入增速 + 全球化 + 平台入口”支付期权费。问题在于，期权费付得越贵，对 Q4 和 2027 年利润的容错就越低。</p>
+
+    <h3>4.4 拥挤度：偏高，但还没到极端</h3>
+    <div class="rp-table-wrap">
+      <table class="rp-mid">
+        <thead><tr><th>指标</th><th>当前值</th><th>解读</th></tr></thead>
+        <tbody>
+          <tr><td>板块成交 / 全 A 成交</td><td>7.6%（1618.77 / 21179.53 亿）</td><td>单一主题占比偏高；本稿以 5% 为中性、10% 为警戒</td></tr>
+          <tr><td>板块换手率</td><td>6.76%（金融界窄口径）</td><td>个股 20–35% 换手集中出现，筹码高速交换</td></tr>
+          <tr><td>涨停家数</td><td>6 家（金融界）/ 13 只涨幅 ≥10%（同花顺）</td><td>扩散但非全面，样本差异需注意</td></tr>
+          <tr><td>主力净流入</td><td>+69.32 亿（同花顺）/+40.76 亿（证券之星）</td><td>方向一致，口径差异大</td></tr>
+          <tr><td>板块 PE / PB / ROE</td><td>67.82x / 3.01x / 2.25%</td><td>估值高、盈利弱，靠预期支撑</td></tr>
+          <tr><td>传媒 ETF 近一年</td><td>-18.85%</td><td>机构存量仍亏，增量配置谨慎</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>综合判断：<strong>拥挤度 3.5/5（本稿主观评分）</strong>——成交占比和换手率已进入高位，但公募仓位不重、龙头尚未出现“滞涨+放量”的典型顶部特征。风险不在“今天涨太多”，而在“年报预告前没有业绩接力”。</p>
+
+    <h3>4.5 情景：未来 6–12 个月</h3>
+    <div class="rp-table-wrap">
+      <table class="rp-mid">
+        <thead><tr><th>情景</th><th>触发条件</th><th>主观概率</th><th>市场表现</th><th>应对</th></tr></thead>
+        <tbody>
+          <tr><td><strong>基准：高位震荡、结构轮动</strong></td><td>成交占比维持 5–8%，Q4 应用亏损不再扩大</td><td>45%</td><td>指数横盘，算力/订阅与内容题材交替表现</td><td>持有兑现层，交易层快进快出</td></tr>
+          <tr><td><strong>乐观：业绩验证后分化上行</strong></td><td>昆仑 Q4 扣非收窄、协创订单加速、政策加码</td><td>35%</td><td>龙头（算力/订阅）创新高，内容股分化</td><td>加仓兑现层，回避高 PE 无利润标的</td></tr>
+          <tr><td><strong>悲观：叙事退潮</strong></td><td>年报预告暴雷、监管收紧、算力价格战</td><td>20%</td><td>板块回撤 20–30%，小票流动性折价</td><td>降至观察仓，等待现金流验证</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="rp-note">概率为本稿主观判断，不是预测；情景用于设定跟踪指标和仓位纪律。</p>
+  </section>
+
+  <section class="rp-section" id="catalysts">
+    <p class="rp-chapter-no">05 / 催化剂与验证登记</p>
+    <h2>下一个证明点，在 Q4 利润表而不是发布会</h2>
+    <p>2026 年 11 月的乌镇世界互联网大会（11-03 开幕）和蓝皮书（11-04）已经落地，政策端没有出现超预期增量；广东 11-03 的“AI+消费”方案属于地方配套，指向虚拟主播、数字人、3D 直播间、AIGC 商品内容，利好营销/电商映射，但短期难验证收入。接下来真正能改变定价的，是 Q4 和 2027 年一季度的利润表。</p>
+
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
+        <thead><tr><th>时间</th><th>事件</th><th>类型</th><th>验证指标</th><th>观察阈值</th><th>失效条件</th></tr></thead>
+        <tbody>
+          <tr><td>2026-11-11</td><td>双十一</td><td><span class="rp-tag rp-good">已确认</span></td><td>AI 营销/数字人工具调用、商家渗透</td><td>平台披露 AI 工具使用商家数同比 +50%</td><td>数据平淡，无披露</td></tr>
+          <tr><td>2026-12 中旬</td><td>中央经济工作会议</td><td><span class="rp-tag rp-mid">条件性（按惯例）</span></td><td>“人工智能+”是否列入明年重点任务</td><td>出现“AI+应用”专项表述</td><td>未提及</td></tr>
+          <tr><td>2026-12</td><td>平台分账/短剧规则调整</td><td><span class="rp-tag rp-mid">条件性</span></td><td>万播分账单集价格</td><td>回升至 10 元以上</td><td>继续降至 5 元以下</td></tr>
+          <tr><td>2027-01-31 前</td><td>创业板年报业绩预告</td><td><span class="rp-tag rp-good">已确认（规则）</span></td><td>昆仑/芒果/中文/掌阅 Q4 扣非</td><td>昆仑 Q4 亏损 &lt;5 亿；芒果全年归母为正</td><td>亏损扩大或转负</td></tr>
+          <tr><td>2027-01</td><td>CES 2027</td><td><span class="rp-tag rp-good">已确认</span></td><td>端侧 AI 硬件、AI 眼镜/PC</td><td>国产端侧芯片/整机放量</td><td>无新品或延期</td></tr>
+          <tr><td>2027-03/04</td><td>2026 年报</td><td><span class="rp-tag rp-good">已确认</span></td><td>AI 收入单独拆分、AI 毛利率</td><td>至少 3 家应用公司单独披露 AI 收入</td><td>继续不披露</td></tr>
+          <tr><td>不定期</td><td>国产算力供给/出口许可</td><td><span class="rp-tag rp-mid">条件性</span></td><td>算力租赁价格、卡供应</td><td>租赁价格企稳、上架率提升</td><td>价格战加剧</td></tr>
+          <tr><td>不定期</td><td>协创数据 80 亿定增注册</td><td><span class="rp-tag rp-mid">条件性</span></td><td>证监会注册批文、发行价</td><td>注册生效且募投 IRR &gt;15%</td><td>终止或大幅缩募</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rp-callout">
+      <b>验证顺序：</b>先看 Q4 扣非（谁在收窄亏损），再看 AI 收入拆分（谁在真实确认收入），最后看分账/算力价格（谁能保住毛利）。发布会、Demo、合作框架都不进入验证清单。
+    </div>
+  </section>
+
+  <section class="rp-section" id="exit">
+    <p class="rp-chapter-no">06 / 退出与监控</p>
+    <h2>基本面失效优先于价格失效</h2>
+    <p>主题投资的退出条件必须同时覆盖基本面、叙事、价格资金和治理融资四个维度。对 AIGC 而言，最重要的不是指数跌破哪条均线，而是<strong>应用公司的亏损是否收窄、算力公司的现金流是否跟得上利润</strong>。</p>
+
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
+        <thead><tr><th>维度</th><th>监控指标</th><th>当前值（11-05）</th><th>阈值/触发</th><th>动作</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="4">基本面</td><td>昆仑万维单季扣非亏损</td><td>Q3 归母亏约 10 亿，前三季扣非 -15.46 亿</td><td>Q4 扣非亏损 &gt;5 亿且销售费用率 &gt;65%</td><td>下调至“财务证据不足”</td></tr>
+          <tr><td>协创数据经营现金流/净利</td><td>0.46（14.13/30.62）</td><td>连续两季 &lt;0.4</td><td>下调优先级</td></tr>
+          <tr><td>协创数据应收增速 vs 营收增速</td><td>+164.5% vs +135.4%，应收/营收 33.4%</td><td>应收增速高出 30pct 且应收/营收 &gt;40%</td><td>下调优先级</td></tr>
+          <tr><td>金山办公 WPS 365 增速</td><td>+33.83%</td><td>&lt;25%</td><td>下调优先级</td></tr>
+          <tr><td>叙事</td><td>板块成交/全 A 成交</td><td>7.6%</td><td>连续 3 日 &gt;10% 且指数不涨</td><td>减仓/观察</td></tr>
+          <tr><td>叙事</td><td>涨停家数与龙头相对强弱</td><td>6 家涨停（金融界口径）；芒果/昆仑仍强</td><td>涨停 &lt;3 家且龙头跌破 20 日线</td><td>降低主题暴露</td></tr>
+          <tr><td>价格/资金</td><td>指数回撤与成交萎缩</td><td>1966.55 点为阶段高点</td><td>自高点回撤 &gt;10% 且成交萎缩 &gt;30%</td><td>退出交易层</td></tr>
+          <tr><td>价格/资金</td><td>主力净流入连续性</td><td>11-04/11-05 连续净流入</td><td>连续 3 日净流出</td><td>降低仓位</td></tr>
+          <tr><td>治理/融资</td><td>协创 80 亿定增</td><td>已获深交所受理（9-16）</td><td>终止/大幅缩募</td><td>重估资本开支</td></tr>
+          <tr><td>治理/融资</td><td>大股东减持/质押</td><td>未获取到新增事项</td><td>昆仑/中文/掌阅出现大额减持</td><td>下调治理评分</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rp-warn">
+      <b>最重要的退出信号：</b>不是板块下跌，而是<strong>“成交占比维持高位、应用公司 Q4 亏损继续扩大、算力价格开始下行”三者同时出现</strong>。这意味着叙事还在，利润已经证伪，估值只能靠流动性维持——这种情况下，高 PE 的内容股会先于算力股下跌。
+    </div>
+
+    <h3>监控节奏</h3>
+    <ul>
+      <li><strong>每日：</strong>板块成交占比、涨停家数、主力净流入、龙头相对强弱。</li>
+      <li><strong>每周：</strong>分账单价、算力租赁报价、短剧投流 ROI（产业调研/媒体报道）。</li>
+      <li><strong>每季：</strong>扣非利润、经营现金流、应收/营收、销售费用率、AI 收入拆分。</li>
+      <li><strong>事件：</strong>定增注册、减持公告、平台规则调整、监管政策。</li>
+    </ul>
+  </section>
+
+  <section class="rp-section" id="sources">
+    <p class="rp-chapter-no">07 / 来源与口径</p>
+    <h2>数据与时间戳</h2>
+    <p class="rp-note">行情数据截至 2026-11-05 收盘；财务数据截至 2026-09-30（2026 年三季报）；市值与 PE 为 11-05 收盘的东方财富动态口径。不同数据源对“AIGC 概念”的成分股定义不同，本文以同花顺 886019（298 家）为主，金融界 05136111.BK 仅用于交叉验证，两者市值/换手不可直接比较。</p>
+    <ol class="rp-source-list">
+      <li>同花顺：AIGC 概念 886019 行情与成分股（2026-11-05 收盘）。<a href="https://q.10jqka.com.cn/thshy/detail/code/886019">q.10jqka.com.cn/thshy/detail/code/886019</a></li>
+      <li>金融界：AIGC 概念 05136111.BK 行情与资讯（2026-11-05 15:59）。<a href="https://summary.jrj.com.cn/stock/bk/400136111">summary.jrj.com.cn/stock/bk/400136111</a></li>
+      <li>证券之星：11 月 5 日 AIGC 概念板块资金流向（2026-11-05）。<a href="http://stock.stockstar.com/RB2026110500031095.shtml">stock.stockstar.com/RB2026110500031095.shtml</a></li>
+      <li>证券之星：11 月 4 日 AIGC 概念板块资金流向（2026-11-04）。<a href="https://wap.stockstar.com/detail/RB2026110400034743">wap.stockstar.com/detail/RB2026110400034743</a></li>
+      <li>金十数据：沪深两市 11 月 5 日成交额 21179.53 亿元（2026-11-05）。<a href="https://flash.jin10.com/detail/20261105150211045800">flash.jin10.com/detail/20261105150211045800</a></li>
+      <li>证券时报：协创数据前三季营收 196.10 亿元、374.90 亿元算力云协议（2026-10-27）。<a href="https://stcn.com/article/detail/4257476.html">stcn.com/article/detail/4257476.html</a></li>
+      <li>协创数据：2026 年第三季度报告（2026-10-26）。<a href="https://4g.stockstar.com/detail/SN2026102600036481">4g.stockstar.com/detail/SN2026102600036481</a></li>
+      <li>证券时报：昆仑万维前三季营收 89.37 亿元、天工 AI 收入 43.21 亿元（2026-10-29）。<a href="https://www.stcn.com/article/detail/4317193.html">stcn.com/article/detail/4317193.html</a></li>
+      <li>雷报：四家 AI 内容公司 2026 三季报对比（2026-11-04）。<a href="https://www.163.com/dy/article/LASLD80N05566TJY_pdya11y.html">163.com/dy/article/LASLD80N05566TJY</a></li>
+      <li>东方财富：AI 漫剧股连板背后——分账、投流与利润分配（2026-11-05）。<a href="https://finance.eastmoney.com/a/202611053923848038.html">finance.eastmoney.com/a/202611053923848038.html</a></li>
+      <li>证券时报：算力抱团瓦解，公募 AI 投资转向商业兑现（2026-09-07）。<a href="https://stcn.com/article/detail/4174070.html">stcn.com/article/detail/4174070.html</a></li>
+      <li>经济参考报：金山办公 2026 三季报与 WPS Comate（2026-10-27）。<a href="https://jjckb.xinhuanet.com/20261027/952681c518064f3ea12234fb7242a212/c.html">jjckb.xinhuanet.com/20261027/952681c518064f3ea12234fb7242a212/c.html</a></li>
+      <li>上海证券报：科大讯飞 2026 三季报与星火大模型（2026-10-20）。<a href="https://paper.cnstock.com/html/2026-10/20/content_2278935.htm">paper.cnstock.com/html/2026-10/20/content_2278935.htm</a></li>
+      <li>新浪财经：万兴科技 2026 三季报与 AI 商业化（2026-10-27）。<a href="https://finance.sina.com.cn/roll/2026-10-27/doc-iniwsmwp4454702.shtml">finance.sina.com.cn/roll/2026-10-27/doc-iniwsmwp4454702.shtml</a></li>
+      <li>国家发展改革委：奋进“十五五”系列新闻发布会（2026-11-03）。<a href="https://www.gov.cn/zhengce/202611/content_7084907.htm">gov.cn/zhengce/202611/content_7084907.htm</a></li>
+      <li>世界互联网大会蓝皮书：生成式 AI 用户 6.02 亿、备案 924 款（2026-11-04）。<a href="https://www.163.com/dy/article/LATE951C0514D3UH_pdya11y.html">163.com/dy/article/LATE951C0514D3UH</a></li>
+      <li>深证 AIGC 指数 970075 成分与权重（2026-05-19，历史数据，仅用于结构参考）。<a href="https://www.163.com/dy/article/KTB1LKMO0519QIKK.html">163.com/dy/article/KTB1LKMO0519QIKK</a></li>
+      <li>同花顺：利欧股份 11-05 资金流向与公募持仓（2026-11-05）。<a href="https://field.10jqka.com.cn/20261105/c681511387.shtml">field.10jqka.com.cn/20261105/c681511387.shtml</a></li>
+      <li>东方财富行情接口：协创数据、金山办公、科大讯飞、昆仑万维、芒果超媒等 11-05 收盘市值/PE/换手（2026-11-05）。<a href="https://push2.eastmoney.com/api/qt/stock/get">push2.eastmoney.com</a></li>
+      <li>新华社：2026 年世界互联网大会乌镇峰会开幕（2026-11-03）。<a href="http://www.news.cn/photo/20261103/e1cdd8f52dc2426e803b36c0ef5f8a5d/c.html">news.cn/photo/20261103</a></li>
+    </ol>
+    <p class="rp-foot">
+      方法与口径：本报告采用 Serenity 产业链瓶颈分析 + 公司全景与阵型 + 市场叙事与资金结构 + 退出条件。所有“未获取到”均为公开披露中未找到对应字段，不作推测；“本稿计算/估算”表示基于披露数据的二次计算。主题收入暴露优先采用公司公告与财报，其次为权威财经媒体，未采用股吧、自媒体传闻。研究优先级与阵型分层不代表投资评级，不构成任何投资建议。市场有风险，决策需独立。
+    </p>
+  </section>
+
+  <a class="rp-home-link" href="../research/index.html" data-report-page-home>← 返回报告库</a>
+</main>
+
+<!-- ↓ 报告导航（通用组件，自动挂载） -->
+<script src="../scripts/report-nav.js" defer></script>
+</body>
+</html>
