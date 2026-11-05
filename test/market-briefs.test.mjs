@@ -107,6 +107,27 @@ test('market brief Markdown files use valid unique trading-date names and the fi
           ['板块', '涨跌幅', '第三方主力净流入', '净流入率'],
           `${file} 强弱板块表格列不符合模板`)
         assert.ok(tables[0].rows.length >= 1, `${file} 强弱板块表格不能只有表头`)
+        if (date >= '2026-11-05' && !part.includes('不足五') && !part.includes('未获取到')) {
+          const rows = tables[0].rows
+          assert.equal(rows.length, 5, `${file} 强弱板块应分别展示前五`)
+          const values = rows.map((row) => Number.parseFloat(row[2].text.replace(/[^0-9.+-]/gu, '')))
+          const strong = part.startsWith('强势板块')
+          assert.ok(values.every((value) => Number.isFinite(value) && (strong ? value > 0 : value < 0)),
+            `${file} 前五资金方向错误`)
+          assert.ok(values.every((value, index) => index === 0 || (strong
+            ? values[index - 1] >= value : values[index - 1] <= value)),
+            `${file} 前五应按净流入或净流出金额排序`)
+        }
+      }
+    }
+    if (date >= '2026-11-05') {
+      const funds = sections[4]
+      for (const code of ['510050', '510300', '159915', '588000', '512100', '510500']) {
+        assert.ok(funds.includes(code), `${file} 缺少基准模板 ETF ${code}`)
+      }
+      assert.ok(funds.includes('合计'), `${file} ETF 应展示合计及变化`)
+      for (const slug of ['hs300', 'cyb', 'kc50']) {
+        assert.ok(sections[6].includes(`/index/${slug}/`), `${file} 缺少基准估值来源 ${slug}`)
       }
     }
     const outlook = sections[7]
