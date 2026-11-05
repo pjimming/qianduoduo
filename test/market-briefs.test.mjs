@@ -99,6 +99,15 @@ test('market brief Markdown files use valid unique trading-date names and the fi
     for (const part of structure.split(/^###[ \t]+/mu).slice(1)) {
       assert.ok(part.trim().split('\n').slice(1).join('\n').trim(),
         `${file} 强弱板块小节不能只有标题`)
+      // The table template follows the 2026-11-04 brief; older archives retain their layout.
+      if (date >= '2026-11-04') {
+        const tables = marked.lexer(part).filter((token) => token.type === 'table')
+        assert.equal(tables.length, 1, `${file} 每个强弱板块小节应有一张数据表`)
+        assert.deepEqual(tables[0].header.map((cell) => cell.text),
+          ['板块', '涨跌幅', '第三方主力净流入', '净流入率'],
+          `${file} 强弱板块表格列不符合模板`)
+        assert.ok(tables[0].rows.length >= 1, `${file} 强弱板块表格不能只有表头`)
+      }
     }
     const outlook = sections[7]
     const subheadings = [...outlook.matchAll(/^###[ \t]+(.+?)[ \t]*\r?$/gmu)]
