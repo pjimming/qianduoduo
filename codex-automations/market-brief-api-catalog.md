@@ -24,8 +24,8 @@
 
 | ID | 最近验证 | 用途 | 入口与参数 | 读取说明 |
 | --- | --- | --- | --- | --- |
-| QDD-MB-01 | 2026-10-29 | 新浪五指数快照 | `https://hq.sinajs.cn/list=s_sh000001,s_sz399001,s_sz399006,s_sh000688,s_sh000300`；Header `Referer: https://finance.sina.com.cn` | 名称、点位、涨跌额、涨跌幅、成交量、成交额；`s_` 汇总不带完整日期，日期另由腾讯时间戳和交易所 `TRADE_DATE` 校对 |
-| QDD-MB-02 | 2026-10-29 | 腾讯指数历史与复核 | `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={symbol},day,{start},{end},{count},qfq` | `symbol` 为 `sh000001`、`sz399001`、`sz399006`、`sh000688`、`sh000300`；读取 `day` 和 `qt`，日期用 `YYYY-MM-DD` |
+| QDD-MB-01 | 2026-11-05 | 新浪核心指数与科创综指快照 | `https://hq.sinajs.cn/list=s_sh000001,s_sz399001,s_sz399006,s_sh000688,s_sh000300,s_sh000680`；Header `Referer: https://finance.sina.com.cn` | 名称、点位、涨跌额、涨跌幅、成交量、成交额；`s_` 汇总不带完整日期，日期另由腾讯时间戳和交易所 `TRADE_DATE` 校对 |
+| QDD-MB-02 | 2026-11-05 | 腾讯指数历史与复核 | `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={symbol},day,{start},{end},{count},qfq` | `symbol` 为 `sh000001`、`sz399001`、`sz399006`、`sh000688`、`sh000300`、科创综指 `sh000680`；读取 `day` 和 `qt`，日期用 `YYYY-MM-DD` |
 | QDD-MB-03 | 2026-10-29 | 上交所股票日终统计 | `https://query.sse.com.cn/commonQuery.do?sqlId=COMMON_SSE_SJ_GPSJ_CJGK_MRGK_C&PRODUCT_CODE=17&type=inParams&SEARCH_DATE=YYYY-MM-DD`；Header `Referer: https://www.sse.com.cn/` | `PRODUCT_CODE=17` 为股票合计，读取 `result[].TRADE_AMT`（亿元）和 `TRADE_DATE` |
 | QDD-MB-04 | 2026-10-29 | 深交所证券类别统计 | `https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1803_sczm&TABKEY=tab1&txtQueryDate=YYYY-MM-DD`；Header `Referer: https://www.szse.cn/` | 读取 `data[]` 中“股票”的 `cjje`（亿元）；含存托凭证，B 股单列，ETF 在基金项下 |
 | QDD-MB-05 | 2026-10-29 | 全 A 涨跌家数（备用） | `https://push2.eastmoney.com/api/qt/clist/get?pn={page}&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048&fields=f3,f12,f14` | 单页约 100 只，按 `pn` 翻页；统计有效 `f3` 的正、负、零；含北交所和 ST，不含 B 股与 ETF。2026-10-30 连续重试仍断连，当前仅作备用 |
@@ -53,6 +53,11 @@
 | QDD-MB-29 | 2026-11-03 | 雪球 7×24 快讯 | 先在同一会话 `GET https://xueqiu.com/` 获取公开会话 Cookie，再 `GET https://xueqiu.com/statuses/livenews/list.json?count={count}&max_id={max_id}`；Header `Referer: https://xueqiu.com/` | 首次 `max_id=-1`，后续使用响应 `next_max_id`。`items[]` 含 `id`、`text`、`target`、`created_at`（Unix 毫秒）、`status_id`、`reply_count`、`share_count`；`count` 不保证严格限制返回数，应本地截断。社区快讯须回到原始公告或权威来源核验 |
 | QDD-MB-30 | 2026-11-04 | 百分位网指数估值 | `GET https://baifenwei.com/index/{slug}/`；无需登录或专用请求头；`slug` 取 `hs300`、`cyb`、`kc50`；无日期参数或分页 | 读取 HTML 估值卡片的 PE/PB/PS 与历史分位，解析内嵌 `var d` JSON 的 `date`、`pe_pct`、`pb_pct`、`ps_pct`、`point`。图表为展示序列，勿据此重算完整历史分位。数据日期以最后一条有效记录为准；前值注明时差，晚于简报日或字段不符时回退其他可核验来源。11 月 4 日晚间已验证当日数据，18:00 可得性待观察。 |
 | QDD-MB-31 | 2026-11-04 | 百分位网 A 股恐贪指数 | `GET https://baifenwei.com/data/fear-greed/series-full-1.json`；无需登录或专用请求头；固定近一年日序列，无日期参数或分页 | `mode=full_daily`，`points[]` 为 `[交易日期,分数]`，`generated_at` 为文件生成时间。用交易日期匹配简报日期；缺当日值则标注“未获取到”，可另列已核实的最近前值及日期。仅作站方自定义情绪指标；11 月 4 日晚间已验证，18:00 可得性待观察。 |
+
+## 采集完整性与 Markdown 校验
+
+- 科创综指代码为 `sh000680`，使用 QDD-MB-01/02 与其余五个指数一同采集并双源核对；不能因为早期五指数示例未列出而跳过。缺失时须实际请求并记录失败原因，再写“未获取到”。
+- Markdown 加粗标签将冒号、句号放在结束标记外，例如 `**事实**：正文`；百分号结尾的加粗数字与后接中文之间加空格，例如 `**1.38%** 上涨`。发布前运行 `node --test test/market-briefs.test.mjs`，检查正文没有未解析的加粗标记。
 
 ## 新接口登记模板
 

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
+import { marked } from 'marked'
 
 const briefRoot = new URL('../market-briefs/', import.meta.url)
 // The eight-section format took effect on 2026-11-03; archived briefs
@@ -29,6 +30,18 @@ function sectionHeadings(markdown) {
   return [...markdown.matchAll(/^##[ \t]+(.+?)[ \t]*\r?$/gmu)]
     .map((match) => match[1].replace(/^[一二三四五六七八]+、[ \t]*/u, ''))
 }
+
+test('market brief emphasis renders without literal double-asterisk markers', () => {
+  for (const file of readdirSync(briefRoot).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/u.test(name))) {
+    const tokens = marked.lexer(readFileSync(new URL(file, briefRoot), 'utf8'))
+    marked.walkTokens(tokens, (token) => {
+      if (token.type === 'text' && !token.tokens?.length) {
+        assert.ok(!token.text.includes('**'),
+          `${file} 加粗未解析（检查标点与中文边界）：${token.text}`)
+      }
+    })
+  }
+})
 
 test('market brief Markdown files use valid unique trading-date names and the fixed sections', () => {
   const files = readdirSync(briefRoot)
