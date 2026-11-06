@@ -31,7 +31,8 @@ function backup(file, directory, label) {
   return { file: dest, ...verify(dest) };
 }
 
-function restore(file, source, directory) {
+function restore(target, source, directory) {
+  const file = isolatedPath(target);
   const snapshot = isolatedPath(source);
   verify(snapshot);
   if (file === snapshot || ['-wal', '-shm', '-journal'].some(suffix => fs.existsSync(file + suffix))) {

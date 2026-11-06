@@ -13,6 +13,7 @@ const APPLICATION_ID = 0x52325343;
 const SCHEMA_VERSION = 1;
 const SCHEMA = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 const LEASE_MS = 45000;
+const SQLITE_SUFFIXES = ['', '-wal', '-shm', '-journal'];
 const json = value => JSON.stringify(value);
 const parsed = value => value === null ? null : JSON.parse(value);
 const after = (iso, ms) => new Date(Date.parse(iso) + ms).toISOString();
@@ -39,16 +40,18 @@ function canonical(file) {
 function isolatedPath(file, ledgerPath) {
   const absolute = canonical(file);
   const key = value => process.platform === 'win32' ? value.toLowerCase() : value;
-  for (const ledger of [DEFAULT_DB, process.env.R2_DB_PATH, ledgerPath].filter(Boolean)) {
-    const ledgerReal = canonical(ledger);
-    if (['', '-wal', '-shm', '-journal'].some(suffix => key(absolute) === key(ledgerReal + suffix))) {
-      throw new Error('初筛库必须使用独立路径');
-    }
-    if (fs.existsSync(absolute) && fs.existsSync(ledgerReal)) {
-      const a = fs.statSync(absolute, { bigint: true });
-      const b = fs.statSync(ledgerReal, { bigint: true });
-      if (a.dev === b.dev && a.ino === b.ino) throw new Error('初筛库必须使用独立文件');
-    }
+  const pathsFor = base => SQLITE_SUFFIXES.map(suffix => canonical(base + suffix));
+  const ledgerFiles = [...new Set([DEFAULT_DB, process.env.R2_DB_PATH, ledgerPath].filter(Boolean).map(canonical))]
+    .flatMap(pathsFor);
+  const ledgerNames = new Set(ledgerFiles.map(key));
+  const identity = name => {
+    const stat = fs.statSync(name, { bigint: true, throwIfNoEntry: false });
+    return stat ? `${stat.dev}:${stat.ino}` : null;
+  };
+  const ledgerIdentities = new Set(ledgerFiles.map(identity).filter(Boolean));
+  for (const name of pathsFor(absolute)) {
+    if (ledgerNames.has(key(name))) throw new Error('初筛库必须使用独立路径');
+    if (ledgerIdentities.has(identity(name))) throw new Error('初筛库必须使用独立文件');
   }
   return absolute;
 }
@@ -217,7 +220,11 @@ function openScreeningRepository(file, { ledgerPath, initialize = false, readOnl
   function publish(token, now, date, collected, evaluated, degraded) {
     const products = new Map(collected.products.map(product => [shareKey(product), product]));
     const { counts, results } = evaluated;
-    if (!collected.health?.pool?.ok || !counts.total || products.size !== collected.products.length ||
+    const pool = collected.health?.pool;
+    if (!Number.isSafeInteger(pool?.requested) || pool.requested < 1 || pool.ok !== pool.requested ||
+        (pool.included !== undefined && pool.included !== products.size) ||
+        (collected.input.list_pages !== undefined && collected.input.list_pages !== pool.ok) ||
+        !counts.total || products.size !== collected.products.length ||
         products.size !== collected.input.share_count || products.size !== results.length ||
         results.length !== counts.total || STATES.some(state => counts[state] !== results.filter(r => r.status === state).length) ||
         STATES.reduce((sum, state) => sum + counts[state], 0) !== counts.total ||

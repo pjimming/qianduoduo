@@ -233,6 +233,15 @@ test('store checks aliases and restores its independent, verified snapshot', t =
   fs.linkSync(ledger, alias);
   assert.throws(() => openScreeningRepository(ledger, { initialize: true, ledgerPath: ledger }), /独立路径/);
   assert.throws(() => openScreeningRepository(alias, { initialize: true, ledgerPath: ledger }), /独立文件/);
+  for (const suffix of ['-wal', '-shm', '-journal']) {
+    assert.throws(() => openScreeningRepository(target, {
+      initialize: true, ledgerPath: target + suffix,
+    }), /独立路径/);
+  }
+  fs.linkSync(ledger, target + '-wal');
+  assert.throws(() => openScreeningRepository(target, { initialize: true, ledgerPath: ledger }), /独立文件/);
+  assert.equal(fs.existsSync(target), false);
+  fs.unlinkSync(target + '-wal');
   const unknown = path.join(dir, 'unknown.sqlite');
   const db = new DatabaseSync(unknown);
   db.exec('CREATE TABLE daily_records (id INTEGER)');
@@ -305,6 +314,28 @@ test('failed publish rolls back all rows and a corrected NAV keeps both historie
   assert.equal(fourth.commit(), true);
   assert.equal(store.result(fourth.run.id, 'D07', 'S1').nav_series_id, store.result(third.run.id, 'D07', 'S1').nav_series_id);
   assert.equal(store.verify().runs, 4);
+});
+
+test('a partially collected product pool cannot replace the last published batch', async t => {
+  const store = storeIn(t);
+  let complete = true;
+  const service = createScreeningService({
+    repository: store, enabled: true, schedule: false, clock: () => new Date(initial),
+    collector: async () => {
+      const input = batch();
+      if (!complete) input.health.pool.requested++;
+      return input;
+    },
+  });
+  cleanup.get(t).push(() => service.stop());
+  const { run: first } = service.manual('complete-pool');
+  await until(() => store.current()?.id === first.id);
+  complete = false;
+  const { run: partial } = service.manual('partial-pool');
+  await until(() => store.get(partial.id).status === 'failed');
+  assert.equal(store.get(partial.id).error_code, 'publish_failed');
+  assert.equal(store.current().id, first.id);
+  assert.equal(store.result(partial.id, 'D07', 'S1'), undefined);
 });
 
 test('scheduler separates Shanghai noon, holidays, catch-up, retry and restart', async t => {
