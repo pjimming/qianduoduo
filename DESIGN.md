@@ -57,6 +57,10 @@ typography:
     lineHeight: 1.55
   label:
     fontSize: "12px"
+  screening-body:
+    fontSize: "14px"
+  screening-data:
+    fontSize: "13px"
   numeric:
     fontFamily: '"Cascadia Mono", "SFMono-Regular", Consolas, monospace'
     fontSize: "12.5px"
@@ -145,6 +149,8 @@ components:
 | 表格与图表 | 日账、交易、持仓和研究各自定义表格。概览使用 SVG 累计收益曲线、日收益柱与日收益率折线，分别有区间控件、文本摘要及浮层。轴线、网格、收益率线与零线已有主题变量，金额轴复用紧凑金额格式。 | [LedgerTable.vue](src/components/LedgerTable.vue) · [PnlChart.vue](src/components/PnlChart.vue) · [AssetChart.vue](src/components/AssetChart.vue) · [theme.css](src/styles/theme.css) |
 | 确认与反馈 | 有独立确认组件与全局状态 Toast；部分流程仍用浏览器原生弹窗。 | [ConfirmDialog.vue](src/components/ConfirmDialog.vue) · [ToastBanner.vue](src/components/ToastBanner.vue) · [InboxView.vue](src/views/r2/InboxView.vue) |
 | 报告正文 | 正文由已生成的报告文档和作用域化样式渲染，附目录与表格包装。正文样式与公共应用外壳分别管理。 | [ReportDocument.vue](src/components/report/ReportDocument.vue) · [report.css](src/styles/report.css) |
+
+选品初筛使用单列批次状态、可筛选漏斗、分组表格与独立详情面板。信息正文采用 13–14px，金额、收益与日期使用表格数字对齐。页面在 1280 与 1440px 下保留列级对照，横向滚动限定在表格容器。详情由键盘进入和关闭，关闭后回到触发行。
 
 ## Do's and Don'ts
 

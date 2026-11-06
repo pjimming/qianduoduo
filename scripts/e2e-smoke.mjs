@@ -12,6 +12,7 @@ import { chromium } from 'playwright-core'
 import { createRequire } from 'node:module'
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -25,6 +26,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const require = createRequire(import.meta.url)
 const { createServer } = require('../server.js')
 const { openDatabase } = require('../lib/db.js')
+const { openScreeningRepository } = require('../server/modules/r2-screening/repository.js')
+const { createScreeningService } = require('../server/modules/r2-screening/service.js')
+const screeningFixture = require('../test/fixtures/r2-screening/2026-11-07.json')
 const { shiftDate, todayShanghai } = require('../lib/metrics.js')
 const { resolveProductCsv } = require('../server.js')
 
@@ -175,6 +179,116 @@ async function assertNoLargeLightSurface(page, selector, label) {
   )
 }
 
+async function screeningSmoke(browser, base) {
+  const captures = process.env.R2_SCREENING_SCREENSHOTS
+  if (captures) mkdirSync(captures, { recursive: true })
+  const capture = async (page, name) => {
+    if (!captures) return
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    await page.screenshot({ path: path.join(captures, name + '.png'), animations: 'disabled' })
+  }
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  const dashboardReads = []
+  const errors = []
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/dashboard')) dashboardReads.push(request.url())
+  })
+  page.on('pageerror', error => errors.push(error.message))
+  try {
+    await page.goto(base + '/ledger/screening')
+    await page.getByText('暂无可用初筛批次', { exact: true }).waitFor()
+    const refreshed = page.waitForResponse(response =>
+      response.url().endsWith('/api/r2-screening/runs') && response.request().method() === 'POST',
+    )
+    await page.getByRole('button', { name: '刷新初筛' }).click()
+    assert((await refreshed).status() === 202, '页面刷新未返回 202')
+    await page.locator('.result-table .share-name').first().waitFor()
+    assert(new URL(page.url()).searchParams.get('run') === '1', '页面未固定批次 ID')
+    assert((await page.locator('.result-table .share-name').count()) === 17, '冻结批次候选数量错误')
+    assert(dashboardReads.length === 0, '初筛页意外依赖账本 Dashboard')
+    // A stale "active" response can race with publication. Viewing it must stay read-only.
+    const getStatus = '**/api/r2-screening/status'
+    await page.route(getStatus, async route => {
+      const response = await route.fetch()
+      const snapshot = await response.json()
+      snapshot.scheduler.active = { ...snapshot.current_run, status: 'running' }
+      await route.fulfill({ response, json: snapshot })
+    }, { times: 1 })
+    await page.reload()
+    const viewRun = page.getByRole('button', { name: '查看运行', exact: true })
+    await viewRun.waitFor()
+    let posts = 0
+    const trackPost = request => {
+      if (request.method() === 'POST' && request.url().endsWith('/api/r2-screening/runs')) posts++
+    }
+    page.on('request', trackPost)
+    await viewRun.click()
+    await page.getByText('批次 #1 已发布。', { exact: true }).waitFor()
+    page.off('request', trackPost)
+    assert(posts === 0, '查看已在运行的批次错误地重新触发了采集')
+    await page.getByText('批次 #1 已发布。', { exact: true }).waitFor()
+    const darkButton = page.locator('.sidebar-appearance [data-theme-preference="dark"]')
+    const lightButton = page.locator('.sidebar-appearance [data-theme-preference="light"]')
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      for (const theme of ['light', 'dark']) {
+        await (theme === 'dark' ? darkButton : lightButton).click()
+        await page.waitForFunction(theme => document.documentElement.dataset.theme === theme, theme)
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), '初筛页根节点横向溢出')
+        await assertFontFloor(page, '.screening', '选品初筛 ' + width + ' ' + theme)
+        if (theme === 'dark') await assertNoLargeLightSurface(page, '.screening', '选品初筛')
+        await capture(page, 'screening-' + width + '-' + theme)
+      }
+    }
+    const row = page.getByRole('button', { name: '证据详情 113356A', exact: true })
+    await row.waitFor()
+    await row.focus()
+    await page.keyboard.press('Enter')
+    const panel = page.getByRole('dialog')
+    await panel.getByRole('heading', { name: '公开证据' }).waitFor()
+    assert(new URL(page.url()).searchParams.get('code') === '113356A', '详情 URL 缺少代码')
+    await panel.getByRole('button', { name: '净值与走势' }).click()
+    await panel.getByRole('img', { name: /单位净值随日期/ }).waitFor()
+    await panel.getByLabel('净值区间').selectOption('year')
+    await panel.getByRole('img', { name: /单位净值随日期/ }).waitFor()
+    await assertFontFloor(page, '.screen-detail', '初筛详情')
+    await capture(page, 'screening-detail-1440-dark')
+    await page.keyboard.press('Escape')
+    await panel.waitFor({ state: 'hidden' })
+    assert(await row.evaluate(element => element === document.activeElement), '关闭详情未恢复原行焦点')
+
+    const search = page.getByRole('searchbox', { name: '代码或名称' })
+    await search.fill('无匹配产品')
+    await search.press('Enter')
+    await page.getByText('没有符合当前筛选条件的份额。').waitFor()
+    await page.getByRole('button', { name: '重置', exact: true }).click()
+    await page.locator('.result-table').waitFor()
+    await page.getByRole('button', { name: '全部份额' }).click()
+    await page.getByRole('button', { name: '下一页' }).click()
+    await page.getByText('第 2 / 33 页', { exact: true }).waitFor()
+    assert(new URL(page.url()).searchParams.get('run') === '1', '结果翻页丢失批次')
+    await page.getByRole('button', { name: '运行记录', exact: true }).click()
+    await page.getByRole('button', { name: '运行详情' }).click()
+    await page.getByRole('heading', { name: '批次 #1 · 部分证据待核' }).waitFor()
+    await lightButton.click()
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'light')
+    await capture(page, 'screening-history-1440-light')
+    await page.getByRole('button', { name: '查看结果', exact: true }).click()
+    await page.locator('.result-table').waitFor()
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(base + '/ledger/screening?run=1&channel=D07&code=113356A')
+    await panel.getByRole('button', { name: '交易前复核' }).click()
+    await panel.getByRole('heading', { name: '交易前核对清单' }).waitFor()
+    await capture(page, 'screening-detail-1280-light')
+    await page.keyboard.press('Escape')
+    await page.locator('.sidebar-appearance [data-theme-preference="system"]').click()
+    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
+    assert(errors.length === 0, '初筛页运行出错：' + errors.join(' / '))
+  } finally { await page.close() }
+}
+
 async function main() {
   process.env.R2_OCR = '0'
   if (!existsSync(path.join(root, 'dist', 'index.html'))) {
@@ -190,7 +304,14 @@ async function main() {
     productCsvPath: resolveProductCsv(root, { includeUnopened: true }),
     logger: { warn() {} },
   })
-  const server = createServer({ repository })
+  const screeningStore = openScreeningRepository(path.join(directory, 'screening.sqlite'), {
+    ledgerPath: repository.dbPath, initialize: true,
+  })
+  const screening = createScreeningService({
+    repository: screeningStore, enabled: true, schedule: false, collector: async () => screeningFixture,
+    clock: () => new Date('2026-11-07T04:26:00Z'),
+  })
+  const server = createServer({ repository, screening })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const base = `http://127.0.0.1:${server.address().port}`
   const briefDates = readdirSync(path.join(root, 'market-briefs'))
@@ -218,6 +339,7 @@ async function main() {
   page.on('pageerror', (error) => consoleErrors.push(error.message))
 
   try {
+    await screeningSmoke(browser, base)
     await page.goto(`${base}/investment/briefs`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.briefs-page')
     assert(
@@ -789,8 +911,8 @@ async function main() {
       '根路径应重定向到收益概览',
     )
     assert(
-      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 7,
-      '侧边栏理财分区应有 7 个入口',
+      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 8,
+      '侧边栏理财分区应有 8 个入口',
     )
     const wealthLinkTexts = await page
       .locator('#nav-group-wealth .sidebar-link')
@@ -3485,11 +3607,13 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏八入口、选品初筛深链与双主题、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()
     await new Promise((resolve) => server.close(resolve))
+    await screening.stop()
+    screening.close()
     repository.close()
     rmSync(directory, { recursive: true, force: true })
   }

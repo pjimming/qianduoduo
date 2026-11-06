@@ -34,6 +34,8 @@
 - GET /api/review/workspace：决策、交易流水、收件箱、持仓、产品事件、时间轴。
 如果 8765 无法连接，只报告“本地服务未运行，巡检未执行”，不要猜测账本数据，也不要反复重试。
 
+公开初筛只读巡检（工作台启用后）：通过运行日闸门后独立读取一次 GET /api/r2-screening/status。若本日无发布批次、最新运行失败或中断、日历覆盖不足或证据过期，在同一卡片附一行摘要并链接 http://127.0.0.1:8765/ledger/screening。已知批次 ID 时附 ?run=<ID>。接口错误只补一行说明，继续账本巡检。由工作台负责刷新，巡检不调用 POST 初筛接口，不为例行源故障创建消息。
+
 凡需要用户补事实或做最后确认、且平台不能自行完成的事项，必须先调用 `POST /api/inbox/confirmations` 写入消息中心。请求至少包含确定性的 `dedupe_key`、`title`、`message`、`category`（action/reminder/system）、`severity`（info/warn/urgent）、`action_label`、`action_url`，有日期时传 `due_at`。同一事项重复运行必须复用同一个 `dedupe_key`，不得跨日重复堆消息；卡片只是摘要，不能替代消息中心入库。平台可自行处理的事项不得推给用户。若事项为临时桥接本金，还必须传 `metadata.capital_bridge={bridge_amount,bridge_date,withdraw_date,target_principal,decision_id}`；金额使用元、日期使用 `YYYY-MM-DD`，`decision_id` 必须指向已有决策。应用只在匹配的转入、转出和当前本金恢复事实都存在时自动解决该提醒。若事项只是某个产品在指定收益日缺少明细，必须传 `metadata.product_income_requirement={product_code,yield_date}`，并使用确定性的 `dedupe_key=agent-confirmation:<yield_date>:<product_code>-income-missing`；应用在对应产品收益事实出现后自动关闭提醒。
 
 第 0 步：处理 Codex 判断队列

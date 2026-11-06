@@ -247,7 +247,7 @@ async function saveQuotas(): Promise<void> {
             :disabled="refreshing"
             @click="refreshSnapshot"
           >
-            {{ refreshing ? '读取中…' : '刷新快照' }}
+            {{ refreshing ? '读取中…' : '刷新配置快照' }}
           </button>
           <button
             class="button button-ghost button-small"

@@ -67,6 +67,8 @@ const { createReviewsRoutes } = require('./modules/reviews/routes');
 const { createReviewsService } = require('./modules/reviews/service');
 const { createResearchService } = require('./modules/research/service');
 
+const { createScreeningRoutes } = require('./modules/r2-screening/routes');
+
 const staticService = createStaticService(STATIC_DIR);
 const researchService = createResearchService({
   rootDir: ROOT,
@@ -150,6 +152,7 @@ function createRequestHandler(repository, options = {}) {
     router,
     [
       ...createOperationsRoutes(operations),
+      ...createScreeningRoutes(options.screening),
       ...createDataTrustRoutes(dataTrust),
       ...createDashboardRoutes(dashboardQuery),
       ...createCapitalRoutes(capital),
@@ -215,10 +218,11 @@ function createRequestHandler(repository, options = {}) {
   };
 }
 
-function createServer({ repository, dashboardQuery, automationRunner }) {
+function createServer({ repository, dashboardQuery, automationRunner, screening }) {
   if (!repository) throw new Error('createServer 需要 repository');
   return http.createServer(
     createRequestHandler(repository, {
+      screening,
       dashboardQuery,
       automationRunner,
     }),

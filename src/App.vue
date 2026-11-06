@@ -59,7 +59,8 @@ watch(
 
       <footer v-if="!isInvestment" class="footer">
         <p>钱多多只做个人记录与计算，不提供代下单或资金操作。R2 理财不保本，过往收益不代表未来表现。</p>
-        <p class="footer-meta">数据保存在本机 <code>data/r2_ledger.sqlite</code> · 可随时导出 CSV</p>
+        <p v-if="route.name === 'r2-screening'" class="footer-meta">公开初筛批次保存在本机独立数据库</p>
+        <p v-else class="footer-meta">数据保存在本机 <code>data/r2_ledger.sqlite</code> · 可随时导出 CSV</p>
       </footer>
       <footer v-else class="footer research-footer">
         <p>投资资料不代表当前行情，不构成投资建议；该模块不进入 R2 收益账本、产品池排序或选品结论。</p>

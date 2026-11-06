@@ -17,3 +17,7 @@ logs/
 src/data/reportDocs/
 src/data/reportSearch.json
 public/research/media/
+
+data/screening-backups/
+.impeccable/review/
+data/r2_screening.enabled

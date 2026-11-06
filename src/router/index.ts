@@ -4,6 +4,7 @@ const router = createRouter({
   history: createWebHistory(),
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return { ...savedPosition, behavior: 'instant' }
+    if (to.name === 'r2-screening' && _from.name === to.name) return false
     if (to.hash) return { el: to.hash, behavior: 'smooth' }
     return { top: 0, behavior: 'instant' }
   },
@@ -11,6 +12,12 @@ const router = createRouter({
     {
       path: '/',
       redirect: { name: 'r2-overview' },
+    },
+    {
+      path: '/ledger/screening',
+      name: 'r2-screening',
+      component: () => import('@/views/r2/ScreeningView.vue'),
+      meta: { module: 'wealth', title: '理财 · 选品初筛 · 钱多多' },
     },
     {
       path: '/ledger',

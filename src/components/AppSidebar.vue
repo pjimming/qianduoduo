@@ -216,6 +216,22 @@ watch(
           </RouterLink>
           <RouterLink
             class="sidebar-link"
+            to="/ledger/screening"
+            active-class="is-active"
+            @click="closeMenu"
+          >
+            <span class="sidebar-icon">
+              <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.5 4.5h13l-5 6v4l-3 1.5v-5.5z"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-copy">
+              <strong>选品初筛</strong>
+              <small>公开份额 · 批次证据</small>
+            </span>
+          </RouterLink>
+          <RouterLink
+            class="sidebar-link"
             to="/ledger/review"
             active-class="is-active"
             @click="closeMenu"

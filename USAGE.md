@@ -28,6 +28,7 @@
 | 每日记账 | 同一 SQLite | 成交/收益截图、每日记录、本金和例外补正 |
 | 交易与持仓 | 同一 SQLite | 当前持仓净值、交易流水、持仓结构 |
 | 产品与配置 | `data/cmb_r2_*.csv` | 产品池、配置、持仓复核和替换 |
+| 选品初筛 | `data/r2_screening.sqlite` | 公开份额、批次、原始单位净值与交易前复核 |
 | 复盘 | 同一 SQLite | 日/周/月评分、月度五问、季度复盘 |
 | 决策与评估 | 同一 SQLite | 决策日志、提案、自动评估和预测校准 |
 | 每日市场简报 | `market-briefs/*.md` | 八章盘后全景、资金、政策、估值和后续展望 |
@@ -230,6 +231,19 @@ npm run r2:refresh-all
 
 计算内容包括参考年化差、费用、赎回/到账 T+N、候选申购 T+N、有效计息、盈亏平衡和预计差额。锁定期内只显示“到期后可替换”；估算等待期不能通过执行闸门。
 
+### 7.4 选品初筛
+
+从理财侧栏进入 `/ledger/screening`。默认显示正式候选，可组合搜索、期限、分类、发行方和提示。展开份额详情查看披露日、额度查询时间、原始单位净值与交易前核对。批次切换和详情链接保留批次 ID，刷新失败时保留最近发布批次并显示证据时效。
+
+“刷新初筛”走独立公开数据任务。“刷新配置快照”继续读取周产品快照。初筛启用后按北京时间周一至周五 12:00 运行，法定放假日和周末跳过。当天午后启动会补跑，任务中断按当日重试额度接续。
+
+生产首次初始化需明确授权。先运行 `npm run r2:screen:db -- preflight` 核对独立路径、日历和浏览器，再用 `npm run r2:screen:db -- init` 初始化。创建本地开关文件 `data/r2_screening.enabled` 后，使用既有 `prod:restart` 经计划任务启动。也可由运行环境设置 `R2_SCREENING_ENABLED=1`，显式环境变量优先。`R2_SCREENING_DB_PATH` 可指定独立路径。
+
+- `npm run r2:screen -- status` 读取当前状态，`npm run r2:screen -- refresh` 触发手动批次。`--dry-run` 在临时库验证公开采集，`--dry-run --fixture test/fixtures/r2-screening/2026-11-07.json` 离线复算。
+- `npm run r2:screen:db -- status` 检查库状态，`verify` 校验完整性和外键，`backup` 在线快照至 `data/screening-backups/`。所有子命令可指定 `--db <绝对路径>`，备份和还原可指定 `--backup-dir <目录>`。
+- 恢复前关闭初筛开关并经托管重启以停止初筛 worker。初筛停用时，页面可继续读取历史，账本服务可保持运行。确认初筛库没有活动 WAL/SHM 后运行 `npm run r2:screen:db -- restore --offline --backup <已校验的独立备份>`。命令校验备份，并在替换前保留当前库的保护快照。
+- 发布故障先读 `GET /api/r2-screening/status` 和运行记录。日历缺口须补官方日历版本。核心来源失败保留上一批次。需暂停采集时移除开关文件或设置 `R2_SCREENING_ENABLED=0`，再经既有托管重启。
+
 ## 8. 决策提案、评估与复盘
 
 流程：
@@ -423,6 +437,16 @@ Pages 只承载公开研究内容，不包含 R2 数据、账户事实、截图�
 - `GET /api/dashboard/sections?include=summary,ledger`：按需组合只读分区。
 - `GET /api/dashboard/summary|overview|ledger|trades|products|evaluation|inbox`：读取单个分区。
 - `POST /api/dashboard/refresh`：刷新决策提案、提醒生命周期和消息中心投影。
+
+### 选品初筛
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| GET | /api/r2-screening/status | 批次、下次刷新、来源与证据时效 |
+| GET | /api/r2-screening/runs 和 /runs/:id | 运行历史与尝试 |
+| GET | /api/r2-screening/results | 以 run_id 固定批次，筛选与分页 |
+| GET | /api/r2-screening/results/:channel/:code 及 /nav | 份额证据、复核清单与原始净值 |
+| POST | /api/r2-screening/runs | 带 Idempotency-Key 启动或查看活动批次 |
 
 ### 复盘、评估与自动化
 

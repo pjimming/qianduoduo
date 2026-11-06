@@ -25,6 +25,8 @@ const {
   terminateOcrProcesses,
 } = require('./infrastructure/ocr');
 
+const { createScreeningRuntime } = require('./jobs/r2-screening');
+
 function closeServer(server) {
   return new Promise((resolve, reject) => {
     if (!server.listening) {
@@ -124,7 +126,9 @@ function startServer(options = {}) {
   });
   if (options.automation !== false) scheduler.start();
 
+  const screening = createScreeningRuntime(options, repository.dbPath, logger);
   const server = createServer({
+    screening,
     repository,
     dashboardQuery,
     automationRunner,
@@ -137,7 +141,7 @@ function startServer(options = {}) {
 
   function stop({ exitProcess = false, exitCode = 0 } = {}) {
     if (closing) return closing;
-    closing = Promise.resolve(scheduler.stop())
+    closing = Promise.allSettled([scheduler.stop(), screening.stop()])
       .then(() => {
         terminateOcrProcesses();
         return closeServer(server);
@@ -156,6 +160,11 @@ function startServer(options = {}) {
           } catch {
             // The supervisor removes the marker as a fallback.
           }
+        }
+        try {
+          screening.close();
+        } catch (error) {
+          logger.error?.(error);
         }
         try {
           repository.close();
@@ -201,6 +210,7 @@ function startServer(options = {}) {
       logger.log?.('  钱多多已启动');
       logger.log?.(`  打开：http://${host}:${actualPort}`);
       logger.log?.(`  数据库：${repository.dbPath}`);
+      screening.start();
       logger.log?.('  按 Ctrl+C 停止服务');
       logger.log?.('');
       resolve();

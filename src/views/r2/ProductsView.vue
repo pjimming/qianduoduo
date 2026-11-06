@@ -55,6 +55,9 @@ const sections = computed(() => [
       description="先确认新资金的期限桶配置并查看观察名单，再核对当前持仓与同桶候选；短、中、长期限桶统一按 30、100、360 天比较，本次切换等待期不计收益，到期自动续作不重复扣空档。日开持仓改看短期限候选；买入前仍需在招行 App 核对额度、费率和交易规则。"
     >
       <template #actions>
+        <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-screening' }">
+          选品初筛
+        </RouterLink>
         <RouterLink
           v-if="reviewSummary.replace > 0"
           class="r2-head-chip is-warn"

@@ -10,6 +10,8 @@ const STATIC_DIR = fs.existsSync(path.join(DIST_DIR, 'index.html'))
   ? DIST_DIR
   : PUBLIC_DIR;
 const DEFAULT_DB = path.join(ROOT, 'data', 'r2_ledger.sqlite');
+const DEFAULT_SCREENING_DB = path.join(ROOT, 'data', 'r2_screening.sqlite');
+const SCREENING_ENABLE_FILE = path.join(ROOT, 'data', 'r2_screening.enabled');
 const DATA_TRUST_MODE = String(
   process.env.R2_DATA_TRUST_MODE || 'shadow',
 ).toLowerCase();
@@ -17,6 +19,8 @@ const DATA_TRUST_MODE = String(
 module.exports = {
   DATA_TRUST_MODE,
   DEFAULT_DB,
+  DEFAULT_SCREENING_DB,
+  SCREENING_ENABLE_FILE,
   DIST_DIR,
   PUBLIC_DIR,
   ROOT,
