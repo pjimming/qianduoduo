@@ -93,7 +93,7 @@
 - 需要用户补事实或最后确认的事项必须先通过 `POST /api/inbox/confirmations` 写入应用消息中心，使用确定性 `dedupe_key` 防重复并返回站内深链；临时桥接本金还要附带结构化金额、转入/转出日期、目标本金和决策 ID；逐产品收益待补要附带 `metadata.product_income_requirement={product_code,yield_date}`，但若 `/api/inbox` 已存在同一 `product_valuation_reconciliation` 事项，只引用现有记录，不再写入重复项；事实、明确 0 元或覆盖区间确认后自动关闭；Codex 卡片只作摘要；
 - 收益提醒按 `/api/dashboard` 的 `meta.reporting_date` 检查；该日期由当前持仓最大 `yield_lag_days` 推算，没有持仓时才回退昨日。用户提供的实际收益日期允许不晚于今天；不得用产品 T+1/T+2 延迟拒绝或改写日期。同日期同金额视为已记录，不同金额只提醒、不覆盖；
 - 日期和至少一条产品明细明确时，归档产品事实并按当日产品合计创建或更新账户总账；截图账户金额只作可选核对。`product_valuation_reconciliation` 的 `waiting` 表示最大 T+N 尚未完成，最终披露日当天仍等待、次日仍缺才转为 `missing-product-details`；连续日期且缺口集合相同的消息合并为日期区间，已见产品进入汇总且后续到账自动重算，不要求用户补账户总额。覆盖区间只消除来源缺口，金额仍归最后披露日，不向前几日补 0、均分或复制。`same_day_redeemed_product_codes` 只提示确认赎回日收益归属，不得直接定性漏记；投影完整性异常才进入系统修复。`matched` 或覆盖区间确认后自动关闭，`missing-account-total` 已退役，0 元只有在用户或银行页面明确确认时记录；
-- 没有异常、没有待办时保持安静，不发送“今日无异常”；不得代替用户采纳、拒绝或取消决策提案；
+- 通过运行日闸门后每轮都输出一张不超过 10 行的巡检卡，并在最终回复正文明确报告结果；无需用户处理时写“巡检完成，暂无需要你处理的事项”，简述服务、收益披露/对账和队列结果。既有低置信度评估和正常披露等待不计为用户待办，不为例行结果新增消息中心事项；不得代替用户采纳、拒绝或取消决策提案；
 - 只维护账本事实和流程，不写投资建议、不做收益预测。
 
 提示词：[r2-daily-review.md](r2-daily-review.md)
@@ -172,7 +172,7 @@ Get-ChildItem data\cmb_r2_universe-*.csv | Sort-Object LastWriteTime -Descending
 ### 4.4 任务本身
 
 - `r2`：手动运行后检查 `data/` 是否生成当天 CSV，`/api/dashboard/products` 是否切换快照，五档 `evidence_counts` 与 6M/3M 的 10%/20% 上限是否存在；
-- `r2-2`：最近披露收益按最大 T+N 推算的 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation` 与 `product_valuation_disclosure_policy`；`waiting` 不写消息，最终披露日次日仍缺、且未被覆盖区间消除的产品才提示。应用消息中心已按连续日期和相同缺口聚合，Codex 不重复建卡；已见产品驱动账户总账，投影完整性异常才单独提示。产品-only 截图就是账户总账来源；替换候选应显示期限调整参考年化、`yield_status/yield_reason`、证据档位和短历史单只上限；没有其他异常或待办时应“无消息”，有内容时只发一张不超过 10 行的巡检卡（含队列处理结果）；
+- `r2-2`：最近披露收益按最大 T+N 推算的 `meta.reporting_date` 检查，逐产品看 `product_valuation_reconciliation` 与 `product_valuation_disclosure_policy`；`waiting` 不写消息中心事项，最终披露日次日仍缺、且未被覆盖区间消除的产品才提示。应用消息中心已按连续日期和相同缺口聚合，Codex 不重复建卡；已见产品驱动账户总账，投影完整性异常才单独提示。产品-only 截图就是账户总账来源；替换候选应显示期限调整参考年化、`yield_status/yield_reason`、证据档位和短历史单只上限；通过运行日闸门后每轮只发一张不超过 10 行的巡检卡（含队列处理结果），无需用户处理也在正文明确说明，不能只有收件箱指令；周末和法定放假日仍静默跳过；
 - `r2-3`：逐产品个人表现只作观察证据，替换候选应显示证据档位与 10%/20% 限制；账户/产品对账只报最终状态，等待到账保持安静；没有结构风险、最终对账异常或下周动作时应该“无消息”，有内容时只发一张周卡。
 
 ## 5. 常见问题
