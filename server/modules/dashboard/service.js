@@ -17,6 +17,7 @@ const { buildHoldingReviews } = require('../../../lib/holdings-review');
 const {
   buildReturnAttribution,
 } = require('../../../lib/return-attribution');
+const { buildHoldingPerformance } = require('./holding-performance');
 
 const DASHBOARD_SECTIONS = Object.freeze([
   'summary',
@@ -129,6 +130,7 @@ function selectDashboardSection(payload, section) {
         workspace: {
           holding_reviews: workspace.holding_reviews,
           holding_reviews_summary: workspace.holding_reviews_summary,
+          holding_performance: workspace.holding_performance,
           events: workspace.events,
           timeline: workspace.timeline,
         },
@@ -237,12 +239,13 @@ function createDashboardQueryService(repository, options = {}) {
         .map((setting) => [setting.product_code, setting]),
     );
     const windows = buildWindows(records);
+    const productValuations = repository.productValuationStore.listValuations();
     const returnAttribution = buildReturnAttribution({
       records,
       trades: tradeOverview.trades,
       holdings: tradeOverview.holdings,
       products: repository.listProducts(),
-      valuations: repository.productValuationStore.listValuations(),
+      valuations: productValuations,
       settingsByCode: holdingReviewSettings,
       windowSummary: windows[30],
       today,
@@ -269,6 +272,13 @@ function createDashboardQueryService(repository, options = {}) {
     workspace.current_holdings_valuation = currentHoldingsValuation;
     workspace.return_attribution = returnAttribution;
     workspace.holding_reviews = holdingReviews;
+    workspace.holding_performance = buildHoldingPerformance(
+      tradeOverview.holdings,
+      tradeOverview.trades,
+      productValuations,
+      incomeDisclosurePolicy,
+      today,
+    );
     workspace.holding_reviews_summary = {
       total: holdingReviews.length,
       replace: holdingReviews.filter((item) => item.verdict === 'replace')

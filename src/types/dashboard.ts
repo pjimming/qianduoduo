@@ -767,6 +767,15 @@ export interface HoldingReviewSwitch {
 
 export type HoldingReviewSwitchWaitStatus = 'verified' | 'estimated'
 
+export interface HoldingPerformance {
+  start_date: string
+  end_date: string
+  weekly_by_code: Record<string, {
+    status: 'ready' | 'short-holding' | 'cross-boundary' | 'waiting' | 'missing'
+    annualized_pct: number | null
+  }>
+}
+
 export interface HoldingReviewCandidate {
   code: string
   name: string
@@ -1271,6 +1280,7 @@ export interface ReviewWorkspace {
   return_attribution: ReturnAttribution
   holding_reviews: HoldingReview[]
   holding_reviews_summary: HoldingReviewsSummary
+  holding_performance?: HoldingPerformance
   events: ProductEvent[]
   notes: ReviewNote[]
   quarterly: QuarterlyNote[]

@@ -75,6 +75,12 @@ function openTrades(): void {
         >
           交易截图待校正 · {{ pendingInbox }}
         </RouterLink>
+        <RouterLink
+          class="button button-ghost button-small"
+          :to="{ name: 'r2-products', query: { view: 'performance' }, hash: '#holding-reviews' }"
+        >
+          持仓收益排行
+        </RouterLink>
         <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-products' }">
           去产品配置
         </RouterLink>

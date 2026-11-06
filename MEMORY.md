@@ -17,6 +17,7 @@
 ## 2. 应用与架构
 
 - 前端为 Vue 3 + Vite + TypeScript + Pinia + Vue Router；后端为 Node.js 24+ 模块化单体，使用内置 `node:sqlite`。
+- 钱多多应用界面以本机桌面浏览器为默认目标，按至少 1280px 核验；移动端适配和验收仅在用户明确要求时纳入。
 - `server.js` 是生命周期入口和兼容导出；`server/app.js` 装配应用；HTTP、业务域和基础设施分别位于 `server/http/`、`server/modules/`、`server/infrastructure/`。
 - 保持现有 API 路径、方法、响应结构、SQLite schema、业务算法和账户口径兼容。业务读取使用只读查询；写操作由业务用例拥有事务边界。
 - 财务写入、截图重放和任务重试必须幂等，通过唯一约束、事务和可恢复状态收敛到同一已提交事实。
