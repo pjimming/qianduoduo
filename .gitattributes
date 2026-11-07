@@ -11,3 +11,6 @@
 *.md text eol=lf
 *.json text eol=lf
 *.csv text eol=lf
+# Frozen analysis manifests hash exact bytes, including CSV line endings.
+docs/analysis/r2-quant-2026-11-07/** -text
+docs/analysis/r2-quant-2026-11-07/*.csv whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

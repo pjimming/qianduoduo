@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "checks": 12101,
+  "scope": 4330,
+  "groups": [
+    {
+      "name": "O-S",
+      "allocated": 100000,
+      "unallocated": 0,
+      "liquidity_target_met": true
+    },
+    {
+      "name": "V-S",
+      "allocated": 70000,
+      "unallocated": 30000,
+      "liquidity_target_met": false
+    },
+    {
+      "name": "O-E",
+      "allocated": 100000,
+      "unallocated": 0,
+      "liquidity_target_met": true
+    },
+    {
+      "name": "V-E",
+      "allocated": 0,
+      "unallocated": 100000,
+      "liquidity_target_met": false
+    }
+  ],
+  "safety_and_budget_constraints": "passed",
+  "unresolved": [
+    "dynamic share size and account limits",
+    "unparsed order clauses",
+    "underlying strategy proxy rather than look-through"
+  ]
+}

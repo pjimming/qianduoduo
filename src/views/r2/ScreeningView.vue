@@ -56,10 +56,10 @@ const funnel = computed(() => {
   const counts = visibleRun.value?.counts
   if (!counts) return []
   return [
-    { title: '公开份额', count: counts.total, stage: '' },
-    { title: '收益达标', count: counts.yield_pass, stage: 'yield' },
-    { title: '额度状态为 0', count: counts.quota_open, stage: 'quota' },
-    { title: '通过门槛', count: counts.eligible, stage: 'eligible' },
+    { title: '公开份额', count: counts.total },
+    { title: '收益达标', count: counts.yield_pass },
+    { title: '额度状态为 0', count: counts.quota_open },
+    { title: '通过门槛', count: counts.eligible },
   ]
 })
 const active = computed(() => status.value?.scheduler.active)
@@ -212,7 +212,6 @@ function filter(key: string, event: Event) {
   void updateQuery({ [key]: (event.target as HTMLInputElement).value.trim(), page: null })
 }
 function selectTab(value: string) { void updateQuery({ tab: value === 'shortlist' ? null : value, page: null, stage: null, log: null }) }
-function selectFunnel(stage: string) { void updateQuery({ tab: 'all', stage, page: null }) }
 function switchBatch(id: number) {
   notice.value = ''
   void updateQuery({ run: id, page: null, tab: null, stage: null, log: null, channel: null, code: null })
@@ -314,12 +313,11 @@ async function closeDetail() {
     </section>
 
     <template v-else>
-      <nav v-if="funnel.length" class="screen-funnel" aria-label="批次筛选漏斗">
-        <button v-for="step in funnel" :key="step.title" type="button"
-          :aria-pressed="tab === 'all' && query('stage') === step.stage" @click="selectFunnel(step.stage)">
+      <section v-if="funnel.length" class="screen-funnel" aria-label="批次筛选统计">
+        <div v-for="step in funnel" :key="step.title">
           <strong>{{ step.count }}</strong><span>{{ step.title }}</span>
-        </button>
-      </nav>
+        </div>
+      </section>
       <section class="screen-panel" aria-label="筛选结果">
         <nav class="screening-tabs" aria-label="筛选状态">
           <button v-for="[key, label, count] in tabs" :key="key" type="button"
@@ -412,11 +410,9 @@ async function closeDetail() {
   padding: 9px 12px; margin: 0 0 12px; border-radius: 10px; background: var(--green-wash); color: var(--ink); font-size: 13px; }
 .screening-notice.is-warn { background: var(--surface-warning); color: var(--warning-ink); }
 .screen-funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 16px 0; border-block: 1px solid var(--line-strong); }
-.screen-funnel button { position: relative; display: flex; align-items: baseline; gap: 8px; justify-content: center; padding: 12px 8px; border: 0;
-  background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
-.screen-funnel button + button { border-inline-start: 1px solid var(--screen-control-line); }
-.screen-funnel button strong { font-size: 19px; font-weight: 650; }
-.screen-funnel button[aria-pressed="true"], .screen-funnel button:hover { background: var(--green-wash); color: var(--green); }
+.screen-funnel > div { display: flex; align-items: baseline; gap: 8px; justify-content: center; padding: 12px 8px; }
+.screen-funnel > div + div { border-inline-start: 1px solid var(--screen-control-line); }
+.screen-funnel strong { font-size: 19px; font-weight: 650; }
 .screen-panel { border: 1px solid var(--line-strong); border-radius: 14px; background: var(--card); padding: 12px 14px 14px; min-width: 0; }
 .screen-panel h2 { font-size: 19px; margin: 4px 0 10px; }
 .screening-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line-strong); }

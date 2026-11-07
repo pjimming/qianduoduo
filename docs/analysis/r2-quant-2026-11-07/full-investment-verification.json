@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "checks": 778,
+  "version": "full-investment-v2",
+  "fully_invested": true,
+  "risk_caps_preserved": true,
+  "orders": "known minimum, increment and maximum verified; absent maximum remains disclosed",
+  "groups": [
+    {
+      "name": "O-S",
+      "allocated": 100000,
+      "unallocated": 0,
+      "reference": 2.99125,
+      "explicit": 0,
+      "assumed": 100000,
+      "buckets": {
+        "short": 30000,
+        "medium": 35000,
+        "long": 35000
+      },
+      "liquidity_target_met": true
+    },
+    {
+      "name": "V-S",
+      "allocated": 100000,
+      "unallocated": 0,
+      "reference": 2.6472,
+      "explicit": 0,
+      "assumed": 100000,
+      "buckets": {
+        "short": 20000,
+        "medium": 45000,
+        "long": 35000
+      },
+      "liquidity_target_met": false
+    },
+    {
+      "name": "O-E",
+      "allocated": 100000,
+      "unallocated": 0,
+      "reference": 2.99125,
+      "explicit": 0,
+      "assumed": 100000,
+      "buckets": {
+        "short": 30000,
+        "medium": 35000,
+        "long": 35000
+      },
+      "liquidity_target_met": true
+    },
+    {
+      "name": "V-E",
+      "allocated": 100000,
+      "unallocated": 0,
+      "reference": 2.6472,
+      "explicit": 0,
+      "assumed": 100000,
+      "buckets": {
+        "short": 20000,
+        "medium": 45000,
+        "long": 35000
+      },
+      "liquidity_target_met": false
+    }
+  ]
+}

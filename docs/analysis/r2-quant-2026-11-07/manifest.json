@@ -1,0 +1,170 @@
+{
+  "information_cutoff": "2026-11-07T04:20:07.594Z",
+  "current_result": "full-investment-results.json",
+  "current_version": "full-investment-v2",
+  "excludes": [
+    "manifest.json (self)",
+    "verification.json (verification output)"
+  ],
+  "validation": {
+    "skill_unit_tests": 27,
+    "js_python_golden_cases": 33,
+    "legacy_deterministic_result_files": 5,
+    "full_investment_checks": 778,
+    "full_investment_deterministic_result_files": 2,
+    "pdf_raw_hashes": 39,
+    "visual_pdf_check": "D07/120040A page 18: share-specific purchase ceiling and dynamic size condition"
+  },
+  "files": [
+    {
+      "path": "allocations.csv",
+      "bytes": 64633,
+      "sha256": "0a5084578bfe57039c029892612205dd8029bf0644438fe2df7022d554eee0d8"
+    },
+    {
+      "path": "cleanup.cjs",
+      "bytes": 1645,
+      "sha256": "1c2d104d6eca4d7ccfc5a0aa312c67d599402cf3814f2690bc16793f33e15fb1"
+    },
+    {
+      "path": "collect.cjs",
+      "bytes": 7403,
+      "sha256": "fcd4997c24711870607cf663859e5c8ec5dc784502040254669eabb6faa6db11"
+    },
+    {
+      "path": "compute.cjs",
+      "bytes": 23254,
+      "sha256": "6e01a64ae57b9ebc3f62c128036ff3d4fac90a85a1b8cae0c3b4e795060a43d1"
+    },
+    {
+      "path": "evidence.json.gz",
+      "bytes": 9233543,
+      "sha256": "4f6be28f16b165e5b6852491ab4c8f60264674de1fe915144755b5934d9688b2"
+    },
+    {
+      "path": "extract.py",
+      "bytes": 822,
+      "sha256": "45148e04c5209adda486915cd9a34f26872ad09621c432469dc9128564d086a9"
+    },
+    {
+      "path": "failed-round.json.gz",
+      "bytes": 554,
+      "sha256": "2f49e5ef11b1a4319cf17313560daf1b4eaf0857be6de1296eef03a948667407"
+    },
+    {
+      "path": "full-investment-products.csv",
+      "bytes": 4100380,
+      "sha256": "840749c5319d6575fca829df55ef55d2af90d1526a1f63fc0ce7688aec85518f"
+    },
+    {
+      "path": "full-investment-results.json",
+      "bytes": 218272,
+      "sha256": "346243e7fed7099faa5b7767587ba4657301ff6a7463a19c0d25499a69766fd3"
+    },
+    {
+      "path": "full-investment-verification.json",
+      "bytes": 1411,
+      "sha256": "050b9e67ed246750bf0617b74cc7acc2ea58a4b6e5b808d5d1084dd67133916b"
+    },
+    {
+      "path": "full-investment.cjs",
+      "bytes": 9824,
+      "sha256": "86a8f9890e0a4792a9b0243aba6c96c179a410ffbf39a4bfda01fdeff676216b"
+    },
+    {
+      "path": "pool.json.gz",
+      "bytes": 720072,
+      "sha256": "917ff68714acad342b2b2022a8c01e824c2e033aa5d05ee3f0b650dcd612332e"
+    },
+    {
+      "path": "previous-comparison.json.gz",
+      "bytes": 59657,
+      "sha256": "7f8ccf824213435ac63e5f8273e9309dbff047efe0fb9801435a08d35d203ba2"
+    },
+    {
+      "path": "products.csv",
+      "bytes": 3977766,
+      "sha256": "0b6764bc1e28d83710726793ef47a4cc1e027ef934b2a51d92cd17e34eb7fda8"
+    },
+    {
+      "path": "prospectuses.zip",
+      "bytes": 14050704,
+      "sha256": "707776d22ea852e62f2432b7776f6a711179daa2f5d1c2aec9f7e730b255c779"
+    },
+    {
+      "path": "quality.json",
+      "bytes": 1973,
+      "sha256": "c5647bcbedb417b0a02879917554090725f23f5f1b831221dbf58a3bb153a82a"
+    },
+    {
+      "path": "results.json",
+      "bytes": 451132,
+      "sha256": "2f2f4bcaf4d5d6bd6cfdb5adf49f08217a39c1f69b110163c4025fdd8278faf5"
+    },
+    {
+      "path": "rule-differences.csv",
+      "bytes": 61080,
+      "sha256": "1e8a69485be0216726cdba689188214e9d36c77e464a870270ad93e45678586f"
+    },
+    {
+      "path": "superseded-explicit-priority.json.gz",
+      "bytes": 301694,
+      "sha256": "7eee8ee61afaacbc138fa7c3df12c145549a46229fb762efb098dde955a268cf"
+    },
+    {
+      "path": "supplement-index.json",
+      "bytes": 24585,
+      "sha256": "da0c81ed4f7ec7dd560b240f82f4300392ec7fbd475da582b9166872b0f6a706"
+    },
+    {
+      "path": "supplement.cjs",
+      "bytes": 2525,
+      "sha256": "fa7c8730b71befd39690b11baac81662c7f1ee41547c0b458c5f65babe8df792"
+    },
+    {
+      "path": "supplement.json.gz",
+      "bytes": 1042025,
+      "sha256": "60eb720c93ac998c7b436f1e29f893a3ed0acb215910b046460e1cb3a6516401"
+    },
+    {
+      "path": "verify-full-investment.cjs",
+      "bytes": 7095,
+      "sha256": "1929b0f0a53e4d8714538b2ece18f860d99ce57fd44c148ac3852111f03440aa"
+    },
+    {
+      "path": "verify-pdfs.py",
+      "bytes": 475,
+      "sha256": "56230d2cbc76c4c07dff559d3ecbdcc7876a0e382745f30927e659d5f5554e4e"
+    },
+    {
+      "path": "verify.cjs",
+      "bytes": 6753,
+      "sha256": "8be993cf99272b60ce201ad77422ad63a52fbfe51468bd8ea391aa3b35c2b8e9"
+    },
+    {
+      "path": "write-full-investment-report.cjs",
+      "bytes": 12000,
+      "sha256": "08ff0749fd6e750242252607696bbcbff1a8674cea81ea9bebfee85ff6f0eca4"
+    },
+    {
+      "path": "write-manifest.cjs",
+      "bytes": 1580,
+      "sha256": "6acab89f9517a202b8f821cb4af90621f0e9d96242b791290b34b32a22fcb32d"
+    },
+    {
+      "path": "write-report.cjs",
+      "bytes": 24736,
+      "sha256": "9ab68e5f2799b5d59c710071e48969dd12b915892f01b1737abd811dae9c8b3f"
+    },
+    {
+      "path": "../r2-strategy-quant-comparison-plan-2026-11-07.md",
+      "bytes": 15545,
+      "sha256": "4bc1594fa638ba5f1a74431252b4de13fe159234028dca7539e8c3d3e446c0de"
+    },
+    {
+      "path": "../r2-strategy-quant-comparison-result-2026-11-07.md",
+      "bytes": 16796,
+      "sha256": "858f4b2a0ff64ec0197f4a52ee93318296754cd76db9cddcdde7af9c0a7208b5"
+    }
+  ]
+}

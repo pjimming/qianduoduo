@@ -34,6 +34,12 @@ const chart = computed(() => {
 
 onMounted(() => dialog.value?.showModal())
 
+function closeOnBackdrop(event: MouseEvent) {
+  const bounds = (event.currentTarget as HTMLDialogElement).getBoundingClientRect()
+  if (event.clientX < bounds.left || event.clientX >= bounds.right ||
+      event.clientY < bounds.top || event.clientY >= bounds.bottom) emit('close')
+}
+
 watch(() => [props.run, props.channel, props.code], async (_key, _old, onCleanup) => {
   const controller = new AbortController()
   onCleanup(() => controller.abort())
@@ -55,7 +61,7 @@ watch(() => [props.run, props.channel, props.code, section.value, navWindow.valu
 </script>
 
 <template>
-  <dialog ref="dialog" class="screen-detail" aria-labelledby="screen-detail-title" @cancel.prevent="emit('close')">
+  <dialog ref="dialog" class="screen-detail" aria-labelledby="screen-detail-title" @cancel.prevent="emit('close')" @click.self="closeOnBackdrop">
     <header class="detail-header">
       <div>
         <p class="detail-meta">{{ channel }} / {{ code }} · 批次 #{{ run }}</p>

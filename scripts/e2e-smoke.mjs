@@ -240,6 +240,12 @@ async function screeningSmoke(browser, base) {
         await capture(page, 'screening-' + width + '-' + theme)
       }
     }
+    const funnel = page.getByRole('region', { name: '批次筛选统计' })
+    assert(await funnel.getByRole('button').count() === 0, '批次筛选统计包含按钮')
+    const resultUrl = page.url()
+    await funnel.getByText('收益达标', { exact: true }).click()
+    assert(page.url() === resultUrl, '点击批次筛选统计更改了筛选条件')
+
     const row = page.getByRole('button', { name: '证据详情 113356A', exact: true })
     await row.waitFor()
     await row.focus()
@@ -256,6 +262,15 @@ async function screeningSmoke(browser, base) {
     await page.keyboard.press('Escape')
     await panel.waitFor({ state: 'hidden' })
     assert(await row.evaluate(element => element === document.activeElement), '关闭详情未恢复原行焦点')
+
+    await row.click()
+    await panel.getByRole('heading', { name: '公开证据' }).waitFor()
+    await panel.click({ position: { x: 8, y: 8 } })
+    assert(await panel.isVisible(), '点击抽屉内部空白关闭了详情')
+    await page.mouse.click(20, 20)
+    await panel.waitFor({ state: 'hidden' })
+    assert(!new URL(page.url()).searchParams.has('code') && !new URL(page.url()).searchParams.has('channel'), '点击遮罩关闭详情后仍保留详情 URL 参数')
+    assert(await row.evaluate(element => element === document.activeElement), '点击遮罩关闭详情未恢复原行焦点')
 
     const search = page.getByRole('searchbox', { name: '代码或名称' })
     await search.fill('无匹配产品')
