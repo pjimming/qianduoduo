@@ -1,6 +1,6 @@
 # 钱多多 R2 选品初筛改造计划
 
-2026-11-07 · 阶段 0–3 本地验证，生产启用待授权 · 策略基线 [R2 初筛 v9](r2-product-screening-strategy.md)
+2026-11-07 · 阶段 0–4 已验收，生产试运行 · 策略基线 [R2 初筛 v9](r2-product-screening-strategy.md)
 
 ## 1. 首版范围与现状
 

@@ -82,7 +82,7 @@
 
 ### `r2-2` — 钱多多R2工作日巡检（含AI队列与消息中心）
 
-- 初筛生产启用后，`r2-2` 从 `GET /api/r2-screening/status` 只读检查批次及证据时效，异常附站内链接。启用前保留本机既有提示词。
+- 初筛已启用，`r2-2` 从 `GET /api/r2-screening/status` 只读检查批次及证据时效，异常附站内链接。初筛刷新由工作台调度。
 - 周一至周五 21:00 运行；周六、周日由 RRULE 排除，周一至周五先按 `Asia/Shanghai` 用国务院办公厅当前年度安排或中国政府网正式通知核验法定节假日，放假日静默退出，不调用 API、不刷新投影、不写消息、不发卡片；
 - 节后首个工作日按账本当前累计状态照常巡检，不追补周末调休上班日；通过运行日闸门后先调用 `POST /api/dashboard/refresh`，再读取 `/api/dashboard`、`/api/review/workspace`、`/api/automation/workspace`；
 - 第 0 步处理 Codex 判断队列：`screenshot_review`、`income_screenshot_review`、`evaluation_review`、`monthly_summary`、`quarterly_summary`；
