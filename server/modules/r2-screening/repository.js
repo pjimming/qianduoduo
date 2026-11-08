@@ -306,6 +306,29 @@ function openScreeningRepository(file, { ledgerPath, initialize = false, readOnl
       .get(runId, SOURCE, channel, code);
   }
 
+  // Freeze the published pointer and its bounded public evidence in ONE read
+  // transaction. No account data, networking, schema changes or write projection.
+  function readExecutionSnapshot() {
+    db.exec('BEGIN');
+    try {
+      const run = current();
+      if (!run) { db.exec('COMMIT'); return null; }
+      if (!['succeeded', 'degraded'].includes(run.status)) throw new Error('初筛指针未指向已发布批次');
+      const count = db.prepare('SELECT count(*) AS n FROM screening_results WHERE run_id = ?').get(run.id).n;
+      if (count > 20000) throw new Error('初筛份额数超过受控读取上限');
+      const rows = db.prepare(`SELECT r.source, r.channel, r.code, r.detail, n.content_hash AS nav_hash
+        FROM screening_results r LEFT JOIN screening_nav_series n ON n.id = r.nav_series_id
+        WHERE r.run_id = ? ORDER BY r.source, r.channel, r.code`).all(run.id);
+      const evidence = db.prepare(`SELECT source, channel, code, kind, checked_at, url, hash, summary
+        FROM screening_evidence WHERE run_id = ? ORDER BY source, channel, code, kind`).all(run.id);
+      const result = { run, rows: rows.map(row => ({ source: row.source, channel: row.channel, code: row.code,
+        data: parsed(row.detail), nav_hash: row.nav_hash })),
+      evidence: evidence.map(item => ({ ...item, summary: parsed(item.summary) })) };
+      db.exec('COMMIT');
+      return result;
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
+
   return {
     dbPath, enqueue, take, heartbeat, finish, publish, current, active, scheduled, get, query,
     close: () => db.close(),
@@ -322,7 +345,7 @@ function openScreeningRepository(file, { ledgerPath, initialize = false, readOnl
       count(*) FILTER (WHERE nav_date <= ? OR nav_date > ?) AS nav_expired,
       max(performance_date) AS performance_latest, max(nav_date) AS nav_latest
       FROM screening_results WHERE run_id = ?`).get(stale, date, stale, date, runId),
-    result,
+    result, readExecutionSnapshot,
     evidence: (runId, channel, code) => db.prepare(`SELECT kind, checked_at, url, hash, summary FROM screening_evidence
       WHERE run_id = ? AND source = ? AND channel = ? AND code = ? ORDER BY checked_at, kind`)
       .all(runId, SOURCE, channel, code).map(row => ({ ...row, summary: parsed(row.summary) })),

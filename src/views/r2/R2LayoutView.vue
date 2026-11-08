@@ -29,8 +29,18 @@ const routeViews: Record<string, DashboardView> = {
 const activeView = computed<DashboardView>(
   () => routeViews[String(route.name || '')] || 'overview',
 )
+/**
+ * 选品与配置是独立外壳：候选初筛只依赖公开初筛库，不能被账本加载闸门挡住。
+ * 该分区由 ProductsView 按需加载账本；其余分区仍由本布局统一加载。
+ */
+const independentShell = computed(() => route.name === 'r2-products')
 
 async function loadDashboard(): Promise<void> {
+  if (independentShell.value) {
+    pageReady.value = true
+    loadError.value = ''
+    return
+  }
   const version = ++loadVersion
   const view = activeView.value
   loadError.value = ''
@@ -53,7 +63,7 @@ watch(activeView, loadDashboard, { immediate: true })
 </script>
 
 <template>
-  <div v-if="dashboard && pageReady" class="r2-shell">
+  <div v-if="independentShell || (dashboard && pageReady)" class="r2-shell">
     <RouterView v-slot="{ Component }">
       <component :is="Component" :dashboard="dashboard" />
     </RouterView>

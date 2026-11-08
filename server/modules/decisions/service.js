@@ -2,6 +2,7 @@
 
 const { todayShanghai } = require('../../../lib/metrics');
 const { validateDecisionPayload } = require('./validation');
+const { CONTRACT, CONTRACT_HASH } = require('../r2-strategy/contract');
 
 function decisionError(statusCode, message, payload = null) {
   const error = new Error(message);
@@ -74,7 +75,21 @@ function createDecisionsService({
   }
 
   async function createDecision(body) {
-    const decision = decisionsRepository.createDecision(validate(body));
+    const decision = transactionManager.run(() => {
+      const state = decisionsRepository.strategyState?.();
+      const current = state?.mode === 'v9' && state.contract_hash === CONTRACT_HASH;
+      const value = validate(current ? { ...body, strategy_version: CONTRACT.execution_version,
+        target_annualized: 3, bucket_plan: { ...CONTRACT.bucket_targets, max_single: CONTRACT.max_single_pct } } : body);
+      // This form records a human decision. Only proposal adoption can attest
+      // the complete execution snapshot; never accept a client-authored pass.
+      const meta = { ...value.review_meta };
+      for (const key of ['execution_snapshot', 'evaluation_contract', 'forecast', 'proposal_snapshot_hash', 'evaluation_settings']) delete meta[key];
+      if (current) Object.assign(meta, { source: 'manual-decision', strategy_mode: 'actual_fact',
+        current_revalidation_required: true, manual_strategy_context: { execution_version: CONTRACT.execution_version,
+          contract_hash: CONTRACT_HASH, activation_seq: state.activation_seq, status: 'unverified',
+          reason: '手工决策事实记录；尚未经统一策略提案与交易前复核，不代表准入或配置通过' } });
+      return decisionsRepository.createDecision({ ...value, review_meta: meta });
+    });
     await evaluate('decision-create');
     return {
       decision,
@@ -85,12 +100,16 @@ function createDecisionsService({
   async function updateDecision(id, body) {
     const before = decisionsRepository.findDecision(id);
     if (!before) throw decisionError(404, '没有找到这条决策记录');
-    const value = validate(body);
+    // Evidence, predictions, reservation state and execution legs are owned by
+    // their business use cases. A note edit must neither replace that history
+    // nor send a large frozen snapshot through the manual-input size limit.
+    const value = validate({ ...body, review_meta: {} });
+    value.review_meta = before.review_meta ?? {};
     const linked = decisionsRepository.findLinkedTrade(id);
-    if (linked && linkedStrategyChanged(before, value)) {
+    if ((linked || before.strategy_version === CONTRACT.execution_version || before.review_meta?.execution_snapshot || decisionsRepository.hasReservation?.(id)) && linkedStrategyChanged(before, value)) {
       throw decisionError(
         409,
-        `决策 #${id} 已关联交易 #${linked.id}，策略、动作、产品或交易腿不可改写；请新建决策后改绑`,
+        `决策 #${id} ${linked ? `已关联交易 #${linked.id}` : '已冻结执行依据'}，策略、动作、产品或交易腿不可改写；请新建决策`,
       );
     }
     const decision = decisionsRepository.updateDecision(id, value);
@@ -103,6 +122,9 @@ function createDecisionsService({
   }
 
   async function deleteDecision(id) {
+    if (decisionsRepository.hasReservation?.(id)) {
+      throw decisionError(409, `决策 #${id} 保留资金预留审计，请在提案中取消未执行金额并保留决策历史`);
+    }
     const linked = decisionsRepository.findLinkedTrade(id);
     if (linked) {
       throw decisionError(

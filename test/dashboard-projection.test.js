@@ -270,3 +270,41 @@ test('capital bridge reminder resolves when the withdrawal was recorded before t
       .find((item) => item.id === notification.id).resolved_at,
   );
 });
+
+test('strategy inbox projection is written by dashboard and removed when resolved', (t) => {
+  const repository = openTemp(t);
+  let items = [
+    {
+      dedupe_key: 'r2-strategy:message-exit-1',
+      source_type: 'r2_strategy_holding',
+      source_id: 'lot:120056A:2026-10-01',
+      category: 'action',
+      severity: 'urgent',
+      title: '续持不达标：120056A',
+      summary: '有效近1月年化 1.82%，低于2.15%续持门槛。',
+      action_label: '确认退出',
+      action_url: '/ledger/products?section=holdings&lot=lot%3A120056A%3A2026-10-01',
+      metadata: { lot_id: 'lot:120056A:2026-10-01' },
+    },
+  ];
+  const query = createDashboardQueryService(repository, {
+    todayProvider: () => '2026-10-23',
+    strategy: { inboxItems: () => items },
+  });
+  const dashboard = query.projectDashboard();
+  assert.equal(
+    dashboard.inbox_center.items.filter(
+      (item) => item.dedupe_key === 'r2-strategy:message-exit-1',
+    ).length,
+    1,
+  );
+
+  items = [];
+  const resolved = query.projectDashboard();
+  assert.equal(
+    resolved.inbox_center.items.some(
+      (item) => item.dedupe_key === 'r2-strategy:message-exit-1',
+    ),
+    false,
+  );
+});

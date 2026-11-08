@@ -338,6 +338,23 @@ test('a partially collected product pool cannot replace the last published batch
   assert.equal(store.result(partial.id, 'D07', 'S1'), undefined);
 });
 
+test('a successful publication wakes the strategy derivation hook without extending the publish transaction', async t => {
+  const store = storeIn(t);
+  const calls = [];
+  const service = createScreeningService({
+    repository: store, enabled: true, schedule: false, clock: () => new Date(initial),
+    collector: async () => batch(),
+    onPublished: event => calls.push(event),
+  });
+  cleanup.get(t).push(() => service.stop());
+  const { run } = service.manual('publish-hook');
+  await until(() => store.current()?.id === run.id);
+  await until(() => calls.length === 1);
+  assert.equal(calls[0].run_id, run.id);
+  assert.equal(calls[0].business_date, store.current().business_date);
+  assert.ok(calls[0].published_at);
+});
+
 test('scheduler separates Shanghai noon, holidays, catch-up, retry and restart', async t => {
   const store = storeIn(t);
   let now = new Date('2026-10-05T04:00:00Z');

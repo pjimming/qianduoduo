@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatMoney } from '@/composables/useFormatters'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type {
   DecisionEntry,
   DecisionProposal,
@@ -18,47 +19,117 @@ const props = defineProps<{
 const store = useDashboardStore()
 const { show } = useToast()
 const busyId = ref<number | null>(null)
+const pendingAction = ref<{
+  kind: 'adopt' | 'reject' | 'cancel_remaining'
+  proposal: DecisionProposal
+} | null>(null)
+const reason = ref('')
+const submitting = ref(false)
 
 const activeProposals = computed(() => [
   ...props.proposals.pending,
   ...props.proposals.accepted,
 ])
 
-async function adopt(proposal: DecisionProposal): Promise<void> {
-  if (
-    !window.confirm(
-      `采纳提案「${proposal.title}」？\n采纳后仍需你在招行 App 自行执行并上传成交截图。`,
-    )
-  ) {
-    return
+const dialogTitle = computed(() => {
+  const action = pendingAction.value
+  if (!action) return ''
+  if (action.kind === 'adopt') return `采纳提案「${action.proposal.title}」？`
+  if (action.kind === 'cancel_remaining') {
+    return `取消「${action.proposal.title}」未执行余额？`
   }
-  busyId.value = proposal.id
-  try {
-    const result = await store.adoptDecisionProposal(proposal.id)
-    show(
-      `提案已采纳，决策 #${result.result.decision?.id ?? ''} 进入待执行状态`,
-    )
-  } catch (error) {
-    show(error instanceof Error ? error.message : '采纳失败', { error: true })
-  } finally {
-    busyId.value = null
+  return action.proposal.status === 'accepted'
+    ? `取消采纳「${action.proposal.title}」？`
+    : `拒绝提案「${action.proposal.title}」？`
+})
+const dialogMessage = computed(() => {
+  const action = pendingAction.value
+  if (!action) return ''
+  if (action.kind === 'adopt') {
+    return '采纳后仍需你在招行 App 自行执行并上传成交截图；平台不会代你下单。'
   }
+  if (action.kind === 'cancel_remaining') {
+    return '只释放尚未执行的资金预留；已确认成交、决策、冻结预测和证据都会保留。'
+  }
+  return action.proposal.status === 'accepted'
+    ? '取消后不会创建正式决策，原提案、证据和日志都会保留。'
+    : '提案会标记为已拒绝，不会创建正式决策。原因可留空，取消不写入任何内容。'
+})
+const dialogConfirmLabel = computed(() => {
+  const action = pendingAction.value
+  if (!action) return '确认'
+  if (action.kind === 'adopt') return '确认采纳'
+  return action.kind === 'cancel_remaining'
+    ? '确认取消剩余'
+    : action.proposal.status === 'accepted'
+      ? '确认取消采纳'
+      : '确认拒绝'
+})
+
+function askAdopt(proposal: DecisionProposal): void {
+  if (busyId.value !== null) return
+  pendingAction.value = { kind: 'adopt', proposal }
+  reason.value = ''
 }
 
-async function reject(proposal: DecisionProposal): Promise<void> {
-  const reason =
-    window.prompt(
-      `${proposal.status === 'accepted' ? '取消采纳' : '拒绝'}原因（可留空）`,
-      '当前不接受该收益、期限或流动性取舍。',
-    ) ??
-    ''
-  busyId.value = proposal.id
+function askReject(proposal: DecisionProposal): void {
+  if (busyId.value !== null) return
+  pendingAction.value = { kind: 'reject', proposal }
+  reason.value = ''
+}
+
+function askCancelRemaining(proposal: DecisionProposal): void {
+  if (busyId.value !== null) return
+  pendingAction.value = { kind: 'cancel_remaining', proposal }
+  reason.value = ''
+}
+
+function isPartiallyExecuted(proposal: DecisionProposal): boolean {
+  return String(decisionFor(proposal)?.review_meta?.execution_status || '') === 'partial'
+}
+
+function closeDialog(): void {
+  if (submitting.value) return
+  pendingAction.value = null
+  reason.value = ''
+}
+
+async function confirmAction(): Promise<void> {
+  const action = pendingAction.value
+  if (!action || submitting.value) return
+  submitting.value = true
+  busyId.value = action.proposal.id
   try {
-    await store.rejectDecisionProposal(proposal.id, reason)
-    show('提案已拒绝，不会生成正式决策')
+    if (action.kind === 'adopt') {
+      const result = await store.adoptDecisionProposal(action.proposal.id)
+      show(
+        `提案已采纳，决策 #${result.result.decision?.id ?? ''} 进入待执行状态`,
+      )
+    } else if (action.kind === 'cancel_remaining') {
+      const result = await store.cancelRemainingDecisionProposal(
+        action.proposal.id,
+        reason.value.trim(),
+      )
+      show(
+        `已取消剩余 ¥${formatMoney(result.remaining_cents / 100, 2)}，释放预留 ¥${formatMoney(result.released_cents / 100, 2)}`,
+      )
+    } else {
+      await store.rejectDecisionProposal(
+        action.proposal.id,
+        action.kind === 'reject' ? reason.value.trim() : '',
+      )
+      show(
+        action.proposal.status === 'accepted'
+          ? '已取消未执行计划，原决策和证据保留'
+          : '提案已拒绝，未创建正式决策',
+      )
+    }
+    pendingAction.value = null
+    reason.value = ''
   } catch (error) {
-    show(error instanceof Error ? error.message : '拒绝失败', { error: true })
+    show(error instanceof Error ? error.message : '操作失败', { error: true })
   } finally {
+    submitting.value = false
     busyId.value = null
   }
 }
@@ -79,6 +150,7 @@ function executionLabel(proposal: DecisionProposal): string {
     executed: '已执行，待确认',
     confirmed: '交易已确认',
     deviation: '执行偏差',
+    partial_cancelled: '已取消剩余',
     unplanned: '计划外执行',
   }[status] || proposal.status
 }
@@ -132,7 +204,6 @@ function yieldPolicyText(proposal: DecisionProposal): string {
   <div class="rw-panel-body">
     <div class="rw-toolbar">
       <div class="rw-card-heading">
-        <p class="kicker">DECISION PROPOSALS</p>
         <strong class="rw-panel-title">待采纳决策提案</strong>
         <p class="rw-panel-sub">
           平台只提出有证据的方案。采纳不会替你交易；你仍需在招行 App
@@ -189,16 +260,18 @@ function yieldPolicyText(proposal: DecisionProposal): string {
             <button
               type="button"
               class="rw-button"
-              :disabled="busyId === proposal.id"
-              @click="adopt(proposal)"
+              data-testid="proposal-adopt"
+              :disabled="busyId !== null"
+              @click="askAdopt(proposal)"
             >
               采纳，待我执行
             </button>
             <button
               type="button"
               class="rw-link-button is-danger"
-              :disabled="busyId === proposal.id"
-              @click="reject(proposal)"
+              data-testid="proposal-reject"
+              :disabled="busyId !== null"
+              @click="askReject(proposal)"
             >
               拒绝
             </button>
@@ -211,11 +284,22 @@ function yieldPolicyText(proposal: DecisionProposal): string {
             上传成交截图
           </RouterLink>
           <button
-            v-if="proposal.status === 'accepted'"
+            v-if="proposal.status === 'accepted' && isPartiallyExecuted(proposal)"
             type="button"
             class="rw-link-button is-danger"
-            :disabled="busyId === proposal.id"
-            @click="reject(proposal)"
+            data-testid="proposal-cancel-remaining"
+            :disabled="busyId !== null"
+            @click="askCancelRemaining(proposal)"
+          >
+            取消剩余
+          </button>
+          <button
+            v-else-if="proposal.status === 'accepted'"
+            type="button"
+            class="rw-link-button is-danger"
+            data-testid="proposal-cancel"
+            :disabled="busyId !== null"
+            @click="askReject(proposal)"
           >
             取消采纳
           </button>
@@ -228,5 +312,60 @@ function yieldPolicyText(proposal: DecisionProposal): string {
         </div>
       </article>
     </div>
+
+    <ConfirmDialog
+      :open="pendingAction !== null"
+      :title="dialogTitle"
+      :message="dialogMessage"
+      :confirm-label="dialogConfirmLabel"
+      :danger="pendingAction?.kind !== 'adopt'"
+      :busy="submitting"
+      @confirm="confirmAction"
+      @cancel="closeDialog"
+    >
+      <label v-if="pendingAction?.kind !== 'adopt'" class="proposal-reason">
+        <span>原因（可留空）</span>
+        <textarea
+          v-model="reason"
+          rows="3"
+          maxlength="200"
+          data-testid="proposal-reason"
+          :placeholder="pendingAction?.kind === 'cancel_remaining'
+            ? '例如：剩余金额不再执行，保留已确认成交。'
+            : '例如：当前不接受该收益、期限或流动性取舍。'"
+        />
+      </label>
+    </ConfirmDialog>
   </div>
 </template>
+
+<style scoped>
+.rw-panel-sub,
+.rw-muted,
+.rw-decision-meta em {
+  color: var(--ink-soft);
+}
+.proposal-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.proposal-reason textarea {
+  min-height: 72px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.proposal-reason textarea:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+</style>

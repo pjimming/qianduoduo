@@ -1,131 +1,207 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import R2PageHeader from '@/components/r2/R2PageHeader.vue'
-import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
+import WorkspaceNav from '@/components/r2/WorkspaceNav.vue'
 import DecisionProposalPanel from '@/components/review/DecisionProposalPanel.vue'
 import DecisionLogPanel from '@/components/review/DecisionLogPanel.vue'
 import CalibrationPanel from '@/components/review/CalibrationPanel.vue'
 import AutomationPanel from '@/components/review/AutomationPanel.vue'
+import { useDashboardStore } from '@/stores/dashboard'
 import type { DashboardPayload } from '@/types/dashboard'
 
 const props = defineProps<{
-  dashboard: DashboardPayload
+  dashboard?: DashboardPayload | null
 }>()
 
-const workspace = computed(() => props.dashboard.workspace)
-const pendingEvaluations = computed(
-  () => props.dashboard.inbox_center.summary.by_source.evaluation?.pending ?? 0,
-)
-const pendingProposals = computed(
-  () => props.dashboard.decision_proposals.summary.pending,
-)
-const wrongGood = computed(
-  () =>
-    workspace.value.decisions.filter(
-      (item) => item.rating === '流程错误，结果好',
-    ).length,
+const route = useRoute()
+const router = useRouter()
+const store = useDashboardStore()
+const { dashboard: storeDashboard } = storeToRefs(store)
+
+const data = computed<DashboardPayload | null>(
+  () => storeDashboard.value ?? props.dashboard ?? null,
 )
 
-const sections = computed(() => [
+const SECTIONS = ['proposals', 'decisions', 'results'] as const
+type Section = (typeof SECTIONS)[number]
+
+const section = computed<Section>(() => {
+  const value = typeof route.query.section === 'string' ? route.query.section : ''
+  return (SECTIONS as readonly string[]).includes(value) ? (value as Section) : 'proposals'
+})
+
+const resultsView = computed<'evaluations' | 'calibration'>(() =>
+  route.query.view === 'calibration' ? 'calibration' : 'evaluations',
+)
+
+const decisions = computed(() => data.value?.workspace.decisions ?? [])
+const pendingProposals = computed(
+  () => data.value?.decision_proposals.summary.pending ?? 0,
+)
+const pendingEvaluations = computed(
+  () => data.value?.inbox_center.summary.by_source.evaluation?.pending ?? 0,
+)
+const wrongGood = computed(
+  () => decisions.value.filter((decision) => decision.rating === '流程错误，结果好').length,
+)
+
+const navItems = computed(() => [
   {
-    id: 'proposals',
-    label: '决策提案',
-    meta:
-      pendingProposals.value > 0
-        ? `${pendingProposals.value} 条待采纳`
-        : '暂无待采纳',
+    key: 'proposals',
+    label: '待处理提案',
+    meta: pendingProposals.value ? `${pendingProposals.value} 条待处理` : '',
   },
   {
-    id: 'decisions',
-    label: '决策日志',
-    meta: `${workspace.value.decisions.length} 条`,
+    key: 'decisions',
+    label: '决策记录',
+    meta: decisions.value.length ? `${decisions.value.length} 条` : '',
   },
   {
-    id: 'calibration',
-    label: '预测校准',
-    meta:
-      props.dashboard.automation.calibration.total > 0
-        ? `${props.dashboard.automation.calibration.total} 条`
-        : '暂无到期预测',
-  },
-  {
-    id: 'automation',
-    label: '自动评估',
-    meta:
-      pendingEvaluations.value > 0
-        ? `${pendingEvaluations.value} 条待确认`
-        : '队列为空',
+    key: 'results',
+    label: '评估与校准',
+    meta: wrongGood.value
+      ? `${wrongGood.value} 条待校准`
+      : pendingEvaluations.value
+        ? `${pendingEvaluations.value} 条待评估`
+        : '',
   },
 ])
+
+function resultsLink(view: 'evaluations' | 'calibration') {
+  return {
+    path: route.path,
+    query: {
+      ...route.query,
+      notice: undefined,
+      section: 'results',
+      view,
+    },
+    hash: '',
+  }
+}
+
+function dismissNotice(): void {
+  void router.replace({ query: { ...route.query, notice: undefined } })
+}
 </script>
 
 <template>
-  <div class="r2-page">
+  <div class="r2-page evaluation-workspace">
     <R2PageHeader
       kicker="DECISIONS &amp; EVALUATION"
-      title="决策提案、决策日志、预测校准与自动评估"
-      description="平台先提出有证据的配置或换仓提案；你采纳后仍需自行交易，再上传截图。平台匹配实际交易、记录偏差，并校准当时的可检验预测。"
+      title="决策与评估"
+      description="把待执行提案、已执行决策和结果评价分开看：提案只在你确认后进入待执行；决策记录保留原因、预期与验证；结果区回看流程与收益是否一致。"
     >
       <template #actions>
-        <RouterLink
-          v-if="pendingProposals > 0"
-          class="r2-head-chip is-warn"
-          :to="{ name: 'r2-evaluation', hash: '#proposals' }"
-        >
-          待采纳提案 · {{ pendingProposals }}
-        </RouterLink>
-        <RouterLink
-          v-if="pendingEvaluations > 0"
-          class="r2-head-chip is-warn"
-          :to="{ name: 'r2-evaluation', hash: '#automation' }"
-          title="待确认评估需要补齐证据后才能形成结论"
-        >
-          待确认评估 · {{ pendingEvaluations }}
-        </RouterLink>
-        <span
-          v-if="wrongGood > 0"
-          class="r2-head-chip is-warn"
-          title="流程错误但结果好的决策最容易让人误以为方法有效"
-        >
-          流程错误结果好 {{ wrongGood }} 条
+        <span class="r2-head-chip">
+          待处理提案 <strong>{{ pendingProposals }}</strong>
         </span>
-        <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-review' }">
-          去写复盘
+        <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-trades' }">
+          去成交与上传
         </RouterLink>
       </template>
     </R2PageHeader>
 
-    <R2SectionIndex :items="sections" />
+    <WorkspaceNav :items="navItems" :active="section" label="决策与评估分区" />
 
-    <div class="r2-stack">
-      <section id="proposals" class="rw-panel r2-anchor" aria-label="决策提案">
-        <DecisionProposalPanel
-          :proposals="dashboard.decision_proposals"
-          :decisions="workspace.decisions"
-        />
-      </section>
-
-      <section id="decisions" class="rw-panel r2-anchor" aria-label="决策日志">
-        <DecisionLogPanel
-          :decisions="workspace.decisions"
-          :today="workspace.timeline.today"
-          :trades="workspace.trades?.trades ?? []"
-          :automation="dashboard.automation"
-        />
-      </section>
-
-      <section id="calibration" class="rw-panel r2-anchor" aria-label="预测校准">
-        <CalibrationPanel :report="dashboard.automation.calibration" />
-      </section>
-
-      <section id="automation" class="rw-panel r2-anchor" aria-label="自动评估">
-        <AutomationPanel
-          :automation="dashboard.automation"
-          :decisions="workspace.decisions"
-          :today="workspace.timeline.today"
-        />
-      </section>
+    <div
+      v-if="route.query.notice === 'invalid-section'"
+      class="r2-inline-notice is-warn"
+      role="status"
+    >
+      <span>无法识别的分区参数，已回到默认分区。</span>
+      <button type="button" class="link-button" @click="dismissNotice">知道了</button>
     </div>
+
+    <p v-if="!data" class="evaluation-skeleton" role="status">正在读取账本…</p>
+
+    <template v-else>
+      <section
+        v-if="section === 'proposals'"
+        id="proposals"
+        class="evaluation-section r2-anchor"
+        aria-label="待处理提案"
+      >
+        <div class="rw-panel">
+          <DecisionProposalPanel
+            :proposals="data.decision_proposals"
+            :decisions="decisions"
+          />
+        </div>
+      </section>
+
+      <section
+        v-else-if="section === 'decisions'"
+        id="decisions"
+        class="evaluation-section r2-anchor"
+        aria-label="决策记录"
+      >
+        <div class="rw-panel">
+          <DecisionLogPanel
+            :decisions="decisions"
+            :today="data.meta.today"
+            :trades="data.workspace.trades?.trades ?? []"
+            :automation="data.automation"
+          />
+        </div>
+      </section>
+
+      <section
+        v-else
+        id="results"
+        class="evaluation-section r2-anchor"
+        aria-label="评估与校准"
+      >
+        <nav class="results-view-switch r2-view-switch" aria-label="结果查看方式">
+          <RouterLink
+            class="r2-index-link"
+            :aria-current="resultsView === 'evaluations' ? 'true' : undefined"
+            :to="resultsLink('evaluations')"
+          >
+            结果评价
+            <span v-if="pendingEvaluations">{{ pendingEvaluations }} 条待评估</span>
+          </RouterLink>
+          <RouterLink
+            class="r2-index-link"
+            :aria-current="resultsView === 'calibration' ? 'true' : undefined"
+            :to="resultsLink('calibration')"
+          >
+            评价校准
+            <span v-if="wrongGood">{{ wrongGood }} 条待校准</span>
+          </RouterLink>
+        </nav>
+
+        <div v-if="resultsView === 'evaluations'" id="automation" class="rw-panel">
+          <AutomationPanel
+            :automation="data.automation"
+            :decisions="decisions"
+            :today="data.meta.today"
+          />
+        </div>
+        <div v-else id="calibration" class="rw-panel">
+          <CalibrationPanel :report="data.automation.calibration" />
+        </div>
+      </section>
+    </template>
   </div>
 </template>
+
+<style scoped>
+.evaluation-workspace {
+  min-width: 0;
+}
+.evaluation-section {
+  min-width: 0;
+}
+.evaluation-skeleton {
+  margin: 18px 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+</style>

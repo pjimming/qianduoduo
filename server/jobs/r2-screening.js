@@ -24,14 +24,15 @@ function createScreeningRuntime(options, ledgerPath, logger) {
     }
   }
 
-  if (enabled) return createScreeningService({ ...serviceOptions, ...open(false) });
+  if (enabled) return { ...createScreeningService({ ...serviceOptions, ...open(false) }), workerDbPath: file };
   const paused = createScreeningService(serviceOptions);
-  if (!file) return paused;
+  if (!file) return { ...paused, workerDbPath: null };
   // With the worker paused, no database handle survives an HTTP read. The ledger
   // can keep running while the operator replaces the independent screening file.
-  const queries = ['status', 'runs', 'runDetail', 'results', 'detail', 'nav'];
+  const queries = ['status', 'runs', 'runDetail', 'results', 'detail', 'nav', 'executionSnapshot'];
   return {
     ...paused,
+    workerDbPath: file,
     ...Object.fromEntries(queries.map(method => [method, (...args) => {
       const service = createScreeningService({ ...serviceOptions, ...open(true) });
       try {

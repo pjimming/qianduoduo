@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import type {
@@ -12,6 +12,7 @@ import type {
   DecisionYieldPolicy,
   TradeTransaction,
 } from '@/types/dashboard'
+import { getStrategyStatus } from '@/api/r2-strategy'
 import DataTrustTraceDialog from '@/components/DataTrustTraceDialog.vue'
 
 const props = defineProps<{
@@ -33,6 +34,11 @@ const ratings: DecisionRating[] = [
   '流程错误，结果差',
 ]
 
+const activeStrategyVersion = ref('r2-3pct-v1')
+onMounted(async () => {
+  try { const state = await getStrategyStatus(); if (state.mode === 'v9') activeStrategyVersion.value = state.contract.execution_version }
+  catch { /* The server owns the final strategy assignment. */ }
+})
 const formOpen = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
@@ -40,11 +46,11 @@ const traceOpen = ref(false)
 const traceFactKey = ref('')
 const traceTitle = ref('')
 const form = reactive<DecisionInput>(emptyForm())
-const target3Locked = computed(() => /r2-3pct|target3/i.test(form.strategy_version))
+const target3Locked = computed(() => /r2-3pct|target3|r2-v9/i.test(form.strategy_version))
 const strategyLocked = computed(
   () =>
     editingId.value !== null &&
-    props.trades.some((trade) => trade.decision_id === editingId.value),
+    (props.trades.some((trade) => trade.decision_id === editingId.value) || Boolean(props.decisions.find(item => item.id === editingId.value)?.review_meta?.execution_snapshot)),
 )
 
 watch(
@@ -78,7 +84,7 @@ function emptyForm(): DecisionInput {
     expectation: '',
     invalidation_condition: '',
     actual_result: '',
-    strategy_version: 'r2-3pct-v1',
+    strategy_version: activeStrategyVersion.value,
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
     evaluation_at: ['buy_day', 'holding', 'maturity'],
@@ -550,6 +556,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
             :disabled="strategyLocked"
           />
         </label>
+        <p v-if="editingId === null && /r2-v9/.test(activeStrategyVersion)" class="rw-form-hint is-wide">当前使用 v9 策略。手工决策仍需补齐证据，不代表已通过准入；策略冻结以服务端核验为准。</p>
         <label class="rw-field">
           <span>目标年化（%）</span>
           <input

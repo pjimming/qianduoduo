@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatMoney } from '@/composables/useFormatters'
@@ -634,6 +635,7 @@ function addDays(date: string, days: number): string {
             </td>
             <td>
               <div class="rw-row-actions">
+                <RouterLink v-if="trade.status === 'confirmed' && trade.trade_type === 'redeem'" class="rw-link-button" :to="{ name: 'r2-products', query: { section: 'allocation', lot: `trade:${trade.id}`, product_code: trade.product_code }, hash: '#strategy-review' }">核验实际到账</RouterLink>
                 <button type="button" class="rw-link-button" @click="openTrace(trade)">
                   来源与修订
                 </button>

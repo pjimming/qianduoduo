@@ -12,6 +12,7 @@ function createProposalsService({
   proposalsRepository,
   dashboardQuery,
   transactionManager,
+  executionProposals = null,
   todayProvider = todayShanghai,
 }) {
   function list() {
@@ -23,37 +24,52 @@ function createProposalsService({
   }
 
   function act(id, action, body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body) || (action === 'reject' && body.reason === null)) {
+      throw proposalError(400, '提案请求格式不正确');
+    }
     let result;
     try {
-      if (
-        action === 'adopt' &&
-        proposalsRepository.expireInvalidCashProposal(id)
-      ) {
-        throw proposalError(
-          400,
-          'cash 产品不能进入新增配置或换仓提案',
+      const current = proposalsRepository.getProposal(id);
+      if (current?.payload?.execution_version) {
+        if (!executionProposals) throw proposalError(409, '执行策略服务暂不可用，请稍后重试');
+        if (Object.keys(body).some(key => !['reason', 'expected_input_fingerprint'].includes(key)) ||
+            (body.expected_input_fingerprint !== undefined && !/^[a-f0-9]{64}$/.test(body.expected_input_fingerprint))) {
+          throw proposalError(400, '提案请求格式不正确');
+        }
+        result = action === 'adopt' ? executionProposals.adopt(id, { expectedInputFingerprint: body.expected_input_fingerprint })
+          : executionProposals.reject(id, { reason: body.reason === undefined ? '' : body.reason });
+      } else {
+        if (
+          action === 'adopt' &&
+          proposalsRepository.expireInvalidCashProposal(id)
+        ) {
+          throw proposalError(
+            400,
+            'cash 产品不能进入新增配置或换仓提案',
+          );
+        }
+        if (
+          action === 'adopt' &&
+          proposalsRepository.expireStaleYieldPolicyProposal(id)
+        ) {
+          throw proposalError(
+            400,
+            '提案收益策略已升级，请刷新后重新生成',
+          );
+        }
+        result = transactionManager.run(() =>
+          action === 'adopt'
+            ? proposalsRepository.adoptProposal(id, todayProvider())
+            : {
+                proposal: proposalsRepository.rejectProposal(
+                  id,
+                  body.reason,
+                ),
+              },
         );
       }
-      if (
-        action === 'adopt' &&
-        proposalsRepository.expireStaleYieldPolicyProposal(id)
-      ) {
-        throw proposalError(
-          400,
-          '提案收益策略已升级，请刷新后重新生成',
-        );
-      }
-      result = transactionManager.run(() =>
-        action === 'adopt'
-          ? proposalsRepository.adoptProposal(id, todayProvider())
-          : {
-              proposal: proposalsRepository.rejectProposal(
-                id,
-                body.reason,
-              ),
-            },
-      );
     } catch (error) {
+      if (error.statusCode) throw error;
       throw proposalError(400, error.message);
     }
     if (!result?.proposal) {

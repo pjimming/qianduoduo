@@ -62,6 +62,38 @@ function confirmedTrade() {
   };
 }
 
+function frozenDecision({
+  id,
+  prediction: record,
+  strategy_version,
+  rule_version,
+  status,
+  numeric_error = null,
+}) {
+  return {
+    id,
+    strategy_version,
+    review_meta: {
+      predictions: [record],
+      prediction_results: {
+        [record.id]: {
+          status,
+          reason_code:
+            status === 'hit'
+              ? 'target_met'
+              : status === 'miss'
+                ? 'target_missed'
+                : 'product_income_coverage_incomplete',
+          numeric_error,
+          evaluated_for: '2026-02-01',
+          data_as_of: '2026-01-31',
+        },
+      },
+      evaluation_settings: { status: 'frozen', rule_version },
+    },
+  };
+}
+
 test('prediction outcomes distinguish hit, miss, pending, invalidation and evidence gaps', () => {
   const base = prediction();
   const decision = { id: 1, review_meta: { lifecycle_status: 'accepted' } };
@@ -291,4 +323,95 @@ test('monthly calibration aggregates confidence buckets and excludes pending fro
     }),
     report,
   );
+});
+
+test('calibration separates strategies, contract versions and metrics into distinct samples', () => {
+  const hitPrediction = prediction();
+  const missPrediction = prediction({ source_ref: 'proposal:miss' });
+  const otherVersionPrediction = prediction({ source_ref: 'proposal:v3' });
+  const pnlPrediction = prediction({
+    source_ref: 'proposal:pnl',
+    metric: 'net_pnl_cents',
+    baseline: { metric: 'net_pnl_cents', value: 0, unit: 'cent' },
+    expected: { direction: 'at_least', target: { point: 1000, unit: 'cent' } },
+  });
+  const gapPrediction = prediction({ source_ref: 'proposal:gap' });
+
+  const decisions = [
+    frozenDecision({
+      id: 1,
+      prediction: hitPrediction,
+      strategy_version: 'r2-3pct-v1',
+      rule_version: 'r2-eval-v2',
+      status: 'hit',
+      numeric_error: 1,
+    }),
+    frozenDecision({
+      id: 2,
+      prediction: missPrediction,
+      strategy_version: 'r2-3pct-v1',
+      rule_version: 'r2-eval-v2',
+      status: 'miss',
+      numeric_error: -1,
+    }),
+    frozenDecision({
+      id: 3,
+      prediction: otherVersionPrediction,
+      strategy_version: 'r2-3pct-v1',
+      rule_version: 'r2-eval-v3',
+      status: 'miss',
+      numeric_error: -2,
+    }),
+    frozenDecision({
+      id: 4,
+      prediction: pnlPrediction,
+      strategy_version: 'historical_unfrozen',
+      rule_version: 'historical_unfrozen',
+      status: 'hit',
+      numeric_error: 5,
+    }),
+    frozenDecision({
+      id: 5,
+      prediction: gapPrediction,
+      strategy_version: 'r2-3pct-v1',
+      rule_version: 'r2-eval-v2',
+      status: 'insufficient_data',
+    }),
+  ];
+
+  const report = buildCalibrationReport({
+    month: '2026-01',
+    today: '2026-02-01',
+    decisions,
+    proposals: [],
+    trades: [],
+    valuations: [],
+  });
+
+  const row = (strategy, rule, metric) =>
+    report.by_strategy.find(
+      (item) =>
+        item.strategy_version === strategy &&
+        item.evaluation_policy_version === rule &&
+        item.metric === metric,
+    );
+
+  // 同一旧策略、不同评价契约版本：两个独立样本。
+  assert.equal(row('r2-3pct-v1', 'r2-eval-v2', 'personal_annualized_return_pct').hit_rate, 0.5);
+  assert.equal(row('r2-3pct-v1', 'r2-eval-v3', 'personal_annualized_return_pct').hit_rate, 0);
+  // 不同预测指标（净收益分 vs 年化%）不得混算。
+  assert.equal(row('historical_unfrozen', 'historical_unfrozen', 'net_pnl_cents').hit_rate, 1);
+  assert.equal(
+    row('historical_unfrozen', 'historical_unfrozen', 'net_pnl_cents').mixed_metrics,
+    false,
+  );
+  // 证据不足样本保留在分组里，但不进入命中率分母。
+  const gapRow = row('r2-3pct-v1', 'r2-eval-v2', 'personal_annualized_return_pct');
+  assert.equal(gapRow.insufficient_data, 1);
+  assert.equal(gapRow.evaluated, 2);
+  assert.equal(gapRow.hit_rate, 0.5);
+  // 五个样本按 策略|契约版本|指标|方法 拆成三组。
+  assert.equal(report.by_strategy.length, 3);
+  // 推荐类型汇总的命中率同样只算 hit/miss（2 命中 / 2 命中+2 未中）。
+  assert.equal(report.by_type[0].hit_rate, 0.5);
 });

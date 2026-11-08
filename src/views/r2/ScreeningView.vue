@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import R2PageHeader from '@/components/r2/R2PageHeader.vue'
+defineProps<{ embedded?: boolean }>()
 import ScreeningDetail from '@/components/screening/ScreeningDetail.vue'
 import {
   categoryLabel, drawdownPct, evidenceExpired, hintLabel, localTime, pct, reasonLabel, recoveryLabel, refreshScreening,
@@ -86,7 +87,7 @@ async function readStatus() {
       previous.last_attempt?.retry_at !== data.last_attempt?.retry_at
     )) retry.value++
     statusError.value = ''
-    if (!runId.value && data.current_run && !query('run') && route.name === 'r2-screening') {
+    if (!runId.value && data.current_run && !query('run') && ['r2-screening', 'r2-products'].includes(String(route.name))) {
       await updateQuery({ run: data.current_run.id }, true)
     }
     return data
@@ -230,7 +231,7 @@ async function closeDetail() {
 
 <template>
   <div class="screening r2-page" aria-label="R2 选品初筛">
-    <R2PageHeader title="选品初筛" description="按公开披露核对人民币公募 R2 份额。正式候选按同期限、同分类的近 1 月年化排序。">
+    <R2PageHeader v-if="!embedded" title="选品初筛" description="按公开披露核对人民币公募 R2 份额。正式候选按同期限、同分类的近 1 月年化排序。">
       <template #actions>
         <button type="button" class="button button-ghost button-small" @click="selectTab(tab === 'history' ? 'shortlist' : 'history')">
           {{ tab === 'history' ? '返回筛选结果' : '运行记录' }}
@@ -241,6 +242,11 @@ async function closeDetail() {
         </button>
       </template>
     </R2PageHeader>
+    <div v-else class="screen-actions">
+      <span>同分类、同实际期限内按近1月年化排序；近1月不是未来收益承诺。</span>
+      <button type="button" class="button button-ghost button-small" @click="selectTab(tab === 'history' ? 'shortlist' : 'history')">{{ tab === 'history' ? '返回筛选结果' : '运行记录' }}</button>
+      <button type="button" class="button button-primary button-small" :disabled="pending || !status || !['ready', 'empty'].includes(status.availability)" @click="manual">{{ pending ? '正在提交…' : active ? '查看运行' : '刷新初筛' }}</button>
+    </div>
 
     <section class="batch-strip" aria-label="批次和证据时效">
       <div><span>当前展示批次</span><strong>{{ visibleRun ? visibleRun.business_date + ' · #' + visibleRun.id : '—' }}</strong></div>
@@ -380,6 +386,7 @@ async function closeDetail() {
                     <span>业绩 {{ row.performance_date || '待核' }}</span><small v-if="evidenceExpired(row.performance_date, today)" class="hint-warn">业绩已过期</small>
                     <small>净值 {{ row.metrics.latest || '—' }}<template v-if="evidenceExpired(row.metrics.latest, today)"> · 已过期</template></small>
                     <button type="button" class="link-button" :aria-label="'证据详情 ' + row.code" @click="openRow(row, $event)">证据详情</button>
+                    <button type="button" class="link-button" :disabled="!runIsCurrent || row.status !== 'eligible'" @click="updateQuery({ section: 'allocation', channel: row.channel, code: row.code })">加入配置试算</button>
                   </td>
                 </tr>
               </tbody>
@@ -399,6 +406,8 @@ async function closeDetail() {
 </template>
 
 <style scoped>
+.screen-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px; font-size:13px; color:var(--ink-soft); }
+.screen-actions > span { flex:1; min-width:220px; }
 .screening { --screen-control-line: color-mix(in srgb, var(--ink-soft) 72%, var(--card)); min-width: 0; color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; }
 .screening .button-ghost:not(:disabled) { border-color: var(--screen-control-line); }
 .screening :deep(.r2-page-desc) { color: var(--ink-soft); }

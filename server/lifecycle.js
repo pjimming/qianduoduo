@@ -20,6 +20,10 @@ const {
   createAutomationRunner,
 } = require('./jobs/automation-runner');
 const { createAutomationScheduler } = require('./jobs/automation-scheduler');
+const { createStrategyRepository } = require('./modules/r2-strategy/repository');
+const { createStrategyScheduler } = require('./jobs/r2-strategy-scheduler');
+const { createStrategyRunner } = require('./jobs/r2-strategy-runner');
+const { createStrategyService } = require('./modules/r2-strategy/service');
 const { createSafeLogger } = require('./infrastructure/logging/logger');
 const {
   terminateOcrProcesses,
@@ -40,8 +44,7 @@ function closeServer(server) {
   });
 }
 
-function runStartupMaintenance(repository, logger) {
-  try {
+function runStartupMaintenance(repository, logger) {  try {
     const backup = createDailyBackup(repository.db, repository.dbPath, {
       dir: repository.backupDir,
     });
@@ -107,8 +110,25 @@ function startServer(options = {}) {
       dataTrustMode: options.dataTrustMode || DATA_TRUST_MODE,
       migrationPolicy: options.migrationPolicy || 'auto',
     });
+  let strategyScheduler = null;
+  const screening = createScreeningRuntime({
+    ...options,
+    screeningOptions: {
+      ...options.screeningOptions,
+      onPublished: (event) => {
+        try { options.screeningOptions?.onPublished?.(event); }
+        catch (error) { logger.warn?.(`  初筛外部发布回调失败：${error instanceof Error ? error.message : error}`); }
+        strategyScheduler?.run('screening_published');
+      },
+    },
+  }, repository.dbPath, logger);
+  const strategyRepository = createStrategyRepository(repository.db, {
+    transactionManager: repository.transactionManager,
+  });
+  const strategy = createStrategyService({ repository, screening, strategyRepository });
   const dashboardQuery = createDashboardQueryService(repository, {
     automationRunner,
+    strategy,
   });
   try {
     dashboardQuery.projectDashboard();
@@ -125,8 +145,15 @@ function startServer(options = {}) {
     onCycleComplete: () => dashboardQuery.projectDashboard(),
   });
   if (options.automation !== false) scheduler.start();
-
-  const screening = createScreeningRuntime(options, repository.dbPath, logger);
+  strategyScheduler = createStrategyScheduler({
+    strategy,
+    runner: options.strategyRunner || createStrategyRunner({ dbPath: repository.dbPath,
+      screeningPath: screening.workerDbPath, timeoutMs: options.strategyTimeoutMs ?? 330000 }),
+    logger,
+    intervalMs: options.strategyIntervalMs || 300000,
+    startupDelayMs: options.strategyStartupDelayMs ?? 5000,
+    onDerived: () => dashboardQuery.projectDashboard(),
+  });
   const server = createServer({
     screening,
     repository,
@@ -141,7 +168,7 @@ function startServer(options = {}) {
 
   function stop({ exitProcess = false, exitCode = 0 } = {}) {
     if (closing) return closing;
-    closing = Promise.allSettled([scheduler.stop(), screening.stop()])
+    closing = Promise.allSettled([scheduler.stop(), screening.stop(), strategyScheduler.stop()])
       .then(() => {
         terminateOcrProcesses();
         return closeServer(server);
@@ -211,6 +238,9 @@ function startServer(options = {}) {
       logger.log?.(`  打开：http://${host}:${actualPort}`);
       logger.log?.(`  数据库：${repository.dbPath}`);
       screening.start();
+      if (options.automation !== false && options.strategyScheduler !== false) {
+        strategyScheduler.start();
+      }
       logger.log?.('  按 Ctrl+C 停止服务');
       logger.log?.('');
       resolve();
@@ -234,16 +264,21 @@ function startServer(options = {}) {
     ready,
     stop,
     scheduler,
+    strategy,
+    strategyRepository,
+    strategyScheduler,
     getStatus: () => ({
       listening: server.listening,
       closing: Boolean(closing),
       scheduler: scheduler.getStatus(),
+      strategy: strategyScheduler.getStatus(),
     }),
   };
 }
 
 module.exports = {
   closeServer,
+  createStrategyScheduler,
   runStartupMaintenance,
   startServer,
 };

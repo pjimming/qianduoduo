@@ -9,11 +9,13 @@ const props = withDefaults(
     confirmLabel?: string
     cancelLabel?: string
     danger?: boolean
+    busy?: boolean
   }>(),
   {
     confirmLabel: '确认',
     cancelLabel: '取消',
     danger: false,
+    busy: false,
   },
 )
 
@@ -29,18 +31,20 @@ const dialogRef = ref<HTMLElement | null>(null)
 const confirmButton = ref<HTMLButtonElement | null>(null)
 
 function close(): void {
+  if (props.busy) return
   emit('update:open', false)
   emit('cancel')
 }
 
 function confirm(): void {
+  if (props.busy) return
   emit('confirm')
   emit('update:open', false)
 }
 
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
-    close()
+    if (!props.busy) close()
     return
   }
   if (event.key !== 'Tab' || !dialogRef.value) return
@@ -93,8 +97,14 @@ onBeforeUnmount(() => {
       >
         <h2 :id="titleId">{{ title }}</h2>
         <p :id="descriptionId">{{ message }}</p>
+        <slot />
         <div class="confirm-actions">
-          <button class="button button-ghost button-small" type="button" @click="close">
+          <button
+            class="button button-ghost button-small"
+            type="button"
+            :disabled="busy"
+            @click="close"
+          >
             {{ cancelLabel }}
           </button>
           <button
@@ -102,9 +112,10 @@ onBeforeUnmount(() => {
             class="button button-small"
             :class="danger ? 'button-danger' : 'button-primary'"
             type="button"
+            :disabled="busy"
             @click="confirm"
           >
-            {{ confirmLabel }}
+            {{ busy ? '处理中…' : confirmLabel }}
           </button>
         </div>
       </div>

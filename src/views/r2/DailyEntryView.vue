@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
@@ -50,11 +50,15 @@ const capitalDialogMode = ref<'init' | 'edit'>('init')
 const pendingDeleteDate = ref<string | null>(null)
 let promptTimer: number | undefined
 
-const sections = [
-  { id: 'today', label: '两类截图' },
-  { id: 'records', label: '历史记录' },
-  { id: 'capital', label: '本金账户' },
-]
+const sections = computed(() => [
+  { id: 'today', label: '两类截图', meta: '2 类' },
+  { id: 'records', label: '历史记录', meta: `${props.dashboard.records.length} 条` },
+  {
+    id: 'capital',
+    label: '本金账户',
+    meta: props.dashboard.capital.initialized ? '已初始化' : '待初始化',
+  },
+])
 
 const moduleRoutes: Record<
   ModuleKey,
@@ -151,10 +155,10 @@ onBeforeUnmount(() => {
       </template>
     </R2PageHeader>
 
-    <R2SectionIndex :items="sections" />
+    <R2SectionIndex :items="sections" sticky />
 
-    <div class="r2-stack">
-      <section id="today" class="r2-anchor" aria-label="两类截图">
+    <div class="r2-stack daily-sections">
+      <section id="today" class="r2-anchor daily-section" aria-label="两类截图">
         <QuickEntryPanel
           ref="quickRef"
           :dashboard="dashboard"
@@ -164,7 +168,7 @@ onBeforeUnmount(() => {
         />
       </section>
 
-      <section id="records" class="r2-anchor" aria-label="历史记录">
+      <section id="records" class="r2-anchor daily-section" aria-label="历史记录">
         <LedgerTable
           ref="ledgerRef"
           :records="dashboard.records"
@@ -173,7 +177,7 @@ onBeforeUnmount(() => {
         />
       </section>
 
-      <section id="capital" class="r2-anchor" aria-label="本金账户">
+      <section id="capital" class="r2-anchor daily-section" aria-label="本金账户">
         <CapitalPanel :dashboard="dashboard" @open-init="openCapitalDialog()" />
       </section>
     </div>
@@ -196,3 +200,21 @@ onBeforeUnmount(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.r2-stack.daily-sections {
+  gap: 26px;
+}
+
+.daily-section {
+  min-width: 0;
+  scroll-margin-top: 76px;
+}
+
+.r2-section-switch.is-sticky {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  box-shadow: 0 8px 24px rgba(13, 60, 52, 0.1);
+}
+</style>

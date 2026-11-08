@@ -8,6 +8,10 @@
 
 范围为应用内七个理财入口、三个投资入口和报告阅读页。财务口径、接口契约、交易证据、路由与日期深链、研究发布和隐私边界均按项目规则验收。第一阶段交付本文与审计报告后等待评审。第二阶段完成后先展示设计系统及验证结果，再进入分页面实施。
 
+2026-11-07 R2 相关范围补充：用户已确认将“选品初筛”和“产品与配置”合并为“选品与配置”，包含候选初筛、资金配置、持仓复核；“决策与评估”继续独立，并整合提案处理、决策记录与评估校准。该部分的页面职责、路由兼容、证据详情、状态与跨页验收统一以 [R2 策略整合计划第 9 节](docs/r2-strategy-integration-plan.md#9-页面与消息整合) 为准。
+
+2026-11-08 更新：上述 R2 工作区已完成本地实施，侧栏七入口，`/ledger/products?section=screening|allocation|holdings` 与 `/ledger/evaluation?section=proposals|decisions|results` 已接通，旧 `/ledger/screening` 和旧锚点保留兼容；专用 E2E 通过。实施与验收记录见 [TD-R2-STRATEGY-001](docs/tasks/active/TD-R2-STRATEGY-001/TD-R2-STRATEGY-001.md)。
+
 ## 第二阶段 · 设计系统规格
 
 从现有 `tokens.css`、`theme.css` 和组件出发，在阶段二交付语义映射、组件状态与桌面布局规格。先核对既有调用方，优先复用现有 Vue 组件和 CSS 变量，沿用当前技术栈。下表是待评审的规格范围，具体 token 值由第二阶段确定。

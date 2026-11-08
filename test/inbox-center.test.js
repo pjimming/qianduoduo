@@ -436,3 +436,31 @@ test('rollover decisions hide maturity reminders and matured evaluation notices'
     '同一续作产品后续批次的到期未赎回提醒应被隐藏',
   );
 });
+
+test('strategy projection is merged into the message center with its stable key', () => {
+  const items = makeSourceItems({
+    meta: { today: '2026-11-08', reporting_date: '2026-11-08', has_reporting_record: true },
+    capital: { initialized: false },
+    workspace: {},
+    automation: { pending_evaluations: [], drafts: [], notifications: [] },
+    strategy_inbox: [
+      {
+        dedupe_key: 'r2-strategy:message-exit-1',
+        source_type: 'r2_strategy_holding',
+        source_id: 'lot:120056A:2026-10-01',
+        category: 'action',
+        severity: 'urgent',
+        title: '续持不达标：120056A',
+        summary: '有效近1月年化 1.82%，低于2.15%续持门槛。',
+        action_label: '确认退出',
+        action_url: '/ledger/products?section=holdings&lot=lot%3A120056A%3A2026-10-01',
+        metadata: { lot_id: 'lot:120056A:2026-10-01' },
+      },
+    ],
+  });
+  const strategy = items.filter((item) => item.source_type === 'r2_strategy_holding');
+  assert.equal(strategy.length, 1);
+  assert.equal(strategy[0].dedupe_key, 'r2-strategy:message-exit-1');
+  assert.equal(strategy[0].severity, 'urgent');
+  assert.equal(strategy[0].metadata.lot_id, 'lot:120056A:2026-10-01');
+});

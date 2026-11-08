@@ -6,6 +6,27 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { openDatabase } = require('../lib/db');
+const { shift } = require('../server/modules/r2-screening/calendar');
+const { strategyFixture } = require('./fixtures/r2-strategy.cjs');
+const { evaluateStrategy } = require('../server/modules/r2-strategy/engine');
+const { buildExecutionSnapshot } = require('../server/modules/r2-strategy/snapshot');
+
+function frozenV9Snapshot() {
+  const input = strategyFixture();
+  const result = evaluateStrategy(input);
+  const selected = result.allocation.rows.find((row) => row.amount_cents > 0);
+  const row = result.evidence.rows.find(
+    (item) => item.identity.code === selected.identity.code,
+  );
+  const check = input.checks.find((item) => item.mapping_id === row.mapping.id);
+  return buildExecutionSnapshot({
+    input,
+    result,
+    row,
+    check,
+    amountCents: selected.amount_cents,
+  });
+}
 
 function openTemp(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-automation-'));
@@ -162,7 +183,7 @@ test('correcting a decision date supersedes the stale buy-day evaluation', (t) =
   );
 });
 
-test('a new rule version supersedes pending runs from the previous version', (t) => {
+test('global rule upgrades do not restamp the version frozen in an existing decision', (t) => {
   const { repository, automation } = openTemp(t);
   const decision = repository.createDecision(decisionInput());
   automation.updateSettings({ rule_version: 'r2-eval-test-v1' });
@@ -180,11 +201,12 @@ test('a new rule version supersedes pending runs from the previous version', (t)
       (item) =>
         item.decision_id === decision.id && item.stage === 'buy_day',
     );
-  const current = runs.find((item) => item.rule_version === 'r2-eval-test-v2');
+  const current = runs.find((item) => item.rule_version === 'r2-eval-v2');
   const previous = runs.find((item) => item.id === first.id);
   assert.ok(current);
   assert.equal(current.status, 'pending');
-  assert.equal(previous.status, 'undone');
+  assert.equal(current.id, first.id);
+  assert.equal(previous.status, 'pending');
   assert.equal(
     automation
       .listJobs({ status: 'pending' })
@@ -500,5 +522,194 @@ test('pending evaluation job closes when missing evidence is filled', (t) => {
       .listJobs({ status: 'pending' })
       .filter((job) => job.job_type === 'evaluation_review').length,
     0,
+  );
+});
+
+test('v9 fact corrections append a new maturity evaluation version and keep the old one', (t) => {
+  const { repository, automation } = openTemp(t);
+  const snapshot = frozenV9Snapshot();
+  const decision = repository.createDecision(
+    decisionInput({
+      date: '2026-11-07',
+      strategy_version: 'r2-screening-v9-execution-v1',
+      evaluation_at: ['maturity'],
+      review_meta: {
+        execution_snapshot: snapshot,
+        execution_portfolio_check: {
+          verified: true,
+          principal_cents: 10000,
+          constraints_pass: true,
+        },
+      },
+    }),
+  );
+  repository.tradeStore.createTrade(
+    {
+      trade_date: '2026-11-07',
+      confirm_date: snapshot.forecast.confirm_date,
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: snapshot.mapping.product_code,
+      product_name: '合成产品',
+      amount: snapshot.amount_cents / 100,
+      term_days: 30,
+      decision_id: decision.id,
+      screenshot_id: 1,
+      source: 'manual',
+      notes: '',
+    },
+    'fixture',
+    snapshot.forecast.confirm_date,
+  );
+
+  // 合成夹具产品代码 S1 不满足估值库的 4-32 位代码校验，但评价只读取
+  // product_daily_valuations 事实；这里直接写入临时库，避免放宽生产校验。
+  const writeValuation = (date, dailyPnl, notes = '') => {
+    const now = new Date().toISOString();
+    repository.db
+      .prepare(
+        `INSERT INTO product_daily_valuations
+           (valuation_date, credit_date, yield_date, product_code, product_name,
+            holding_amount, daily_pnl, source, screenshot_id, confidence, notes,
+            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(product_code, yield_date) DO UPDATE SET
+           daily_pnl = excluded.daily_pnl,
+           notes = excluded.notes,
+           updated_at = excluded.updated_at`,
+      )
+      .run(
+        date,
+        date,
+        date,
+        snapshot.mapping.product_code,
+        '合成产品',
+        snapshot.amount_cents / 100,
+        dailyPnl,
+        'manual-correction',
+        null,
+        100,
+        notes,
+        now,
+        now,
+      );
+  };
+
+  const addValuations = () => {
+    for (
+      let date = snapshot.forecast.confirm_date;
+      date < snapshot.forecast.redemption_date;
+      date = shift(date, 1)
+    ) {
+      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+      if (weekday === 0 || weekday === 6) continue;
+      writeValuation(
+        date,
+        date === '2026-11-16' ? 0.5 : 0.02,
+        date === snapshot.forecast.confirm_date
+          ? `覆盖收益日期：${date} 至 ${date}`
+          : '',
+      );
+    }
+  };
+  addValuations();
+
+  const maturityRuns = () =>
+    automation
+      .listRuns(100)
+      .filter((row) => row.decision_id === decision.id && row.stage === 'maturity');
+
+  automation.runCycle({ today: snapshot.forecast.end_date, trigger: 'first' });
+  assert.equal(maturityRuns().length, 1);
+  const first = maturityRuns()[0];
+  assert.equal(first.evidence.result.available, true);
+  assert.equal(first.evidence.historical_basis, 'frozen');
+
+  // 事实修正后再次扫描，应追加新评价版本而不是覆盖已经 auto 的历史行。
+  writeValuation('2026-11-16', 0.8);
+  automation.runCycle({ today: snapshot.forecast.end_date, trigger: 'second' });
+  const after = maturityRuns();
+  assert.equal(after.length, 2);
+  assert.ok(after.some((row) => row.id === first.id));
+  assert.notEqual(after[0].dedupe_key, after[1].dedupe_key);
+
+  automation.runCycle({ today: snapshot.forecast.end_date, trigger: 'third' });
+  assert.equal(maturityRuns().length, 2);
+});
+
+test('v9 decisions keep the frozen contract and rule version across repeated cycles', (t) => {
+  const { repository, automation } = openTemp(t);
+  const snapshot = frozenV9Snapshot();
+  const decision = repository.createDecision(
+    decisionInput({
+      date: '2026-11-07',
+      strategy_version: 'r2-screening-v9-execution-v1',
+      // 旧评价路径会按 evaluation_at 跳过买入日；新执行版本按冻结阶段评价。
+      evaluation_at: ['maturity'],
+      review_meta: {
+        execution_snapshot: snapshot,
+        execution_portfolio_check: {
+          verified: true,
+          principal_cents: 10000,
+          constraints_pass: true,
+        },
+      },
+    }),
+  );
+  repository.tradeStore.createTrade(
+    {
+      trade_date: '2026-11-07',
+      confirm_date: '2026-11-09',
+      trade_type: 'buy',
+      status: 'confirmed',
+      product_code: snapshot.mapping.product_code,
+      product_name: '合成产品',
+      amount: snapshot.amount_cents / 100,
+      term_days: 30,
+      decision_id: decision.id,
+      screenshot_id: 1,
+      source: 'manual',
+      notes: '',
+    },
+    'fixture',
+    '2026-11-09',
+  );
+
+  automation.updateSettings({
+    hurdle_short: 99,
+    hurdle_medium: 99,
+    hurdle_long: 99,
+  });
+  const runs = () =>
+    automation
+      .listRuns(100)
+      .filter((row) => row.decision_id === decision.id);
+
+  automation.runCycle({ today: '2026-11-10', trigger: 'first' });
+  assert.equal(runs().length, 1);
+  const [frozen] = runs();
+  assert.equal(frozen.stage, 'buy_day');
+  assert.equal(frozen.rule_version, snapshot.evaluation_contract.version);
+  assert.equal(frozen.evidence.historical_basis, 'frozen');
+  assert.equal(
+    frozen.evidence.evaluation_contract.version,
+    snapshot.evaluation_contract.version,
+  );
+  assert.equal(frozen.dedupe_key.includes('|'), true);
+
+  automation.runCycle({ today: '2026-11-10', trigger: 'second' });
+  assert.equal(runs().length, 1);
+  assert.equal(runs()[0].rule_version, snapshot.evaluation_contract.version);
+
+  // 全局规则版本和 hurdle 都不是新策略的评价依据。
+  automation.updateSettings({ rule_version: 'r2-eval-v9-global-changed' });
+  automation.runCycle({ today: '2026-11-11', trigger: 'third' });
+  assert.equal(runs().length, 1);
+  assert.equal(runs()[0].rule_version, snapshot.evaluation_contract.version);
+  assert.equal(
+    repository
+      .listDecisions()
+      .find((item) => item.id === decision.id).evaluation_basis,
+    'frozen_execution',
   );
 });

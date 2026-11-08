@@ -68,6 +68,11 @@ const { createReviewsService } = require('./modules/reviews/service');
 const { createResearchService } = require('./modules/research/service');
 
 const { createScreeningRoutes } = require('./modules/r2-screening/routes');
+const { createStrategyService } = require('./modules/r2-strategy/service');
+const { createStrategyRoutes } = require('./modules/r2-strategy/routes');
+const { createStrategyRepository } = require('./modules/r2-strategy/repository');
+const { createStrategyProposalService } = require('./modules/r2-strategy/proposals');
+const { createTradeExecutionReconciler } = require('./modules/r2-strategy/trade-execution');
 
 const staticService = createStaticService(STATIC_DIR);
 const researchService = createResearchService({
@@ -91,12 +96,16 @@ function registerModuleRoutes(router, definitions, migrated) {
 
 function createRequestHandler(repository, options = {}) {
   const automationRunner = options.automationRunner || null;
+  const strategyRepository = createStrategyRepository(repository.db, { transactionManager: repository.transactionManager });
+  const strategy = createStrategyService({ repository, screening: options.screening, strategyRepository });
   const dashboardQuery =
     options.dashboardQuery ||
-    createDashboardQueryService(repository, { automationRunner });
+    createDashboardQueryService(repository, { automationRunner, strategy });
   const dataTrust = createDataTrustService({ repository });
   const operations = createOperationsService(repository);
   const products = createProductsService(repository);
+  const executionProposals = createStrategyProposalService({ repository, strategy, strategyRepository });
+  repository.tradeStore?.setExecutionReconciler?.(createTradeExecutionReconciler({ repository, strategyRepository }));
   const notifications = createNotificationsService(repository);
   const capital = createCapitalService({
     capitalRepository: createCapitalRepository(repository),
@@ -122,6 +131,7 @@ function createRequestHandler(repository, options = {}) {
     proposalsRepository: createProposalsRepository(repository),
     dashboardQuery,
     transactionManager,
+    executionProposals,
   });
   const evaluations = createEvaluationsService({
     evaluationsRepository: createEvaluationsRepository(repository),
@@ -153,6 +163,7 @@ function createRequestHandler(repository, options = {}) {
     [
       ...createOperationsRoutes(operations),
       ...createScreeningRoutes(options.screening),
+      ...createStrategyRoutes(strategy, executionProposals),
       ...createDataTrustRoutes(dataTrust),
       ...createDashboardRoutes(dashboardQuery),
       ...createCapitalRoutes(capital),

@@ -23,7 +23,7 @@ function apiError(statusCode, code, message, data) {
 function createScreeningService({
   repository = null, enabled = false, issue = null, logger = console,
   clock = () => new Date(), refresh = refreshCalendar, valuation = valuationCalendar, collector = collect,
-  timeoutMs = TIMEOUT_MS, schedule = true,
+  timeoutMs = TIMEOUT_MS, schedule = true, onPublished = null,
 } = {}) {
   const versions = { rule: RULE_VERSION, refresh: refresh.version, valuation: valuation.version, collector: VERSION };
   let running;
@@ -92,6 +92,18 @@ function createScreeningService({
     return { run, row, data: JSON.parse(row.detail) };
   }
 
+  function notifyPublished(event) {
+    if (typeof onPublished !== 'function') return;
+    const immediate = setImmediate(() => {
+      try {
+        onPublished(event);
+      } catch (error) {
+        logger?.warn?.(`  初筛发布通知失败：${error instanceof Error ? error.message : error}`);
+      }
+    });
+    immediate.unref?.();
+  }
+
   async function execute(claim, controller) {
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]);
     const heartbeat = setInterval(() => {
@@ -116,7 +128,14 @@ function createScreeningService({
           (key === 'quota' && info.matched < info.requested)) ||
         evaluated.results.some(row => row.status === 'pending' || row.hints.includes('calendar_gap'));
       const now = clock();
-      if (repository.publish(claim.token, now.toISOString(), shanghaiTime(now).date, input, evaluated, degraded)) return;
+      if (repository.publish(claim.token, now.toISOString(), shanghaiTime(now).date, input, evaluated, degraded)) {
+        notifyPublished({
+          run_id: claim.run.id,
+          business_date: claim.run.business_date,
+          published_at: now.toISOString(),
+        });
+        return;
+      }
       outcome = { status: 'interrupted', code: 'superseded' };
     } catch (error) {
       health = health ?? error.health;
@@ -228,6 +247,7 @@ function createScreeningService({
       running?.controller.abort();
       await running?.done;
     },
+    executionSnapshot() { return requireRepository().readExecutionSnapshot(); },
     close() { repository?.close(); },
   };
 }

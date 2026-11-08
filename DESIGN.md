@@ -150,7 +150,7 @@ components:
 | 确认与反馈 | 有独立确认组件与全局状态 Toast；部分流程仍用浏览器原生弹窗。 | [ConfirmDialog.vue](src/components/ConfirmDialog.vue) · [ToastBanner.vue](src/components/ToastBanner.vue) · [InboxView.vue](src/views/r2/InboxView.vue) |
 | 报告正文 | 正文由已生成的报告文档和作用域化样式渲染，附目录与表格包装。正文样式与公共应用外壳分别管理。 | [ReportDocument.vue](src/components/report/ReportDocument.vue) · [report.css](src/styles/report.css) |
 
-选品初筛使用单列批次状态、批次筛选统计、分组表格与独立详情面板。信息正文采用 13–14px，金额、收益与日期使用表格数字对齐。页面在 1280 与 1440px 下保留列级对照，横向滚动限定在表格容器。详情支持键盘操作和点击外部遮罩关闭，从结果行打开时关闭后回到触发按钮。
+“选品与配置”使用页内三分区：初筛分区为单列批次状态、批次筛选统计、分组表格与独立详情面板；配置和持仓复核分区复用既有目标/持仓区块。信息正文采用 13–14px，金额、收益与日期使用表格数字对齐。页面在 1280 与 1440px 下保留列级对照，横向滚动限定在表格容器。详情支持键盘操作和点击外部遮罩关闭，从结果行打开时关闭后回到触发按钮。
 
 ## Do's and Don'ts
 

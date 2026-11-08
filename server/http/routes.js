@@ -1,10 +1,12 @@
 'use strict';
 
 const { patterns: screeningPatterns } = require('../modules/r2-screening/routes');
+const { patterns: strategyPatterns } = require('../modules/r2-strategy/routes');
 
 const API_ROUTE_PATTERNS = Object.freeze([
   ['GET', '/api/health'],
   ...screeningPatterns,
+  ...strategyPatterns,
   ['GET', '/api/backups'],
   ['POST', '/api/backups'],
   ['GET', '/api/dashboard'],

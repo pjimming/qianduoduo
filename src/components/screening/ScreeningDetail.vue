@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { categoryLabel, drawdownPct, hintLabel, localTime, pct, reasonLabel, recoveryLabel, screeningGet, stateLabel,
   type Detail, type Nav } from './api'
 
@@ -69,6 +70,7 @@ watch(() => [props.run, props.channel, props.code, section.value, navWindow.valu
       </div>
       <button type="button" class="button button-ghost button-small" autofocus @click="emit('close')">关闭详情</button>
     </header>
+    <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-products', query: { section: 'allocation', channel: props.channel, code: props.code }, hash: '#strategy-review' }">带入交易前复核（使用当前证据）</RouterLink>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-else-if="!detail" role="status">正在读取份额证据…</p>
     <template v-else>

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { apiRequest } from '@/api/client'
+import { cancelStrategyProposalRemaining } from '@/api/r2-strategy'
 import type {
   CapitalEventInput,
   CapitalEventMutationResponse,
@@ -361,6 +362,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
       },
     )
     dashboard.value = response.dashboard
+    return response
+  }
+
+  async function cancelRemainingDecisionProposal(
+    id: number,
+    reason = '',
+  ): Promise<Awaited<ReturnType<typeof cancelStrategyProposalRemaining>>> {
+    const response = await cancelStrategyProposalRemaining(id, reason)
+    await load()
     return response
   }
 
@@ -852,6 +862,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadDecisionProposals,
     adoptDecisionProposal,
     rejectDecisionProposal,
+    cancelRemainingDecisionProposal,
     markNotification,
     markAllNotificationsRead,
     markInboxItem,

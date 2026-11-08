@@ -80,3 +80,4 @@ ID: QDD-MB-NN
 统计范围:
 失败回退:
 ```
+<!-- v9 策略验收同步：市场简报职责、频率及公开隔离不变；R2 当前策略只读入口为 /api/r2-strategy/status、/api/r2-strategy/workspace，禁止用 legacy 推荐代替当前 v9。 -->

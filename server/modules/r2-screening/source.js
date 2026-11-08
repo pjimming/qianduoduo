@@ -4,7 +4,8 @@ const { createHash } = require('node:crypto');
 const { setTimeout: delay } = require('node:timers/promises');
 const { API, openPublicBrowser, createProductListClient, queryProducts } = require('./product-list');
 const { isoDate } = require('./calendar');
-const { decimal, fresh, screen } = require('./policy');
+const { decimal, fresh, screen, evaluateProduct } = require('./policy');
+const { fingerprint: stablePublicHash } = require('../r2-strategy/contract');
 
 const VERSION = 'cmb-public-v1';
 const SOURCE = 'cmb';
@@ -19,6 +20,7 @@ const hash = value => createHash('sha256').update(typeof value === 'string' ? va
 const text = (value, max = 300) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 const normalize = value => text(value).normalize('NFKC').replace(/\s+/g, '').toLowerCase();
 const shareKey = ({ channel, code }) => `${channel}/${code}`;
+const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const evidence = (kind, url, checked_at, summary) => ({ kind, url, checked_at, summary, hash: hash(summary) });
 
 function sourceError(code, message, health) {
@@ -440,7 +442,99 @@ async function collect({ date, calendar, signal, clock = () => new Date(), optio
   }
 }
 
+// Public, same-share monitoring only. Unlike collect(), detail and NAV are
+// attempted even for sold-out, below-yield and no-longer-listed shares. This
+// function deliberately has no holding/lot/amount argument and persists nothing.
+async function collectHoldingEvidence({ identities, date, calendar, signal: callerSignal, clock = () => new Date(), options: input = {} }) {
+  if (!isoDate(date) || date !== isoDate(date) || typeof calendar?.isOpen !== 'function' ||
+      !Array.isArray(identities) || identities.length > 128) throw sourceError('monitor_input', '监控日期、日历或份额范围无效');
+  const seen = new Set();
+  const targets = identities.map(identity => {
+    if (!identity || typeof identity !== 'object' || Array.isArray(identity) ||
+        Object.keys(identity).some(key => !['source', 'channel', 'code'].includes(key)) ||
+        identity.source !== SOURCE || !KEY.test(identity.channel) || !KEY.test(identity.code)) {
+      throw sourceError('monitor_identity', '监控请求仅接受公开来源、渠道和销售份额身份');
+    }
+    const key = shareKey(identity);
+    if (seen.has(key)) throw sourceError('monitor_identity', '监控份额身份重复');
+    seen.add(key);
+    return { source: SOURCE, channel: identity.channel, code: identity.code };
+  }).sort((a, b) => compareText(shareKey(a), shareKey(b)));
+  const options = { ...OPTIONS, ...input };
+  if (!Number.isInteger(options.maxParallel) || options.maxParallel < 1 || options.maxParallel > 4) throw sourceError('monitor_input', '监控并发需在1至4之间');
+  const signal = callerSignal ? AbortSignal.any([callerSignal, AbortSignal.timeout(300000)]) : AbortSignal.timeout(300000);
+  const health = { pool: { requested: 0, ok: 0, included: 0 }, detail: { requested: targets.length, ok: 0 },
+    nav: { requested: targets.length, ok: 0 } };
+  const items = [];
+  const finish = () => {
+    items.sort((a, b) => compareText(shareKey(a.identity), shareKey(b.identity)));
+    const content = { scope: 'holding_monitor', business_date: date, collector_version: VERSION,
+      items: items.map(row => ({ identity: row.identity, data: row.data, nav_hash: row.nav_hash,
+        issues: row.issues, evidence: row.evidence.map(proof => ({ kind: proof.kind, hash: proof.hash, url: proof.url, summary: proof.summary })) })) };
+    return { ...content, captured_at: clock().toISOString(), health, items, content_hash: stablePublicHash(content) };
+  };
+  if (!targets.length) return finish();
+  const browser = await (options.openBrowser ?? openPublicBrowser)(signal);
+  try {
+    let shares = [], poolIssue = null;
+    try {
+      const client = await (options.listClient ?? createProductListClient)(browser.context, signal);
+      const result = await queryProducts(client, '1', { strict: true });
+      shares = parsePool(result.rows);
+      health.pool = { requested: result.pages, ok: result.pages, included: shares.length, total: result.total };
+    } catch (error) {
+      signal.throwIfAborted();
+      poolIssue = error.code ?? 'pool_unavailable';
+      health.pool.issue = poolIssue;
+    }
+    const byIdentity = new Map(shares.map(row => [shareKey(row), row]));
+    let cf, clientIssue = null;
+    try { cf = await (options.cfClient ?? createCfClient)(browser.context, signal, options); }
+    catch (error) { signal.throwIfAborted(); clientIssue = error.code ?? 'detail_client_unavailable'; }
+    await parallel(targets, options.maxParallel, signal, async identity => {
+      const listed = byIdentity.get(shareKey(identity));
+      const product = listed ? { ...listed } : { channel: identity.channel, code: identity.code, name: identity.code,
+        issuer: '', performance: {}, performance_date: null };
+      const proofs = [], issues = [];
+      if (!listed) issues.push(poolIssue ?? 'share_not_listed');
+      if (listed) proofs.push(evidence('performance', API, clock().toISOString(), {
+        performance_date: listed.performance_date, performance: listed.performance,
+        inception_date: listed.inception_date, risk: listed.risk, currency: 'CNY', public_offering: true, source: SOURCE,
+      }));
+      if (cf) {
+        try {
+          product.detail = parseDetail(await cf('/api/ProductInfo/getSAProductDetailInfo', identity), identity, null);
+          health.detail.ok++;
+          proofs.push(evidence('detail', publicDetail(identity), clock().toISOString(), product.detail));
+        } catch (error) {
+          signal.throwIfAborted();
+          product.detail = null; product.detail_issue = error.code ?? 'detail_unavailable'; issues.push(product.detail_issue);
+        }
+        try {
+          product.nav = await readNav(cf, identity, signal);
+          if (product.nav.points.length) health.nav.ok++;
+          proofs.push(evidence('nav', publicDetail(identity, 'prodvalue'), clock().toISOString(), {
+            total: product.nav.total, pages: product.nav.pages, points_hash: hash(product.nav.points), raw_precision: true,
+          }));
+        } catch (error) {
+          signal.throwIfAborted();
+          product.nav = { issue: error.code ?? 'nav_unavailable' }; issues.push(product.nav.issue);
+        }
+      } else {
+        product.detail_issue = clientIssue; product.nav = { issue: clientIssue }; issues.push(clientIssue);
+      }
+      const data = evaluateProduct(product, date, calendar);
+      // The monitoring calculation must never acquire a candidate rank or quota
+      // simply because this separately requested public evidence exists.
+      data.shortlisted = false; data.rank = null;
+      items.push({ identity, data, nav_hash: product.nav?.points?.length ? hash(product.nav.points) : null,
+        evidence: proofs, issues: [...new Set(issues)], listed: Boolean(listed), automatic_eligible: false });
+    });
+    return finish();
+  } finally { await browser.close(); }
+}
+
 module.exports = {
-  VERSION, SOURCE, KEY, shareKey, hash, sourceError, collect, parsePool, parseQuota, parseDetail, parseAmount,
+  VERSION, SOURCE, KEY, shareKey, hash, sourceError, collect, collectHoldingEvidence, parsePool, parseQuota, parseDetail, parseAmount,
   readNav, readShelf, publicPdf, publicDetail, createCfClient,
 };

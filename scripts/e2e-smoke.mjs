@@ -30,12 +30,13 @@ const { openScreeningRepository } = require('../server/modules/r2-screening/repo
 const { createScreeningService } = require('../server/modules/r2-screening/service.js')
 const screeningFixture = require('../test/fixtures/r2-screening/2026-11-07.json')
 const { shiftDate, todayShanghai } = require('../lib/metrics.js')
+const { weekendDisclosureBase } = require('../lib/product-income-coverage.js')
 const { resolveProductCsv } = require('../server.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const e2eToday = todayShanghai()
 const waitingYieldDate = shiftDate(e2eToday, -1)
-const waitingFinalDate = shiftDate(e2eToday, 1)
+const waitingFinalDate = shiftDate(weekendDisclosureBase(waitingYieldDate), 2)
 const ONE_PIXEL_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII='
 const chromeCandidates = [
@@ -926,8 +927,8 @@ async function main() {
       '根路径应重定向到收益概览',
     )
     assert(
-      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 8,
-      '侧边栏理财分区应有 8 个入口',
+      (await page.locator('#nav-group-wealth .sidebar-link').count()) === 7,
+      '侧边栏理财分区应有 7 个入口',
     )
     const wealthLinkTexts = await page
       .locator('#nav-group-wealth .sidebar-link')
@@ -2163,7 +2164,6 @@ async function main() {
       .filter({ hasText: 'E2E 资金冗余产品' })
       .first()
     await proposalMessage.waitFor()
-    page.once('dialog', (dialog) => void dialog.accept())
     await proposalMessage.getByRole('button', { name: '采纳提案' }).click()
     await page.waitForFunction(
       () => document.querySelector('.toast')?.textContent?.includes('提案已采纳'),
@@ -2285,6 +2285,36 @@ async function main() {
     await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案移动端')
     await page.setViewportSize({ width: 1280, height: 900 })
 
+    if (
+      process.argv.includes('--skip-legacy-workspace') ||
+      process.env.E2E_SKIP_LEGACY_WORKSPACE === '1'
+    ) {
+      console.log(
+        'e2e-smoke: 旧选品/评估整页断言由 e2e-r2-strategy.mjs 覆盖，跳过历史块',
+      )
+      for (const [path, selector] of [
+        ['/ledger/products?section=screening', '#screening'],
+        ['/ledger/products?section=allocation', '#allocation'],
+        ['/ledger/products?section=holdings', '#holding-reviews'],
+        ['/ledger/evaluation?section=proposals', '#proposals'],
+        ['/ledger/evaluation?section=decisions', '#decisions'],
+        ['/ledger/evaluation?section=results', '#results'],
+      ]) {
+        await page.goto(base + path, { waitUntil: 'networkidle' })
+        await page.waitForSelector(selector)
+        assert(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+          ),
+          `${path} 出现横向溢出`,
+        )
+      }
+      await page.goto(base + '/ledger/screening', { waitUntil: 'networkidle' })
+      assert(
+        new URL(page.url()).searchParams.get('section') === 'screening',
+        '旧 /ledger/screening 深链没有回到候选初筛分区',
+      )
+    } else {
     await page.goto(`${base}/ledger/products`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.allocation-bucket')
     const productGoalLocator = page.getByTestId('product-goal-text')
@@ -3345,6 +3375,20 @@ async function main() {
       .locator('#proposals .proposal-card')
       .filter({ hasText: 'E2E 资金冗余产品' })
       .getByTestId('proposal-yield-policy')
+    const cancelProposalCard = page.locator('#proposals .proposal-card').filter({ hasText: 'E2E 资金冗余产品' })
+    const cancelWrites = []
+    const trackCancelWrite = (request) => {
+      if (request.method() === 'POST' && /\/api\/decision-proposals\/\d+\//.test(request.url())) cancelWrites.push(request.url())
+    }
+    page.on('request', trackCancelWrite)
+    await Promise.all([
+      page.waitForEvent('dialog').then(dialog => dialog.dismiss()),
+      cancelProposalCard.getByRole('button', { name: '取消采纳', exact: true }).click(),
+    ])
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    page.off('request', trackCancelWrite)
+    assert(cancelWrites.length === 0, '取消拒绝原因输入后仍发送了提案业务写请求')
+    assert(await cancelProposalCard.getByRole('button', { name: '取消采纳', exact: true }).isEnabled(), '取消原因输入后按钮未恢复可操作状态')
     assert(
       ((await proposalYieldPolicy.textContent()) ?? '').includes(
         'r2-term-yield-v1',
@@ -3540,6 +3584,7 @@ async function main() {
       '加载失败时没有重试入口',
     )
     await errorPage.close()
+    }
 
     for (const [index, date] of [
       '2026-09-02',
@@ -3622,7 +3667,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏八入口、选品初筛深链与双主题、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、选品初筛深链与双主题、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

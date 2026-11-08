@@ -3,6 +3,14 @@
 function createDecisionsRepository(repository) {
   if (!repository) throw new Error('decisions repository 需要 repository');
   return {
+    strategyState() {
+      return require('../r2-strategy/repository').createStrategyRepository(repository.db,
+        { transactionManager: repository.transactionManager }).state();
+    },
+    hasReservation(decisionId) {
+      const installed = repository.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='r2_fund_reservations' AND type='table'").get();
+      return Boolean(installed && repository.db.prepare('SELECT 1 FROM r2_fund_reservations WHERE decision_id=? LIMIT 1').get(decisionId));
+    },
     createDecision(decision) {
       return repository.createDecision(decision);
     },
