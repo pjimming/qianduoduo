@@ -385,8 +385,10 @@ async function closeDetail() {
                   <td>
                     <span>业绩 {{ row.performance_date || '待核' }}</span><small v-if="evidenceExpired(row.performance_date, today)" class="hint-warn">业绩已过期</small>
                     <small>净值 {{ row.metrics.latest || '—' }}<template v-if="evidenceExpired(row.metrics.latest, today)"> · 已过期</template></small>
-                    <button type="button" class="link-button" :aria-label="'证据详情 ' + row.code" @click="openRow(row, $event)">证据详情</button>
-                    <button type="button" class="link-button" :disabled="!runIsCurrent || row.status !== 'eligible'" @click="updateQuery({ section: 'allocation', channel: row.channel, code: row.code })">加入配置试算</button>
+                    <div class="evidence-links">
+                      <button type="button" class="link-button" :aria-label="'证据详情 ' + row.code" @click="openRow(row, $event)">证据详情</button>
+                      <button type="button" class="link-button" :disabled="!runIsCurrent || row.status !== 'eligible'" @click="updateQuery({ section: 'allocation', channel: row.channel, code: row.code })">加入配置试算</button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -444,6 +446,7 @@ thead th { background: var(--card-soft); color: var(--ink); white-space: nowrap;
 th.numeric, td.numeric { text-align: end; white-space: nowrap; }
 .result-group th { background: var(--green-wash); color: var(--ink); padding-block: 6px; }
 .result-table td:last-child { min-width: 126px; }
+.evidence-links { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; }
 td small, th small { margin-top: 3px; font-weight: normal; }
 .share-name, .link-button { border: 0; background: transparent; padding: 0; color: var(--green);
   text-decoration: underline; text-underline-offset: 3px; font: inherit; cursor: pointer; }

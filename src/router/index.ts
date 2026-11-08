@@ -2,6 +2,9 @@ import { createRouter, createWebHistory, type LocationQuery, type RouteLocationN
 
 const PRODUCT_SECTIONS = ['screening', 'allocation', 'holdings'] as const
 const EVALUATION_SECTIONS = ['proposals', 'decisions', 'results'] as const
+const DAILY_SECTIONS = ['today', 'records', 'capital'] as const
+const TRADES_SECTIONS = ['current-value', 'holdings', 'valuations', 'trades', 'inbox'] as const
+const REVIEW_SECTIONS = ['score', 'rhythm', 'monthly-notes', 'quarterly-notes'] as const
 const SCREENING_KEYS = [
   'run',
   'tab',
@@ -23,6 +26,29 @@ const PRODUCT_ANCHORS: Record<string, string> = {
   '#events': 'holdings',
   '#products': 'allocation',
   '#screening': 'screening',
+}
+
+const DAILY_ANCHORS: Record<string, string> = {
+  '#capture-trade': 'today',
+  '#capture-income': 'today',
+  '#records': 'records',
+  '#capital': 'capital',
+  '#capitalPanel': 'capital',
+}
+
+const TRADES_ANCHORS: Record<string, string> = {
+  '#current-value': 'current-value',
+  '#holdings': 'holdings',
+  '#valuations': 'valuations',
+  '#trades': 'trades',
+  '#inbox': 'inbox',
+}
+
+const REVIEW_ANCHORS: Record<string, string> = {
+  '#score': 'score',
+  '#rhythm': 'rhythm',
+  '#monthly-notes': 'monthly-notes',
+  '#quarterly-notes': 'quarterly-notes',
 }
 
 function textQuery(to: RouteLocationNormalized, key: string): string {
@@ -113,6 +139,79 @@ function normalizeEvaluation(to: RouteLocationNormalized): NormalizedSection {
   return {
     section,
     view,
+    hash,
+    notice: invalid ? 'invalid-section' : textQuery(to, 'notice'),
+  }
+}
+
+function normalizeDaily(to: RouteLocationNormalized): NormalizedSection {
+  const explicit = textQuery(to, 'section')
+  const invalid =
+    explicit !== '' && !(DAILY_SECTIONS as readonly string[]).includes(explicit)
+  let section = (DAILY_SECTIONS as readonly string[]).includes(explicit)
+    ? explicit
+    : ''
+  if (!section) {
+    const anchorTarget = DAILY_ANCHORS[to.hash]
+    if (anchorTarget === 'records' && textQuery(to, 'date') === '') {
+      section = 'records'
+    } else if (anchorTarget === 'capital') {
+      section = 'capital'
+    } else {
+      section = 'today'
+    }
+  }
+
+  // 带 date 的链接要打开收益录入表单，表单位于「两类截图」分区。
+  let hash = to.hash
+  const anchorTarget = DAILY_ANCHORS[hash]
+  if (anchorTarget && anchorTarget !== section) hash = ''
+
+  return {
+    section,
+    view: '',
+    hash,
+    notice: invalid ? 'invalid-section' : textQuery(to, 'notice'),
+  }
+}
+
+function normalizeTrades(to: RouteLocationNormalized): NormalizedSection {
+  const explicit = textQuery(to, 'section')
+  const invalid =
+    explicit !== '' && !(TRADES_SECTIONS as readonly string[]).includes(explicit)
+  let section = (TRADES_SECTIONS as readonly string[]).includes(explicit)
+    ? explicit
+    : ''
+  if (!section) section = TRADES_ANCHORS[to.hash] || 'current-value'
+
+  let hash = to.hash
+  const anchorTarget = TRADES_ANCHORS[hash]
+  if (anchorTarget && anchorTarget !== section) hash = ''
+
+  return {
+    section,
+    view: '',
+    hash,
+    notice: invalid ? 'invalid-section' : textQuery(to, 'notice'),
+  }
+}
+
+function normalizeReview(to: RouteLocationNormalized): NormalizedSection {
+  const explicit = textQuery(to, 'section')
+  const invalid =
+    explicit !== '' && !(REVIEW_SECTIONS as readonly string[]).includes(explicit)
+  let section = (REVIEW_SECTIONS as readonly string[]).includes(explicit)
+    ? explicit
+    : ''
+  if (!section) section = REVIEW_ANCHORS[to.hash] || 'score'
+
+  let hash = to.hash
+  const anchorTarget = REVIEW_ANCHORS[hash]
+  if (anchorTarget && anchorTarget !== section) hash = ''
+
+  return {
+    section,
+    view: '',
     hash,
     notice: invalid ? 'invalid-section' : textQuery(to, 'notice'),
   }
@@ -300,6 +399,15 @@ router.beforeEach(to => {
   if (to.name === 'r2-evaluation') {
     return normalizedLocation(to, normalizeEvaluation(to))
   }
+  if (to.name === 'r2-daily') {
+    return normalizedLocation(to, normalizeDaily(to))
+  }
+  if (to.name === 'r2-trades') {
+    return normalizedLocation(to, normalizeTrades(to))
+  }
+  if (to.name === 'r2-review') {
+    return normalizedLocation(to, normalizeReview(to))
+  }
 })
 
 const PRODUCT_LABELS: Record<string, string> = {
@@ -312,8 +420,44 @@ const EVALUATION_LABELS: Record<string, string> = {
   decisions: '决策记录',
   results: '评估与校准',
 }
+const DAILY_LABELS: Record<string, string> = {
+  today: '两类截图',
+  records: '历史记录',
+  capital: '本金账户',
+}
+const TRADES_LABELS: Record<string, string> = {
+  'current-value': '当前净值',
+  holdings: '当前持仓',
+  valuations: '产品收益',
+  trades: '交易流水',
+  inbox: '交易收件箱',
+}
+const REVIEW_LABELS: Record<string, string> = {
+  score: '日周月评分',
+  rhythm: '复盘节奏',
+  'monthly-notes': '月度五问',
+  'quarterly-notes': '季度复盘',
+}
 
 router.afterEach((to) => {
+  if (to.name === 'r2-daily') {
+    const section = typeof to.query.section === 'string' ? to.query.section : ''
+    const label = DAILY_LABELS[section] || DAILY_LABELS.today
+    document.title = `理财 · 每日记账 · ${label} · 钱多多`
+    return
+  }
+  if (to.name === 'r2-trades') {
+    const section = typeof to.query.section === 'string' ? to.query.section : ''
+    const label = TRADES_LABELS[section] || TRADES_LABELS['current-value']
+    document.title = `理财 · 交易与持仓 · ${label} · 钱多多`
+    return
+  }
+  if (to.name === 'r2-review') {
+    const section = typeof to.query.section === 'string' ? to.query.section : ''
+    const label = REVIEW_LABELS[section] || REVIEW_LABELS.score
+    document.title = `理财 · 复盘 · ${label} · 钱多多`
+    return
+  }
   if (to.name === 'r2-products' || to.name === 'r2-evaluation') {
     const section = typeof to.query.section === 'string' ? to.query.section : ''
     const labels = to.name === 'r2-products' ? PRODUCT_LABELS : EVALUATION_LABELS

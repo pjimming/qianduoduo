@@ -175,8 +175,7 @@ function noteText(item: IncomeInboxItem): string {
                     :key="`${item.id}-${code}`"
                     :to="{
                       name: 'r2-trades',
-                      hash: '#valuations',
-                      query: { product: code },
+                      query: { section: 'valuations', product: code },
                     }"
                   >
                     {{ code }}
@@ -195,8 +194,7 @@ function noteText(item: IncomeInboxItem): string {
               v-if="item.record_date"
               :to="{
                 name: 'r2-daily',
-                hash: '#records',
-                query: { date: item.record_date },
+                query: { section: 'today', date: item.record_date },
               }"
             >
               查看当日账户收益
@@ -205,8 +203,7 @@ function noteText(item: IncomeInboxItem): string {
               v-if="productCodes(item).length"
               :to="{
                 name: 'r2-trades',
-                hash: '#valuations',
-                query: { product: productCodes(item)[0] },
+                query: { section: 'valuations', product: productCodes(item)[0] },
               }"
             >
               查看逐产品收益档案

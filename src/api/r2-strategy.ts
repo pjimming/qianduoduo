@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { StrategyWorkspace, StrategyComputation, StrategyReview, StrategyMapping } from '@/types/r2-strategy'
+import type { StrategyWorkspace, StrategyComputation, StrategyReview, StrategyMapping, StrategyShareMatchResult } from '@/types/r2-strategy'
 import type { DecisionProposal } from '@/types/dashboard'
 const base = '/api/r2-strategy'
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -49,6 +49,7 @@ export const getStrategyWorkspace = (signal?: AbortSignal) => apiRequest<Strateg
 export const computeStrategy = (fingerprint?: string) => apiRequest<StrategyComputation>(base + '/recompute', { method: 'POST', body: JSON.stringify(fingerprint ? { expected_input_fingerprint: fingerprint } : {}) })
 export const generateStrategyProposals = (fingerprint?: string) => apiRequest<{ created: { proposal: DecisionProposal; existing: boolean }[]; blockers?: string[] }>(base + '/proposals', { method: 'POST', body: JSON.stringify(fingerprint ? { expected_input_fingerprint: fingerprint } : {}) })
 export const getStrategyReview = (channel: string, code: string, lot = '', signal?: AbortSignal) => strategyRequest<StrategyReview>(`/reviews/${encodeURIComponent(channel)}/${encodeURIComponent(code)}${lot ? '?lot=' + encodeURIComponent(lot) : ''}`, { signal })
+export const matchStrategyShare = (productCode: string) => strategyRequest<StrategyShareMatchResult>(`/share-match?product_code=${encodeURIComponent(productCode)}`)
 export const saveStrategyMapping = (input: Record<string, unknown>) => strategyRequest<{ mapping: StrategyMapping }>('/mappings', { method: 'POST', body: JSON.stringify(input) })
 export const saveStrategyCheck = (input: Record<string, unknown>) => strategyRequest<{ check: unknown; review?: StrategyReview['review'] }>('/checks', { method: 'POST', body: JSON.stringify(input) })
 export const cancelStrategyProposalRemaining = (id: number, reason = '') => strategyRequest<{

@@ -13,9 +13,14 @@ const { createTransactionManager } = require('../../../lib/transaction');
 const { isoDate } = require('../r2-screening/calendar');
 const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifact');
 const { combineHoldingEvidence } = require('./holding-evidence');
+const { productFamilyKey } = require('../../../lib/products');
 
 const ACTOR = 'local-user';
 const HASH = /^[a-f0-9]{64}$/;
+// Bump whenever engine/account/allocation output can change without a ledger
+// write. It is part of the frozen input hash so a code change invalidates the
+// persisted strategy job instead of reusing a stale result.
+const CALCULATION_VERSION = 2;
 
 function requiredText(value, name, max = 80) {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[\u0000-\u001f]/.test(value)) {
@@ -46,9 +51,58 @@ function publicEvidence(row) {
   const value = { name: row.name, issuer: row.issuer, registration: row.registration ?? null,
     term: row.term ? { kind: row.term.kind, days: Number.isSafeInteger(row.term.days) ? row.term.days : null } : null,
     performance_date: row.performance_date ?? null,
+    quota: row.quota ?? null, min_amount: row.min_amount ?? null,
+    evidence_tier: row.evidence_tier ?? null,
+    detail: row.detail ? { equity_upper_pct: row.detail.equity_upper_pct ?? null,
+      valuation_basis: row.detail.valuation_basis ?? null, sale_channel: row.detail.sale_channel ?? null } : null,
     evidence: (row.evidence ?? []).map(item => ({ kind: item.kind, url: item.url, hash: item.hash,
       summary: item.summary ?? null })) };
   return value;
+}
+
+function factPaths(value, prefix = '') {
+  if (value === null || value === undefined || value === '') return [];
+  if (typeof value !== 'object' || Array.isArray(value)) return [prefix];
+  return Object.entries(value).flatMap(([key, item]) => factPaths(item, prefix ? `${prefix}.${key}` : key));
+}
+
+// Public evidence is safe to place into the form, but it is not a manual
+// verification. Document hashes/versions are suggestions; read_and_verified and
+// checked_on stay empty until the user confirms them.
+function publicPrefill(row, product) {
+  if (!row) return null;
+  const facts = {};
+  const prospectus = (row.evidence ?? []).find(item => item.kind === 'prospectus' &&
+    HASH.test(item.summary?.document_hash ?? ''));
+  const documentVersion = prospectus
+    ? (typeof prospectus.summary?.disclosure_date === 'string' && prospectus.summary.disclosure_date.trim()
+      ? prospectus.summary.disclosure_date.trim()
+      : typeof prospectus.summary?.title === 'string' ? prospectus.summary.title.trim() : '')
+    : '';
+  if (row.term && ['minimum', 'closed'].includes(row.term.kind) && Number.isSafeInteger(row.term.days)) {
+    facts.terms = { kind: row.term.kind, days: row.term.days };
+  }
+  if (prospectus && documentVersion) {
+    const document = { hash: prospectus.summary.document_hash, version: documentVersion };
+    facts.terms = { ...(facts.terms ?? {}), document: { ...document } };
+    facts.assets = { prospectus: { ...document } };
+  }
+  if (Number.isFinite(row.detail?.equity_upper_pct)) {
+    facts.assets = { ...(facts.assets ?? {}), equity_upper_pct: row.detail.equity_upper_pct };
+  }
+  const minimum = Number(row.min_amount);
+  if (Number.isFinite(minimum) && minimum >= 0) {
+    facts.allocation = { minimum_cents: Math.round(minimum * 100) };
+  }
+  const benchmark = String(product?.benchmark ?? '').replace(/\\s+/g, '').trim();
+  if (benchmark && product?.code) {
+    facts.allocation = { ...(facts.allocation ?? {}), strategy_family: {
+      key: productFamilyKey(product), basis: 'benchmark_proxy',
+      evidence_hash: fingerprint({ kind: 'benchmark_proxy', product_code: product.code, benchmark, source: 'product_master' }),
+    } };
+  }
+  if (!Object.keys(facts).length) return null;
+  return { facts, paths: factPaths(facts) };
 }
 
 function monthEndWindow(date, months) {
@@ -75,7 +129,9 @@ function createStrategyService({ repository, screening = null, strategyRepositor
       portfolio: { principal: settings.principal_override ?? capital.current_principal ?? 0,
         holdings: repository.tradeStore.getPortfolio(), trades: repository.tradeStore.listTrades(),
         reservations: store.reservations(), decisions: repository.listDecisions() },
-      settings: { max_single_pct: settings.max_single_pct, liquidity_floor_pct: settings.liquidity_floor_pct, cash_needs: cashNeeds }, date };
+      products: repository.listProducts(),
+      settings: { max_single_pct: settings.max_single_pct, liquidity_floor_pct: settings.liquidity_floor_pct, cash_needs: cashNeeds }, date,
+      calculation_version: CALCULATION_VERSION };
   }
   function ledgerInput(date) {
     if (transactionManager.isActive()) return readLedger(date);
@@ -161,6 +217,28 @@ function createStrategyService({ repository, screening = null, strategyRepositor
   function publicRow(adapted, identity) {
     return adapted?.rows.find(row => identityKey(row.identity) === identityKey(identity)) ?? null;
   }
+  // Resolve a ledger product code to a published bank share without writing a
+  // mapping. This is intentionally read-only: the user still confirms the
+  // mapping before any pretrade fact can be saved.
+  function matchShare({ productCode, source = 'cmb' } = {}) {
+    const code = requiredText(productCode, '账本产品代码', 80);
+    const sourceName = requiredText(source, '公开来源', 40);
+    const adapted = adaptedEvidence(frozenInput().input, false);
+    const seen = new Map();
+    for (const row of adapted?.rows ?? []) {
+      if (!row?.identity || String(row.identity.code) !== code || String(row.identity.source) !== sourceName) continue;
+      const key = identityKey(row.identity);
+      if (!seen.has(key)) seen.set(key, {
+        source: row.identity.source,
+        channel: row.identity.channel,
+        code: row.identity.code,
+        registration_code: row.registration ?? row.detail?.registration ?? null,
+        name: row.name ?? null,
+      });
+    }
+    const candidates = [...seen.values()];
+    return { matched: candidates.length === 1, product_code: code, candidates };
+  }
   function holdingFor(input, lotId) {
     return input.portfolio.holdings.find(row => String(row.lot_id) === lotId) ?? null;
   }
@@ -214,8 +292,11 @@ function createStrategyService({ repository, screening = null, strategyRepositor
     if (lotId && !settlementTrade(input, lotId, mapping) && !holdingFor(input, lotId)) throw strategyError('invalid_input', '持仓批次不属于当前账户', 400);
     const check = mapping ? store.latestCheck(mapping.id, lotId) : null;
     const reviewBody = buildReview({ input, identity, mapping, lotId, check });
+    const row = publicRow(adaptedEvidence(input, Boolean(lotId)), identity);
+    const productCode = row?.mapping?.product_code ?? mapping?.product_code ?? null;
+    const product = productCode ? (input.products ?? []).find(item => item.code === productCode) ?? null : null;
     return { identity, mapping: projectMapping(mapping), check: projectCheck(check),
-      public_evidence: publicEvidence(publicRow(adaptedEvidence(input, Boolean(lotId)), identity)), review: reviewBody,
+      public_evidence: publicEvidence(row), suggestions: lotId ? null : publicPrefill(row, product), review: reviewBody,
       business_date: input.date, activation_seq: input.state?.activation_seq ?? 0, input_fingerprint: frozen.fingerprint };
   }
   function saveMapping(body = {}) {
@@ -295,7 +376,7 @@ function createStrategyService({ repository, screening = null, strategyRepositor
       verifiedBy: ACTOR, verifiedAt: new Date().toISOString(), expectedSeq });
     return { check: projectCheck(saved), review: buildReview({ input, identity, mapping, lotId, check: saved }), existing: false };
   }
-  return { status, workspace, inboxItems, preview, recompute, review, saveMapping, saveCheck,
+  return { status, workspace, inboxItems, preview, recompute, review, matchShare, saveMapping, saveCheck,
     frozenInput, readLedgerInput: ledgerInput };
 }
 

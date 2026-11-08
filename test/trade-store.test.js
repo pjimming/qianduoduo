@@ -336,3 +336,65 @@ test('trade edits keep audit history and old screenshots can be pruned', (t) => 
   assert.equal(store.getInboxItem(item.id).stored_name, '');
   assert.equal(store.getInboxItem(item.id).status, 'applied');
 });
+
+test('newer confirmation screenshot replaces the trade primary without downgrade', (t) => {
+  const { store } = openTemp(t);
+  const pending = store.createTrade({
+    trade_date: '2026-11-02',
+    trade_type: 'buy',
+    status: 'pending',
+    product_code: '120026A',
+    product_name: '14天产品',
+    issuer: '招银理财',
+    risk_level: 'R2',
+    amount: 6000,
+    term_days: 14,
+    source: 'manual',
+    notes: '',
+  });
+  const first = store.addInbox({
+    original_name: 'apply.png',
+    stored_name: 'apply.png',
+    mime: 'image/png',
+    bytes: 100,
+    sha256: 'first',
+    ocr_text: '赎回申请',
+    parsed: {
+      trade_date: '2026-11-02',
+      trade_type: 'buy',
+      status: 'pending',
+      product_code: '120026A',
+      amount: 6000,
+    },
+  });
+  const applied = store.applyInbox(first.id, {});
+  assert.equal(applied.trade.id, pending.id);
+  assert.equal(applied.trade.screenshot_id, first.id);
+
+  const confirmation = store.addInbox({
+    original_name: 'confirmation.png',
+    stored_name: 'confirmation.png',
+    mime: 'image/png',
+    bytes: 100,
+    sha256: 'second',
+    ocr_text: '确认赎回，赎回资金到账',
+    parsed: {
+      trade_date: '2026-11-02',
+      trade_type: 'buy',
+      status: 'confirmed',
+      confirm_date: '2026-11-03',
+      product_code: '120026A',
+      amount: 6000,
+    },
+  });
+  const confirmed = store.applyInbox(confirmation.id, {
+    status: 'confirmed',
+    confirm_date: '2026-11-03',
+  });
+  assert.equal(confirmed.trade.id, pending.id);
+  assert.equal(confirmed.trade.screenshot_id, confirmation.id);
+
+  const replay = store.applyInbox(first.id, {});
+  assert.equal(replay.duplicate, true);
+  assert.equal(replay.trade.screenshot_id, confirmation.id);
+});

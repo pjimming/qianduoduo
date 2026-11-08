@@ -126,6 +126,14 @@ async function main() {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const base = `http://127.0.0.1:${server.address().port}`
 
+  // 预填验收需要真实的公开快照；调度在测试中关闭，先同步跑一轮采集。
+  screening.manual('e2e-prefill')
+  const snapshotDeadline = Date.now() + 15000
+  while (!screening.status().current_run && Date.now() < snapshotDeadline) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  if (!screening.status().current_run) throw new Error('E2E 初筛快照未生成')
+
   const browser = await chromium.launch({ executablePath, headless: true })
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   const errors = []
@@ -184,6 +192,24 @@ async function main() {
       (await page.locator('.holding-view-switch').count()) === 1,
       '持仓复核缺少查看方式切换',
     )
+
+    // 1b. 公开数据预填与只看待补项
+    await page.goto(
+      base + '/ledger/products?section=allocation&channel=D07&code=17318K#strategy-review',
+      { waitUntil: 'networkidle' },
+    )
+    const prefill = page.locator('[data-testid="strategy-prefill"]')
+    await prefill.waitFor()
+    const prefillText = await prefill.innerText()
+    assert(prefillText.includes('公开数据已带出 7 项'), '公开数据没有带出预期字段：' + prefillText)
+    assert(/待补 \d+ 项/.test(prefillText), '没有显示待补数量')
+    const onlyLabels = await page.locator('.strategy-structured-facts .fact-field > span').allTextContents()
+    assert(onlyLabels.includes('已阅读并核实'), '只看待补没有显示缺失字段')
+    assert(!onlyLabels.includes('期限天数'), '只看待补仍显示已带出的期限天数')
+    await page.locator('[data-testid="strategy-prefill-toggle"]').click()
+    const allLabels = await page.locator('.strategy-structured-facts .fact-field > span').allTextContents()
+    assert(allLabels.includes('期限天数'), '查看全部字段没有恢复已带出字段')
+    assert(allLabels.includes('起购金额（分）'), '查看全部字段没有恢复起购金额')
 
     // 2. 旧初筛参数迁移与去循环链接
     await page.goto(base + '/ledger/screening?tab=history&page=2&term=90', {
@@ -355,6 +381,13 @@ async function main() {
     mkdirSync(captures, { recursive: true })
     for (const width of [1280, 1440, 390]) {
       await page.setViewportSize({ width, height: 900 })
+      // 资金配置与交易前复核是上下两张独立卡片，间距不小于 .r2-stack 的 18px。
+      const panelGap = await page.evaluate(() => {
+        const panels = [...document.querySelectorAll('#allocation > .rw-panel')]
+        if (panels.length < 2) return null
+        return Math.round(panels[1].getBoundingClientRect().top - panels[0].getBoundingClientRect().bottom)
+      })
+      assert(panelGap !== null && panelGap >= 18, '资金配置与交易前复核之间缺少空隙 ' + width + ': ' + panelGap)
       for (const theme of ['light', 'dark']) {
         await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
         await page.waitForTimeout(350)
@@ -381,9 +414,18 @@ async function main() {
       }
     }
     await page.setViewportSize({ width: 1280, height: 900 })
+    // 候选初筛入口即预取策略快照，资金配置标签直接显示可分配金额，不需要先进入该分区。
+    await gotoSection(page, base, '/ledger/products?section=screening', 'screening')
+    const allocationMeta = page.locator('.workspace-nav [data-section="allocation"] .workspace-nav-meta')
+    await allocationMeta.waitFor()
+    assert(
+      ((await allocationMeta.textContent()) || '').includes('可分配 ¥'),
+      '候选初筛未预取资金配置金额',
+    )
     await gotoSection(page, base, '/ledger/products?section=holdings', 'holdings')
-    await page.locator('[data-testid="strategy-workspace"]').waitFor()
-    assert(await page.getByText('当前策略逐批次复核', { exact: true }).count() === 1, '持仓没有使用 v9 策略监控')
+    await page.locator('#holding-reviews').waitFor()
+    assert(await page.locator('.holding-review-body').count() === 1, '无可用逐批次证据时未回退到逐只复核')
+    assert(await page.locator('[data-testid="strategy-workspace"]').count() === 0, '无可用逐批次证据时仍展示 v9 空表')
 
     // 9. 11 个合成持仓批次覆盖退出、待核、锁定和持有，验证可处理入口。
     await page.route('**/api/r2-strategy/workspace', async route => {
@@ -393,6 +435,8 @@ async function main() {
       await route.fulfill({response,json:payload})
     })
     await page.goto(base + '/ledger/products?section=holdings', {waitUntil:'networkidle'})
+    await page.locator('[data-testid="strategy-workspace"]').waitFor()
+    assert(await page.getByText('当前策略逐批次复核', { exact: true }).count() === 1, '有可用证据时未展示 v9 策略监控')
     assert(await page.locator('.strategy-table-wrap tbody tr').count() === 11, '持仓批次未完整显示')
     for (const theme of ['light','dark']) {
       await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)

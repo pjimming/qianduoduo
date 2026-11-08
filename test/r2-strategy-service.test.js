@@ -187,6 +187,18 @@ test('cash change immediately before the completion write lock is rechecked insi
   assert.equal(store.watermark('strategy'), null);
 });
 
+test('ledger product code resolves to a unique public share without writing', async t => {
+  const { options, repository } = await setup(t);
+  const service = createStrategyService(options);
+  const before = repository.db.prepare('SELECT total_changes() n').get().n;
+  const match = service.matchShare({ productCode: 'S1' });
+  assert.equal(match.matched, true);
+  assert.deepEqual(match.candidates.map(row => [row.source, row.channel, row.code]), [['cmb', 'TEST', 'S1']]);
+  assert.equal(service.matchShare({ productCode: 'NOPE' }).matched, false);
+  assert.throws(() => service.matchShare({ productCode: '' }), error => error.code === 'invalid_input');
+  assert.equal(repository.db.prepare('SELECT total_changes() n').get().n, before);
+});
+
 test('same-share redemption arrival can be verified and withdrawn through the checks service without writing a holding', async t => {
   const { options, repository, store, fixture } = await setup(t, 'v9');
   const trade = { id: 51, trade_type: 'redeem', status: 'confirmed', product_code: 'S1',

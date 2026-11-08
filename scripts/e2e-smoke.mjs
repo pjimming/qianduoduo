@@ -1625,26 +1625,34 @@ async function main() {
     await assertNoLargeLightSurface(page, '.app-main', '科技图谱表格深色主题')
 
     await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.ledger-panel')
+    await page.waitForSelector('.rw-quick')
     await assertNoLargeLightSurface(page, '.app-main', '每日记账深色主题')
-    await page.locator('.ledger-table tbody tr').first().hover()
-    await assertNoLargeLightSurface(page, '.ledger-table', '账本表格悬浮深色主题')
-    await page.getByRole('button', { name: '调整起始' }).click()
-    await page.waitForSelector('.capital-dialog[open]')
-    await assertNoLargeLightSurface(
-      page,
-      '.capital-dialog[open]',
-      '本金设置弹窗深色主题',
+    assert(
+      (await page.locator('.workspace-nav a[data-section="today"]').getAttribute('aria-current')) ===
+        'page',
+      '每日记账默认应停留在「两类截图」分区',
     )
-    await page.keyboard.press('Escape')
+    assert(
+      (await page.locator('.daily-section').count()) === 1,
+      '每日记账一次只应渲染一个分区',
+    )
     assert(
       (await page.locator('.rw-quick-card').count()) === 2,
       '每日记账应只保留交易截图和收益截图两个主入口',
     )
     assert(
-      (await page.locator('.ledger-table tbody tr').count()) === 1,
-      '每日记账没有渲染历史记录',
+      (await page.locator('.ledger-panel').count()) === 0,
+      '「两类截图」分区不应混入历史记录',
     )
+    await page.locator('.workspace-nav a[data-section="records"]').click()
+    await page.waitForSelector('.ledger-panel')
+    assert(
+      (await page.locator('.daily-section').count()) === 1 &&
+        (await page.locator('#today').count()) === 0,
+      '切到历史记录后不应继续渲染录入分区',
+    )
+    await page.locator('.ledger-table tbody tr').first().hover()
+    await assertNoLargeLightSurface(page, '.ledger-table', '账本表格悬浮深色主题')
     const ledgerHeaderText =
       (await page.locator('.ledger-table thead').textContent()) ?? ''
     const ledgerRowText =
@@ -1656,6 +1664,18 @@ async function main() {
         ledgerRowText.includes('0.0673%'),
       `账本没有按持仓金额展示收益率：${JSON.stringify(ledgerRowText)}`,
     )
+    await page.locator('.workspace-nav a[data-section="capital"]').click()
+    await page.waitForSelector('.capital-panel')
+    await page.getByRole('button', { name: '调整起始' }).click()
+    await page.waitForSelector('.capital-dialog[open]')
+    await assertNoLargeLightSurface(
+      page,
+      '.capital-dialog[open]',
+      '本金设置弹窗深色主题',
+    )
+    await page.keyboard.press('Escape')
+    await page.locator('.workspace-nav a[data-section="today"]').click()
+    await page.waitForSelector('.income-history')
     const incomeHistory = page.locator('.income-history')
     await incomeHistory.waitFor()
     const incomeHistorySummary =
@@ -1692,14 +1712,21 @@ async function main() {
     const accountHistoryLink = incomeHistory
       .getByRole('link', { name: '查看当日账户收益' })
       .first()
+    const accountHistoryHref = await accountHistoryLink.getAttribute('href')
     assert(
-      (await accountHistoryLink.getAttribute('href'))?.includes(
-        '/ledger/daily?date=2026-10-18#records',
-      ),
-      '收益截图历史没有关联到账户收益记录',
+      Boolean(accountHistoryHref) &&
+        accountHistoryHref.includes('/ledger/daily') &&
+        accountHistoryHref.includes('section=today') &&
+        accountHistoryHref.includes('date=2026-10-18'),
+      `收益截图历史没有关联到账户收益记录：${JSON.stringify(accountHistoryHref)}`,
     )
     await accountHistoryLink.click()
-    await page.waitForURL('**/ledger/daily?date=2026-10-18#records')
+    await page.waitForURL(
+      (url) =>
+        url.pathname === '/ledger/daily' &&
+        url.searchParams.get('section') === 'today' &&
+        url.searchParams.get('date') === '2026-10-18',
+    )
     await page.waitForSelector('#recordDate')
     assert(
       (await page.locator('#recordDate').inputValue()) === '2026-10-18',
@@ -1721,7 +1748,12 @@ async function main() {
       .getByRole('link', { name: '查看逐产品收益档案' })
       .first()
       .click()
-    await page.waitForURL('**/ledger/trades?product=120056A#valuations')
+    await page.waitForURL(
+      (url) =>
+        url.pathname === '/ledger/trades' &&
+        url.searchParams.get('section') === 'valuations' &&
+        url.searchParams.get('product') === '120056A',
+    )
     await page.waitForSelector('.product-valuation-panel .pv-card.is-selected')
     await page.waitForSelector('.product-valuation-panel .pv-detail-head')
     assert(
@@ -1788,6 +1820,7 @@ async function main() {
       { timeout: 5000 },
     )
 
+    await page.locator('.workspace-nav a[data-section="records"]').click()
     await page.locator('.ledger-table .icon-button.is-danger').first().click()
     await page.waitForSelector('.confirm-dialog')
     await page.getByRole('button', { name: '取消' }).click()
@@ -1797,22 +1830,24 @@ async function main() {
     )
 
     await page.goto(`${base}/ledger/review`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.monthly-record-panel')
+    await page.waitForSelector('#score .review-history-row')
     await assertNoLargeLightSurface(page, '.app-main', '复盘深色主题')
-    const reviewSectionOrder = await page
-      .locator('.r2-stack > [id]')
+    const reviewSectionIds = await page
+      .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      reviewSectionOrder.join(',') === 'score,rhythm,monthly-notes,quarterly-notes',
-      `复盘页模块顺序不正确：${reviewSectionOrder.join(',')}`,
+      reviewSectionIds.join(',') === 'score',
+      `复盘页一次只应渲染一个分区：${reviewSectionIds.join(',')}`,
     )
     assert(
-      (await page.locator('.review-module-card').count()) === 2,
-      '复盘页应有复盘节奏和自动复盘两张模块卡',
+      ((await page
+        .locator('.workspace-nav a[aria-current="page"]')
+        .getAttribute('data-section')) ?? '') === 'score',
+      '复盘页默认没有停在日周月评分分区',
     )
     assert(
-      (await page.locator('.rw-node').count()) === 4,
-      '复盘时间轴应有 4 个节点',
+      (await page.locator('.review-module-card').count()) === 1,
+      '复盘默认分区只应渲染评分模块卡',
     )
     assert(
       (await page.locator('.record-day').count()) >= 28,
@@ -1829,18 +1864,33 @@ async function main() {
         Number(recentDayLabel?.[1]) === recentDayRows,
       `最近记录卡片行数与标题不一致：${recentDayRows} / ${recentReviewHead.trim()}`,
     )
-    assert(
-      (await page.locator('#monthly-notes .rw-question').count()) === 5,
-      '月度五问应有 5 个问题',
-    )
-    await page.locator('#monthly-notes > summary').click()
+    await page.locator('.workspace-nav a[data-section="monthly-notes"]').click()
+    await page.waitForSelector('#monthly-notes .rw-question')
     await assertNoLargeLightSurface(page, '#monthly-notes', '月度五问深色主题')
-    await page.locator('#score .review-history-row').first().hover()
-    await assertNoLargeLightSurface(page, '#score', '复盘历史悬浮深色主题')
     assert(
       (await page.locator('#monthly-notes .rw-question:visible').count()) === 5,
-      '展开月度五问后应显示 5 个问题',
+      '月度五问应显示 5 个问题',
     )
+
+    await page.locator('.workspace-nav a[data-section="rhythm"]').click()
+    await page.waitForSelector('#rhythm .rw-node')
+    assert(
+      (await page.locator('#rhythm .rw-node').count()) === 4,
+      '复盘时间轴应有 4 个节点',
+    )
+
+    await page.locator('.workspace-nav a[data-section="quarterly-notes"]').click()
+    await page.waitForSelector('#quarterly-notes .rw-panel-body')
+    await assertNoLargeLightSurface(page, '#quarterly-notes', '季度复盘深色主题')
+    assert(
+      (await page.locator('#quarterly-notes .rw-question').count()) >= 3,
+      '季度复盘应显示问题清单',
+    )
+
+    await page.locator('.workspace-nav a[data-section="score"]').click()
+    await page.waitForSelector('#score .review-history-row')
+    await page.locator('#score .review-history-row').first().hover()
+    await assertNoLargeLightSurface(page, '#score', '复盘历史悬浮深色主题')
     const missingDay = page.locator('.record-day.is-missing').first()
     const missingText = (await missingDay.textContent())?.trim() || ''
     await missingDay.click()
@@ -1850,6 +1900,10 @@ async function main() {
       '点击缺记日期应跳到每日记账',
     )
     assert(
+      new URL(page.url()).searchParams.get('section') === 'today',
+      '点击缺记日期应落到每日记账的两类截图分区',
+    )
+    assert(
       (await page.locator('#recordDate').inputValue()).endsWith(
         missingText.padStart(2, '0'),
       ),
@@ -1857,15 +1911,20 @@ async function main() {
     )
 
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('#inbox .rw-dropzone')
+    await page.waitForSelector('#current-value')
     await assertNoLargeLightSurface(page, '.app-main', '交易与持仓深色主题')
-    const tradesSectionOrder = await page
+    const tradesSectionIds = await page
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      tradesSectionOrder.join(',') ===
-        'current-value,holdings,valuations,trades,inbox',
-      `交易与持仓页模块顺序不正确：${tradesSectionOrder.join(',')}`,
+      tradesSectionIds.join(',') === 'current-value',
+      `交易与持仓一次只应渲染一个分区：${tradesSectionIds.join(',')}`,
+    )
+    assert(
+      ((await page
+        .locator('.workspace-nav a[aria-current="page"]')
+        .getAttribute('data-section')) ?? '') === 'current-value',
+      '交易与持仓默认没有停在当前净值分区',
     )
     const currentValuationPanel =
       (await page.locator('#current-value').textContent()) ?? ''
@@ -1886,13 +1945,15 @@ async function main() {
       '#current-value',
       '当前已确认持仓净值桌面端',
     )
-    await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'instant' }))
-    await page.waitForSelector('.back-to-top')
-    await page.locator('.back-to-top').click()
-    await page.waitForFunction(() => window.scrollY < 2)
+    await page.locator('.workspace-nav a[data-section="holdings"]').click()
+    await page.waitForSelector('#holdings .rw-bucket')
     assert(
-      (await page.locator('#inbox .rw-dropzone').count()) === 1,
-      '交易收件箱拖拽区没有渲染',
+      (
+        await page
+          .locator('.r2-stack > section')
+          .evaluateAll((sections) => sections.map((section) => section.id))
+      ).join(',') === 'holdings',
+      '切换到持仓分区后仍渲染了其他分区',
     )
     assert(
       (await page.locator('#holdings .rw-bucket').count()) >= 4,
@@ -1925,23 +1986,8 @@ async function main() {
         .count()) === 0,
       '发行方占比仍被标记为警告色',
     )
-    const tradesTerminology = (await page.locator('#trades').textContent()) || ''
-    const ambiguousRealizedLabelIndex =
-      tradesTerminology.indexOf('已实现收益')
-    assert(
-      tradesTerminology.includes('累计已实现盈亏') &&
-        ambiguousRealizedLabelIndex === -1,
-      `交易流水术语校验失败：hasCanonical=${
-        tradesTerminology.includes('累计已实现盈亏')
-      }; ambiguousIndex=${ambiguousRealizedLabelIndex}; text=${
-        ambiguousRealizedLabelIndex >= 0
-          ? tradesTerminology.slice(
-              Math.max(0, ambiguousRealizedLabelIndex - 40),
-              ambiguousRealizedLabelIndex + 60,
-            )
-          : tradesTerminology.slice(0, 360)
-      }`,
-    )
+    await page.locator('.workspace-nav a[data-section="valuations"]').click()
+    await page.waitForSelector('.product-valuation-panel .pv-card')
     assert(
       (await page.locator('.product-valuation-panel .pv-card').count()) === 2,
       '逐产品收益档案没有渲染两张产品卡',
@@ -2008,6 +2054,12 @@ async function main() {
       ),
       '产品收益手工补录没有显示审计留痕',
     )
+    await page.evaluate(() =>
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+    )
+    await page.waitForSelector('.back-to-top')
+    await page.locator('.back-to-top').click()
+    await page.waitForFunction(() => window.scrollY < 2)
     await page
       .locator('.product-valuation-panel .pv-table')
       .getByRole('button', { name: '来源', exact: true })
@@ -2042,6 +2094,31 @@ async function main() {
     await page.waitForSelector('.dt-dialog', { state: 'detached' })
     await page.setViewportSize({ width: 1280, height: 900 })
     await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案桌面端')
+    await page.locator('.workspace-nav a[data-section="inbox"]').click()
+    await page.waitForSelector('#inbox .rw-dropzone')
+    assert(
+      (await page.locator('#inbox .rw-dropzone').count()) === 1,
+      '交易收件箱拖拽区没有渲染',
+    )
+    await page.locator('.workspace-nav a[data-section="trades"]').click()
+    await page.getByRole('button', { name: '记一笔交易', exact: true }).waitFor()
+    const tradesTerminology = (await page.locator('#trades').textContent()) || ''
+    const ambiguousRealizedLabelIndex =
+      tradesTerminology.indexOf('已实现收益')
+    assert(
+      tradesTerminology.includes('累计已实现盈亏') &&
+        ambiguousRealizedLabelIndex === -1,
+      `交易流水术语校验失败：hasCanonical=${
+        tradesTerminology.includes('累计已实现盈亏')
+      }; ambiguousIndex=${ambiguousRealizedLabelIndex}; text=${
+        ambiguousRealizedLabelIndex >= 0
+          ? tradesTerminology.slice(
+              Math.max(0, ambiguousRealizedLabelIndex - 40),
+              ambiguousRealizedLabelIndex + 60,
+            )
+          : tradesTerminology.slice(0, 360)
+      }`,
+    )
     await page.getByRole('button', { name: '记一笔交易', exact: true }).click()
     await page.getByLabel('产品代码').fill('120026A')
     await page.getByLabel('产品名称').fill('招银理财14天')
@@ -2245,13 +2322,21 @@ async function main() {
     )
     await assertFontFloor(page, '.inbox-page', '消息中心移动端')
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.product-valuation-panel .pv-card')
+    await page.waitForSelector('#current-value')
     await assertNoLargeLightSurface(page, '.app-main', '交易与持仓移动深色主题')
     await assertFontFloor(
       page,
       '#current-value',
       '当前已确认持仓净值移动端',
     )
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '移动端当前持仓净值出现横向溢出',
+    )
+    await page.locator('.workspace-nav a[data-section="valuations"]').click()
+    await page.waitForSelector('.product-valuation-panel .pv-card')
     const mobileValuationText =
       (await page.locator('.product-valuation-panel').textContent()) ?? ''
     assert(
@@ -2264,9 +2349,12 @@ async function main() {
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
       ),
-      '移动端当前持仓净值出现横向溢出',
+      '移动端逐产品收益档案出现横向溢出',
     )
-    await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'instant' }))
+    await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案移动端')
+    await page.evaluate(() =>
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+    )
     await page.waitForSelector('.back-to-top')
     const mobileBackToTop = await page.locator('.back-to-top').evaluate((element) => {
       const rect = element.getBoundingClientRect()
@@ -2276,13 +2364,6 @@ async function main() {
       mobileBackToTop.width >= 40 && mobileBackToTop.height >= 40,
       '移动端回到顶部悬浮球触控区域过小',
     )
-    assert(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-      ),
-      '移动端逐产品收益档案出现横向溢出',
-    )
-    await assertFontFloor(page, '.product-valuation-panel', '逐产品收益档案移动端')
     await page.setViewportSize({ width: 1280, height: 900 })
 
     if (
@@ -3618,7 +3699,9 @@ async function main() {
       await page.evaluate((theme) => {
         localStorage.setItem('qianduoduo:theme:v1', theme)
       }, scenario.theme)
-      await page.goto(`${base}/ledger/daily`, { waitUntil: 'networkidle' })
+      await page.goto(`${base}/ledger/daily?section=capital`, {
+        waitUntil: 'networkidle',
+      })
       await page.waitForSelector('#capitalEventList .capital-event-item')
       const capitalHistory = await page
         .locator('#capitalEventList')

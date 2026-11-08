@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import R2PageHeader from '@/components/r2/R2PageHeader.vue'
-import R2SectionIndex from '@/components/r2/R2SectionIndex.vue'
+import WorkspaceNav from '@/components/r2/WorkspaceNav.vue'
 import TradeInboxPanel from '@/components/review/TradeInboxPanel.vue'
 import TradesPanel from '@/components/review/TradesPanel.vue'
 import HoldingsPanel from '@/components/review/HoldingsPanel.vue'
@@ -14,6 +14,7 @@ const props = defineProps<{
   dashboard: DashboardPayload
 }>()
 
+const route = useRoute()
 const router = useRouter()
 const overview = computed(() => props.dashboard.workspace.trades)
 const reportingDate = computed(() => props.dashboard.meta.reporting_date)
@@ -22,41 +23,61 @@ const pendingInbox = computed(
   () => props.dashboard.inbox_center.summary.by_source.trade_screenshot?.pending ?? 0,
 )
 
-const sections = computed(() => [
+const SECTIONS = ['current-value', 'holdings', 'valuations', 'trades', 'inbox'] as const
+type Section = (typeof SECTIONS)[number]
+
+const section = computed<Section>(() => {
+  const value = typeof route.query.section === 'string' ? route.query.section : ''
+  return (SECTIONS as readonly string[]).includes(value) ? (value as Section) : 'current-value'
+})
+
+const currentValueMeta = computed(() => {
+  const valuation = props.dashboard.workspace.current_holdings_valuation
+  if (!valuation.available) return '暂无确认持仓'
+  return `收益截至 ${valuation.income_as_of_date ?? valuation.as_of_date}`
+})
+
+const navItems = computed(() => [
   {
-    id: 'current-value',
+    key: 'current-value',
     label: '当前净值',
-    meta: props.dashboard.workspace.current_holdings_valuation.available
-      ? `收益截至 ${
-          props.dashboard.workspace.current_holdings_valuation.income_as_of_date ??
-          props.dashboard.workspace.current_holdings_valuation.as_of_date
-        }`
-      : '暂无确认持仓',
+    meta: currentValueMeta.value,
+    query: { product: undefined },
   },
   {
-    id: 'holdings',
+    key: 'holdings',
     label: '当前持仓',
     meta: `${props.dashboard.workspace.holdings.length} 个未赎回批次`,
+    query: { product: undefined },
   },
   {
-    id: 'valuations',
+    key: 'valuations',
     label: '产品收益',
     meta: `${props.dashboard.workspace.product_valuation_summaries.length} 只产品`,
   },
   {
-    id: 'trades',
+    key: 'trades',
     label: '交易流水',
     meta: `${overview.value?.trades.length ?? 0} 笔`,
+    query: { product: undefined },
   },
   {
-    id: 'inbox',
+    key: 'inbox',
     label: '交易收件箱',
     meta: pendingInbox.value > 0 ? `${pendingInbox.value} 张待校正` : '无待校正',
+    query: { product: undefined },
   },
 ])
 
+function dismissNotice(): void {
+  void router.replace({ query: { ...route.query, notice: undefined } })
+}
+
 function openTrades(): void {
-  void router.push({ name: 'r2-trades', hash: '#trades' })
+  void router.push({
+    name: 'r2-trades',
+    query: { ...route.query, product: undefined, section: 'trades' },
+  })
 }
 </script>
 
@@ -71,7 +92,7 @@ function openTrades(): void {
         <RouterLink
           v-if="pendingInbox > 0"
           class="r2-head-chip is-warn"
-          :to="{ name: 'r2-trades', hash: '#inbox' }"
+          :to="{ name: 'r2-trades', query: { section: 'inbox' } }"
         >
           交易截图待校正 · {{ pendingInbox }}
         </RouterLink>
@@ -87,16 +108,35 @@ function openTrades(): void {
       </template>
     </R2PageHeader>
 
-    <R2SectionIndex :items="sections" />
+    <WorkspaceNav :items="navItems" :active="section" label="交易与持仓分区" />
+
+    <div
+      v-if="route.query.notice === 'invalid-section'"
+      class="rw-alert is-warn trades-notice"
+      role="status"
+    >
+      <span>无法识别的分区参数，已回到默认分区。</span>
+      <button type="button" class="link-button" @click="dismissNotice">知道了</button>
+    </div>
 
     <div class="r2-stack">
-      <section id="current-value" class="rw-panel r2-anchor" aria-label="当前已确认持仓净值">
+      <section
+        v-if="section === 'current-value'"
+        id="current-value"
+        class="rw-panel r2-anchor"
+        aria-label="当前已确认持仓净值"
+      >
         <CurrentHoldingsValuationPanel
           :valuation="dashboard.workspace.current_holdings_valuation"
         />
       </section>
 
-      <section id="holdings" class="rw-panel r2-anchor" aria-label="持仓结构">
+      <section
+        v-else-if="section === 'holdings'"
+        id="holdings"
+        class="rw-panel r2-anchor"
+        aria-label="持仓结构"
+      >
         <HoldingsPanel
           :holdings="dashboard.workspace.holdings"
           :summary="dashboard.workspace.holdings_summary"
@@ -105,7 +145,12 @@ function openTrades(): void {
         />
       </section>
 
-      <section id="valuations" class="rw-panel r2-anchor" aria-label="产品收益">
+      <section
+        v-else-if="section === 'valuations'"
+        id="valuations"
+        class="rw-panel r2-anchor"
+        aria-label="产品收益"
+      >
         <ProductValuationPanel
           :summaries="dashboard.workspace.product_valuation_summaries"
           :reconciliation="dashboard.workspace.product_valuation_reconciliation"
@@ -115,7 +160,12 @@ function openTrades(): void {
         />
       </section>
 
-      <section id="trades" class="rw-panel r2-anchor" aria-label="交易流水">
+      <section
+        v-else-if="section === 'trades'"
+        id="trades"
+        class="rw-panel r2-anchor"
+        aria-label="交易流水"
+      >
         <TradesPanel
           v-if="overview"
           :overview="overview"
@@ -127,7 +177,12 @@ function openTrades(): void {
         </div>
       </section>
 
-      <section id="inbox" class="rw-panel r2-anchor" aria-label="交易收件箱">
+      <section
+        v-else
+        id="inbox"
+        class="rw-panel r2-anchor"
+        aria-label="交易收件箱"
+      >
         <TradeInboxPanel
           v-if="overview"
           :inbox="overview.inbox"
@@ -141,3 +196,15 @@ function openTrades(): void {
     </div>
   </div>
 </template>
+
+<style scoped>
+.trades-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 14px;
+}
+</style>

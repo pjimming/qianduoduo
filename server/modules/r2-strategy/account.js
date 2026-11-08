@@ -28,7 +28,8 @@ function buildAccountContext({ principal, holdings = [], trades = [], reservatio
     return { product_code: code, product_key: info?.product_key ?? `unverified:${code}`,
       family_key: info?.family_key ?? `unverified:${code}`, evidence_tier: info?.evidence_tier ?? 'no_data',
       bucket: info?.bucket ?? bucketForTerm(termDays), liquidity_eligible: info?.liquidity_eligible === true,
-      available_on: info?.available_on ?? null, family_basis: info?.family_basis ?? 'unverified' };
+      available_on: info?.available_on ?? null, family_basis: info?.family_basis ?? 'unverified',
+      classification_basis: info?.classification_basis ?? null };
   }
   for (const lot of holdings) {
     if (!lot.lot_id || seenLots.has(lot.lot_id)) throw new Error('账户持仓批次重复或缺失');

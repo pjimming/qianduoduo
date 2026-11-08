@@ -60,7 +60,10 @@ async function loadStrategy(): Promise<void> {
     if (!controller.signal.aborted) strategyError.value = caught instanceof Error ? caught.message : '读取当前策略失败'
   } finally { if (!controller.signal.aborted) strategyLoading.value = false }
 }
-watch(section, () => { if (section.value !== 'screening') void loadStrategy() }, { immediate: true })
+// 候选初筛不依赖账本，但“资金配置”标签的可分配金额来自策略快照，进入页面即预取。
+watch(section, (next) => {
+  if (next !== 'screening' || !strategy.value) void loadStrategy()
+}, { immediate: true })
 onUnmounted(() => strategyController?.abort())
 
 const ledgerError = ref('')
@@ -99,6 +102,36 @@ const openEvents = computed(
   () => data.value?.inbox_center.summary.by_source.product_event?.pending ?? 0,
 )
 
+const strategyMeta = computed(() => {
+  if (strategy.value?.mode !== 'v9' || !strategy.value.result) return null
+  return {
+    cash: strategy.value.result.allocation.available_cents / 100,
+    holdings: strategy.value.result.monitoring.rows.length,
+  }
+})
+const v9HoldingsHasEvidence = computed(() => {
+  if (strategy.value?.mode !== 'v9') return false
+  const rows = strategy.value.result?.monitoring?.rows
+  if (!Array.isArray(rows)) return false
+  return rows.some(
+    (row) =>
+      row?.identity ||
+      row?.yield_1m != null ||
+      row?.performance_date ||
+      (row?.state && row.state !== 'evidence_pending'),
+  )
+})
+const allocationMeta = computed(() => {
+  const cash = strategyMeta.value?.cash ?? data.value?.products?.allocation?.available_cash
+  return cash == null ? '' : `可分配 ¥${Math.round(cash).toLocaleString('zh-CN')}`
+})
+const holdingsMeta = computed(() => {
+  if (strategyMeta.value) return `${strategyMeta.value.holdings} 只在持`
+  const summary = reviewSummary.value
+  if (!summary) return ''
+  return summary.replace > 0 ? `${summary.replace} 只建议替换` : `${summary.total} 只在持`
+})
+
 const navItems = computed(() => [
   {
     key: 'screening',
@@ -108,18 +141,12 @@ const navItems = computed(() => [
   {
     key: 'allocation',
     label: '资金配置',
-    meta: strategy.value?.mode === 'v9' ? 'v9 当前策略' : data.value?.products?.allocation
-      ? `可分配 ¥${Math.round(data.value.products.allocation.available_cash).toLocaleString('zh-CN')}`
-      : '',
+    meta: allocationMeta.value,
   },
   {
     key: 'holdings',
     label: '持仓复核',
-    meta: strategy.value?.mode === 'v9' ? 'v9 续持监控' : reviewSummary.value
-      ? reviewSummary.value.replace > 0
-        ? `${reviewSummary.value.replace} 只建议替换`
-        : `${reviewSummary.value.total} 只在持`
-      : '',
+    meta: holdingsMeta.value,
   },
 ])
 
@@ -273,7 +300,7 @@ function holdingsLink(
         <div v-if="data && holdingsView === 'review'" :class="strategy?.mode === 'v9' ? '' : 'rw-panel'">
           <p v-if="strategyLoading && !strategy" role="status">正在读取当前策略…</p>
           <div v-else-if="strategyError" class="rw-alert is-warn" role="alert">{{ strategyError }} <button type="button" class="link-button" @click="loadStrategy">重新读取策略</button></div>
-          <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9'" :workspace="strategy" section="holdings" @refresh="loadStrategy" />
+          <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9' && v9HoldingsHasEvidence" :workspace="strategy" section="holdings" @refresh="loadStrategy" />
           <HoldingReviewPanel v-else-if="strategy"
             :reviews="data.workspace.holding_reviews"
             :today="data.meta.today"

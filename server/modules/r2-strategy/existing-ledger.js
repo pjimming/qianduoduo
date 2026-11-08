@@ -6,7 +6,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { createTradeStore } = require('../../../lib/trade-store');
 const { createReviewStore } = require('../../../lib/review-store');
 const { createTransactionManager } = require('../../../lib/transaction');
-const { principalAt } = require('../../../lib/db');
+const { mapProduct, principalAt } = require('../../../lib/db');
 const { normalizeAllocationSettings } = require('../../../lib/products');
 
 // Existing-schema adapter for workers/CLI. In particular it does NOT call
@@ -21,7 +21,9 @@ function openStrategyLedger(file, { readOnly = false } = {}) {
     const tradeStore = createTradeStore(db, { initialize: false, transactionManager,
       inboxDir: path.join(path.dirname(dbPath), 'trade-inbox') });
     const reviewStore = createReviewStore(db, { initialize: false, transactionManager });
+    const selectProducts = db.prepare('SELECT * FROM products ORDER BY term_days ASC, name ASC');
     return { db, dbPath, transactionManager, tradeStore, listDecisions: reviewStore.listDecisions,
+      listProducts() { return selectProducts.all().map(mapProduct); },
       getCapitalState(date) {
         const raw = db.prepare('SELECT * FROM capital_settings WHERE id=1').get();
         if (!raw) return { current_principal: 0, initialized: false };

@@ -46,6 +46,34 @@ test('mapping removal, new account commitments and source changes alter the shar
   assert.notEqual(evaluateStrategy(fixture).input_fingerprint, after.input_fingerprint);
 });
 
+test('legacy holdings fall back to conservative product-master classification, while verified pretrade limits still win', () => {
+  const fixture = strategyFixture();
+  fixture.portfolio.holdings = [
+    { lot_id: 'legacy:H1', product_code: 'H1', amount: 25, term_days: 90 },
+    { lot_id: 'legacy:H2', product_code: 'H2', amount: 25, term_days: 7 },
+    { lot_id: 'legacy:S1', product_code: 'S1', amount: 25, term_days: 30 },
+  ];
+  fixture.products = [
+    { code: 'H1', name: '存量产品', term_days: 90, benchmark: 'B1', return_3m: 2.1 },
+    { code: 'H2', name: '短期限存量', term_days: 7, benchmark: 'B2', return_1m: 2.1 },
+  ];
+  const result = evaluateStrategy(fixture);
+  const fallback = result.account.exposures.find(row => row.lot_id === 'legacy:H1');
+  const shortFallback = result.account.exposures.find(row => row.lot_id === 'legacy:H2');
+  const verified = result.account.exposures.find(row => row.lot_id === 'legacy:S1');
+  assert.equal(fallback.classification_basis, 'holding_master_fallback');
+  assert.equal(fallback.product_key, 'product:H1');
+  assert.equal(fallback.family_key, 'benchmark|B1');
+  assert.equal(fallback.evidence_tier, 'three_month');
+  assert.equal(fallback.liquidity_eligible, false);
+  assert.equal(shortFallback.bucket, 'short');
+  assert.equal(shortFallback.liquidity_eligible, true);
+  assert.equal(verified.classification_basis, null);
+  assert.notEqual(verified.product_key, 'product:S1');
+  assert.ok(!result.account.blockers.some(row => row === 'asset_unverified:H1'));
+  assert.ok(!result.account.blockers.some(row => row === 'asset_unverified:S1'));
+});
+
 test('holding-only supplements change monitoring without changing the official purchase pool or allocation', () => {
   const { fingerprint } = require('../server/modules/r2-strategy/contract');
   const { monitorContent } = require('../server/modules/r2-strategy/holding-evidence');

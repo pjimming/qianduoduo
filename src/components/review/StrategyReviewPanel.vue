@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import {
   getStrategyReview,
+  matchStrategyShare,
   saveStrategyCheck,
   saveStrategyMapping,
   StrategyApiError,
@@ -25,6 +26,7 @@ const lot = ref(props.lot || '')
 
 const review = ref<StrategyReview | null>(null)
 const loading = ref(false)
+const matchingShare = ref(false)
 const error = ref('')
 const notDeployed = ref(false)
 const loadToken = ref(0)
@@ -33,6 +35,7 @@ let controller: AbortController | null = null
 const mappingDraft = ref<Record<string, unknown>>({})
 const checkDraft = ref<Record<string, unknown>>({})
 const factRows = ref<{ key: string; value: string; original: unknown }[]>([])
+const onlyMissing = ref(false)
 const savingMapping = ref(false)
 const savingCheck = ref(false)
 const mappingError = ref('')
@@ -78,12 +81,39 @@ function factText(value: unknown): string {
   return JSON.stringify(value)
 }
 
+type FactObject = Record<string, unknown>
+type MissingFact = { path: string; label: string }
+
+function factValue(facts: FactObject, path: string): unknown {
+  return path.split('.').reduce<unknown>((value, key) => value !== null && typeof value === 'object'
+    ? (value as FactObject)[key]
+    : undefined, facts)
+}
+
+function mergeMissing(target: FactObject, source: unknown): void {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return
+  for (const [key, value] of Object.entries(source as FactObject)) {
+    if (value === null || value === undefined) continue
+    const current = target[key]
+    if (current === null || current === undefined || current === '') {
+      target[key] = value
+    } else if (current && typeof current === 'object' && !Array.isArray(current) &&
+      value && typeof value === 'object' && !Array.isArray(value)) {
+      mergeMissing(current as FactObject, value)
+    }
+  }
+}
+
+function setFactRows(facts: FactObject): void {
+  factRows.value = Object.entries(facts).map(([key, value]) => ({ key, value: factText(value), original: value }))
+}
+
 function blankFacts(data: StrategyReview): Record<string, unknown> {
   const base = { kind: lot.value.startsWith('trade:') ? 'trade_settlement' : lot.value ? 'holding_redemption' : 'product_pretrade', payload_version: 1, status: 'pending', identity: data.identity, registration_code: data.mapping?.registration_code ?? null }
   if (lot.value.startsWith('trade:')) return { ...base, trade_id: Number(lot.value.slice(6)), product_code: data.mapping?.product_code ?? '', arrival_date: null, evidence_hash: null }
   if (lot.value) return { ...base, redemption: { rules_verified: null, source_hash: null, terms_version: null, earliest_redeem_date: null, funds_available_date: null, redemption_fee_bps: null, as_of: null, can_redeem_today: null } }
   const document = () => ({ hash: null, version: null, read_and_verified: null, checked_on: null })
-  return { ...base, terms: { document: document(), kind: null, days: null, timing: { verified: null, expected_confirm_on: null, expected_redeem_on: null, expected_arrival_on: null, earliest_funds_available_on: null, calculation_basis: null, holding_day_basis: null, redemption_calendar: null, arrival_calendar: null, application_cutoff: null } }, fees: { purchase_bps: null, redemption_bps: null, evidence_hash: null }, assets: { prospectus: document(), report: { ...document(), period_end: null, is_latest_available: null }, allowed_assets_verified: null, actual_assets_verified: null, equity_upper_pct: null, duration_years: null, prohibited_exposure: { property_bonds: null, low_rated_lgv_bonds: null, nonstandard_trust: null, directional_derivatives: null } }, app: { as_of: null, can_buy: null, available_cents: null, max_order_cents: null, sales_restrictions_verified: null, evidence_hash: null }, allocation: { minimum_cents: null, increment_cents: null, liquidity_eligible: null, liquidity_basis_verified: null, liquidity_evidence_hash: null, strategy_family: { key: null, basis: null, evidence_hash: null } } }
+  return { ...base, terms: { document: document(), kind: null, days: null, timing: { verified: null, expected_confirm_on: null, expected_redeem_on: null, expected_arrival_on: null, earliest_funds_available_on: null, calculation_basis: null, holding_day_basis: null, redemption_calendar: null, arrival_calendar: null, application_cutoff: null } }, fees: { purchase_bps: null, redemption_bps: null, evidence_hash: null }, assets: { prospectus: document(), report: { ...document(), period_end: null, is_latest_available: null }, allowed_assets_verified: null, actual_assets_verified: null, equity_upper_pct: null, duration_years: null, prohibited_exposure: { property_bonds: null, low_rated_lgv_bonds: null, nonstandard_trust: null, directional_derivatives: null } }, app: { as_of: null, can_buy: null, available_cents: null, max_order_cents: null, sales_restrictions_verified: null, evidence_hash: null }, allocation: { minimum_cents: null, increment_cents: null, liquidity_eligible: false, liquidity_basis_verified: null, liquidity_evidence_hash: null, strategy_family: { key: null, basis: null, evidence_hash: null } } }
 }
 const editableFactRows = computed(() => factRows.value.filter(row => !['identity', 'kind', 'payload_version', 'registration_code', 'trade_id', 'product_code'].includes(row.key)))
 function updateFact(row: { value: string; original: unknown }, value: unknown) { row.original = value; row.value = factText(value) }
@@ -107,15 +137,12 @@ function applyReview(data: StrategyReview): void {
     version: check.version ?? 0,
     verified_by: check.verified_by || '',
   }
-  const facts =
-    check.facts && typeof check.facts === 'object'
-      ? (check.facts as Record<string, unknown>)
-      : blankFacts(data)
-  factRows.value = Object.entries(facts).map(([key, value]) => ({
-    key,
-    value: factText(value),
-    original: value,
-  }))
+  const facts = check.facts && typeof check.facts === 'object'
+    ? JSON.parse(JSON.stringify(check.facts)) as FactObject
+    : blankFacts(data)
+  mergeMissing(facts, data.suggestions?.facts)
+  setFactRows(facts)
+  onlyMissing.value = Boolean(data.suggestions?.facts) && missingFacts.value.length > 0
 }
 
 async function loadReview(): Promise<void> {
@@ -152,6 +179,30 @@ async function loadReview(): Promise<void> {
   }
 }
 
+async function autoMatchShare(): Promise<void> {
+  const ledgerCode = props.ledgerProductCode?.trim()
+  if (!ledgerCode || matchingShare.value) return
+  matchingShare.value = true
+  try {
+    const result = await matchStrategyShare(ledgerCode)
+    if (result.matched) {
+      const candidate = result.candidates[0]
+      channel.value = candidate.channel
+      code.value = candidate.code
+      await loadReview()
+      show(`已按最新公开快照匹配 ${candidate.channel} / ${candidate.code}`)
+    } else if (result.candidates.length) {
+      show(`匹配到 ${result.candidates.length} 个公开份额，请手动选择销售渠道和代码`)
+    } else {
+      show('未找到对应公开份额，请手动填写销售渠道和代码')
+    }
+  } catch (caught) {
+    show(caught instanceof Error && caught.message ? caught.message : '自动匹配失败，请手动填写')
+  } finally {
+    matchingShare.value = false
+  }
+}
+
 function patchFacts(): Record<string, unknown> {
   const facts: Record<string, unknown> = Object.create(null)
   for (const row of factRows.value) {
@@ -169,6 +220,126 @@ function patchFacts(): Record<string, unknown> {
     }
   }
   return facts
+}
+
+const currentFacts = computed<FactObject>(() => {
+  const facts: FactObject = {}
+  for (const row of factRows.value) {
+    const key = row.key.trim()
+    if (!key) continue
+    if (row.value === factText(row.original)) {
+      facts[key] = row.original
+      continue
+    }
+    try {
+      facts[key] = JSON.parse(row.value)
+    } catch {
+      facts[key] = row.value
+    }
+  }
+  return facts
+})
+
+const missingFacts = computed<MissingFact[]>(() => {
+  const data = review.value
+  if (!data || lot.value) return []
+  const date = data.business_date
+  const facts = currentFacts.value
+  const missing: MissingFact[] = []
+  const add = (path: string, label: string, ok: boolean) => { if (!ok) missing.push({ path, label }) }
+  const value = (path: string) => factValue(facts, path)
+  const stringValue = (path: string) => typeof value(path) === 'string' && Boolean((value(path) as string).trim())
+  const numberValue = (path: string) => typeof value(path) === 'number' && Number.isFinite(value(path) as number)
+  const integerValue = (path: string) => Number.isSafeInteger(value(path)) && (value(path) as number) >= 0
+  const hashValue = (path: string) => /^[a-f0-9]{64}$/.test(typeof value(path) === 'string' ? value(path) as string : '')
+  const dateValue = (path: string) => /^\d{4}-\d{2}-\d{2}$/.test(typeof value(path) === 'string' ? value(path) as string : '')
+  const document = (path: string, label: string) => {
+    add(`${path}.hash`, `${label}文件 SHA-256`, hashValue(`${path}.hash`))
+    add(`${path}.version`, `${label}文件版本`, stringValue(`${path}.version`))
+    add(`${path}.read_and_verified`, `${label}已阅读并核实`, value(`${path}.read_and_verified`) === true)
+    add(`${path}.checked_on`, `${label}核验日期`, dateValue(`${path}.checked_on`) && (value(`${path}.checked_on`) as string) <= date)
+  }
+  const term = data.public_evidence?.term
+  add('terms.kind', '正式期限类型', ['minimum', 'closed'].includes(value('terms.kind') as string) && (!term?.kind || value('terms.kind') === term.kind))
+  add('terms.days', '正式期限天数', Number.isSafeInteger(value('terms.days')) && (value('terms.days') as number) >= 1 && (value('terms.days') as number) <= 190 && (!term?.days || value('terms.days') === term.days))
+  document('terms.document', '正式条款')
+  add('terms.timing.verified', '申赎路径已核实', value('terms.timing.verified') === true)
+  for (const [path, label] of [
+    ['terms.timing.expected_confirm_on', '预计申购确认日'],
+    ['terms.timing.expected_redeem_on', '预计赎回申请日'],
+    ['terms.timing.expected_arrival_on', '预计资金到账日'],
+    ['terms.timing.earliest_funds_available_on', '最早资金可用日'],
+  ] as const) {
+    add(path, label, dateValue(path) && (value(path) as string) >= date)
+  }
+  const confirmOn = value('terms.timing.expected_confirm_on') as string
+  const redeemOn = value('terms.timing.expected_redeem_on') as string
+  const arrivalOn = value('terms.timing.expected_arrival_on') as string
+  const earliestOn = value('terms.timing.earliest_funds_available_on') as string
+  add('terms.timing.expected_redeem_on', '预计赎回申请日不得早于确认日', dateValue('terms.timing.expected_redeem_on') && redeemOn >= confirmOn)
+  add('terms.timing.expected_arrival_on', '预计到账日不得早于赎回日', dateValue('terms.timing.expected_arrival_on') && arrivalOn >= redeemOn)
+  add('terms.timing.expected_arrival_on', '预计到账日须与最早可用日一致', dateValue('terms.timing.expected_arrival_on') && arrivalOn === earliestOn)
+  for (const [path, label] of [
+    ['terms.timing.calculation_basis', '日期推算依据'],
+    ['terms.timing.holding_day_basis', '持有期计算口径'],
+    ['terms.timing.redemption_calendar', '赎回日历依据'],
+    ['terms.timing.arrival_calendar', '到账日历依据'],
+  ] as const) {
+    add(path, label, stringValue(path))
+  }
+  add('terms.timing.application_cutoff', '申请截止时间（HH:mm）', /^([01]\d|2[0-3]):[0-5]\d$/.test(value('terms.timing.application_cutoff') as string))
+  for (const [path, label] of [['fees.purchase_bps', '申购费率（基点）'], ['fees.redemption_bps', '赎回费率（基点）']] as const) {
+    add(path, label, numberValue(path) && (value(path) as number) >= 0 && (value(path) as number) <= 500)
+  }
+  add('fees.evidence_hash', '费用证据 SHA-256', hashValue('fees.evidence_hash'))
+  document('assets.prospectus', '产品说明书')
+  document('assets.report', '定期报告')
+  add('assets.report.period_end', '报告期末', dateValue('assets.report.period_end') && (value('assets.report.period_end') as string) <= date)
+  add('assets.report.is_latest_available', '确认是最新可得报告', value('assets.report.is_latest_available') === true)
+  add('assets.allowed_assets_verified', '允许投资范围已核实', value('assets.allowed_assets_verified') === true)
+  add('assets.actual_assets_verified', '实际资产组合已核实', value('assets.actual_assets_verified') === true)
+  add('assets.equity_upper_pct', '权益敞口上限（%）', numberValue('assets.equity_upper_pct') && (value('assets.equity_upper_pct') as number) >= 0 && (value('assets.equity_upper_pct') as number) <= 5)
+  for (const [key, label] of [['property_bonds', '地产债'], ['low_rated_lgv_bonds', '低评级城投债'], ['nonstandard_trust', '非标信托'], ['directional_derivatives', '方向性衍生品']] as const) {
+    add(`assets.prohibited_exposure.${key}`, `${label}无敞口`, value(`assets.prohibited_exposure.${key}`) === false)
+  }
+  const duration = numberValue('assets.duration_years') && (value('assets.duration_years') as number) >= 0
+  const distribution = value('assets.duration_status') === 'pending' && value('assets.maturity_distribution_verified') === true && hashValue('assets.maturity_distribution_hash')
+  add('assets.duration_years', '久期或期限分布', duration || distribution)
+  add('app.as_of', 'App 数据截至日（当天）', value('app.as_of') === date)
+  add('app.can_buy', '当前可买', value('app.can_buy') === true)
+  add('app.available_cents', '可用额度（分）', integerValue('app.available_cents'))
+  add('app.max_order_cents', '单笔上限（分）', value('app.max_order_cents') === null || value('app.max_order_cents') === undefined || integerValue('app.max_order_cents'))
+  add('app.sales_restrictions_verified', '销售限制已核实', value('app.sales_restrictions_verified') === true)
+  add('app.evidence_hash', 'App 额度证据 SHA-256', hashValue('app.evidence_hash'))
+  add('allocation.minimum_cents', '起购金额（分）', integerValue('allocation.minimum_cents'))
+  add('allocation.increment_cents', '递增金额（分）', integerValue('allocation.increment_cents') && (value('allocation.increment_cents') as number) > 0)
+  add('allocation.strategy_family.key', '策略族标识', stringValue('allocation.strategy_family.key'))
+  add('allocation.strategy_family.basis', '策略族依据', ['verified_underlying', 'benchmark_proxy'].includes(value('allocation.strategy_family.basis') as string))
+  add('allocation.strategy_family.evidence_hash', '策略族证据 SHA-256', hashValue('allocation.strategy_family.evidence_hash'))
+  add('allocation.liquidity_eligible', '是否计入流动性子集', typeof value('allocation.liquidity_eligible') === 'boolean')
+  if (value('allocation.liquidity_eligible') === true) {
+    add('allocation.liquidity_basis_verified', '流动性依据已核实', value('allocation.liquidity_basis_verified') === true)
+    add('allocation.liquidity_evidence_hash', '流动性证据 SHA-256', hashValue('allocation.liquidity_evidence_hash'))
+  }
+  return [...new Map(missing.map(item => [item.path, item])).values()]
+})
+
+const suggestions = computed(() => review.value?.suggestions ?? null)
+const autoFilledCount = computed(() => suggestions.value?.paths.filter(path => {
+  const value = factValue(currentFacts.value, path)
+  return value !== null && value !== undefined && value !== ''
+}).length ?? 0)
+const missingCount = computed(() => missingFacts.value.length)
+const missingPaths = computed(() => missingFacts.value.map(item => item.path))
+
+function applyPublicPrefill(): void {
+  if (!review.value?.suggestions) return
+  const facts = currentFacts.value
+  mergeMissing(facts, review.value.suggestions.facts)
+  setFactRows(facts)
+  onlyMissing.value = true
+  checkError.value = ''
+  show(`已带出 ${autoFilledCount.value} 项公开数据，请补齐待补项`)
 }
 
 function addFact(): void {
@@ -225,7 +396,7 @@ async function submitMapping(): Promise<void> {
   }
 }
 
-async function submitCheck(): Promise<void> {
+async function submitCheck(confirmed = false): Promise<void> {
   if (savingCheck.value || savingMapping.value || loading.value || !review.value || notDeployed.value) return
   if (!mappingId.value) {
     checkError.value = '请先保存产品映射，再提交交易前检查'
@@ -243,7 +414,7 @@ async function submitCheck(): Promise<void> {
       expected_seq: review.value.activation_seq,
     }
     await saveStrategyCheck(payload)
-    show('交易前检查已保存')
+    show(confirmed ? '交易前复核已确认并保存' : '交易前检查已保存')
     savingCheck.value = false
     await loadReview()
     emit('saved')
@@ -253,6 +424,23 @@ async function submitCheck(): Promise<void> {
   } finally {
     savingCheck.value = false
   }
+}
+
+function confirmCheck(): void {
+  if (lot.value) return
+  if (missingFacts.value.length) {
+    onlyMissing.value = true
+    const names = missingFacts.value.slice(0, 3).map(item => item.label).join('、')
+    checkError.value = `还有 ${missingFacts.value.length} 项必填待补：${names}${missingFacts.value.length > 3 ? '…' : ''}`
+    return
+  }
+  const statusRow = factRows.value.find(row => row.key === 'status')
+  if (!statusRow) {
+    checkError.value = '核验状态字段缺失，无法确认'
+    return
+  }
+  updateFact(statusRow, 'verified')
+  void submitCheck(true)
 }
 
 const blockers = computed(() => review.value?.review?.blockers ?? [])
@@ -276,6 +464,7 @@ onUnmounted(() => { controller?.abort(); loadToken.value++ })
 
 onMounted(() => {
   if (channel.value && code.value) void loadReview()
+  else if (props.ledgerProductCode) void autoMatchShare()
 })
 </script>
 
@@ -293,7 +482,7 @@ onMounted(() => {
       </span>
     </div>
 
-<p v-if="lot" class="strategy-hint">当前批次 {{ lot }}<template v-if="ledgerProductCode"> · 账本产品 {{ ledgerProductCode }}</template>。请核实销售渠道与同份额代码后读取复核记录。</p>
+<p v-if="lot" class="strategy-hint">当前批次 {{ lot }}<template v-if="ledgerProductCode"> · 账本产品 {{ ledgerProductCode }}</template>。读取复核前会按账本产品匹配最新公开份额；也可手动核对销售渠道与同份额代码。</p>
     <form class="strategy-identity" @submit.prevent="loadReview">
       <label>
         <span>销售渠道</span>
@@ -316,6 +505,13 @@ onMounted(() => {
         {{ loading ? '读取中…' : '读取复核记录' }}
       </button>
     </form>
+    <p v-if="ledgerProductCode" class="strategy-hint">
+      渠道或代码不确定？
+      <button class="rw-link-button" type="button" data-testid="strategy-share-match"
+        :disabled="matchingShare || loading" @click="autoMatchShare">
+        {{ matchingShare ? '正在匹配…' : '按账本产品自动匹配公开份额' }}
+      </button>
+    </p>
 
     <p v-if="loading" class="strategy-hint" role="status">正在读取复核记录…</p>
     <div v-else-if="notDeployed" class="rw-alert is-warn" role="status" data-testid="strategy-review-missing">
@@ -392,12 +588,45 @@ onMounted(() => {
         </div>
       </form>
 
-      <form class="strategy-form" @submit.prevent="submitCheck">
+      <form class="strategy-form" @submit.prevent="submitCheck(false)">
         <h3>{{ lot.startsWith('trade:') ? '赎回到账事实核验' : lot ? '持仓赎回规则核验' : '交易前检查' }}</h3>
         <p class="rw-panel-sub">
           逐项核实正式条款、费用、底层资产和银行 App 证据。未知项目保持空白或“未核实”，保存后仍需所有阻碍项解除才能执行。金额字段以分为单位。
         </p>
-        <div class="strategy-structured-facts"><StrategyFactField v-for="row in editableFactRows" :key="row.key" :field-key="row.key" :model-value="row.original" @update:model-value="updateFact(row, $event)" /></div>
+        <div v-if="!lot" class="strategy-prefill" data-testid="strategy-prefill">
+          <div class="strategy-prefill-copy">
+            <strong>公开数据已带出 {{ autoFilledCount }} 项</strong>
+            <span class="strategy-prefill-count" :class="{ 'is-ready': !missingCount }">待补 {{ missingCount }} 项</span>
+            <p>条款版本、起购金额和策略族来自公开证据，只作建议；文件核验、费率、资产报告与当日 App 数据仍需你确认。</p>
+          </div>
+          <div class="strategy-prefill-actions">
+            <button
+              v-if="suggestions"
+              class="button button-ghost button-small"
+              type="button"
+              data-testid="strategy-prefill-apply"
+              :disabled="savingCheck || !review"
+              @click="applyPublicPrefill"
+            >
+              重新带出公开数据
+            </button>
+            <button class="button button-ghost button-small" type="button" data-testid="strategy-prefill-toggle" @click="onlyMissing = !onlyMissing">
+              {{ onlyMissing ? '查看全部字段' : '只看待补项' }}
+            </button>
+          </div>
+        </div>
+        <div class="strategy-structured-facts">
+          <StrategyFactField
+            v-for="row in editableFactRows"
+            :key="row.key"
+            :field-key="row.key"
+            :model-value="row.original"
+            :only-missing="onlyMissing"
+            :missing-paths="missingPaths"
+            @update:model-value="updateFact(row, $event)"
+          />
+        </div>
+        <p v-if="!lot && onlyMissing && !missingCount" class="strategy-hint" role="status">必填项已全部补齐，可点“一键确认并保存”完成核验。</p>
         <details class="strategy-advanced"><summary>高级字段与原始结构</summary>
         <div v-for="(row, index) in factRows" :key="index" class="strategy-fact-row">
           <input v-model="row.key" :aria-label="`事实字段名 ${index + 1}`" placeholder="字段名" />
@@ -426,12 +655,22 @@ onMounted(() => {
         <p v-if="checkError" class="strategy-error" role="alert">{{ checkError }}</p>
         <div class="strategy-actions">
           <button
+            v-if="!lot"
             class="button button-primary button-small"
+            type="button"
+            data-testid="strategy-check-confirm"
+            :disabled="savingCheck || savingMapping || loading || notDeployed || !mappingId"
+            @click="confirmCheck"
+          >
+            {{ savingCheck ? '保存中…' : missingCount ? `待补 ${missingCount} 项` : '一键确认并保存' }}
+          </button>
+          <button
+            :class="lot ? 'button button-primary button-small' : 'button button-ghost button-small'"
             type="submit"
             data-testid="strategy-check-save"
             :disabled="savingCheck || savingMapping || loading || notDeployed || !mappingId"
           >
-            {{ savingCheck ? '保存中…' : '保存交易前检查' }}
+            {{ savingCheck ? '保存中…' : lot ? '保存交易前检查' : '保存草稿' }}
           </button>
           <button
             class="button button-ghost button-small"
@@ -509,6 +748,43 @@ onMounted(() => {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+.strategy-prefill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+.strategy-prefill-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+.strategy-prefill-copy strong { color: var(--ink); font-size: 13px; }
+.strategy-prefill-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--field-bg);
+  color: var(--warning-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+.strategy-prefill-count.is-ready { color: var(--green); }
+.strategy-prefill-copy p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.strategy-prefill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .strategy-form {
   margin-top: 16px;
   padding-top: 14px;

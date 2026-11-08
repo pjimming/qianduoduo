@@ -293,6 +293,11 @@ a.r2-head-chip:hover {
   margin-top: 0;
 }
 
+/* 资金配置与交易前复核是上下两张独立卡片，间距与 .r2-stack 保持一致。 */
+.r2-page .products-section-body > .rw-panel + .rw-panel {
+  margin-top: 18px;
+}
+
 .r2-page .entry-panel {
   position: static;
 }

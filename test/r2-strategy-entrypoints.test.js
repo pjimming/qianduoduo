@@ -128,6 +128,11 @@ test('review, mapping and check entrypoints validate input, append versions and 
   assert.equal(review.mapping.product_code, 'S1');
   assert.equal(review.check.version, 1);
   assert.equal(review.public_evidence.name, '合成产品S1');
+  assert.equal(Number(review.public_evidence.min_amount), 1);
+  assert.equal(review.suggestions.facts.terms.kind, 'minimum');
+  assert.equal(review.suggestions.facts.terms.days, 30);
+  assert.equal(review.suggestions.facts.allocation.minimum_cents, 100);
+  assert.equal(review.suggestions.paths.includes('allocation.minimum_cents'), true);
   assert.equal(review.activation_seq, 1);
   assert.equal(typeof review.review, 'object');
   const missing = await (await fetch(`${context.base}/api/r2-strategy/reviews/TEST/NOPE`)).json();

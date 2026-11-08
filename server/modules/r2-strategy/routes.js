@@ -6,7 +6,7 @@ const { strategyError } = require('./repository');
 const BASE = '/api/r2-strategy';
 const REVIEW = /^\/api\/r2-strategy\/reviews\/([^/]+)\/([^/]+)$/;
 const CANCEL_REMAINING = /^\/api\/r2-strategy\/proposals\/(\d+)\/cancel-remaining$/;
-const patterns = [['GET', BASE + '/status'], ['GET', BASE + '/workspace'], ['GET', REVIEW],
+const patterns = [['GET', BASE + '/status'], ['GET', BASE + '/workspace'], ['GET', BASE + '/share-match'], ['GET', REVIEW],
   ['POST', BASE + '/preview'], ['POST', BASE + '/recompute'], ['POST', BASE + '/proposals'],
   ['POST', CANCEL_REMAINING], ['POST', BASE + '/mappings'], ['POST', BASE + '/checks']];
 const FINGERPRINT = /^[a-f0-9]{64}$/;
@@ -55,6 +55,13 @@ function createStrategyRoutes(service, proposals) {
   return patterns.map(([method, path]) => ({ method, path,
     async handler(request, response, context) {
       if (method === 'GET') {
+        if (path === BASE + '/share-match') {
+          const query = context?.requestUrl?.searchParams;
+          sendJson(response, 200, service.matchShare({
+            productCode: query?.get('product_code') ?? '', source: query?.get('source') ?? 'cmb',
+          }));
+          return;
+        }
         if (path === REVIEW) {
           const match = REVIEW.exec(context?.pathname ?? '');
           if (!match) throw strategyError('invalid_input', '产品身份路径无效', 400);

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = defineProps<{ modelValue: unknown; fieldKey: string }>()
+const props = withDefaults(defineProps<{ modelValue: unknown; fieldKey: string; pathPrefix?: string; onlyMissing?: boolean; missingPaths?: string[] }>(), {
+  pathPrefix: '',
+  onlyMissing: false,
+  missingPaths: () => [],
+})
 const emit = defineEmits<{ 'update:modelValue': [value: unknown] }>()
 const labels: Record<string, string> = {
   status: '核验状态', terms: '正式期限与申赎安排', document: '正式条款文件', fees: '费用', assets: '底层资产', app: '当日银行 App 核验', allocation: '起购与配置约束', redemption: '持仓赎回规则',
@@ -12,6 +16,12 @@ const labels: Record<string, string> = {
 }
 const label = computed(() => labels[props.fieldKey] || props.fieldKey)
 const object = computed(() => props.modelValue !== null && typeof props.modelValue === 'object' && !Array.isArray(props.modelValue) ? props.modelValue as Record<string, unknown> : null)
+const fullPath = computed(() => props.pathPrefix ? `${props.pathPrefix}.${props.fieldKey}` : props.fieldKey)
+function hasMissing(path: string) {
+  return props.missingPaths.some(item => item === path || item.startsWith(`${path}.`))
+}
+const visibleEntries = computed(() => Object.entries(object.value || {}).filter(([key]) => !props.onlyMissing || hasMissing(`${fullPath.value}.${key}`)))
+const showLeaf = computed(() => !props.onlyMissing || props.missingPaths.includes(fullPath.value))
 const isBoolean = computed(() => typeof props.modelValue === 'boolean' || /^(read_and_verified|verified|is_latest_available|allowed_assets_verified|actual_assets_verified|property_bonds|low_rated_lgv_bonds|nonstandard_trust|directional_derivatives|can_buy|sales_restrictions_verified|liquidity_eligible|liquidity_basis_verified|rules_verified|can_redeem_today)$/.test(props.fieldKey))
 const isNumber = computed(() => typeof props.modelValue === 'number' || /(_cents|_bps|_pct|_years)$/.test(props.fieldKey) || ['days', 'trade_id'].includes(props.fieldKey))
 function valueChange(event: Event) {
@@ -21,13 +31,13 @@ function valueChange(event: Event) {
 </script>
 
 <template>
-  <details v-if="object" class="fact-group" :open="fieldKey === 'redemption'">
+  <details v-if="object && visibleEntries.length && (!onlyMissing || hasMissing(fullPath))" class="fact-group" :open="fieldKey === 'redemption' || (onlyMissing && hasMissing(fullPath))">
     <summary>{{ label }}</summary>
     <div class="fact-grid">
-      <StrategyFactField v-for="(value, key) in object" :key="key" :field-key="String(key)" :model-value="value" @update:model-value="emit('update:modelValue', { ...object, [key]: $event })" />
+      <StrategyFactField v-for="entry in visibleEntries" :key="String(entry[0])" :field-key="String(entry[0])" :model-value="entry[1]" :path-prefix="fullPath" :only-missing="onlyMissing" :missing-paths="missingPaths" @update:model-value="emit('update:modelValue', { ...object, [entry[0]]: $event })" />
     </div>
   </details>
-  <label v-else class="fact-field">
+  <label v-else-if="showLeaf" class="fact-field">
     <span>{{ label }}</span>
     <select v-if="fieldKey === 'status'" :value="modelValue || 'pending'" @change="valueChange">
       <option value="pending">待核实</option><option value="verified">已核实</option><option value="withdrawn">撤回核验</option>

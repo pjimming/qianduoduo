@@ -7,12 +7,45 @@ const { buildAccountContext } = require('./account');
 const { allocateV9 } = require('./allocation');
 const { buildHoldingMonitoring } = require('./holdings');
 const { bucketForTerm } = require('../../../lib/yield-policy');
+const { productFamilyKey, returnEvidenceTier } = require('../../../lib/products');
 const { buildBuyForecast } = require('./forecast');
 const { combineHoldingEvidence } = require('./holding-evidence');
 
+// Legacy holdings predate transaction-level pretrade reviews. Classify them
+// conservatively from the product master so they stop blocking the account,
+// without pretending their liquidity or registration share is verified.
+function applyHoldingClassificationFallback(holdings, products, assetsByCode) {
+  const productByCode = new Map();
+  for (const product of Array.isArray(products) ? products : []) {
+    const code = String(product?.code || '').trim();
+    if (code) productByCode.set(code, product);
+  }
+  for (const holding of Array.isArray(holdings) ? holdings : []) {
+    const code = String(holding?.product_code || '').trim();
+    if (!code || assetsByCode[code]) continue;
+    const product = productByCode.get(code);
+    if (!product) continue;
+    const termDays = Number.isFinite(product.term_days) ? product.term_days : holding.term_days;
+    const bucket = bucketForTerm(termDays);
+    if (bucket === 'unknown') continue;
+    assetsByCode[code] = {
+      product_key: `product:${code}`,
+      family_key: productFamilyKey(product),
+      evidence_tier: product.evidence_tier || returnEvidenceTier(product),
+      bucket,
+      // Short-term holdings are redeemable within the liquidity window; longer
+      // dated holdings lack arrival timing evidence and stay non-liquid.
+      liquidity_eligible: bucket === 'short',
+      available_on: null,
+      family_basis: 'holding_master_fallback',
+      classification_basis: 'holding_master_fallback',
+    };
+  }
+}
+
 // One entry point for HTTP, scheduled worker and CLI. It accepts frozen inputs
 // only; it cannot open a database, refresh a source or submit a business write.
-function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], mappings = [], checks = [], portfolio, date, settings = {} }, options = {}) {
+function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], mappings = [], checks = [], portfolio, products = [], date, settings = {} }, options = {}) {
   const evidence = adaptSnapshot(sourceSnapshot, date, mappings);
   const activeMappings = new Set(mappings.filter(row => !row.revoked_at).map(row => row.id));
   const latest = new Map();
@@ -34,6 +67,7 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], mapp
         bucket: bucketForTerm(row.term?.days) };
     }
   }
+  applyHoldingClassificationFallback(portfolio?.holdings, products, assetsByCode);
   const settlementChecks = {};
   for (const row of latest.values()) {
     if (row.facts?.kind !== 'trade_settlement' || row.facts.status !== 'verified') continue;
