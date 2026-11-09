@@ -15,7 +15,7 @@ async function refreshHoldingMonitor({ ledger, sourceSnapshot, date, signal,
   const unique = [...new Map(identities.map(identity => [fingerprint(identity), identity])).values()];
   if (!unique.length) return { skipped: true, reason: 'no_holdings' };
   if (unique.length > 128) return { skipped: true, reason: 'monitor_scope_exceeded' };
-  const key = fingerprint({ date, identities: unique, source: sourceSnapshot });
+  const key = fingerprint({ date, identities: unique, source: sourceSnapshot, channel_resolution: 'public-list-v1' });
   const lock = `${artifactPath(ledger.dbPath)}.lock`;
   let handle;
   try {
@@ -39,8 +39,12 @@ async function refreshHoldingMonitor({ ledger, sourceSnapshot, date, signal,
     try {
       const batch = await collector({ identities: unique, date, calendar: valuationCalendar, signal, clock });
       if (!validBatch(batch, date)) throw new Error('持仓监控结果指纹或范围无效');
-      if (fingerprint(batch.items.map(row => fingerprint(row.identity)).sort()) !==
-          fingerprint(unique.map(identity => fingerprint(identity)).sort())) throw new Error('持仓监控结果份额与请求不一致');
+      // Channel is resolved by the collector. The source and sales-code scope
+      // must still match one-to-one, with no extra or duplicate results.
+      const collected = batch.items.map(({ identity }) => ({ source: identity.source, code: identity.code }));
+      const requested = unique.map(({ source, code }) => ({ source, code }));
+      const scope = rows => fingerprint(rows.map(row => fingerprint(row)).sort());
+      if (scope(collected) !== scope(requested)) throw new Error('持仓监控结果份额与请求不一致');
       attempt.complete = batch.items.every(row => row.issues.length === 0);
       // A degraded response supplements the last known evidence rather than
       // erasing good disclosure dates. combineHoldingEvidence exposes the new

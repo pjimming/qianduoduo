@@ -140,7 +140,7 @@ function compactStrategyResult(result) {
       excluded_reason_counts: excludedCounts },
     monitoring: { counts: result.monitoring.counts,
       rows: result.monitoring.rows.map(row => ({ lot_id: row.lot_id, product_code: row.product_code,
-        identity: row.identity, summary: row.summary, redemption: row.redemption,
+        identity: row.identity, amount: row.amount, summary: row.summary, redemption: row.redemption,
         state: row.state, action: row.action, planned_action: row.planned_action, yield_1m: row.yield_1m,
         performance_date: row.performance_date, next_verify_date: row.next_verify_date,
         requires_user_action: row.requires_user_action, message_key: row.message_key, fingerprint: row.fingerprint })) },

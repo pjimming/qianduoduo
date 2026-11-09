@@ -100,13 +100,17 @@ const reviewSummary = computed(() => data.value?.workspace.holding_reviews_summa
 const openEvents = computed(
   () => data.value?.inbox_center.summary.by_source.product_event?.pending ?? 0,
 )
+const holdingProductCount = computed(() => {
+  const rows = strategy.value?.result?.monitoring.rows
+  return rows ? new Set(rows.map(row => row.product_code)).size : null
+})
 
 const strategyMeta = computed(() => {
   if (strategy.value?.mode !== 'v9' || strategyError.value || strategy.value.contract_matches === false ||
       strategy.value.stale || !strategy.value.result) return null
   return {
     cash: strategy.value.result.allocation.available_cents / 100,
-    holdings: strategy.value.result.monitoring.rows.length,
+    holdings: holdingProductCount.value,
   }
 })
 const allocationMeta = computed(() => {
@@ -248,7 +252,7 @@ function holdingsLink(
             :to="holdingsLink('review')"
           >
             逐只复核
-            <span v-if="strategy?.mode === 'v9'">{{ strategy.result?.monitoring.rows.length ?? '—' }}</span>
+            <span v-if="strategy?.mode === 'v9'">{{ holdingProductCount ?? '—' }}</span>
             <span v-else-if="reviewSummary">{{ reviewSummary.total }}</span>
           </RouterLink>
           <RouterLink

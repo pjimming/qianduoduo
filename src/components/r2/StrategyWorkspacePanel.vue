@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { computeStrategy, generateStrategyProposals, generateHoldingExit, saveStrategyCashflow } from '@/api/r2-strategy'
-import type { StrategyCashflow } from '@/types/r2-strategy'
+import type { StrategyCashflow, StrategyHoldingRow } from '@/types/r2-strategy'
 import type { StrategyWorkspace } from '@/types/r2-strategy'
 import { formatMoney } from '@/composables/useFormatters'
 
@@ -42,7 +42,23 @@ async function exitHolding(lot: string) {
 }
 const result = computed(() => props.workspace.result)
 const current = computed(() => props.workspace.contract_matches !== false && !props.workspace.stale && result.value?.input.activation_seq === props.workspace.activation_seq && result.value?.input.mode === props.workspace.mode)
-const stateNames: Record<string, string> = { exit_required: '准备退出', exit_at_open: '锁定中 · 到期核验退出', exit_rules_pending: '退出规则待核', evidence_pending: '续持证据待核', risk_review: '风险复核', hold: '达到续持门槛', simulation_passed: '约束测算通过', pending: '证据或账户待核', no_feasible_full_allocation: '无可行满仓方案' }
+const exitStates = new Set(['exit_required', 'exit_at_open', 'exit_rules_pending'])
+const holdingProducts = computed(() => {
+  const groups = new Map<string, StrategyHoldingRow[]>()
+  for (const row of result.value?.monitoring.rows ?? []) {
+    const group = groups.get(row.product_code)
+    if (group) group.push(row)
+    else groups.set(row.product_code, [row])
+  }
+  return [...groups.values()].map(rows => ({
+    row: rows[0],
+    exits: rows.filter(row => exitStates.has(row.state)),
+    amount: rows.every(row => row.amount != null)
+      ? rows.reduce((total, row) => total + Math.round(row.amount! * 100), 0)
+      : null,
+  }))
+})
+const stateNames: Record<string, string> = { exit_required: '准备退出', exit_at_open: '锁定中 · 到期核验退出', exit_rules_pending: '退出规则待核', risk_review: '风险复核', hold: '达到续持门槛', simulation_passed: '约束测算通过', pending: '证据或账户待核', no_feasible_full_allocation: '无可行满仓方案' }
 const reasons: Record<string, string> = { principal_unavailable: '本金尚未初始化', evidence_unavailable: '公开证据不可用', account_unverified: '账户占用或持仓信息待核', account_invalid: '账户输入异常', account_overcommitted: '持仓及承诺金额超出本金', existing_evidence_single_cap: '存量持仓超出证据层单一上限', existing_evidence_tier_cap: '存量持仓超出证据层合计上限', existing_product_cap: '存量持仓超出单一产品上限', existing_family_cap: '存量持仓超出策略家族上限', liquidity_or_cashflow_conflict: '流动性或近期用款约束冲突', exposure_unverified: '持仓风险敞口待核', settings_invalid: '配置约束待核', cash_needs_invalid: '用款约束待核', allocation_model_limit: '候选规模超出计算限制', screening_not_automatic: '尚未满足自动配置门槛', formal_terms_unverified: '正式期限条款待核', settlement_path_unverified: '申赎到账路径待核', fees_unverified: '费用待核', assets_unverified: '底层资产待核', prohibited_assets_or_unknown: '禁投资产敞口待核', equity_limit_unverified: '权益上限待核', duration_or_distribution_unverified: '久期或期限分布待核', app_availability_unverified: '当日 App 额度待核', allocation_limits_unverified: '起购、递增或集中度依据待核', public_quota_unverified: '公开额度待核', redemption_fee_unverified: '赎回费用待核', redemption_fee_or_arrival_unverified: '赎回费用或资金到账安排待核', redemption_rules_unverified: '赎回条款待核', current_redemption_window_unverified: '当日赎回窗口待核', holding_exit_not_current_plan: '当前批次尚未形成可执行退出计划' }
 const bucketReasons: Record<string, string> = { existing_medium_bucket_cap: '中期占用超过 20%', existing_long_bucket_cap: '长期占用超过 10%' }
 const label = (value: string) => reasons[value] || bucketReasons[value] || stateNames[value] || value
@@ -67,7 +83,7 @@ async function run(kind: 'compute' | 'proposals') {
 <template>
   <section class="rw-panel strategy-workspace" data-testid="strategy-workspace" :aria-label="section === 'allocation' ? 'v9 资金配置' : 'v9 持仓监控'">
     <div class="strategy-heading">
-      <div><h2>{{ section === 'allocation' ? '当前策略资金配置' : '当前策略逐批次复核' }}</h2><p>v9 · 激活序号 {{ workspace.activation_seq }} · 业务日 {{ workspace.business_date }} · 公开批次 {{ workspace.run_id == null ? '未获取到' : `#${workspace.run_id}` }}</p></div>
+      <div><h2>{{ section === 'allocation' ? '当前策略资金配置' : '持仓产品复核' }}</h2><p>v9 · 激活序号 {{ workspace.activation_seq }} · 业务日 {{ workspace.business_date }} · 公开批次 {{ workspace.run_id == null ? '未获取到' : `#${workspace.run_id}` }}</p></div>
       <div class="strategy-actions">
         <button type="button" class="button button-ghost button-small" :disabled="busy" @click="emit('refresh')">读取最新状态</button>
         <button type="button" class="button button-primary button-small" :disabled="busy" @click="run('compute')">{{ busy ? '处理中…' : '重算当前策略' }}</button>
@@ -122,9 +138,39 @@ async function run(kind: 'compute' | 'proposals') {
       <div class="strategy-actions"><button type="button" class="button button-primary button-small" :disabled="busy || !current || !result.may_generate_buy_proposals" @click="run('proposals')">生成买入提案</button><RouterLink :to="{ name: 'r2-evaluation', query: { section: 'proposals' } }">审阅提案</RouterLink></div>
     </template>
     <template v-else-if="result">
-      <p>近 1 月有效年化低于 2.15% 时准备退出；证据缺失保持待核。所有银行交易由你确认执行。</p>
-      <div v-if="result.monitoring.rows.length" class="strategy-table-wrap"><table><thead><tr><th>账本产品 / 批次</th><th>当前结论</th><th>近 1 月年化</th><th>业绩日</th><th>下次核验</th><th>处理</th></tr></thead><tbody><tr v-for="row in result.monitoring.rows" :key="row.lot_id"><td>{{ row.product_code }}<small>{{ row.lot_id }}</small></td><td>{{ label(row.state) }}<small v-if="row.summary">{{ row.summary }}</small></td><td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}</td><td>{{ row.performance_date || '未获取到' }}</td><td>{{ row.next_verify_date }}</td><td><button v-if="row.state === 'exit_required'" class="button button-ghost button-small" type="button" :disabled="busy || !current" @click="exitHolding(row.lot_id)">生成退出提案</button></td></tr></tbody></table></div>
-      <p v-else>当前没有已确认持仓批次。</p>
+      <p>按产品复核。有效近 1 月年化低于 2.15% 时准备换出，按赎回窗口处理。缺少有效证据的产品暂停新增或加仓。</p>
+      <div v-if="holdingProducts.length" class="strategy-table-wrap">
+          <table>
+            <thead><tr><th>持仓产品</th><th>持仓本金</th><th>近 1 月年化</th><th>业绩日</th><th>复核结论</th><th>处理</th></tr></thead>
+            <tbody>
+              <tr v-for="{ row, exits, amount } in holdingProducts" :key="row.product_code">
+                <th scope="row">{{ row.product_code }}</th>
+                <td>{{ money(amount) }}</td>
+                <td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}<small v-if="row.yield_1m != null && row.state === 'evidence_pending'">待核</small></td>
+                <td>{{ row.performance_date || '未获取到' }}</td>
+                <td v-if="exits.length">未达续持门槛 · 准备换出</td>
+                <td v-else-if="row.state === 'evidence_pending'">{{ row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据' }}</td>
+                <td v-else>{{ label(row.state) }}</td>
+                <td>
+                  <details v-if="exits.length" class="strategy-exit">
+                    <summary>查看赎回安排</summary>
+                    <ul>
+                      <li v-for="exit in exits" :key="exit.lot_id">
+                        <span>{{ exit.amount == null ? exit.lot_id : money(Math.round(exit.amount * 100)) }} · {{ label(exit.state) }}</span>
+                        <small v-if="exit.redemption?.earliest_redeem_date">最早赎回日 {{ exit.redemption.earliest_redeem_date }}</small>
+                        <button v-if="exit.state === 'exit_required'" class="button button-ghost button-small" type="button"
+                          :disabled="busy || !current" @click="exitHolding(exit.lot_id)">生成退出提案</button>
+                      </li>
+                    </ul>
+                    <RouterLink :to="{ name: 'r2-products', query: { section: 'screening' } }">查看候选产品</RouterLink>
+                  </details>
+                  <span v-else>—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
+      <p v-else>当前没有已确认持仓。</p>
     </template>
   </section>
 </template>
@@ -140,6 +186,10 @@ p { color: var(--ink-soft); line-height: 1.6; overflow-wrap: anywhere; }
 .strategy-amounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 16px; margin: 20px 0; }
 dt { color: var(--ink-soft); font-size: 12px; } dd { margin: 5px 0 0; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .strategy-blockers { color: var(--warning-ink); line-height: 1.8; }
+.strategy-exit summary { cursor: pointer; }
+.strategy-exit ul { padding-left: 16px; }
+.strategy-exit li + li { margin-top: 8px; }
+.strategy-exit button { display: block; margin-top: 4px; }
 .strategy-table-wrap { width: 100%; overflow-x: auto; margin: 16px 0; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; min-width: 100px; }

@@ -154,7 +154,7 @@ test('holding-monitor cache refreshes public identities only, with bounded retry
       calls++;
       assert.deepEqual(identities, [{ source: 'cmb', channel: 'cmb', code: 'P' }]);
       const batch = { scope: 'holding_monitor', business_date: '2026-11-09', collector_version: 'cmb-public-v1',
-        captured_at: now.toISOString(), items: [{ identity: identities[0], data: {}, nav_hash: null, issues: [], evidence: [] }] };
+        captured_at: now.toISOString(), items: [{ identity: { ...identities[0], channel: 'D07' }, data: {}, nav_hash: null, issues: [], evidence: [] }] };
       return { ...batch, content_hash: fingerprint(monitorContent(batch)) };
     } };
   assert.equal((await refreshHoldingMonitor(args)).refreshed, true);

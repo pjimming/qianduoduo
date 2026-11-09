@@ -1,7 +1,7 @@
 export interface StrategyIdentity { source: string; channel: string; code: string }
 export interface StrategyCashflow { by_date: string; amount_cents: number }
 export interface StrategyAllocationRow { identity: StrategyIdentity; rank: number; group: string; amount_cents: number; evidence_hash: string; reason: string }
-export interface StrategyHoldingRow { identity?: StrategyIdentity | null; summary?: string; redemption?: { earliest_redeem_date?: string | null; funds_available_date?: string | null }; lot_id: string; product_code: string; state: string; action: string; planned_action: string; yield_1m: string | null; performance_date: string | null; next_verify_date: string; requires_user_action: boolean; fingerprint: string }
+export interface StrategyHoldingRow { identity?: StrategyIdentity | null; amount?: number; summary?: string; redemption?: { earliest_redeem_date?: string | null; funds_available_date?: string | null }; lot_id: string; product_code: string; state: string; action: string; planned_action: string; yield_1m: string | null; performance_date: string | null; next_verify_date: string; requires_user_action: boolean; fingerprint: string }
 export interface StrategyResult {
   input: { mode: string; activation_seq: number; business_date: string; source_fingerprint: string | null }
   input_fingerprint: string; may_generate_buy_proposals: boolean

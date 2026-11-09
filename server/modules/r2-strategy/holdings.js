@@ -41,14 +41,21 @@ function redemptionFor(holding, date) {
 function buildHoldingMonitoring({ holdings, context, date }) {
   if (!isoDate(date)) throw new Error('持仓监控业务日无效');
   if (!Array.isArray(holdings) || holdings.length > 20000) throw new Error('持仓监控输入无效');
+  const hardFailure = context?.blockers?.some(code => ['batch_version_or_status', 'batch_invalid', 'duplicate_identity', 'source_identity_or_calendar'].includes(code));
+  const currentContext = context?.date === date && context.contract_hash === CONTRACT_HASH;
+  const products = new Map();
+  for (const row of context?.rows ?? []) {
+    const code = row.mapping?.product_code;
+    if (!code) continue;
+    const yieldState = currentContext && (!hardFailure || row.monitoring_verified === true)
+      ? row.holding_yield_state ?? 'pending' : 'pending';
+    products.set(code, products.has(code) ? null : { current: row, yieldState });
+  }
   const seen = new Set();
   const rows = holdings.map(holding => {
     if (!holding.lot_id || seen.has(holding.lot_id) || !Number.isFinite(holding.amount) || holding.amount <= 0) throw new Error('持仓批次重复或金额无效');
     seen.add(holding.lot_id);
-    const matches = (context?.rows ?? []).filter(row => row.mapping?.product_code === holding.product_code);
-    const current = matches.length === 1 ? matches[0] : null;
-    const hardFailure = context?.blockers?.some(code => ['batch_version_or_status', 'batch_invalid', 'duplicate_identity', 'source_identity_or_calendar'].includes(code));
-    const yieldState = (!hardFailure || current?.monitoring_verified === true) && context?.date === date && context.contract_hash === CONTRACT_HASH ? current?.holding_yield_state ?? 'pending' : 'pending';
+    const { current = null, yieldState = 'pending' } = products.get(holding.product_code) ?? {};
     const redemption = redemptionFor(holding, date);
     const riskReasons = [];
     if (['watch', 'reject'].includes(current?.metrics?.drawdown?.band)) riskReasons.push('drawdown_risk');

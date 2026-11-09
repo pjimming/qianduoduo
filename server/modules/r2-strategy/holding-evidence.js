@@ -42,6 +42,20 @@ function combineHoldingEvidence({ context, supplements = [], date }) {
     evidence: batch.items.flatMap(row => row.evidence.map(proof => ({ ...row.identity, ...proof }))) }, date);
     for (let index = 0; index < adapted.rows.length; index++) {
       const incoming = adapted.rows[index], raw = batch.items[index], key = identityKey(incoming.identity);
+      // Legacy artifacts used the source label as the channel. Unresolved
+      // results are diagnostics, not a second share for the same sales code.
+      if (incoming.identity.channel === incoming.identity.source) {
+        issues.push(...raw.issues);
+        if (raw.issues.includes('share_identity_conflict')) {
+          for (const [priorKey, prior] of rows) {
+            if (prior.identity.source !== incoming.identity.source || prior.identity.code !== incoming.identity.code) continue;
+            const blocked = { ...prior, holding_yield_state: 'pending', monitoring_verified: false,
+              monitoring_issues: [...new Set([...prior.monitoring_issues, ...raw.issues])] };
+            rows.set(priorKey, { ...blocked, evidence_hash: fingerprint({ ...blocked, evidence_hash: undefined }) });
+          }
+        }
+        continue;
+      }
       const prior = rows.get(key);
       const identityFailure = raw.issues.some(code => /identity|pool_scope/.test(code)) || incoming.blockers.some(code =>
         ['share_identity_conflict'].includes(code));

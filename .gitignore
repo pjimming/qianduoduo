@@ -1,6 +1,8 @@
 data/*.sqlite
 data/*.sqlite-wal
 data/*.sqlite-shm
+data/*.sqlite.holding-monitor.json
+data/*.sqlite.holding-monitor.json.*
 data/backups/
 data/trade-inbox/
 data/income-inbox/

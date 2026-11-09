@@ -477,10 +477,15 @@ async function collectHoldingEvidence({ identities, date, calendar, signal: call
   const browser = await (options.openBrowser ?? openPublicBrowser)(signal);
   try {
     let shares = [], poolIssue = null;
+    const occurrences = new Map();
     try {
       const client = await (options.listClient ?? createProductListClient)(browser.context, signal);
       const result = await queryProducts(client, '1', { strict: true });
       shares = parsePool(result.rows);
+      for (const row of result.rows) {
+        const code = text(row.code);
+        occurrences.set(code, (occurrences.get(code) ?? 0) + 1);
+      }
       health.pool = { requested: result.pages, ok: result.pages, included: shares.length, total: result.total };
     } catch (error) {
       signal.throwIfAborted();
@@ -491,17 +496,23 @@ async function collectHoldingEvidence({ identities, date, calendar, signal: call
     let cf, clientIssue = null;
     try { cf = await (options.cfClient ?? createCfClient)(browser.context, signal, options); }
     catch (error) { signal.throwIfAborted(); clientIssue = error.code ?? 'detail_client_unavailable'; }
-    await parallel(targets, options.maxParallel, signal, async identity => {
-      const listed = byIdentity.get(shareKey(identity));
+    await parallel(targets, options.maxParallel, signal, async target => {
+      // The ledger supplies a sales code but has no public channel field.
+      // Resolve it only when the public list identifies exactly one share.
+      const needsChannel = target.channel === SOURCE;
+      const ambiguous = needsChannel && occurrences.get(target.code) > 1;
+      const listed = needsChannel ? (ambiguous ? null : shares.find(share => share.code === target.code)) : byIdentity.get(shareKey(target));
+      const identity = listed && needsChannel ? { ...target, channel: listed.channel } : target;
       const product = listed ? { ...listed } : { channel: identity.channel, code: identity.code, name: identity.code,
         issuer: '', performance: {}, performance_date: null };
       const proofs = [], issues = [];
-      if (!listed) issues.push(poolIssue ?? 'share_not_listed');
+      if (!listed) issues.push(poolIssue ?? (ambiguous ? 'share_identity_conflict' : 'share_not_listed'));
       if (listed) proofs.push(evidence('performance', API, clock().toISOString(), {
         performance_date: listed.performance_date, performance: listed.performance,
         inception_date: listed.inception_date, risk: listed.risk, currency: 'CNY', public_offering: true, source: SOURCE,
       }));
-      if (cf) {
+      // A source label is not a sales channel and cannot be used for detail or NAV.
+      if ((listed || !needsChannel) && cf) {
         try {
           product.detail = parseDetail(await cf('/api/ProductInfo/getSAProductDetailInfo', identity), identity, null);
           health.detail.ok++;
@@ -520,7 +531,7 @@ async function collectHoldingEvidence({ identities, date, calendar, signal: call
           signal.throwIfAborted();
           product.nav = { issue: error.code ?? 'nav_unavailable' }; issues.push(product.nav.issue);
         }
-      } else {
+      } else if (listed || !needsChannel) {
         product.detail_issue = clientIssue; product.nav = { issue: clientIssue }; issues.push(clientIssue);
       }
       const data = evaluateProduct(product, date, calendar);

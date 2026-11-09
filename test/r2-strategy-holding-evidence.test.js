@@ -104,6 +104,29 @@ test('同一输入与倒序身份产生相同内容指纹，排序不受区域�
   assert.deepEqual(first.items[0].data, second.items[0].data);
 });
 
+test('按销售代码解析实际渠道，重复渠道候选保持待核且不请求详情', async () => {
+  const stub = stubSource({ pool: [poolRow({ code: 'A', channel: 'D08' }),
+    poolRow({ code: 'B' }), poolRow({ code: 'B', channel: 'D08' })] });
+  const batch = await collect([id('A', 'cmb'), id('B', 'cmb'), id('C', 'cmb')], stub.options);
+  const byCode = new Map(batch.items.map(row => [row.identity.code, row]));
+  assert.deepEqual(byCode.get('A').identity, id('A', 'D08'));
+  assert.equal(byCode.get('A').data.performance['1m'], '2.50');
+  assert.ok(byCode.get('B').issues.includes('share_identity_conflict'));
+  assert.ok(byCode.get('C').issues.includes('share_not_listed'));
+  assert.equal(stub.calls.length, 2);
+  assert.ok(stub.calls.every(call => (call.share ?? call.body).channel === 'D08' || call.body?.saaCod === 'D08'));
+
+  const legacy = await collect([id('A', 'cmb')], stubSource({ pool: [] }).options);
+  const combined = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [legacy, batch] });
+  assert.deepEqual(combined.rows.map(row => row.identity), [id('A', 'D08')]);
+  assert.equal(combined.rows[0].holding_yield_state, 'pass');
+  const conflicting = await collect([id('A', 'cmb')], stubSource({ pool: [
+    poolRow({ code: 'A' }), poolRow({ code: 'A', channel: 'D08' }),
+  ] }).options);
+  const updated = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [batch, conflicting] });
+  assert.equal(updated.rows[0].holding_yield_state, 'pending');
+});
+
 test('拒绝携带账户金额、外部来源或重复份额的监控请求', async () => {
   const stub = stubSource();
   await assert.rejects(() => collect([{ ...id('A'), amount: 100000 }], stub.options), { code: 'monitor_identity' });
