@@ -12,245 +12,74 @@
 <!-- rpnav-keywords: 电池,储能,固态电池,碳酸锂,隔膜,铜箔,宁德时代,亿纬锂能,天赐材料 -->
 <!-- rpnav-priority: 高 -->
 <!-- rpnav-priority-detail: 研究优先级：宁德时代、亿纬锂能高于天赐材料、湖南裕能、恩捷股份，材料高于设备与锂资源；排序依据为盈利兑现度、瓶颈位置、估值容错和证据可验证性，不代表投资评级。 -->
+<link rel="stylesheet" href="report-template.css" data-report-template="v1">
 <style>
-:root{
-  --ink:#16222b;--muted:#5d6c77;--line:#e3e9ee;--paper:#f1f4f6;--card:#ffffff;--card-soft:#fbfcfd;
-  --navy:#0c2433;
-  --teal:#0d7a68;--teal-ink:#0a6b58;--teal-soft:#e7f4f0;--teal-border:#c7e7de;
-  --gold:#8f600d;--gold-ink:#7c530a;--gold-soft:#fbf3df;--gold-border:#eeddb4;
-  --red:#a83229;--red-ink:#9c2f26;--red-soft:#fbeae7;--red-border:#f0cfc9;
-  --blue-ink:#2c5a94;--blue-soft:#eaf1fa;--blue-border:#d2e2f4;
-  --th-bg:#eef4f6;--zebra:#fafcfd;--hover:#f2f8f6;
-  --shadow:0 12px 34px rgba(12,36,51,.07);
-  --hero-bg:linear-gradient(135deg,#0a1e2a 0%,#0e3340 52%,#0b3b36 100%);
-  --hero-ink:#f2faf7;--hero-sub:#c9ddd8;--hero-eyebrow:#8fd8c9;
-  --hero-chip-bg:rgba(255,255,255,.08);--hero-chip-border:rgba(255,255,255,.18);--hero-chip-ink:#dceee9;
-  --hero-shadow:0 26px 60px rgba(8,30,40,.25);
-  --radius:18px
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    --ink:#e6eef2;--muted:#9fb0ba;--line:#2a3a44;--paper:#0b1216;--card:#111c22;--card-soft:#16232a;
-    --navy:#e9f2f6;
-    --teal:#63cfc0;--teal-ink:#8fe0cf;--teal-soft:#12312d;--teal-border:#23594d;
-    --gold:#e0b15e;--gold-ink:#f0c878;--gold-soft:#2b2416;--gold-border:#5a4a25;
-    --red:#f0a196;--red-ink:#f0a196;--red-soft:#351f1c;--red-border:#5c332e;
-    --blue-ink:#a9c9f1;--blue-soft:#17283a;--blue-border:#2c4560;
-    --th-bg:#1a2a32;--zebra:#152128;--hover:#1a2b31;
-    --shadow:0 12px 34px rgba(0,0,0,.35);
-    --hero-bg:linear-gradient(135deg,#08161d 0%,#0d2530 52%,#0b2a27 100%);
-    --hero-ink:#f2faf7;--hero-sub:#c2d8d4;--hero-eyebrow:#8fd8c9;
-    --hero-chip-bg:rgba(255,255,255,.07);--hero-chip-border:rgba(255,255,255,.16);--hero-chip-ink:#d5e9e4;
-    --hero-shadow:0 26px 60px rgba(0,0,0,.5)
-  }
-}
-:root[data-theme='dark']{
-  --ink:#e6eef2;--muted:#9fb0ba;--line:#2a3a44;--paper:#0b1216;--card:#111c22;--card-soft:#16232a;
-  --navy:#e9f2f6;
-  --teal:#63cfc0;--teal-ink:#8fe0cf;--teal-soft:#12312d;--teal-border:#23594d;
-  --gold:#e0b15e;--gold-ink:#f0c878;--gold-soft:#2b2416;--gold-border:#5a4a25;
-  --red:#f0a196;--red-ink:#f0a196;--red-soft:#351f1c;--red-border:#5c332e;
-  --blue-ink:#a9c9f1;--blue-soft:#17283a;--blue-border:#2c4560;
-  --th-bg:#1a2a32;--zebra:#152128;--hover:#1a2b31;
-  --shadow:0 12px 34px rgba(0,0,0,.35);
-  --hero-bg:linear-gradient(135deg,#08161d 0%,#0d2530 52%,#0b2a27 100%);
-  --hero-ink:#f2faf7;--hero-sub:#c2d8d4;--hero-eyebrow:#8fd8c9;
-  --hero-chip-bg:rgba(255,255,255,.07);--hero-chip-border:rgba(255,255,255,.16);--hero-chip-ink:#d5e9e4;
-  --hero-shadow:0 26px 60px rgba(0,0,0,.5)
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:16px}
-body{margin:0;background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.8;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
-  -webkit-font-smoothing:antialiased;overflow-wrap:break-word}
-a{color:var(--teal);text-decoration:none;border-bottom:1px solid var(--teal-border);transition:border-color .15s}
-a:hover{border-bottom-color:var(--teal)}
-::selection{background:var(--teal-soft);color:var(--teal-ink)}
-.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 64px}
-.home-link{display:inline-flex;align-items:center;gap:6px;margin:2px 0 18px;font-size:12.5px;color:var(--muted);border:0}
-.home-link:hover{color:var(--teal)}
-
-.hero{position:relative;overflow:hidden;border-radius:22px;padding:46px 46px 40px;background:var(--hero-bg);color:var(--hero-ink);box-shadow:var(--hero-shadow)}
-.hero:before{content:"";position:absolute;width:560px;height:560px;right:-180px;top:-280px;border-radius:50%;
-  background:radial-gradient(circle,rgba(80,220,190,.26),transparent 65%);pointer-events:none}
-.eyebrow{margin:0;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--hero-eyebrow);font-weight:600}
-.hero h1{margin:14px 0;font-size:34px;line-height:1.28;letter-spacing:-.6px;font-weight:750;color:var(--hero-ink);max-width:920px}
-.sub{margin:0;font-size:15px;line-height:1.85;color:var(--hero-sub);max-width:940px}
-.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
-.meta .chip{max-width:100%}
-.chip{display:inline-block;font-size:11.5px;line-height:1;padding:7px 11px;border-radius:999px;
-  background:var(--hero-chip-bg);border:1px solid var(--hero-chip-border);color:var(--hero-chip-ink);white-space:nowrap}
-
-.section{margin:22px 0;padding:36px 40px 40px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-.chapter-no{margin:0 0 10px;font-size:11.5px;letter-spacing:.16em;font-weight:600;color:var(--teal);text-transform:uppercase}
-h2{margin:0 0 20px;font-size:27px;line-height:1.35;letter-spacing:-.4px;color:var(--navy);font-weight:700}
-h3{margin:32px 0 12px;padding-left:12px;border-left:3px solid var(--teal);font-size:17px;line-height:1.5;color:var(--navy);font-weight:700}
-h4{margin:22px 0 8px;font-size:15px;color:var(--navy)}
-p{margin:10px 0}
-ol,ul{margin:10px 0;padding-left:22px}
-li{margin:7px 0}
-li::marker{color:var(--teal)}
-
-.takeaway{margin:18px 0;padding:18px 22px;border-radius:12px;border-left:4px solid var(--teal);
-  background:linear-gradient(90deg,var(--teal-soft),var(--card) 72%);font-size:14.5px}
-.verdict{margin:16px 0;padding:18px 22px;border-radius:12px;border:1px solid var(--gold-border);border-left:4px solid var(--gold);
-  background:var(--gold-soft);font-size:13.5px}
-.verdict b{color:var(--gold-ink)}
-.callout{margin:16px 0;padding:16px 20px;border-radius:12px;border:1px solid var(--blue-border);background:var(--blue-soft);font-size:13.5px}
-.callout b{color:var(--blue-ink)}
-.callout.warn{background:var(--red-soft);border-color:var(--red-border)}
-.callout.warn b{color:var(--red-ink)}
-.goodbox{margin:16px 0;padding:16px 20px;border-radius:12px;border:1px solid var(--teal-border);background:var(--teal-soft);font-size:13.5px}
-
-.grid{display:grid;gap:14px;margin:18px 0}
-.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
-.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
-.kpi{position:relative;padding:18px 18px 16px;background:var(--card-soft);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.kpi:before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),transparent 72%)}
-.kpi .label{margin:0 0 6px;font-size:11.5px;color:var(--muted)}
-.kpi .value{margin:0 0 6px;font-size:30px;line-height:1.15;letter-spacing:-.8px;font-weight:750;color:var(--navy);font-variant-numeric:tabular-nums}
-.kpi .note{margin:0;font-size:11.5px;line-height:1.65;color:var(--muted)}
-.up{color:var(--teal-ink)}
-.down{color:var(--red-ink)}
-.mini-card{padding:16px 18px;background:var(--card-soft);border:1px solid var(--line);border-radius:14px;font-size:13px;line-height:1.8}
-.mini-card b{display:block;margin-bottom:6px;font-size:13.5px;color:var(--navy)}
-.compact{margin:8px 0 0;padding-left:18px;font-size:12.5px;line-height:1.75}
-.compact li{margin:4px 0}
-
-.tag{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;line-height:1;font-weight:600;white-space:nowrap;border:1px solid transparent}
-.tag.high,.tag.good{background:var(--teal-soft);color:var(--teal-ink);border-color:var(--teal-border)}
-.tag.mid{background:var(--gold-soft);color:var(--gold-ink);border-color:var(--gold-border)}
-.tag.low,.tag.bad{background:var(--red-soft);color:var(--red-ink);border-color:var(--red-border)}
-.tag.neutral{background:var(--th-bg);color:var(--muted);border-color:var(--line)}
-
-.table-wrap{margin:16px 0;overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--card);scrollbar-width:thin}
-table{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.7;color:var(--ink)}
-table.mid{min-width:980px}
-table.wide{min-width:1520px}
-th{position:sticky;top:0;z-index:1;padding:11px 12px;background:var(--th-bg);color:var(--navy);font-size:12px;font-weight:650;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
-td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-tbody tr:last-child td{border-bottom:0}
-tbody tr:nth-child(even) td{background:var(--zebra)}
-tbody tr:hover td{background:var(--hover)}
-td strong{color:var(--navy)}
-
-.stock-card{margin:16px 0;padding:18px 20px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
-.stock-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
-.stock-head b{font-size:15.5px;color:var(--navy)}
-.ticker{margin-top:3px;font-size:11.5px;color:var(--muted);letter-spacing:.02em}
-.quote{margin:10px 0;padding:10px 14px;background:var(--card-soft);border-left:3px solid var(--teal-border);border-radius:0 10px 10px 0;font-size:13px}
-
-.chain{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:20px 0}
-.node{padding:12px 14px;background:var(--card-soft);border:1px solid var(--line);border-radius:12px;font-size:12px;line-height:1.6}
-.node b{display:block;font-size:13px;color:var(--navy);margin-bottom:2px}
-.node span{display:block;color:var(--muted);font-size:11.5px}
-.node em{display:block;margin-top:6px;font-size:11.5px;font-style:normal;color:var(--teal-ink)}
-.node.bottleneck{background:var(--gold-soft);border-color:var(--gold-border);box-shadow:inset 0 3px 0 var(--gold)}
-.node.bottleneck em{color:var(--gold-ink)}
-
-.breadth-bar{display:grid;grid-template-columns:repeat(3,1fr);margin:16px 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card-soft)}
-.breadth-bar>div{padding:14px 18px;border-right:1px solid var(--line)}
-.breadth-bar>div:last-child{border-right:0}
-.breadth-bar span{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px}
-.breadth-bar b{font-size:18px;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
-
-.src{display:block;margin-top:6px;font-size:11.5px;line-height:1.7;color:var(--muted)}
-.note{font-size:11.5px;color:var(--muted)}
-.source-list{margin:10px 0;padding-left:20px;font-size:12px;line-height:1.95;color:var(--muted)}
-.source-list li{margin:3px 0}
-.source-list a{font-size:11px}
-.foot{margin:26px 0 0;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.8}
-
-@media (max-width:1024px){
-  .grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .grid.three{grid-template-columns:1fr}
-  .chain{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .hero{padding:34px 28px 30px}
-  .hero h1{font-size:29px}
-  .section{padding:28px 24px 30px}
-}
-@media (max-width:640px){
-  .wrap{padding:16px 12px 40px}
-  .grid.four,.grid.two{grid-template-columns:1fr}
-  .breadth-bar{grid-template-columns:1fr}
-  .breadth-bar>div{border-right:0;border-bottom:1px solid var(--line)}
-  .breadth-bar>div:last-child{border-bottom:0}
-  .hero{border-radius:16px;padding:26px 20px}
-  .hero h1{font-size:24px;letter-spacing:-.3px}
-  .sub{font-size:13.5px}
-  .chip{font-size:10.5px;padding:6px 9px;white-space:normal}
-  h2{font-size:22px}
-  h3{font-size:15.5px}
-  .section{padding:22px 16px 24px;border-radius:14px}
-  .kpi .value{font-size:26px}
-  .stock-head{flex-direction:column;gap:8px}
-}
+  /* 本篇使用统一正文模板 v1；品牌色与个别组件微调写在这里。 */
 </style>
 </head>
-<body>
-<div class="wrap">
-<a class="home-link" href="../research/index.html" data-report-page-home>← 返回报告库</a>
+<body class="rp-doc">
+<div class="rp-wrap">
+<a class="rp-home-link" href="../research/index.html" data-report-page-home>← 返回首页</a>
 
-<header class="hero">
-  <p class="eyebrow">Theme Deep Dive · 电池产业链</p>
+<header class="rp-hero">
+  <p class="rp-eyebrow">Theme Deep Dive · 电池产业链</p>
   <h1>电池板块：瓶颈在高端产能，不在锂价</h1>
-  <p class="sub">2026 年板块的核心矛盾已从「产能过剩杀估值」切换为「高端产能紧缺 + 储能需求超预期 + 固态电池中试落地」。估值处于近十年 1.39% 分位，但 11 月 5—6 日的冲高回落说明：这是盈利兑现的分化行情，不是全面反转。</p>
-  <div class="meta">
-    <span class="chip">调研日期 2026-11-08</span>
-    <span class="chip">行情截至 2026-11-06</span>
-    <span class="chip">财务截至 2026Q3</span>
-    <span class="chip">覆盖 69 家</span>
-    <span class="chip">币种 CNY</span>
-    <span class="chip">方法：Serenity 产业链瓶颈分析 + 公司全景与阵型 + 市场叙事与资金结构 + 退出条件</span>
+  <p class="rp-sub">2026 年板块的核心矛盾已从「产能过剩杀估值」切换为「高端产能紧缺 + 储能需求超预期 + 固态电池中试落地」。估值处于近十年 1.39% 分位，但 11 月 5—6 日的冲高回落说明：这是盈利兑现的分化行情，不是全面反转。</p>
+  <div class="rp-meta">
+    <span class="rp-chip">调研日期 2026-11-08</span>
+    <span class="rp-chip">行情截至 2026-11-06</span>
+    <span class="rp-chip">财务截至 2026Q3</span>
+    <span class="rp-chip">覆盖 69 家</span>
+    <span class="rp-chip">币种 CNY</span>
+    <span class="rp-chip">方法：Serenity 产业链瓶颈分析 + 公司全景与阵型 + 市场叙事与资金结构 + 退出条件</span>
   </div>
 </header>
 
-<section class="section" id="s1">
-<p class="chapter-no">01 / 一页结论</p>
+<section class="rp-section" id="s1">
+<p class="rp-chapter-no">01 / 一页结论</p>
 <h2>估值在底部，盈利在分化，行情在抢跑</h2>
 
-<div class="takeaway">
+<div class="rp-takeaway">
 <b>一句话结论：</b>2026 年电池板块的主线不是「需求回来了」，而是<b>需求结构切换（储能翻倍）+ 供给端反内卷 + 高端产能紧缺</b>三者叠加，把行业从「全面过剩」推向「结构性短缺」。估值处于近十年 1.39% 分位提供了容错，但 11 月 4—6 日「两天涨超 7%、第三天跌 3.12%、主力净流出 29.17 亿元」的走势说明：<b>第一波修复由叙事与资金驱动，第二波必须由 Q4 单瓦盈利和 2027 年价格谈判兑现</b>。
 </div>
 
-<div class="grid four">
-  <div class="kpi"><p class="label">中证电池主题 PE-TTM</p><p class="value">18.12x</p><p class="note">截至 11-04，近十年 1.39% 分位、近五年 2.78% 分位（Wind）</p></div>
-  <div class="kpi"><p class="label">前三季度储能电池销量</p><p class="value up">595.4GWh</p><p class="note">同比 +111.8%，增速接近动力电池的三倍（动力电池产业创新联盟）</p></div>
-  <div class="kpi"><p class="label">电池级碳酸锂现货</p><p class="value">9.36 万元/吨</p><p class="note">11-06 SMM 均价，较前一工作日 +1,900 元；较 5 月高点 20.05 万元 -53%</p></div>
-  <div class="kpi"><p class="label">11-06 板块单日</p><p class="value down">-3.12%</p><p class="note">主力净流出 29.17 亿元、散户净流入 32.01 亿元（证券之星）</p></div>
+<div class="rp-grid rp-four">
+  <div class="rp-kpi"><p class="rp-label">中证电池主题 PE-TTM</p><p class="rp-value">18.12x</p><p class="rp-note">截至 11-04，近十年 1.39% 分位、近五年 2.78% 分位（Wind）</p></div>
+  <div class="rp-kpi"><p class="rp-label">前三季度储能电池销量</p><p class="rp-value rp-up">595.4GWh</p><p class="rp-note">同比 +111.8%，增速接近动力电池的三倍（动力电池产业创新联盟）</p></div>
+  <div class="rp-kpi"><p class="rp-label">电池级碳酸锂现货</p><p class="rp-value">9.36 万元/吨</p><p class="rp-note">11-06 SMM 均价，较前一工作日 +1,900 元；较 5 月高点 20.05 万元 -53%</p></div>
+  <div class="rp-kpi"><p class="rp-label">11-06 板块单日</p><p class="rp-value rp-down">-3.12%</p><p class="rp-note">主力净流出 29.17 亿元、散户净流入 32.01 亿元（证券之星）</p></div>
 </div>
 
 <h3>三条判断</h3>
 <ol>
-  <li><b>需求端：总量高增，结构从车的单引擎变成「车 + 储能」双引擎。</b>2026 年前三季度国内动力电池销量 1,086.4GWh（+38.2%）、储能电池销量 595.4GWh（+111.8%），合计 1,681.7GWh（+57.6%）。全球口径 SNE 统计前三季度 EV 电池使用量 994.5GWh（+19.7%），宁德时代份额 39.1%。国内增速远高于全球，说明<b>增量主要来自中国储能与出口，而非全球乘用车电动化加速</b>。<span class="src">来源：中国汽车动力电池产业创新联盟 2026 年 9 月月度信息（经 21 世纪经济报道 2026-11-06 引用）；SNE Research 2026 年前三季度数据（同上）。</span></li>
-  <li><b>供给端：反内卷压住低端，高端产能反而紧缺。</b>2024 年底中国正极、负极、电解液、隔膜全球市占率分别为 90%、97%、85%、83%，但当前是「低端过剩、高端紧缺」并存。第四代高压实磷酸铁锂（压实密度 ≥2.6g/cm³）因技术门槛与 12—18 个月客户认证周期，2026 年缺口约 30—40 万吨，业内判断 2027 年仍偏紧；隔膜已满产满销（但价格仅「基本平稳」），铜箔加工费进入修复通道。<span class="src">来源：财联社 2026-01-07；证券日报 2026-11-05（隆众资讯分析师张胜楠）；国信证券 2026 年 11 月第 1 期。</span></li>
-  <li><b>盈利端：收入普涨，利润分化，税负是 2027 年最大变量。</b>宁德时代 Q3 单季营收 +58.58%、归母净利仅 +14.54%（环比 -5.77%）；亿纬锂能 Q3 归母 +60.18%、扣非 +110.64%；国轩高科 Q3 归母亏损 5.37 亿元但扣非盈利 1.45 亿元；孚能科技仍亏损。2026-09-01 起锂电消费税按 2% 征收、2027-09-01 起提至 4%，出口退税 2026-04 起由 9% 降至 6%、2027-01-01 起取消——<b>2027 年的利润表取决于价格谈判能否覆盖新增税负</b>。<span class="src">来源：各公司 2026 年三季报；财政部、海关总署、税务总局公告（经 21 世纪经济报道 2026-11-06 梳理）。</span></li>
+  <li><b>需求端：总量高增，结构从车的单引擎变成「车 + 储能」双引擎。</b>2026 年前三季度国内动力电池销量 1,086.4GWh（+38.2%）、储能电池销量 595.4GWh（+111.8%），合计 1,681.7GWh（+57.6%）。全球口径 SNE 统计前三季度 EV 电池使用量 994.5GWh（+19.7%），宁德时代份额 39.1%。国内增速远高于全球，说明<b>增量主要来自中国储能与出口，而非全球乘用车电动化加速</b>。<span class="rp-src">来源：中国汽车动力电池产业创新联盟 2026 年 9 月月度信息（经 21 世纪经济报道 2026-11-06 引用）；SNE Research 2026 年前三季度数据（同上）。</span></li>
+  <li><b>供给端：反内卷压住低端，高端产能反而紧缺。</b>2024 年底中国正极、负极、电解液、隔膜全球市占率分别为 90%、97%、85%、83%，但当前是「低端过剩、高端紧缺」并存。第四代高压实磷酸铁锂（压实密度 ≥2.6g/cm³）因技术门槛与 12—18 个月客户认证周期，2026 年缺口约 30—40 万吨，业内判断 2027 年仍偏紧；隔膜已满产满销（但价格仅「基本平稳」），铜箔加工费进入修复通道。<span class="rp-src">来源：财联社 2026-01-07；证券日报 2026-11-05（隆众资讯分析师张胜楠）；国信证券 2026 年 11 月第 1 期。</span></li>
+  <li><b>盈利端：收入普涨，利润分化，税负是 2027 年最大变量。</b>宁德时代 Q3 单季营收 +58.58%、归母净利仅 +14.54%（环比 -5.77%）；亿纬锂能 Q3 归母 +60.18%、扣非 +110.64%；国轩高科 Q3 归母亏损 5.37 亿元但扣非盈利 1.45 亿元；孚能科技仍亏损。2026-09-01 起锂电消费税按 2% 征收、2027-09-01 起提至 4%，出口退税 2026-04 起由 9% 降至 6%、2027-01-01 起取消——<b>2027 年的利润表取决于价格谈判能否覆盖新增税负</b>。<span class="rp-src">来源：各公司 2026 年三季报；财政部、海关总署、税务总局公告（经 21 世纪经济报道 2026-11-06 梳理）。</span></li>
 </ol>
 
 <h3>阵型概览：三类资产，三种赔率</h3>
-<div class="grid three">
-  <div class="mini-card"><b>第一阵型 · 兑现型</b>宁德时代、亿纬锂能、中创新航（3931.HK）、科达利（结构件）。出货与利润双升、客户结构分散、海外产能落地，是「确定性」仓位；风险是税负转嫁与单瓦盈利下滑。</div>
-  <div class="mini-card"><b>第二阵型 · 弹性型</b>天赐材料（电解液一体化）、湖南裕能（高压实铁锂）、恩捷股份（隔膜）、诺德股份/嘉元科技（铜箔）。价格弹性最大、Q3 起量价齐升，但扩产冲动仍在，行情依赖涨价持续性。</div>
-  <div class="mini-card"><b>第三阵型 · 期权型</b>当升科技、上海洗霸（固态材料），先导智能、纳科诺尔、宏工科技（固态设备）。2026 年是中试线落地与装车验证年，赔率高、兑现远，仅适合小仓位跟踪。</div>
+<div class="rp-grid rp-three">
+  <div class="rp-mini-card"><b>第一阵型 · 兑现型</b>宁德时代、亿纬锂能、中创新航（3931.HK）、科达利（结构件）。出货与利润双升、客户结构分散、海外产能落地，是「确定性」仓位；风险是税负转嫁与单瓦盈利下滑。</div>
+  <div class="rp-mini-card"><b>第二阵型 · 弹性型</b>天赐材料（电解液一体化）、湖南裕能（高压实铁锂）、恩捷股份（隔膜）、诺德股份/嘉元科技（铜箔）。价格弹性最大、Q3 起量价齐升，但扩产冲动仍在，行情依赖涨价持续性。</div>
+  <div class="rp-mini-card"><b>第三阵型 · 期权型</b>当升科技、上海洗霸（固态材料），先导智能、纳科诺尔、宏工科技（固态设备）。2026 年是中试线落地与装车验证年，赔率高、兑现远，仅适合小仓位跟踪。</div>
 </div>
 
 <h3>市场阶段：底部区域的第一波修复，尚未确认反转</h3>
-<div class="verdict">
-<b>判定：</b>「估值底 + 资金回流 + 叙事改善」三要素已具备，但「价格底 + 盈利底」尚未确认。11 月 4—5 日万得锂电池指数两日涨超 7%、宁德时代六连阳累计涨超 15%，11-06 即回落 3.12% 且主力资金净流出 29.17 亿元、散户净流入 32.01 亿元——<b>典型的「机构派发、散户接盘」结构</b>。锂价虽从 10-29 低点反弹至 9.36 万元/吨（SMM 11-06，周内一度 -4,400 元），但现货成交冷清、基差走弱，尚未形成趋势性上涨。<span class="src">来源：21 世纪经济报道 2026-11-06；东方财富 2026-11-05；证券之星 2026-11-06；Mysteel 碳酸锂日评 2026-11-06。</span>
+<div class="rp-verdict">
+<b>判定：</b>「估值底 + 资金回流 + 叙事改善」三要素已具备，但「价格底 + 盈利底」尚未确认。11 月 4—5 日万得锂电池指数两日涨超 7%、宁德时代六连阳累计涨超 15%，11-06 即回落 3.12% 且主力资金净流出 29.17 亿元、散户净流入 32.01 亿元——<b>典型的「机构派发、散户接盘」结构</b>。锂价虽从 10-29 低点反弹至 9.36 万元/吨（SMM 11-06，周内一度 -4,400 元），但现货成交冷清、基差走弱，尚未形成趋势性上涨。<span class="rp-src">来源：21 世纪经济报道 2026-11-06；东方财富 2026-11-05；证券之星 2026-11-06；Mysteel 碳酸锂日评 2026-11-06。</span>
 </div>
 
-<div class="grid two">
-  <div class="mini-card"><b>下一催化（按时间排序）</b>
-    <ul class="compact">
+<div class="rp-grid rp-two">
+  <div class="rp-mini-card"><b>下一催化（按时间排序）</b>
+    <ul class="rp-compact">
       <li>2026Q4：隔膜、铜箔、第四代 LFP 涨价传导至报表；储能抢装与出口抢运（2027-01-01 出口退税取消前）。</li>
       <li>2026Q4—2027Q1：固态电池中试线落地、装车验证；钠电 GWh 级订单。</li>
       <li>2027-01：2026 年报预告，检验单瓦盈利是否止跌。</li>
       <li>2027 全年：消费税升至 4%、出口退税取消后的价格谈判结果。</li>
     </ul>
   </div>
-  <div class="mini-card"><b>退出信号（任一触发即下调优先级）</b>
-    <ul class="compact">
+  <div class="rp-mini-card"><b>退出信号（任一触发即下调优先级）</b>
+    <ul class="rp-compact">
       <li>碳酸锂跌破 8 万元/吨且库存重新累积，证明供给出清失败。</li>
       <li>储能系统/EPC 中标价再创新低，需求增长被价格战吞噬。</li>
       <li>龙头单季归母净利连续两个季度负增长，且归因于价格而非一次性因素。</li>
@@ -259,104 +88,104 @@ td strong{color:var(--navy)}
   </div>
 </div>
 </section>
-<section class="section" id="s2">
-<p class="chapter-no">02 / 产业事实与瓶颈地图</p>
+<section class="rp-section" id="s2">
+<p class="rp-chapter-no">02 / 产业事实与瓶颈地图</p>
 <h2>需求翻倍的是储能，紧缺的是高端产能</h2>
 
-<div class="takeaway">
+<div class="rp-takeaway">
 2026 年电池产业链最容易被误读的一点，是把「碳酸锂 9 万元/吨」当成全行业过剩的证据。事实是：<b>锂资源过剩、电芯总量偏松、但高端正极、隔膜、铜箔和大储电芯同时紧张</b>。需求端的增量几乎全部来自储能与出口，动力电池的全球增速已回落至 20% 以下。这决定了本轮景气是<b>结构性、分层级的</b>，而不是 2020—2021 年那种全产业链普涨。
 </div>
 
 <h3>2.1 需求：总量高增，结构从「车」切换到「车 + 储能」</h3>
-<div class="table-wrap">
-<table class="mid">
+<div class="rp-table-wrap">
+<table class="rp-mid">
 <thead><tr><th>需求口径</th><th>最新数据</th><th>同比</th><th>口径与来源</th></tr></thead>
 <tbody>
-<tr><td>中国动力电池销量（9M2026）</td><td>1,086.4GWh</td><td class="up">+38.2%</td><td>中国汽车动力电池产业创新联盟，经 21 世纪经济报道 2026-11-06 引用</td></tr>
-<tr><td>中国储能电池销量（9M2026）</td><td>595.4GWh</td><td class="up">+111.8%</td><td>同上；储能增速约为动力电池的 3 倍</td></tr>
-<tr><td>全球 EV 电池使用量（9M2026）</td><td>994.5GWh</td><td class="up">+19.7%</td><td>SNE Research，经 21 世纪经济报道 2026-11-06 引用</td></tr>
-<tr><td>全球储能电池出货（2026H1）</td><td>467.84GWh</td><td class="up">+94.76%</td><td>InfoLink；全年预测 1,026GWh</td></tr>
-<tr><td>中国新型储能装机（截至 9 月底）</td><td>167GW / 435GWh</td><td class="up">+63%</td><td>国家能源局 2026-10-30；平均时长 2.61h</td></tr>
-<tr><td>国内储能中标（1—9 月）</td><td>360.4GWh</td><td class="up">+63.4%</td><td>广东省电池行业协会；9 月 2h 系统均价 0.59 元/Wh（-9.2%）</td></tr>
-<tr><td>全球 EV 销量（2026E）</td><td>2,400 万辆</td><td class="up">+13%</td><td>Benchmark Mineral Intelligence 2026-01-04；2025 年为 +22%</td></tr>
-<tr><td>中国 EV 销量（2026E）</td><td>1,550 万辆</td><td class="up">+17%</td><td>Benchmark；瑞银预测 +8%，分歧较大</td></tr>
-<tr><td>中国 10 月 NEV 零售</td><td>114.8 万辆</td><td class="down">-10%</td><td>乘联分会 2026-11-04 初步数；渗透率 67.8%，购置税减半后需求回落</td></tr>
-<tr><td>美国 EV 销量（2026E）</td><td>110 万辆</td><td class="down">-29%</td><td>Benchmark；税收优惠取消后大幅下修</td></tr>
-<tr><td>欧洲 EV 销量（2026E）</td><td>490 万辆</td><td class="up">+14%</td><td>Benchmark；欧盟放宽 2035 禁燃令</td></tr>
+<tr><td>中国动力电池销量（9M2026）</td><td>1,086.4GWh</td><td class="rp-up">+38.2%</td><td>中国汽车动力电池产业创新联盟，经 21 世纪经济报道 2026-11-06 引用</td></tr>
+<tr><td>中国储能电池销量（9M2026）</td><td>595.4GWh</td><td class="rp-up">+111.8%</td><td>同上；储能增速约为动力电池的 3 倍</td></tr>
+<tr><td>全球 EV 电池使用量（9M2026）</td><td>994.5GWh</td><td class="rp-up">+19.7%</td><td>SNE Research，经 21 世纪经济报道 2026-11-06 引用</td></tr>
+<tr><td>全球储能电池出货（2026H1）</td><td>467.84GWh</td><td class="rp-up">+94.76%</td><td>InfoLink；全年预测 1,026GWh</td></tr>
+<tr><td>中国新型储能装机（截至 9 月底）</td><td>167GW / 435GWh</td><td class="rp-up">+63%</td><td>国家能源局 2026-10-30；平均时长 2.61h</td></tr>
+<tr><td>国内储能中标（1—9 月）</td><td>360.4GWh</td><td class="rp-up">+63.4%</td><td>广东省电池行业协会；9 月 2h 系统均价 0.59 元/Wh（-9.2%）</td></tr>
+<tr><td>全球 EV 销量（2026E）</td><td>2,400 万辆</td><td class="rp-up">+13%</td><td>Benchmark Mineral Intelligence 2026-01-04；2025 年为 +22%</td></tr>
+<tr><td>中国 EV 销量（2026E）</td><td>1,550 万辆</td><td class="rp-up">+17%</td><td>Benchmark；瑞银预测 +8%，分歧较大</td></tr>
+<tr><td>中国 10 月 NEV 零售</td><td>114.8 万辆</td><td class="rp-down">-10%</td><td>乘联分会 2026-11-04 初步数；渗透率 67.8%，购置税减半后需求回落</td></tr>
+<tr><td>美国 EV 销量（2026E）</td><td>110 万辆</td><td class="rp-down">-29%</td><td>Benchmark；税收优惠取消后大幅下修</td></tr>
+<tr><td>欧洲 EV 销量（2026E）</td><td>490 万辆</td><td class="rp-up">+14%</td><td>Benchmark；欧盟放宽 2035 禁燃令</td></tr>
 </tbody>
 </table>
 </div>
 
 <p><b>三个需求层次，确定性依次递减。</b>第一层是<b>中国独立储能</b>：136 号文取消强制配储后，储能从「新能源配储」转为「独立储能」，收益来源从政策指标变成容量租赁、现货套利和辅助服务，市场化需求反而更真实。2025 年国内储能备案、中标、并网分别为 1,595GWh、462GWh、190GWh，备案量是并网量的 8 倍以上，说明<b>项目储备充足、瓶颈在并网与收益率</b>。第二层是<b>海外储能</b>：美国 ITC 与电网刚性需求、欧洲负电价与调频需求，构成 2027 年之前的确定性增量；亿纬锂能与 Fluence 的 2027—2031 框架合同、2027 年已确定交付约 16GWh 是直接证据。第三层是<b>出口抢运</b>：2027-01-01 出口退税取消，2026Q4 出现提前报关与抢出口，这部分需求是「透支」而非「新增」。</p>
 
-<div class="callout warn">
-<b>反方证据（必须同时记录）：</b>花旗在 2026 年 10 月下调电池厂排产预期，前五大厂 10 月环比仅 +1%；中信建投将 2026 年国内储能装机预测下修至 230—250GWh。这说明「储能翻倍」在 2026 年下半年已出现<b>增速斜率放缓</b>，2027 年的高增长预期存在下修风险。<span class="src">来源：证券时报 2026-10-21；中信建投 2026-10 月观点（经 21 世纪经济报道 2026-11-06 引用）。</span>
+<div class="rp-callout rp-warn">
+<b>反方证据（必须同时记录）：</b>花旗在 2026 年 10 月下调电池厂排产预期，前五大厂 10 月环比仅 +1%；中信建投将 2026 年国内储能装机预测下修至 230—250GWh。这说明「储能翻倍」在 2026 年下半年已出现<b>增速斜率放缓</b>，2027 年的高增长预期存在下修风险。<span class="rp-src">来源：证券时报 2026-10-21；中信建投 2026-10 月观点（经 21 世纪经济报道 2026-11-06 引用）。</span>
 </div>
 
 <h3>2.2 供给：反内卷压住低端，扩产全部涌向高端与海外</h3>
-<p>2024 年底中国正极、负极、电解液、隔膜全球市占率分别为 <b>90%、97%、85%、83%</b>，四类主材均已形成绝对优势，但产能结构是「低端过剩、高端紧缺」。2025-11-28 工信部召集 12 家动力与储能电池企业座谈，2026-01-07 多部门联合召集 10 余家企业，明确要求<b>控制产能、规范价格竞争、保护知识产权、建立产能监测预警与调控机制</b>。政策的效果不是「消灭过剩」，而是<b>把扩产窗口收窄到高端产品与海外基地</b>——这恰好解释了为什么 2026 年 LFP 名义产能仍过剩、第四代高压实产品却缺 30—40 万吨。<span class="src">来源：财联社 2026-01-07；工信部 2025-11-28 座谈会通稿。</span></p>
+<p>2024 年底中国正极、负极、电解液、隔膜全球市占率分别为 <b>90%、97%、85%、83%</b>，四类主材均已形成绝对优势，但产能结构是「低端过剩、高端紧缺」。2025-11-28 工信部召集 12 家动力与储能电池企业座谈，2026-01-07 多部门联合召集 10 余家企业，明确要求<b>控制产能、规范价格竞争、保护知识产权、建立产能监测预警与调控机制</b>。政策的效果不是「消灭过剩」，而是<b>把扩产窗口收窄到高端产品与海外基地</b>——这恰好解释了为什么 2026 年 LFP 名义产能仍过剩、第四代高压实产品却缺 30—40 万吨。<span class="rp-src">来源：财联社 2026-01-07；工信部 2025-11-28 座谈会通稿。</span></p>
 
-<p>供给扩张呈现三个特征：<b>① 单体规模越来越大</b>——楚能 110GWh 满产、目标 500GWh，并与华创新材（15 万吨铜箔）、龙蟠科技（15 万吨 LFP）、天赐材料（55 万吨电解液）、杉杉科技（百亿级负极）签订长协，用「产能绑定」锁定材料；<b>② 扩产跟着客户走</b>——国轩与大众 PowerCo 在西班牙、斯洛伐克、摩洛哥设三家合资公司，总投资约 32.22 亿欧元、国轩出资约 15.98 亿欧元；<b>③ 高端产品溢价</b>——容百科技 2026 年 4 月公告拟投 42.98 亿元建设 LFP 前驱体及正极产能，国轩 10-30 在庐江投产 20 万吨第四代 LFP 产线（兼容第五代）。<span class="src">来源：上证报 2025-12-10；国轩高科公告 2026-10-30；容百科技公告 2026-04；证券日报 2026-11-05。</span></p>
+<p>供给扩张呈现三个特征：<b>① 单体规模越来越大</b>——楚能 110GWh 满产、目标 500GWh，并与华创新材（15 万吨铜箔）、龙蟠科技（15 万吨 LFP）、天赐材料（55 万吨电解液）、杉杉科技（百亿级负极）签订长协，用「产能绑定」锁定材料；<b>② 扩产跟着客户走</b>——国轩与大众 PowerCo 在西班牙、斯洛伐克、摩洛哥设三家合资公司，总投资约 32.22 亿欧元、国轩出资约 15.98 亿欧元；<b>③ 高端产品溢价</b>——容百科技 2026 年 4 月公告拟投 42.98 亿元建设 LFP 前驱体及正极产能，国轩 10-30 在庐江投产 20 万吨第四代 LFP 产线（兼容第五代）。<span class="rp-src">来源：上证报 2025-12-10；国轩高科公告 2026-10-30；容百科技公告 2026-04；证券日报 2026-11-05。</span></p>
 
 <h3>2.3 产业链六层与瓶颈地图</h3>
-<div class="chain">
-  <div class="node"><b>锂资源</b><span>锂辉石/盐湖/云母</span><em>过剩，9 万元磨底</em></div>
-  <div class="node"><b>四大主材</b><span>正极/负极/电解液/隔膜</span><em>低端过剩、高端紧缺</em></div>
-  <div class="node bottleneck"><b>辅材</b><span>铜箔/铝箔/结构件/添加剂</span><em>铜箔满产满销、涨价</em></div>
-  <div class="node"><b>电芯</b><span>动力/储能/消费</span><em>总量偏松、大储电芯紧</em></div>
-  <div class="node bottleneck"><b>系统集成</b><span>交流侧/直流侧/EPC</span><em>价格战最激烈</em></div>
-  <div class="node"><b>回收/设备</b><span>湿法回收/整线设备</span><em>设备随扩产周期波动</em></div>
+<div class="rp-chain">
+  <div class="rp-node"><b>锂资源</b><span>锂辉石/盐湖/云母</span><em>过剩，9 万元磨底</em></div>
+  <div class="rp-node"><b>四大主材</b><span>正极/负极/电解液/隔膜</span><em>低端过剩、高端紧缺</em></div>
+  <div class="rp-node rp-bottleneck"><b>辅材</b><span>铜箔/铝箔/结构件/添加剂</span><em>铜箔满产满销、涨价</em></div>
+  <div class="rp-node"><b>电芯</b><span>动力/储能/消费</span><em>总量偏松、大储电芯紧</em></div>
+  <div class="rp-node rp-bottleneck"><b>系统集成</b><span>交流侧/直流侧/EPC</span><em>价格战最激烈</em></div>
+  <div class="rp-node"><b>回收/设备</b><span>湿法回收/整线设备</span><em>设备随扩产周期波动</em></div>
 </div>
 
-<div class="table-wrap">
-<table class="mid">
+<div class="rp-table-wrap">
+<table class="rp-mid">
 <thead><tr><th>环节</th><th>全球格局 / 集中度</th><th>当前供需</th><th>价格信号（2026-11）</th><th>瓶颈判断</th><th>2027 展望</th></tr></thead>
 <tbody>
-<tr><td><b>锂资源</b></td><td>澳洲锂辉石 + 南美盐湖 + 中国云母/盐湖；CR5 约 50%</td><td class="good">过剩</td><td>电池级碳酸锂 9.36 万元/吨（SMM 11-06），较 5 月高点 20.05 万元 -53%，较年初 12 万元 -22%</td><td>不是瓶颈，是成本项</td><td>供给增速仍高于需求，价格中枢 8—10 万元</td></tr>
-<tr><td><b>正极（LFP）</b></td><td>中国占全球 90%+；湖南裕能、德方纳米、国轩、容百</td><td class="down">低端过剩、第四代及以上紧缺</td><td>高端产品溢价，普通产品跟随锂价</td><td class="tag high">真瓶颈（高端）</td><td>2027 仍偏紧，缺口 30—40 万吨逐步收窄</td></tr>
-<tr><td><b>正极（三元）</b></td><td>容百、当升、厦钨新能、长远锂科</td><td class="good">过剩</td><td>跟随镍钴锂成本，加工费承压</td><td>非瓶颈</td><td>高镍/单晶结构性机会</td></tr>
-<tr><td><b>负极</b></td><td>中国占全球 97%；璞泰来、杉杉、尚太、中科电气</td><td class="good">过剩</td><td>人造石墨价格低位，快充负极溢价</td><td>非瓶颈（快充负极除外）</td><td>2027 产能仍过剩，一体化降本</td></tr>
-<tr><td><b>电解液 / 六氟</b></td><td>天赐、新宙邦、多氟多；六氟 CR3 约 60%</td><td class="good">过剩</td><td>六氟基准价 9.8 万元/吨（11-06，月内 -3.92%，一年低位）；电解液周环比仍在跌</td><td>非瓶颈（价格仍在底部）</td><td>2027 年新增产能释放，价格中枢难回 15 万元</td></tr>
-<tr><td><b>隔膜</b></td><td>恩捷、星源、中材科技；中国占全球 83%</td><td class="down">满产满销</td><td>价格基本平稳（5μm 2.4—3.2 元/㎡），湿法产能利用率 98%</td><td class="tag high">量的瓶颈（非价的瓶颈）</td><td>2027 新增产能有限，紧平衡延续、价格弹性弱</td></tr>
-<tr><td><b>铜箔</b></td><td>诺德、嘉元、德福、海亮；中国占全球 80%+</td><td class="down">满产满销</td><td>6μm 加工费 20,500→24,000 元/吨（+17.1%），单吨利润转正 2,000—3,000 元</td><td class="tag high">真瓶颈（修复）</td><td>2027 供给偏紧，但加工费上限受制于扩产</td></tr>
-<tr><td><b>电芯（大储）</b></td><td>宁德、亿纬、中创新航、瑞浦、海辰、楚能</td><td class="down">314Ah 以上大电芯紧</td><td>电芯价格企稳，系统价格战仍在</td><td class="tag high">真瓶颈（大储）</td><td>587Ah/688Ah 放量，龙头份额提升</td></tr>
-<tr><td><b>系统集成</b></td><td>阳光电源、特斯拉、Fluence、比亚迪、海博思创</td><td class="good">竞争激烈</td><td>2.98GWh 集采最低中标价 0.4995 元/Wh（2026-11）</td><td>非瓶颈，价值捕获低</td><td>价格战延续，向「交钥匙 + 运维」升级</td></tr>
-<tr><td><b>设备</b></td><td>先导智能、利元亨、赢合、杭可、纳科诺尔</td><td class="good">订单随扩产波动</td><td>整线价格竞争激烈，固态设备溢价</td><td>非瓶颈（固态设备除外）</td><td>2027 固态中试线招标放量</td></tr>
+<tr><td><b>锂资源</b></td><td>澳洲锂辉石 + 南美盐湖 + 中国云母/盐湖；CR5 约 50%</td><td class="rp-good">过剩</td><td>电池级碳酸锂 9.36 万元/吨（SMM 11-06），较 5 月高点 20.05 万元 -53%，较年初 12 万元 -22%</td><td>不是瓶颈，是成本项</td><td>供给增速仍高于需求，价格中枢 8—10 万元</td></tr>
+<tr><td><b>正极（LFP）</b></td><td>中国占全球 90%+；湖南裕能、德方纳米、国轩、容百</td><td class="rp-down">低端过剩、第四代及以上紧缺</td><td>高端产品溢价，普通产品跟随锂价</td><td class="rp-tag rp-high">真瓶颈（高端）</td><td>2027 仍偏紧，缺口 30—40 万吨逐步收窄</td></tr>
+<tr><td><b>正极（三元）</b></td><td>容百、当升、厦钨新能、长远锂科</td><td class="rp-good">过剩</td><td>跟随镍钴锂成本，加工费承压</td><td>非瓶颈</td><td>高镍/单晶结构性机会</td></tr>
+<tr><td><b>负极</b></td><td>中国占全球 97%；璞泰来、杉杉、尚太、中科电气</td><td class="rp-good">过剩</td><td>人造石墨价格低位，快充负极溢价</td><td>非瓶颈（快充负极除外）</td><td>2027 产能仍过剩，一体化降本</td></tr>
+<tr><td><b>电解液 / 六氟</b></td><td>天赐、新宙邦、多氟多；六氟 CR3 约 60%</td><td class="rp-good">过剩</td><td>六氟基准价 9.8 万元/吨（11-06，月内 -3.92%，一年低位）；电解液周环比仍在跌</td><td>非瓶颈（价格仍在底部）</td><td>2027 年新增产能释放，价格中枢难回 15 万元</td></tr>
+<tr><td><b>隔膜</b></td><td>恩捷、星源、中材科技；中国占全球 83%</td><td class="rp-down">满产满销</td><td>价格基本平稳（5μm 2.4—3.2 元/㎡），湿法产能利用率 98%</td><td class="rp-tag rp-high">量的瓶颈（非价的瓶颈）</td><td>2027 新增产能有限，紧平衡延续、价格弹性弱</td></tr>
+<tr><td><b>铜箔</b></td><td>诺德、嘉元、德福、海亮；中国占全球 80%+</td><td class="rp-down">满产满销</td><td>6μm 加工费 20,500→24,000 元/吨（+17.1%），单吨利润转正 2,000—3,000 元</td><td class="rp-tag rp-high">真瓶颈（修复）</td><td>2027 供给偏紧，但加工费上限受制于扩产</td></tr>
+<tr><td><b>电芯（大储）</b></td><td>宁德、亿纬、中创新航、瑞浦、海辰、楚能</td><td class="rp-down">314Ah 以上大电芯紧</td><td>电芯价格企稳，系统价格战仍在</td><td class="rp-tag rp-high">真瓶颈（大储）</td><td>587Ah/688Ah 放量，龙头份额提升</td></tr>
+<tr><td><b>系统集成</b></td><td>阳光电源、特斯拉、Fluence、比亚迪、海博思创</td><td class="rp-good">竞争激烈</td><td>2.98GWh 集采最低中标价 0.4995 元/Wh（2026-11）</td><td>非瓶颈，价值捕获低</td><td>价格战延续，向「交钥匙 + 运维」升级</td></tr>
+<tr><td><b>设备</b></td><td>先导智能、利元亨、赢合、杭可、纳科诺尔</td><td class="rp-good">订单随扩产波动</td><td>整线价格竞争激烈，固态设备溢价</td><td>非瓶颈（固态设备除外）</td><td>2027 固态中试线招标放量</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">说明：集中度为公开资料整理，非精确 CR 值；「真瓶颈」指当前价格与订单同时验证紧张的环节，不代表长期壁垒。系统集成中标价 0.4995 元/Wh 为中国储能网 2026-11 中核集团 2.98GWh 集采口径，仅作价格战证据，不作盈利测算。</p>
+<p class="rp-note">说明：集中度为公开资料整理，非精确 CR 值；「真瓶颈」指当前价格与订单同时验证紧张的环节，不代表长期壁垒。系统集成中标价 0.4995 元/Wh 为中国储能网 2026-11 中核集团 2.98GWh 集采口径，仅作价格战证据，不作盈利测算。</p>
 
 <h3>2.4 四个真瓶颈：价格、订单与反方证据</h3>
-<div class="grid two">
-  <div class="stock-card"><div class="stock-head"><div><b>① 第四代高压实磷酸铁锂</b><div class="ticker">压实密度 ≥2.6g/cm³</div></div><span class="tag high">缺口 30—40 万吨</span></div>
+<div class="rp-grid rp-two">
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>① 第四代高压实磷酸铁锂</b><div class="rp-ticker">压实密度 ≥2.6g/cm³</div></div><span class="rp-tag rp-high">缺口 30—40 万吨</span></div>
   <p><b>紧缺机制：</b>技术门槛高 + 客户认证 12—18 个月 + 行业集中度高，只有少数头部企业能稳定供应。2026 年高端需求缺口约 30—40 万吨（隆众资讯张胜楠），湖南、广东两家正极材料公司在 11-02 业绩说明会上均判断 2027 年仍偏紧。</p>
   <p><b>受益者：</b>湖南裕能（高压实龙头）、富临精工（高压实）、国轩高科（自供 20 万吨新线）、容百科技（42.98 亿元新产能）、协鑫集团（第 5.5 代 C20，2.73g/cm³）。</p>
-  <p><b>反方：</b>2027 年新增产能集中投放，缺口可能从 30—40 万吨收窄至 10 万吨以内；且高压实产品并非独家技术，溢价可能随良率提升而收敛。<span class="src">来源：证券日报 2026-11-05；各公司公告。</span></p></div>
+  <p><b>反方：</b>2027 年新增产能集中投放，缺口可能从 30—40 万吨收窄至 10 万吨以内；且高压实产品并非独家技术，溢价可能随良率提升而收敛。<span class="rp-src">来源：证券日报 2026-11-05；各公司公告。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>② 锂电铜箔</b><div class="ticker">加工费修复</div></div><span class="tag high">单吨利润转正</span></div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>② 锂电铜箔</b><div class="rp-ticker">加工费修复</div></div><span class="rp-tag rp-high">单吨利润转正</span></div>
   <p><b>紧缺机制：</b>铜箔是 2024—2025 年价格战最惨烈的环节之一，加工费一度跌破现金成本，行业扩产停滞、部分产能退出。2026 年储能大电芯与快充电池放量后，6μm 铜箔满产满销，加工费从 7 月 20 日的 20,500 元/吨升至 11 月 6 日的 24,000 元/吨（+3,500 元、+17.1%，上海钢联），单吨利润由亏损修复至 2,000—3,000 元。</p>
   <p><b>受益者：</b>诺德股份（9M 归母 +363.4%）、嘉元科技（9M 归母 +1,275.2%）、德福科技、海亮股份（公开「铜箔业务量价齐升」）。</p>
-  <p><b>反方：</b>加工费历史上从未长期高于 3 万元/吨；2027 年铜箔新增产能（诺德、嘉元、德福扩产）可能再次压价；单吨利润 2,000—3,000 元仍是「微利修复」，不足以支撑高估值。<span class="src">来源：上海钢联/长江有色 2026-11-05；eet-china 2026-11-07；各公司 2026 年三季报。</span></p></div>
+  <p><b>反方：</b>加工费历史上从未长期高于 3 万元/吨；2027 年铜箔新增产能（诺德、嘉元、德福扩产）可能再次压价；单吨利润 2,000—3,000 元仍是「微利修复」，不足以支撑高估值。<span class="rp-src">来源：上海钢联/长江有色 2026-11-05；eet-china 2026-11-07；各公司 2026 年三季报。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>③ 隔膜</b><div class="ticker">满产，但不涨价</div></div><span class="tag high">产能利用率 98%</span></div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>③ 隔膜</b><div class="rp-ticker">满产，但不涨价</div></div><span class="rp-tag rp-high">产能利用率 98%</span></div>
   <p><b>紧缺机制：</b>隔膜同样经历了两年的价格战，扩产停滞。中信建投测算 2026Q3/Q4 湿法隔膜产能利用率分别为 88%/98%，SMM 口径超过 90%、行业库存低于 1 个月，头部企业满产满销。但价格端只是「基本平稳」：5μm 基膜 2.4—3.2 元/㎡、7μm 1.8—2.1 元/㎡，尚未出现系统性涨价。</p>
   <p><b>受益者：</b>恩捷股份（9M 归母 17.94 亿元、+2,178.8%；Q3 单季毛利率 36.6%）、星源材质（9M 归母 +209.3%）。</p>
-  <p><b>反方：</b>「满产」来自产能利用率而非价格，盈利改善主要靠规模效应与产品结构；2027 年恩捷、星源仍有新增产能，价格弹性有限。<b>隔膜是「量的瓶颈」，不是「价的瓶颈」</b>。<span class="src">来源：中信建投 2026-11；SMM/锂电池隔膜网 2026-11-01；恩捷股份 2026-10-26 公告。</span></p></div>
+  <p><b>反方：</b>「满产」来自产能利用率而非价格，盈利改善主要靠规模效应与产品结构；2027 年恩捷、星源仍有新增产能，价格弹性有限。<b>隔膜是「量的瓶颈」，不是「价的瓶颈」</b>。<span class="rp-src">来源：中信建投 2026-11；SMM/锂电池隔膜网 2026-11-01；恩捷股份 2026-10-26 公告。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>④ 大储电芯（314Ah 以上）</b><div class="ticker">587Ah / 688Ah</div></div><span class="tag high">结构性紧</span></div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>④ 大储电芯（314Ah 以上）</b><div class="rp-ticker">587Ah / 688Ah</div></div><span class="rp-tag rp-high">结构性紧</span></div>
   <p><b>紧缺机制：</b>储能向大容量、长循环、高安全演进，314Ah 以上大电芯产线需要新设备与工艺，老产线无法简单切换；头部电池厂产能优先供给动力与海外大储，国内大储电芯出现结构性缺货。</p>
   <p><b>受益者：</b>宁德时代（储能占出货约 1/4）、亿纬锂能（储能 67.52GWh）、中创新航、瑞浦兰钧、海辰储能、楚能新能源。</p>
-  <p><b>反方：</b>系统集成环节价格战仍在（中核 2.98GWh 集采最低 0.4995 元/Wh），电芯涨价可能被系统厂吸收；且 2027 年大储电芯产能集中释放，紧缺可能转为过剩。<span class="src">来源：21 世纪经济报道 2026-11-06；中国储能网 2026-11。</span></p></div>
+  <p><b>反方：</b>系统集成环节价格战仍在（中核 2.98GWh 集采最低 0.4995 元/Wh），电芯涨价可能被系统厂吸收；且 2027 年大储电芯产能集中释放，紧缺可能转为过剩。<span class="rp-src">来源：21 世纪经济报道 2026-11-06；中国储能网 2026-11。</span></p></div>
 </div>
 
-<div class="callout warn">
+<div class="rp-callout rp-warn">
 <b>必须区分的「伪瓶颈」：</b>六氟磷酸锂、电解液、三元正极、负极在当前时点<b>都不是瓶颈</b>——六氟基准价 9.8 万元/吨、处一年低位且月内仍跌 3.92%；电解液（LFP 型 30,750 元/吨）周环比 -3.15%；三元正极 5 系/6 系/811 月环比 -8.8% 至 -11.4%；负极价格持平。2026Q2 产业链 17 个环节归母净利环比中，六氟及电解液 -26%（倒数第二）、铜箔 -8%（东吴证券）。把六氟当成 2021 年那样的弹性品种，是本轮最容易犯的错误——<b>它的价格在一年低位，不在高位</b>。
 </div>
 
 <h3>2.5 替代路线：2026—2027 的「期权」，不是「现实」</h3>
-<div class="table-wrap">
-<table class="mid">
+<div class="rp-table-wrap">
+<table class="rp-mid">
 <thead><tr><th>路线</th><th>当前状态</th><th>2026—2027 里程碑</th><th>对现有格局的影响</th></tr></thead>
 <tbody>
 <tr><td><b>全固态电池</b></td><td>硫化物路线为主，中试线落地阶段</td><td>宁德时代 2027 年小批量生产；孚能 60Ah 硫化物全固态 2026 年底下线；2026 年装车验证</td><td>2027 年前不影响主流格局，但设备与电解质公司提前受益</td></tr>
@@ -368,173 +197,173 @@ td strong{color:var(--navy)}
 </tbody>
 </table>
 </div>
-<p class="note">固态电池的判断标准：<b>中试线贯通 → 装车验证 → 小批量交付 → 收入确认</b>，四个阶段不可跳跃。目前行业整体处于「中试线落地 + 装车验证」阶段，任何「2026 年量产」的说法都应视为营销口径而非财务事实。</p>
+<p class="rp-note">固态电池的判断标准：<b>中试线贯通 → 装车验证 → 小批量交付 → 收入确认</b>，四个阶段不可跳跃。目前行业整体处于「中试线落地 + 装车验证」阶段，任何「2026 年量产」的说法都应视为营销口径而非财务事实。</p>
 </section>
-<section class="section" id="s3">
-<p class="chapter-no">03 / 公司全景、阵型与证据阶梯</p>
+<section class="rp-section" id="s3">
+<p class="rp-chapter-no">03 / 公司全景、阵型与证据阶梯</p>
 <h2>69 家公司，三个阵型，一条证据阶梯</h2>
 
-<div class="takeaway">
+<div class="rp-takeaway">
 公司池按「产业位置 × 商业化阶段 × 证据强度」分层。<b>兑现型</b>是利润已经落地、只等估值修复的公司；<b>弹性型</b>是价格先于利润反转、赔率最大但持续性待验证的公司；<b>期权型</b>是 2027 年才可能贡献收入、当前只能小仓位跟踪的公司。<b>研究优先级 ≠ 买入建议</b>，它只表示下一步研究顺序：先研究「涨价能进报表」的环节，再研究「故事最大」的环节。
 </div>
 
 <h3>3.1 公司全景表（69 家，A 股为主，含 3 家港股）</h3>
-<div class="table-wrap">
-<table class="wide">
+<div class="rp-table-wrap">
+<table class="rp-wide">
 <thead><tr><th>公司（代码）</th><th>细分环节</th><th>行业角色</th><th>产品 / 主要客户</th><th>主题收入暴露</th><th>商业化阶段</th><th>证据强弱</th><th>证据缺口</th><th>阵型</th><th>下一验证点</th></tr></thead>
 <tbody>
-<tr><td><b>宁德时代 300750</b></td><td>电芯</td><td>全球动力+储能龙头</td><td>神行/麒麟电池、EnerOne；特斯拉、宝马、理想、小米、Fluence</td><td>≈100%</td><td>规模化量产</td><td class="good">强：Q3 营收 +58.58%、归母 +14.54%，毛利率 20.69%</td><td>单瓦盈利拆分、储能系统收入占比未披露</td><td>兑现型</td><td>Q4 单瓦盈利、2027 价格谈判、匈牙利 100GWh 爬坡</td></tr>
-<tr><td><b>比亚迪 002594</b></td><td>电芯</td><td>整车+电池垂直一体化</td><td>刀片电池；自供为主，外供特斯拉、丰田</td><td>高（自供）</td><td>规模化量产</td><td class="mid">中：销量与出口强，电池外供数据少</td><td>Q3 财务、电池外供量未核</td><td>兑现型</td><td>外供比例、储能出货、巴西产能</td></tr>
-<tr><td><b>亿纬锂能 300014</b></td><td>电芯</td><td>动力+储能一线</td><td>大圆柱、储能大电芯；宝马、戴姆勒、Fluence</td><td>≈100%</td><td>规模化量产</td><td class="good">强：9M 归母 +86.11%，动力/储能出货 66.17/67.52GWh</td><td>2026E 单瓦盈利、海外产能进度未核</td><td>兑现型</td><td>2027 储能 16GWh 交付、大圆柱放量</td></tr>
-<tr><td><b>国轩高科 002074</b></td><td>电芯</td><td>动力+储能二线</td><td>磷酸铁锂电芯；大众、奇瑞、吉利</td><td>≈100%</td><td>规模化量产</td><td class="mid">中：9M 归母 -66.48%，但扣非 +195.54%</td><td>大众合资三厂投产节奏未核</td><td>兑现型（海外）</td><td>西班牙/斯洛伐克/摩洛哥三厂投产、储能占比</td></tr>
-<tr><td><b>欣旺达 300207</b></td><td>电芯</td><td>消费+动力</td><td>消费电池、动力电池；小米、理想、苹果</td><td>中（动力 20—30%）</td><td>规模化量产</td><td class="mid">中：9M 营收 +45.78%，扣非 -77.65%</td><td>动力不再并表后口径、消费电子复苏未核</td><td>观察</td><td>并表切换会计处理、动力客户放量</td></tr>
-<tr><td><b>鹏辉能源 300438</b></td><td>电芯</td><td>储能小电芯</td><td>户储/工商储电芯；集成商客户</td><td>高（储能为主）</td><td>规模化量产</td><td class="good">强：9M 营收 +135.67%、归母 +928.81%</td><td>大储电芯客户、毛利率未核</td><td>弹性型</td><td>大储电芯导入、单瓦盈利</td></tr>
-<tr><td><b>孚能科技 688567</b></td><td>电芯</td><td>软包三元</td><td>软包电芯；广汽、奔驰</td><td>≈100%</td><td>规模化量产</td><td class="down">弱：9M 归母 -5.98 亿元，Q3 归母 -2.01 亿元</td><td>扭亏路径、广汽项目定点放量未核</td><td>期权型（固态）</td><td>60Ah 硫化物全固态下线、广汽 2027H1 供货</td></tr>
-<tr><td><b>ST 南都 300068</b></td><td>电芯/系统</td><td>储能系统+铅酸</td><td>电网侧储能、铅酸电池</td><td>高</td><td>规模化量产</td><td class="down">弱：9M 归母 -18.62 亿元，净资产 -4.63 亿元</td><td>退市风险、重整方案未明</td><td>剔除</td><td>风险出清前不纳入研究范围</td></tr>
-<tr><td><b>派能科技 688063</b></td><td>电芯/系统</td><td>户储</td><td>户储电芯与系统；欧洲渠道</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 营收 +102.61%、销量 +117.09%，归母仅 0.63 亿元</td><td>欧洲去库结束、盈利弹性未核</td><td>弹性型</td><td>欧洲户储复苏、工商储第二曲线</td></tr>
-<tr><td><b>中创新航 3931.HK</b></td><td>电芯</td><td>动力+储能一线（港股）</td><td>广汽、小鹏、小米、零跑</td><td>≈100%</td><td>规模化量产</td><td class="good">强：9M 营收 +61.01%，净利 +95.44%</td><td>净利 23.39 亿与归母 13.66 亿口径差异待公告核对</td><td>兑现型</td><td>2027「倍数级增长」兑现、H 股流动性</td></tr>
-<tr><td><b>湖南裕能 301358</b></td><td>正极</td><td>LFP 正极龙头</td><td>高压实 LFP；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="good">强：9M 归母 +560.1%、毛利率 12.51%；PE 7.6x</td><td>单吨盈利拆分未披露</td><td>弹性型</td><td>第四代产品占比、单吨盈利、加工费谈判</td></tr>
-<tr><td><b>德方纳米 300769</b></td><td>正极</td><td>LFP 正极</td><td>液相法 LFP；宁德、亿纬</td><td>高</td><td>规模化量产</td><td class="mid">中：行业景气证据强，公司数据待补</td><td>Q3 财务、锰铁锂进度未核</td><td>弹性型</td><td>锰铁锂放量、成本曲线</td></tr>
-<tr><td><b>万润新能 688275</b></td><td>正极</td><td>LFP 正极</td><td>LFP；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="down">弱：缺 Q3 与开工率数据</td><td>Q3 财务、产能利用率未核</td><td>观察</td><td>开工率、单吨盈利</td></tr>
-<tr><td><b>富临精工 300432</b></td><td>正极</td><td>高压实 LFP + 汽零</td><td>高压实 LFP；宁德</td><td>中</td><td>规模化量产</td><td class="mid">中：高压实行业证据强，公司数据待补</td><td>Q3 财务、LFP 收入占比未核</td><td>弹性型</td><td>高压实出货占比、汽零协同</td></tr>
-<tr><td><b>当升科技 300073</b></td><td>正极</td><td>三元/钴酸锂</td><td>高镍三元、固态正极；宁德、LG、SK</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 营收 +135.9%、归母 +27.9%；固态正极进头部客户小试验证</td><td>固态正极订单与收入未确认</td><td>期权型（固态）</td><td>固态正极送样→定点、海外客户</td></tr>
-<tr><td><b>容百科技 688005</b></td><td>正极</td><td>三元龙头 + LFP</td><td>高镍三元、LFP；宁德、LG、SK</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 营收 +62.5%、仍亏 0.16 亿（收窄 92.3%）；LFP 扩产 42.98 亿</td><td>扭亏时点、LFP 投产时间</td><td>兑现型</td><td>LFP 项目投产、高镍份额</td></tr>
-<tr><td><b>厦钨新能 688778</b></td><td>正极</td><td>三元/钴酸锂</td><td>高电压三元；宁德、ATL</td><td>高</td><td>规模化量产</td><td class="mid">中：客户结构优，Q3 待补</td><td>Q3 财务未核</td><td>观察</td><td>高电压三元放量、钴酸锂份额</td></tr>
-<tr><td><b>长远锂科 688779</b></td><td>正极</td><td>三元</td><td>三元正极；宁德、亿纬</td><td>高</td><td>规模化量产</td><td class="down">弱：缺 Q3 数据</td><td>Q3 财务、产能利用率未核</td><td>观察</td><td>产能利用率、客户拓展</td></tr>
-<tr><td><b>华友钴业 603799</b></td><td>正极/资源</td><td>钴镍一体化</td><td>钴、镍、前驱体、正极；宁德、LG</td><td>高</td><td>规模化量产</td><td class="good">强：印尼镍项目与一体化布局</td><td>Q3 财务、镍价敏感性未核</td><td>兑现型</td><td>印尼镍产量、前驱体份额</td></tr>
-<tr><td><b>中伟股份 300919</b></td><td>正极</td><td>三元前驱体龙头</td><td>前驱体；宁德、LG、SK</td><td>高</td><td>规模化量产</td><td class="good">强：全球前驱体份额领先</td><td>Q3 财务、海外产能进度未核</td><td>兑现型</td><td>海外前驱体产能、客户结构</td></tr>
-<tr><td><b>璞泰来 603659</b></td><td>负极/隔膜</td><td>人造石墨+涂覆</td><td>负极、涂覆隔膜、设备；宁德、LG</td><td>高</td><td>规模化量产</td><td class="good">强：9M 归母 +33.9%、毛利 27.43%；涂覆一体化</td><td>负极单吨盈利未披露</td><td>兑现型</td><td>快充负极放量、涂覆一体化</td></tr>
-<tr><td><b>杉杉股份 600884</b></td><td>负极</td><td>负极头部</td><td>人造石墨；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：负极份额领先，盈利待补</td><td>Q3 财务、偏光片剥离影响未核</td><td>观察</td><td>负极单吨盈利、资产处置</td></tr>
-<tr><td><b>尚太科技 001301</b></td><td>负极</td><td>负极一体化</td><td>人造石墨；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 营收 +29.0%、归母 +5.4%、毛利 17.23%</td><td>单吨盈利与快充产品占比</td><td>弹性型</td><td>一体化成本、快充产品占比</td></tr>
-<tr><td><b>中科电气 300035</b></td><td>负极</td><td>负极</td><td>人造石墨；宁德、亿纬</td><td>高</td><td>规模化量产</td><td class="mid">中：石墨化自供率提升</td><td>Q3 财务未核</td><td>观察</td><td>石墨化自供率、单吨盈利</td></tr>
-<tr><td><b>翔丰华 300890</b></td><td>负极</td><td>负极</td><td>人造石墨；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="down">弱：客户集中度高，数据缺</td><td>Q3 财务未核</td><td>观察</td><td>客户集中度、产能利用率</td></tr>
-<tr><td><b>贝特瑞 835185</b></td><td>负极</td><td>负极龙头（北交所）</td><td>硅碳负极、人造石墨；宁德、松下、LG</td><td>高</td><td>规模化量产</td><td class="good">强：硅碳负极领先</td><td>Q3 财务、海外产能未核</td><td>兑现型</td><td>硅碳负极放量、海外基地</td></tr>
-<tr><td><b>恩捷股份 002812</b></td><td>隔膜</td><td>湿法隔膜龙头</td><td>湿法隔膜；宁德、LG、松下</td><td>高</td><td>规模化量产</td><td class="good">强：9M 归母 +2,178.8%；Q3 单季毛利 36.6%；湿法利用率 98%</td><td>隔膜涨价幅度未披露</td><td>弹性型</td><td>涨价落地、海外客户、毛利率修复</td></tr>
-<tr><td><b>星源材质 300568</b></td><td>隔膜</td><td>干法/湿法隔膜</td><td>隔膜；宁德、比亚迪、LG</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 归母 +209.3%、毛利 28.71%</td><td>单平米盈利与海外产能进度</td><td>弹性型</td><td>干法涨价、海外产能</td></tr>
-<tr><td><b>中材科技 002080</b></td><td>隔膜</td><td>隔膜+风电叶片</td><td>湿法隔膜；宁德、比亚迪</td><td>中</td><td>规模化量产</td><td class="mid">中：隔膜业务受益，风电拖累待核</td><td>Q3 财务、隔膜盈利未核</td><td>观察</td><td>隔膜盈利、风电景气</td></tr>
-<tr><td><b>天赐材料 002709</b></td><td>电解液</td><td>六氟+电解液一体化</td><td>六氟、电解液；宁德、比亚迪、LG</td><td>高</td><td>规模化量产</td><td class="good">强：9M 归母 +827.7%、毛利率 29.43%</td><td>六氟自供比例、Q3 单季拆分未核</td><td>弹性型</td><td>Q4 电解液单吨盈利、55 万吨长协执行价</td></tr>
-<tr><td><b>新宙邦 300037</b></td><td>电解液</td><td>电解液+氟化工</td><td>电解液、氟精细化工；宁德、LG、松下</td><td>高</td><td>规模化量产</td><td class="good">强：氟化工协同、海外客户</td><td>Q3 财务未核</td><td>兑现型</td><td>氟化工协同、海外产能</td></tr>
-<tr><td><b>多氟多 002407</b></td><td>电解液</td><td>六氟龙头</td><td>六氟、电子级氢氟酸；电解液厂</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 归母 +658.7%、毛利 18.57%，但六氟价格处一年低位</td><td>Q3 单季拆分未核</td><td>弹性型</td><td>六氟产能释放、价格中枢</td></tr>
-<tr><td><b>天际股份 002759</b></td><td>电解液</td><td>六氟</td><td>六氟；电解液厂</td><td>高</td><td>规模化量产</td><td class="mid">中：六氟弹性标的</td><td>Q3 财务未核</td><td>弹性型</td><td>六氟开工率、价格</td></tr>
-<tr><td><b>石大胜华 603026</b></td><td>电解液</td><td>溶剂</td><td>DMC/EC 等溶剂；电解液厂</td><td>高</td><td>规模化量产</td><td class="mid">中：溶剂价格随电解液回暖</td><td>Q3 财务未核</td><td>观察</td><td>溶剂价格、添加剂布局</td></tr>
-<tr><td><b>诺德股份 600110</b></td><td>铜箔</td><td>锂电铜箔</td><td>4.5—6μm 铜箔；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 归母 +363.4%；6μm 加工费 +17.1%（+3,500 元/吨）</td><td>Q3 单季拆分、极薄化占比</td><td>弹性型</td><td>加工费、极薄化占比</td></tr>
-<tr><td><b>嘉元科技 688388</b></td><td>铜箔</td><td>铜箔</td><td>极薄铜箔；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：9M 归母 +1,275.2%、毛利 6.46%</td><td>加工费弹性、客户结构</td><td>弹性型</td><td>加工费、客户结构</td></tr>
-<tr><td><b>德福科技 301511</b></td><td>铜箔</td><td>铜箔</td><td>铜箔；宁德、国轩</td><td>高</td><td>规模化量产</td><td class="mid">中：11-06 领跌，波动大</td><td>Q3 财务未核</td><td>弹性型</td><td>加工费、产能利用率</td></tr>
-<tr><td><b>鼎胜新材 603876</b></td><td>铜箔/铝箔</td><td>铝箔</td><td>电池铝箔；宁德、比亚迪</td><td>中</td><td>规模化量产</td><td class="mid">中：铝箔加工费企稳</td><td>Q3 财务未核</td><td>观察</td><td>电池铝箔占比、加工费</td></tr>
-<tr><td><b>海亮股份 002203</b></td><td>铜箔</td><td>铜加工+铜箔</td><td>铜箔；宁德、比亚迪</td><td>低</td><td>规模化量产</td><td class="mid">中：公开「铜箔业务量价齐升」</td><td>铜箔收入占比未核</td><td>观察</td><td>铜箔盈利占比、加工费</td></tr>
-<tr><td><b>科达利 002850</b></td><td>结构件</td><td>结构件龙头</td><td>方形/圆柱结构件；宁德、亿纬、中创</td><td>高</td><td>规模化量产</td><td class="good">强：9M 归母 +28.9%、毛利 20.85%、PE 24.4x</td><td>大圆柱结构件占比未披露</td><td>兑现型</td><td>海外产能、大圆柱结构件</td></tr>
-<tr><td><b>震裕科技 300953</b></td><td>结构件</td><td>结构件</td><td>结构件、电机铁芯；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：客户优质，Q3 待补</td><td>Q3 财务未核</td><td>弹性型</td><td>结构件份额、铁芯业务</td></tr>
-<tr><td><b>三花智控 002050</b></td><td>热管理</td><td>热管理龙头</td><td>汽车热管理；特斯拉、比亚迪</td><td>中</td><td>规模化量产</td><td class="good">强：全球热管理份额</td><td>Q3 财务、储能液冷占比未核</td><td>观察</td><td>汽车热管理份额、储能液冷</td></tr>
-<tr><td><b>银轮股份 002126</b></td><td>热管理</td><td>热管理</td><td>换热器、储能液冷；宁德、比亚迪</td><td>中</td><td>规模化量产</td><td class="mid">中：储能液冷受益</td><td>Q3 财务未核</td><td>观察</td><td>储能液冷订单、海外客户</td></tr>
-<tr><td><b>先导智能 300450</b></td><td>设备</td><td>整线设备龙头</td><td>整线、固态设备；宁德、亿纬、LG</td><td>高</td><td>规模化量产</td><td class="good">强：整线份额领先、固态设备布局</td><td>Q3 财务、固态订单未核</td><td>期权型（固态）</td><td>固态中试线订单、海外订单</td></tr>
-<tr><td><b>利元亨 688499</b></td><td>设备</td><td>整线设备</td><td>整线；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：整线能力，盈利待补</td><td>Q3 财务未核</td><td>期权型</td><td>固态设备验证、订单结构</td></tr>
-<tr><td><b>赢合科技 300457</b></td><td>设备</td><td>整线设备</td><td>整线；宁德、国轩</td><td>高</td><td>规模化量产</td><td class="mid">中：订单随扩产波动</td><td>Q3 财务未核</td><td>观察</td><td>订单结构、海外客户</td></tr>
-<tr><td><b>杭可科技 688006</b></td><td>设备</td><td>化成分容</td><td>化成分容设备；宁德、LG</td><td>高</td><td>规模化量产</td><td class="mid">中：海外订单占比高</td><td>Q3 财务未核</td><td>观察</td><td>海外订单、固态适配</td></tr>
-<tr><td><b>纳科诺尔 920522</b></td><td>设备</td><td>辊压机</td><td>辊压机；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：干法负极辊压量产 80m/min；9M 营收 +30.35%、归母 -65.38%</td><td>干法订单占比未披露</td><td>期权型（干法）</td><td>干法电极辊压订单</td></tr>
-<tr><td><b>曼恩斯特 301325</b></td><td>设备</td><td>涂布模头</td><td>涂布模头；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="mid">中：模头国产替代</td><td>Q3 财务未核</td><td>观察</td><td>固态涂布、海外客户</td></tr>
-<tr><td><b>宏工科技 301662</b></td><td>设备</td><td>粉体处理</td><td>粉体输送；宁德、国轩</td><td>高</td><td>规模化量产</td><td class="mid">中：固态电解质产线布局</td><td>Q3 财务、固态订单未核</td><td>期权型</td><td>固态电解质产线订单</td></tr>
-<tr><td><b>信宇人 688573</b></td><td>设备</td><td>干燥设备</td><td>干燥设备；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="down">弱：规模小、订单波动</td><td>Q3 财务未核</td><td>观察</td><td>订单、客户拓展</td></tr>
-<tr><td><b>赣锋锂业 002460</b></td><td>锂资源</td><td>锂盐+资源</td><td>锂盐、金属锂；电池厂</td><td>高</td><td>规模化量产</td><td class="good">强：资源自给率高</td><td>Q3 财务、锂价敏感性未核</td><td>观察</td><td>锂价、非洲项目、固态布局</td></tr>
-<tr><td><b>天齐锂业 002466</b></td><td>锂资源</td><td>锂矿+锂盐</td><td>锂精矿、锂盐；电池厂</td><td>高</td><td>规模化量产</td><td class="good">强：资源禀赋最优</td><td>Q3 财务、SQM 权益未核</td><td>观察</td><td>锂价、SQM 权益、奎纳纳爬坡</td></tr>
-<tr><td><b>盐湖股份 000792</b></td><td>锂资源</td><td>盐湖提锂</td><td>碳酸锂、钾肥</td><td>高</td><td>规模化量产</td><td class="good">强：成本最低梯队</td><td>Q3 财务未核</td><td>观察</td><td>锂价、钾肥景气、扩产</td></tr>
-<tr><td><b>藏格矿业 000408</b></td><td>锂资源</td><td>盐湖提锂</td><td>碳酸锂、钾肥</td><td>高</td><td>规模化量产</td><td class="mid">中：成本优势，项目待核</td><td>Q3 财务、麻米错项目未核</td><td>观察</td><td>麻米错项目、锂价</td></tr>
-<tr><td><b>永兴材料 002756</b></td><td>锂资源</td><td>云母提锂</td><td>碳酸锂、特钢</td><td>高</td><td>规模化量产</td><td class="mid">中：云母成本曲线</td><td>Q3 财务未核</td><td>观察</td><td>云母成本、锂价</td></tr>
-<tr><td><b>中矿资源 002738</b></td><td>锂资源</td><td>锂矿+锂盐</td><td>锂精矿、锂盐</td><td>高</td><td>规模化量产</td><td class="mid">中：津巴布韦项目</td><td>Q3 财务未核</td><td>观察</td><td>津巴布韦项目、锂价</td></tr>
-<tr><td><b>雅化集团 002497</b></td><td>锂资源</td><td>锂盐</td><td>锂盐、民爆</td><td>高</td><td>规模化量产</td><td class="mid">中：锂盐产能</td><td>Q3 财务未核</td><td>观察</td><td>锂盐产能、客户</td></tr>
-<tr><td><b>天华新能 300390</b></td><td>锂资源</td><td>锂盐</td><td>氢氧化锂；电池厂</td><td>高</td><td>规模化量产</td><td class="mid">中：氢氧化锂出口</td><td>Q3 财务未核</td><td>观察</td><td>氢氧化锂价格、海外客户</td></tr>
-<tr><td><b>融捷股份 002192</b></td><td>锂资源</td><td>锂矿</td><td>甲基卡锂矿</td><td>高</td><td>规模化量产</td><td class="down">弱：项目进度不确定</td><td>Q3 财务、复产进度未核</td><td>观察</td><td>甲基卡复产、锂价</td></tr>
-<tr><td><b>格林美 002340</b></td><td>回收</td><td>前驱体+回收</td><td>前驱体、回收；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="good">强：回收网络+前驱体一体化</td><td>Q3 财务、回收盈利未核</td><td>兑现型</td><td>回收网络、前驱体份额</td></tr>
-<tr><td><b>天奇股份 002009</b></td><td>回收</td><td>回收</td><td>电池回收、汽车装备</td><td>中</td><td>规模化量产</td><td class="down">弱：回收盈利波动</td><td>Q3 财务未核</td><td>观察</td><td>回收产能、渠道</td></tr>
-<tr><td><b>光华科技 002741</b></td><td>回收</td><td>回收</td><td>电池回收、电子化学品</td><td>中</td><td>规模化量产</td><td class="down">弱：规模小</td><td>Q3 财务未核</td><td>观察</td><td>回收盈利、渠道</td></tr>
-<tr><td><b>华阳股份 600348</b></td><td>新技术</td><td>钠电</td><td>钠电电芯；储能/两轮</td><td>低</td><td>中试/小批量</td><td class="down">弱：钠电收入未确认</td><td>钠电订单、GWh 线进度未核</td><td>期权型</td><td>钠电 GWh 线投产、订单</td></tr>
-<tr><td><b>传艺科技 002866</b></td><td>新技术</td><td>钠电</td><td>钠电电芯；储能</td><td>低</td><td>中试</td><td class="down">弱：钠电收入未确认</td><td>订单、产能未核</td><td>期权型</td><td>钠电订单、产能爬坡</td></tr>
-<tr><td><b>元力股份 300174</b></td><td>新技术</td><td>硬碳</td><td>硬碳负极；钠电</td><td>低</td><td>中试</td><td class="down">弱：硬碳量产未验证</td><td>硬碳订单未核</td><td>期权型</td><td>硬碳量产、客户导入</td></tr>
-<tr><td><b>上海洗霸 603200</b></td><td>新技术</td><td>固态电解质</td><td>硫化物电解质；固态电池</td><td>低</td><td>中试</td><td class="down">弱：中试阶段、无收入</td><td>电解质性能、客户验证未核</td><td>期权型</td><td>硫化物电解质送样→定点</td></tr>
-<tr><td><b>有研新材 600206</b></td><td>新技术</td><td>固态材料（已剥离）</td><td>2026-07 有研稀土 45% 股权转出，专利已于 2025-07 转上海洗霸</td><td>—</td><td>已退出</td><td class="down">弱：不再是固态标的</td><td>无</td><td>非标的</td><td>不纳入跟踪</td></tr>
-<tr><td><b>三祥新材 603663</b></td><td>新技术</td><td>锆基材料</td><td>氧化锆、固态电解质原料</td><td>低</td><td>中试</td><td class="down">弱：固态收入未确认</td><td>客户验证未核</td><td>期权型</td><td>氧化锆需求、固态客户</td></tr>
+<tr><td><b>宁德时代 300750</b></td><td>电芯</td><td>全球动力+储能龙头</td><td>神行/麒麟电池、EnerOne；特斯拉、宝马、理想、小米、Fluence</td><td>≈100%</td><td>规模化量产</td><td class="rp-good">强：Q3 营收 +58.58%、归母 +14.54%，毛利率 20.69%</td><td>单瓦盈利拆分、储能系统收入占比未披露</td><td>兑现型</td><td>Q4 单瓦盈利、2027 价格谈判、匈牙利 100GWh 爬坡</td></tr>
+<tr><td><b>比亚迪 002594</b></td><td>电芯</td><td>整车+电池垂直一体化</td><td>刀片电池；自供为主，外供特斯拉、丰田</td><td>高（自供）</td><td>规模化量产</td><td class="rp-mid">中：销量与出口强，电池外供数据少</td><td>Q3 财务、电池外供量未核</td><td>兑现型</td><td>外供比例、储能出货、巴西产能</td></tr>
+<tr><td><b>亿纬锂能 300014</b></td><td>电芯</td><td>动力+储能一线</td><td>大圆柱、储能大电芯；宝马、戴姆勒、Fluence</td><td>≈100%</td><td>规模化量产</td><td class="rp-good">强：9M 归母 +86.11%，动力/储能出货 66.17/67.52GWh</td><td>2026E 单瓦盈利、海外产能进度未核</td><td>兑现型</td><td>2027 储能 16GWh 交付、大圆柱放量</td></tr>
+<tr><td><b>国轩高科 002074</b></td><td>电芯</td><td>动力+储能二线</td><td>磷酸铁锂电芯；大众、奇瑞、吉利</td><td>≈100%</td><td>规模化量产</td><td class="rp-mid">中：9M 归母 -66.48%，但扣非 +195.54%</td><td>大众合资三厂投产节奏未核</td><td>兑现型（海外）</td><td>西班牙/斯洛伐克/摩洛哥三厂投产、储能占比</td></tr>
+<tr><td><b>欣旺达 300207</b></td><td>电芯</td><td>消费+动力</td><td>消费电池、动力电池；小米、理想、苹果</td><td>中（动力 20—30%）</td><td>规模化量产</td><td class="rp-mid">中：9M 营收 +45.78%，扣非 -77.65%</td><td>动力不再并表后口径、消费电子复苏未核</td><td>观察</td><td>并表切换会计处理、动力客户放量</td></tr>
+<tr><td><b>鹏辉能源 300438</b></td><td>电芯</td><td>储能小电芯</td><td>户储/工商储电芯；集成商客户</td><td>高（储能为主）</td><td>规模化量产</td><td class="rp-good">强：9M 营收 +135.67%、归母 +928.81%</td><td>大储电芯客户、毛利率未核</td><td>弹性型</td><td>大储电芯导入、单瓦盈利</td></tr>
+<tr><td><b>孚能科技 688567</b></td><td>电芯</td><td>软包三元</td><td>软包电芯；广汽、奔驰</td><td>≈100%</td><td>规模化量产</td><td class="rp-down">弱：9M 归母 -5.98 亿元，Q3 归母 -2.01 亿元</td><td>扭亏路径、广汽项目定点放量未核</td><td>期权型（固态）</td><td>60Ah 硫化物全固态下线、广汽 2027H1 供货</td></tr>
+<tr><td><b>ST 南都 300068</b></td><td>电芯/系统</td><td>储能系统+铅酸</td><td>电网侧储能、铅酸电池</td><td>高</td><td>规模化量产</td><td class="rp-down">弱：9M 归母 -18.62 亿元，净资产 -4.63 亿元</td><td>退市风险、重整方案未明</td><td>剔除</td><td>风险出清前不纳入研究范围</td></tr>
+<tr><td><b>派能科技 688063</b></td><td>电芯/系统</td><td>户储</td><td>户储电芯与系统；欧洲渠道</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 营收 +102.61%、销量 +117.09%，归母仅 0.63 亿元</td><td>欧洲去库结束、盈利弹性未核</td><td>弹性型</td><td>欧洲户储复苏、工商储第二曲线</td></tr>
+<tr><td><b>中创新航 3931.HK</b></td><td>电芯</td><td>动力+储能一线（港股）</td><td>广汽、小鹏、小米、零跑</td><td>≈100%</td><td>规模化量产</td><td class="rp-good">强：9M 营收 +61.01%，净利 +95.44%</td><td>净利 23.39 亿与归母 13.66 亿口径差异待公告核对</td><td>兑现型</td><td>2027「倍数级增长」兑现、H 股流动性</td></tr>
+<tr><td><b>湖南裕能 301358</b></td><td>正极</td><td>LFP 正极龙头</td><td>高压实 LFP；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-good">强：9M 归母 +560.1%、毛利率 12.51%；PE 7.6x</td><td>单吨盈利拆分未披露</td><td>弹性型</td><td>第四代产品占比、单吨盈利、加工费谈判</td></tr>
+<tr><td><b>德方纳米 300769</b></td><td>正极</td><td>LFP 正极</td><td>液相法 LFP；宁德、亿纬</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：行业景气证据强，公司数据待补</td><td>Q3 财务、锰铁锂进度未核</td><td>弹性型</td><td>锰铁锂放量、成本曲线</td></tr>
+<tr><td><b>万润新能 688275</b></td><td>正极</td><td>LFP 正极</td><td>LFP；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-down">弱：缺 Q3 与开工率数据</td><td>Q3 财务、产能利用率未核</td><td>观察</td><td>开工率、单吨盈利</td></tr>
+<tr><td><b>富临精工 300432</b></td><td>正极</td><td>高压实 LFP + 汽零</td><td>高压实 LFP；宁德</td><td>中</td><td>规模化量产</td><td class="rp-mid">中：高压实行业证据强，公司数据待补</td><td>Q3 财务、LFP 收入占比未核</td><td>弹性型</td><td>高压实出货占比、汽零协同</td></tr>
+<tr><td><b>当升科技 300073</b></td><td>正极</td><td>三元/钴酸锂</td><td>高镍三元、固态正极；宁德、LG、SK</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 营收 +135.9%、归母 +27.9%；固态正极进头部客户小试验证</td><td>固态正极订单与收入未确认</td><td>期权型（固态）</td><td>固态正极送样→定点、海外客户</td></tr>
+<tr><td><b>容百科技 688005</b></td><td>正极</td><td>三元龙头 + LFP</td><td>高镍三元、LFP；宁德、LG、SK</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 营收 +62.5%、仍亏 0.16 亿（收窄 92.3%）；LFP 扩产 42.98 亿</td><td>扭亏时点、LFP 投产时间</td><td>兑现型</td><td>LFP 项目投产、高镍份额</td></tr>
+<tr><td><b>厦钨新能 688778</b></td><td>正极</td><td>三元/钴酸锂</td><td>高电压三元；宁德、ATL</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：客户结构优，Q3 待补</td><td>Q3 财务未核</td><td>观察</td><td>高电压三元放量、钴酸锂份额</td></tr>
+<tr><td><b>长远锂科 688779</b></td><td>正极</td><td>三元</td><td>三元正极；宁德、亿纬</td><td>高</td><td>规模化量产</td><td class="rp-down">弱：缺 Q3 数据</td><td>Q3 财务、产能利用率未核</td><td>观察</td><td>产能利用率、客户拓展</td></tr>
+<tr><td><b>华友钴业 603799</b></td><td>正极/资源</td><td>钴镍一体化</td><td>钴、镍、前驱体、正极；宁德、LG</td><td>高</td><td>规模化量产</td><td class="rp-good">强：印尼镍项目与一体化布局</td><td>Q3 财务、镍价敏感性未核</td><td>兑现型</td><td>印尼镍产量、前驱体份额</td></tr>
+<tr><td><b>中伟股份 300919</b></td><td>正极</td><td>三元前驱体龙头</td><td>前驱体；宁德、LG、SK</td><td>高</td><td>规模化量产</td><td class="rp-good">强：全球前驱体份额领先</td><td>Q3 财务、海外产能进度未核</td><td>兑现型</td><td>海外前驱体产能、客户结构</td></tr>
+<tr><td><b>璞泰来 603659</b></td><td>负极/隔膜</td><td>人造石墨+涂覆</td><td>负极、涂覆隔膜、设备；宁德、LG</td><td>高</td><td>规模化量产</td><td class="rp-good">强：9M 归母 +33.9%、毛利 27.43%；涂覆一体化</td><td>负极单吨盈利未披露</td><td>兑现型</td><td>快充负极放量、涂覆一体化</td></tr>
+<tr><td><b>杉杉股份 600884</b></td><td>负极</td><td>负极头部</td><td>人造石墨；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：负极份额领先，盈利待补</td><td>Q3 财务、偏光片剥离影响未核</td><td>观察</td><td>负极单吨盈利、资产处置</td></tr>
+<tr><td><b>尚太科技 001301</b></td><td>负极</td><td>负极一体化</td><td>人造石墨；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 营收 +29.0%、归母 +5.4%、毛利 17.23%</td><td>单吨盈利与快充产品占比</td><td>弹性型</td><td>一体化成本、快充产品占比</td></tr>
+<tr><td><b>中科电气 300035</b></td><td>负极</td><td>负极</td><td>人造石墨；宁德、亿纬</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：石墨化自供率提升</td><td>Q3 财务未核</td><td>观察</td><td>石墨化自供率、单吨盈利</td></tr>
+<tr><td><b>翔丰华 300890</b></td><td>负极</td><td>负极</td><td>人造石墨；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-down">弱：客户集中度高，数据缺</td><td>Q3 财务未核</td><td>观察</td><td>客户集中度、产能利用率</td></tr>
+<tr><td><b>贝特瑞 835185</b></td><td>负极</td><td>负极龙头（北交所）</td><td>硅碳负极、人造石墨；宁德、松下、LG</td><td>高</td><td>规模化量产</td><td class="rp-good">强：硅碳负极领先</td><td>Q3 财务、海外产能未核</td><td>兑现型</td><td>硅碳负极放量、海外基地</td></tr>
+<tr><td><b>恩捷股份 002812</b></td><td>隔膜</td><td>湿法隔膜龙头</td><td>湿法隔膜；宁德、LG、松下</td><td>高</td><td>规模化量产</td><td class="rp-good">强：9M 归母 +2,178.8%；Q3 单季毛利 36.6%；湿法利用率 98%</td><td>隔膜涨价幅度未披露</td><td>弹性型</td><td>涨价落地、海外客户、毛利率修复</td></tr>
+<tr><td><b>星源材质 300568</b></td><td>隔膜</td><td>干法/湿法隔膜</td><td>隔膜；宁德、比亚迪、LG</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 归母 +209.3%、毛利 28.71%</td><td>单平米盈利与海外产能进度</td><td>弹性型</td><td>干法涨价、海外产能</td></tr>
+<tr><td><b>中材科技 002080</b></td><td>隔膜</td><td>隔膜+风电叶片</td><td>湿法隔膜；宁德、比亚迪</td><td>中</td><td>规模化量产</td><td class="rp-mid">中：隔膜业务受益，风电拖累待核</td><td>Q3 财务、隔膜盈利未核</td><td>观察</td><td>隔膜盈利、风电景气</td></tr>
+<tr><td><b>天赐材料 002709</b></td><td>电解液</td><td>六氟+电解液一体化</td><td>六氟、电解液；宁德、比亚迪、LG</td><td>高</td><td>规模化量产</td><td class="rp-good">强：9M 归母 +827.7%、毛利率 29.43%</td><td>六氟自供比例、Q3 单季拆分未核</td><td>弹性型</td><td>Q4 电解液单吨盈利、55 万吨长协执行价</td></tr>
+<tr><td><b>新宙邦 300037</b></td><td>电解液</td><td>电解液+氟化工</td><td>电解液、氟精细化工；宁德、LG、松下</td><td>高</td><td>规模化量产</td><td class="rp-good">强：氟化工协同、海外客户</td><td>Q3 财务未核</td><td>兑现型</td><td>氟化工协同、海外产能</td></tr>
+<tr><td><b>多氟多 002407</b></td><td>电解液</td><td>六氟龙头</td><td>六氟、电子级氢氟酸；电解液厂</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 归母 +658.7%、毛利 18.57%，但六氟价格处一年低位</td><td>Q3 单季拆分未核</td><td>弹性型</td><td>六氟产能释放、价格中枢</td></tr>
+<tr><td><b>天际股份 002759</b></td><td>电解液</td><td>六氟</td><td>六氟；电解液厂</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：六氟弹性标的</td><td>Q3 财务未核</td><td>弹性型</td><td>六氟开工率、价格</td></tr>
+<tr><td><b>石大胜华 603026</b></td><td>电解液</td><td>溶剂</td><td>DMC/EC 等溶剂；电解液厂</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：溶剂价格随电解液回暖</td><td>Q3 财务未核</td><td>观察</td><td>溶剂价格、添加剂布局</td></tr>
+<tr><td><b>诺德股份 600110</b></td><td>铜箔</td><td>锂电铜箔</td><td>4.5—6μm 铜箔；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 归母 +363.4%；6μm 加工费 +17.1%（+3,500 元/吨）</td><td>Q3 单季拆分、极薄化占比</td><td>弹性型</td><td>加工费、极薄化占比</td></tr>
+<tr><td><b>嘉元科技 688388</b></td><td>铜箔</td><td>铜箔</td><td>极薄铜箔；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：9M 归母 +1,275.2%、毛利 6.46%</td><td>加工费弹性、客户结构</td><td>弹性型</td><td>加工费、客户结构</td></tr>
+<tr><td><b>德福科技 301511</b></td><td>铜箔</td><td>铜箔</td><td>铜箔；宁德、国轩</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：11-06 领跌，波动大</td><td>Q3 财务未核</td><td>弹性型</td><td>加工费、产能利用率</td></tr>
+<tr><td><b>鼎胜新材 603876</b></td><td>铜箔/铝箔</td><td>铝箔</td><td>电池铝箔；宁德、比亚迪</td><td>中</td><td>规模化量产</td><td class="rp-mid">中：铝箔加工费企稳</td><td>Q3 财务未核</td><td>观察</td><td>电池铝箔占比、加工费</td></tr>
+<tr><td><b>海亮股份 002203</b></td><td>铜箔</td><td>铜加工+铜箔</td><td>铜箔；宁德、比亚迪</td><td>低</td><td>规模化量产</td><td class="rp-mid">中：公开「铜箔业务量价齐升」</td><td>铜箔收入占比未核</td><td>观察</td><td>铜箔盈利占比、加工费</td></tr>
+<tr><td><b>科达利 002850</b></td><td>结构件</td><td>结构件龙头</td><td>方形/圆柱结构件；宁德、亿纬、中创</td><td>高</td><td>规模化量产</td><td class="rp-good">强：9M 归母 +28.9%、毛利 20.85%、PE 24.4x</td><td>大圆柱结构件占比未披露</td><td>兑现型</td><td>海外产能、大圆柱结构件</td></tr>
+<tr><td><b>震裕科技 300953</b></td><td>结构件</td><td>结构件</td><td>结构件、电机铁芯；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：客户优质，Q3 待补</td><td>Q3 财务未核</td><td>弹性型</td><td>结构件份额、铁芯业务</td></tr>
+<tr><td><b>三花智控 002050</b></td><td>热管理</td><td>热管理龙头</td><td>汽车热管理；特斯拉、比亚迪</td><td>中</td><td>规模化量产</td><td class="rp-good">强：全球热管理份额</td><td>Q3 财务、储能液冷占比未核</td><td>观察</td><td>汽车热管理份额、储能液冷</td></tr>
+<tr><td><b>银轮股份 002126</b></td><td>热管理</td><td>热管理</td><td>换热器、储能液冷；宁德、比亚迪</td><td>中</td><td>规模化量产</td><td class="rp-mid">中：储能液冷受益</td><td>Q3 财务未核</td><td>观察</td><td>储能液冷订单、海外客户</td></tr>
+<tr><td><b>先导智能 300450</b></td><td>设备</td><td>整线设备龙头</td><td>整线、固态设备；宁德、亿纬、LG</td><td>高</td><td>规模化量产</td><td class="rp-good">强：整线份额领先、固态设备布局</td><td>Q3 财务、固态订单未核</td><td>期权型（固态）</td><td>固态中试线订单、海外订单</td></tr>
+<tr><td><b>利元亨 688499</b></td><td>设备</td><td>整线设备</td><td>整线；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：整线能力，盈利待补</td><td>Q3 财务未核</td><td>期权型</td><td>固态设备验证、订单结构</td></tr>
+<tr><td><b>赢合科技 300457</b></td><td>设备</td><td>整线设备</td><td>整线；宁德、国轩</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：订单随扩产波动</td><td>Q3 财务未核</td><td>观察</td><td>订单结构、海外客户</td></tr>
+<tr><td><b>杭可科技 688006</b></td><td>设备</td><td>化成分容</td><td>化成分容设备；宁德、LG</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：海外订单占比高</td><td>Q3 财务未核</td><td>观察</td><td>海外订单、固态适配</td></tr>
+<tr><td><b>纳科诺尔 920522</b></td><td>设备</td><td>辊压机</td><td>辊压机；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：干法负极辊压量产 80m/min；9M 营收 +30.35%、归母 -65.38%</td><td>干法订单占比未披露</td><td>期权型（干法）</td><td>干法电极辊压订单</td></tr>
+<tr><td><b>曼恩斯特 301325</b></td><td>设备</td><td>涂布模头</td><td>涂布模头；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：模头国产替代</td><td>Q3 财务未核</td><td>观察</td><td>固态涂布、海外客户</td></tr>
+<tr><td><b>宏工科技 301662</b></td><td>设备</td><td>粉体处理</td><td>粉体输送；宁德、国轩</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：固态电解质产线布局</td><td>Q3 财务、固态订单未核</td><td>期权型</td><td>固态电解质产线订单</td></tr>
+<tr><td><b>信宇人 688573</b></td><td>设备</td><td>干燥设备</td><td>干燥设备；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-down">弱：规模小、订单波动</td><td>Q3 财务未核</td><td>观察</td><td>订单、客户拓展</td></tr>
+<tr><td><b>赣锋锂业 002460</b></td><td>锂资源</td><td>锂盐+资源</td><td>锂盐、金属锂；电池厂</td><td>高</td><td>规模化量产</td><td class="rp-good">强：资源自给率高</td><td>Q3 财务、锂价敏感性未核</td><td>观察</td><td>锂价、非洲项目、固态布局</td></tr>
+<tr><td><b>天齐锂业 002466</b></td><td>锂资源</td><td>锂矿+锂盐</td><td>锂精矿、锂盐；电池厂</td><td>高</td><td>规模化量产</td><td class="rp-good">强：资源禀赋最优</td><td>Q3 财务、SQM 权益未核</td><td>观察</td><td>锂价、SQM 权益、奎纳纳爬坡</td></tr>
+<tr><td><b>盐湖股份 000792</b></td><td>锂资源</td><td>盐湖提锂</td><td>碳酸锂、钾肥</td><td>高</td><td>规模化量产</td><td class="rp-good">强：成本最低梯队</td><td>Q3 财务未核</td><td>观察</td><td>锂价、钾肥景气、扩产</td></tr>
+<tr><td><b>藏格矿业 000408</b></td><td>锂资源</td><td>盐湖提锂</td><td>碳酸锂、钾肥</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：成本优势，项目待核</td><td>Q3 财务、麻米错项目未核</td><td>观察</td><td>麻米错项目、锂价</td></tr>
+<tr><td><b>永兴材料 002756</b></td><td>锂资源</td><td>云母提锂</td><td>碳酸锂、特钢</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：云母成本曲线</td><td>Q3 财务未核</td><td>观察</td><td>云母成本、锂价</td></tr>
+<tr><td><b>中矿资源 002738</b></td><td>锂资源</td><td>锂矿+锂盐</td><td>锂精矿、锂盐</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：津巴布韦项目</td><td>Q3 财务未核</td><td>观察</td><td>津巴布韦项目、锂价</td></tr>
+<tr><td><b>雅化集团 002497</b></td><td>锂资源</td><td>锂盐</td><td>锂盐、民爆</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：锂盐产能</td><td>Q3 财务未核</td><td>观察</td><td>锂盐产能、客户</td></tr>
+<tr><td><b>天华新能 300390</b></td><td>锂资源</td><td>锂盐</td><td>氢氧化锂；电池厂</td><td>高</td><td>规模化量产</td><td class="rp-mid">中：氢氧化锂出口</td><td>Q3 财务未核</td><td>观察</td><td>氢氧化锂价格、海外客户</td></tr>
+<tr><td><b>融捷股份 002192</b></td><td>锂资源</td><td>锂矿</td><td>甲基卡锂矿</td><td>高</td><td>规模化量产</td><td class="rp-down">弱：项目进度不确定</td><td>Q3 财务、复产进度未核</td><td>观察</td><td>甲基卡复产、锂价</td></tr>
+<tr><td><b>格林美 002340</b></td><td>回收</td><td>前驱体+回收</td><td>前驱体、回收；宁德、比亚迪</td><td>高</td><td>规模化量产</td><td class="rp-good">强：回收网络+前驱体一体化</td><td>Q3 财务、回收盈利未核</td><td>兑现型</td><td>回收网络、前驱体份额</td></tr>
+<tr><td><b>天奇股份 002009</b></td><td>回收</td><td>回收</td><td>电池回收、汽车装备</td><td>中</td><td>规模化量产</td><td class="rp-down">弱：回收盈利波动</td><td>Q3 财务未核</td><td>观察</td><td>回收产能、渠道</td></tr>
+<tr><td><b>光华科技 002741</b></td><td>回收</td><td>回收</td><td>电池回收、电子化学品</td><td>中</td><td>规模化量产</td><td class="rp-down">弱：规模小</td><td>Q3 财务未核</td><td>观察</td><td>回收盈利、渠道</td></tr>
+<tr><td><b>华阳股份 600348</b></td><td>新技术</td><td>钠电</td><td>钠电电芯；储能/两轮</td><td>低</td><td>中试/小批量</td><td class="rp-down">弱：钠电收入未确认</td><td>钠电订单、GWh 线进度未核</td><td>期权型</td><td>钠电 GWh 线投产、订单</td></tr>
+<tr><td><b>传艺科技 002866</b></td><td>新技术</td><td>钠电</td><td>钠电电芯；储能</td><td>低</td><td>中试</td><td class="rp-down">弱：钠电收入未确认</td><td>订单、产能未核</td><td>期权型</td><td>钠电订单、产能爬坡</td></tr>
+<tr><td><b>元力股份 300174</b></td><td>新技术</td><td>硬碳</td><td>硬碳负极；钠电</td><td>低</td><td>中试</td><td class="rp-down">弱：硬碳量产未验证</td><td>硬碳订单未核</td><td>期权型</td><td>硬碳量产、客户导入</td></tr>
+<tr><td><b>上海洗霸 603200</b></td><td>新技术</td><td>固态电解质</td><td>硫化物电解质；固态电池</td><td>低</td><td>中试</td><td class="rp-down">弱：中试阶段、无收入</td><td>电解质性能、客户验证未核</td><td>期权型</td><td>硫化物电解质送样→定点</td></tr>
+<tr><td><b>有研新材 600206</b></td><td>新技术</td><td>固态材料（已剥离）</td><td>2026-07 有研稀土 45% 股权转出，专利已于 2025-07 转上海洗霸</td><td>—</td><td>已退出</td><td class="rp-down">弱：不再是固态标的</td><td>无</td><td>非标的</td><td>不纳入跟踪</td></tr>
+<tr><td><b>三祥新材 603663</b></td><td>新技术</td><td>锆基材料</td><td>氧化锆、固态电解质原料</td><td>低</td><td>中试</td><td class="rp-down">弱：固态收入未确认</td><td>客户验证未核</td><td>期权型</td><td>氧化锆需求、固态客户</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">口径说明：主题收入暴露为「电池/储能业务收入占比」的定性分档（≈100% / 高 50—90% / 中 20—50% / 低 &lt;20%），依据公司主营与公开披露估算，非精确值；证据强弱以 2026 年三季报、公告、行业协会与券商数据为依据，缺财报核验的标注「中/弱」；「未获取到/未核」统一列入证据缺口，不以推测替代。</p>
+<p class="rp-note">口径说明：主题收入暴露为「电池/储能业务收入占比」的定性分档（≈100% / 高 50—90% / 中 20—50% / 低 &lt;20%），依据公司主营与公开披露估算，非精确值；证据强弱以 2026 年三季报、公告、行业协会与券商数据为依据，缺财报核验的标注「中/弱」；「未获取到/未核」统一列入证据缺口，不以推测替代。</p>
 
 <h3>3.2 阵型与<b>研究优先级</b></h3>
-<div class="grid three">
-  <div class="mini-card"><b>第一阵型 · 兑现型（利润已落地）</b><p>宁德时代、亿纬锂能、中创新航、容百科技、华友钴业、中伟股份、璞泰来、贝特瑞、新宙邦、科达利、格林美。</p><p class="note">特征：已披露公司 2026Q3 营收增长、利润双升或扣非改善；华友钴业、中伟股份、贝特瑞、新宙邦、格林美 Q3 财务待核，按行业景气推定。</p></div>
-  <div class="mini-card"><b>第二阵型 · 弹性型（价格先于利润）</b><p>天赐材料、多氟多、天际股份、湖南裕能、富临精工、德方纳米、恩捷股份、星源材质、诺德股份、嘉元科技、德福科技、尚太科技、鹏辉能源、派能科技、震裕科技。</p><p class="note">特征：所处环节已涨价或满产，Q3 利润尚未完全体现，赔率大、持续性与扩产节奏相关。</p></div>
-  <div class="mini-card"><b>第三阵型 · 期权型（2027 才见收入）</b><p>当升科技、先导智能、利元亨、纳科诺尔、宏工科技、孚能科技、华阳股份、传艺科技、元力股份、上海洗霸、三祥新材。</p><p class="note">特征：固态/钠电/干法电极，处于中试或送样阶段，2026 年不贡献利润，只适合小仓位跟踪。</p></div>
+<div class="rp-grid rp-three">
+  <div class="rp-mini-card"><b>第一阵型 · 兑现型（利润已落地）</b><p>宁德时代、亿纬锂能、中创新航、容百科技、华友钴业、中伟股份、璞泰来、贝特瑞、新宙邦、科达利、格林美。</p><p class="rp-note">特征：已披露公司 2026Q3 营收增长、利润双升或扣非改善；华友钴业、中伟股份、贝特瑞、新宙邦、格林美 Q3 财务待核，按行业景气推定。</p></div>
+  <div class="rp-mini-card"><b>第二阵型 · 弹性型（价格先于利润）</b><p>天赐材料、多氟多、天际股份、湖南裕能、富临精工、德方纳米、恩捷股份、星源材质、诺德股份、嘉元科技、德福科技、尚太科技、鹏辉能源、派能科技、震裕科技。</p><p class="rp-note">特征：所处环节已涨价或满产，Q3 利润尚未完全体现，赔率大、持续性与扩产节奏相关。</p></div>
+  <div class="rp-mini-card"><b>第三阵型 · 期权型（2027 才见收入）</b><p>当升科技、先导智能、利元亨、纳科诺尔、宏工科技、孚能科技、华阳股份、传艺科技、元力股份、上海洗霸、三祥新材。</p><p class="rp-note">特征：固态/钠电/干法电极，处于中试或送样阶段，2026 年不贡献利润，只适合小仓位跟踪。</p></div>
 </div>
 
-<div class="callout">
+<div class="rp-callout">
 <b>验证顺序（先材料、后电芯，不是买入顺序）：</b>① <b>天赐材料 / 多氟多</b>——电解液一体化与六氟自供的成本优势，Q4 单吨盈利最先验证（逻辑是量+成本，不是涨价）；② <b>湖南裕能 / 富临精工</b>——高压实缺口最确定、但需核对单吨盈利；③ <b>恩捷股份 / 诺德股份</b>——隔膜、铜箔涨价弹性、需确认加工费幅度；④ <b>亿纬锂能 / 中创新航</b>——兑现型里估值与增速匹配度最好；⑤ <b>先导智能</b>——固态设备唯一有整线能力的标的，但订单尚未落地。
 </div>
 
 <h3>3.3 六家重点公司：角色、证据、反方与验证点</h3>
-<div class="grid two">
-  <div class="stock-card"><div class="stock-head"><div><b>宁德时代</b><div class="ticker">300750 · 电芯</div></div><span class="tag good">兑现型</span></div>
-  <div class="quote">Q3 营收 1,652.21 亿元（+58.58%）、归母 212.46 亿元（+14.54%）、毛利率 20.69%（环比 -2.47pct，2022Q4 以来新低）</div>
+<div class="rp-grid rp-two">
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>宁德时代</b><div class="rp-ticker">300750 · 电芯</div></div><span class="rp-tag rp-good">兑现型</span></div>
+  <div class="rp-quote">Q3 营收 1,652.21 亿元（+58.58%）、归母 212.46 亿元（+14.54%）、毛利率 20.69%（环比 -2.47pct，2022Q4 以来新低）</div>
   <p><b>角色：</b>全球动力与储能双龙头，SNE 口径 9M2026 全球份额 39.1%（同比 +1.6pct），储能占 Q3 出货约 1/4，匈牙利 100GWh 工厂 2026-09 投产。</p>
   <p><b>证据：</b>营收高增、份额提升、200—400 亿元回购并注销（至 9-30 已回购 33.03 亿元）、2026 中期分红 10 派 14.11 元。</p>
   <p><b>反方：</b>利润增速（+14.54%）远低于营收（+58.58%），毛利率降至 2022Q4 以来新低；消费税与出口退税由「与客户分担」转为「自行消化」的风险；摩根士丹利 2026-10-27 下调 2027 年净利 7%、目标价 335 元并移出首选名单。</p>
-  <p><b>验证点：</b>Q4 单瓦盈利是否止跌、2027 年价格谈判结果、储能系统收入确认节奏。<span class="src">来源：证券时报 2026-10-21；证券之星 2026-11-06；证券时报 2026-07-24；央广网 2026-10-21。</span></p></div>
+  <p><b>验证点：</b>Q4 单瓦盈利是否止跌、2027 年价格谈判结果、储能系统收入确认节奏。<span class="rp-src">来源：证券时报 2026-10-21；证券之星 2026-11-06；证券时报 2026-07-24；央广网 2026-10-21。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>亿纬锂能</b><div class="ticker">300014 · 电芯</div></div><span class="tag good">兑现型</span></div>
-  <div class="quote">9M 营收 733.90 亿元（+63.08%）、归母 52.40 亿元（+86.11%）；动力/储能出货 66.17/67.52GWh</div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>亿纬锂能</b><div class="rp-ticker">300014 · 电芯</div></div><span class="rp-tag rp-good">兑现型</span></div>
+  <div class="rp-quote">9M 营收 733.90 亿元（+63.08%）、归母 52.40 亿元（+86.11%）；动力/储能出货 66.17/67.52GWh</div>
   <p><b>角色：</b>动力与储能双线，储能占比已超过动力；大圆柱工厂满产，Fluence 2027—2031 框架合同、2027 年已确定交付约 16GWh。</p>
   <p><b>证据：</b>Q3 归母 +60.18%、扣非 +110.64%，扣非增速远高于归母，说明主业盈利质量在改善；公司称已与绝大多数客户就消费税与出口退税达成共识。</p>
   <p><b>反方：</b>经营现金流 16.98 亿元（-65.37%），与利润增长背离；储能系统价格战可能压缩 2027 年单瓦盈利；大圆柱客户集中度高。</p>
-  <p><b>验证点：</b>2027 年 Fluence 16GWh 交付、Q4 排产环比、现金流是否修复。<span class="src">来源：新华财经 2026-10-23；21 世纪经济报道 2026-11-06。</span></p></div>
+  <p><b>验证点：</b>2027 年 Fluence 16GWh 交付、Q4 排产环比、现金流是否修复。<span class="rp-src">来源：新华财经 2026-10-23；21 世纪经济报道 2026-11-06。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>中创新航</b><div class="ticker">3931.HK · 电芯</div></div><span class="tag good">兑现型</span></div>
-  <div class="quote">9M 营收 459.49 亿元（+61.01%）、净利 23.39 亿元（+95.44%）；Q3 净利 8.03 亿元（+72.3%）</div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>中创新航</b><div class="rp-ticker">3931.HK · 电芯</div></div><span class="rp-tag rp-good">兑现型</span></div>
+  <div class="rp-quote">9M 营收 459.49 亿元（+61.01%）、净利 23.39 亿元（+95.44%）；Q3 净利 8.03 亿元（+72.3%）</div>
   <p><b>角色：</b>动力电池国内第三、全球第五（SNE 9M2026 份额 5.0%），客户覆盖广汽、小鹏、小米、零跑；董事长刘静瑜 10-29 称 2027 年出货有望「倍数级增长」。</p>
   <p><b>证据：</b>净利增速快于营收，规模效应显现；港股上市后融资渠道打通。</p>
   <p><b>反方：</b>净利 23.39 亿元与归母 13.66 亿元两个口径差异较大，需以港交所公告为准；「倍数级增长」是管理层指引，未获订单验证；H 股流动性弱于 A 股。</p>
-  <p><b>验证点：</b>2027 年出货指引兑现度、单瓦盈利、A/H 估值差。<span class="src">来源：东方财富/第一财经 2026-10-30；SNE Research 2026 年前三季度。</span></p></div>
+  <p><b>验证点：</b>2027 年出货指引兑现度、单瓦盈利、A/H 估值差。<span class="rp-src">来源：东方财富/第一财经 2026-10-30；SNE Research 2026 年前三季度。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>天赐材料</b><div class="ticker">002709 · 电解液</div></div><span class="tag high">弹性型</span></div>
-  <div class="quote">9M 营收 235.42 亿元（+117.1%）、归母 39.02 亿元（+827.7%）、毛利率 29.43%；PE 11.2x（11-06）</div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>天赐材料</b><div class="rp-ticker">002709 · 电解液</div></div><span class="rp-tag rp-high">弹性型</span></div>
+  <div class="rp-quote">9M 营收 235.42 亿元（+117.1%）、归母 39.02 亿元（+827.7%）、毛利率 29.43%；PE 11.2x（11-06）</div>
   <p><b>角色：</b>六氟磷酸锂与电解液一体化龙头，六氟自供比例高、成本曲线行业最低梯队；与楚能签订 55 万吨电解液长协，百吨级硫化锂与固态电解质中试线 2026Q3 投产。</p>
   <p><b>证据：</b>利润爆发来自<b>出货量翻倍 + 一体化降本</b>，而不是六氟涨价——六氟基准价 9.8 万元/吨、处一年低位。这说明即使价格不涨，龙头靠份额与成本仍能兑现利润，这是「弹性型」里质量最好的一种。</p>
   <p><b>反方：</b>PE 11.2x 已部分反映盈利修复；若 2027 年六氟、电解液价格继续下行，量增难抵价减；固态电解质中试线短期不贡献收入；Q3 单季数据需以公告核对。</p>
-  <p><b>验证点：</b>Q4 电解液单吨盈利、六氟自供比例、55 万吨长协执行价、硫化锂中试线投产。<span class="src">来源：东方财富数据中心 2026 年三季报（提取日 2026-11-08）；生意社 2026-11-06；电池中国网 2026-03-23。</span></p></div>
+  <p><b>验证点：</b>Q4 电解液单吨盈利、六氟自供比例、55 万吨长协执行价、硫化锂中试线投产。<span class="rp-src">来源：东方财富数据中心 2026 年三季报（提取日 2026-11-08）；生意社 2026-11-06；电池中国网 2026-03-23。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>湖南裕能</b><div class="ticker">301358 · 正极</div></div><span class="tag high">弹性型</span></div>
-  <div class="quote">9M 营收 575.08 亿元（+147.6%）、归母 42.59 亿元（+560.1%）、毛利率 12.51%；PE 7.6x、PB 1.99（11-06）</div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>湖南裕能</b><div class="rp-ticker">301358 · 正极</div></div><span class="rp-tag rp-high">弹性型</span></div>
+  <div class="rp-quote">9M 营收 575.08 亿元（+147.6%）、归母 42.59 亿元（+560.1%）、毛利率 12.51%；PE 7.6x、PB 1.99（11-06）</div>
   <p><b>角色：</b>磷酸铁锂正极出货量龙头，高压实产品占比领先，客户为宁德时代、比亚迪。</p>
   <p><b>证据：</b>第四代高压实 LFP 2026 年缺口约 30—40 万吨（隆众资讯），认证周期 12—18 个月、扩产集中于头部；公司 9M 归母 +560.1%，毛利率 12.51%，是「量价利」同时兑现的少数环节。</p>
   <p><b>反方：</b>LFP 正极历史上是「加工费生意」，毛利率仅 12.51%，说明议价权仍在下游；2027 年国轩 20 万吨、容百 42.98 亿元项目投产后缺口可能快速收窄；PE 7.6x 已隐含「周期底部利润」的定价，若涨价证伪，估值并不便宜。</p>
-  <p><b>验证点：</b>第四代产品出货占比、单吨盈利、2027 年加工费谈判。<span class="src">来源：东方财富数据中心 2026 年三季报（提取日 2026-11-08）；证券日报 2026-11-05；国轩高科公告 2026-10-30；容百科技公告 2026-04。</span></p></div>
+  <p><b>验证点：</b>第四代产品出货占比、单吨盈利、2027 年加工费谈判。<span class="rp-src">来源：东方财富数据中心 2026 年三季报（提取日 2026-11-08）；证券日报 2026-11-05；国轩高科公告 2026-10-30；容百科技公告 2026-04。</span></p></div>
 
-  <div class="stock-card"><div class="stock-head"><div><b>先导智能</b><div class="ticker">300450 · 设备</div></div><span class="tag low">期权型</span></div>
-  <div class="quote">2026H1 营收 81.89 亿元（+23.88%）、归母 9.56 亿元（+29.15%）；全固态整线已打通并获重复订单</div>
+  <div class="rp-stock-card"><div class="rp-stock-head"><div><b>先导智能</b><div class="rp-ticker">300450 · 设备</div></div><span class="rp-tag rp-low">期权型</span></div>
+  <div class="rp-quote">2026H1 营收 81.89 亿元（+23.88%）、归母 9.56 亿元（+29.15%）；全固态整线已打通并获重复订单</div>
   <p><b>角色：</b>锂电整线设备龙头，具备固态电池整线（干法电极、等静压、叠片）布局，客户覆盖宁德、亿纬、LG。</p>
   <p><b>证据：</b>固态中试线招标启动，整线能力稀缺；2026H1 营收 81.89 亿元（+23.88%）、归母 9.56 亿元（+29.15%），固态设备已获重复订单；海外电池厂扩产带来第二增长曲线。</p>
   <p><b>反方：</b>固态设备订单尚未落地，2026 年收入仍以液态锂电设备为主；设备行业价格竞争激烈、应收账款高；固态路线（硫化物/氧化物/聚合物）未定，设备方案存在路线风险。</p>
-  <p><b>验证点：</b>固态中试线订单公告、海外订单占比、应收账款周转。<span class="src">来源：万联证券 2026-11-05（经东财）；公司公开资料。</span></p></div>
+  <p><b>验证点：</b>固态中试线订单公告、海外订单占比、应收账款周转。<span class="rp-src">来源：万联证券 2026-11-05（经东财）；公司公开资料。</span></p></div>
 </div>
 </section>
-<section class="section" id="s4">
-<p class="chapter-no">04 / 市场叙事与拥挤度</p>
+<section class="rp-section" id="s4">
+<p class="rp-chapter-no">04 / 市场叙事与拥挤度</p>
 <h2>两天涨 7%，第三天就还回去一半</h2>
 
-<div class="takeaway">
+<div class="rp-takeaway">
 11 月 4—5 日，万得锂电池指数两日涨超 7%，宁德时代六连阳、累计涨超 15%；11 月 6 日，中证电池主题指数收跌 2.78% 至 3,030.22 点，主力资金净流出 29.17 亿元、散户净流入 32.01 亿元。<b>这不是一次由盈利上修驱动的行情，而是一次由「估值极低位 + 反内卷叙事 + 美国中期选举」共同触发的估值修复</b>。市场当前交易的是「弹性」与「预期」，尚未交易「业绩兑现」。
 </div>
 
 <h3>4.1 行情复盘：从 47% 回撤到 4 连阳</h3>
-<div class="breadth-bar">
-  <div><span>2026-05 至 2026-10</span><b class="down">最大回撤约 47%</b></div>
-  <div><span>2026-11-04 至 11-05</span><b class="up">两日涨超 7%</b></div>
-  <div><span>2026-11-06</span><b class="down">-2.78%，收 3,030.22</b></div>
+<div class="rp-breadth-bar">
+  <div><span>2026-05 至 2026-10</span><b class="rp-down">最大回撤约 47%</b></div>
+  <div><span>2026-11-04 至 11-05</span><b class="rp-up">两日涨超 7%</b></div>
+  <div><span>2026-11-06</span><b class="rp-down">-2.78%，收 3,030.22</b></div>
 </div>
-<p>2026 年 5 月以来，电池板块经历了长达 6 个月、最大回撤近 47% 的调整，估值被压缩到近十年 1.4% 分位。11 月以来板块 4 连阳、累计涨近 15%，触发因素有三：<b>① 三季报落地后「利空出尽」</b>——宁德时代 Q3 利润增速放缓已在 10 月股价中反映；<b>② 反内卷政策预期升温</b>——工信部座谈会后，市场开始定价 2027 年供给出清；<b>③ 美国中期选举</b>——民主党夺回参众两院，市场博弈美国新能源政策边际改善。<span class="src">来源：每日经济新闻 2026-11-05；证券之星 2026-11-06；界面新闻 2026-11-06。</span></p>
+<p>2026 年 5 月以来，电池板块经历了长达 6 个月、最大回撤近 47% 的调整，估值被压缩到近十年 1.4% 分位。11 月以来板块 4 连阳、累计涨近 15%，触发因素有三：<b>① 三季报落地后「利空出尽」</b>——宁德时代 Q3 利润增速放缓已在 10 月股价中反映；<b>② 反内卷政策预期升温</b>——工信部座谈会后，市场开始定价 2027 年供给出清；<b>③ 美国中期选举</b>——民主党夺回参众两院，市场博弈美国新能源政策边际改善。<span class="rp-src">来源：每日经济新闻 2026-11-05；证券之星 2026-11-06；界面新闻 2026-11-06。</span></p>
 
 <h3>4.2 估值：便宜是事实，便宜的原因也是事实</h3>
-<div class="table-wrap">
-<table class="mid">
+<div class="rp-table-wrap">
+<table class="rp-mid">
 <thead><tr><th>估值口径</th><th>当前值</th><th>历史分位</th><th>说明</th></tr></thead>
 <tbody>
-<tr><td>中证电池主题指数（931719）PE-TTM</td><td>18.12x</td><td class="good">近 10 年 1.39%、近 5 年 2.78%、近 3 年 4.63%</td><td>截至 11-04，Wind 口径</td></tr>
+<tr><td>中证电池主题指数（931719）PE-TTM</td><td>18.12x</td><td class="rp-good">近 10 年 1.39%、近 5 年 2.78%、近 3 年 4.63%</td><td>截至 11-04，Wind 口径</td></tr>
 <tr><td>新能电池指数（980032）PE-TTM</td><td>21.73x</td><td>近 5 年 20.97%</td><td>截至 11-05，每经/东财口径</td></tr>
 <tr><td>申万三级「锂电池」PE</td><td>24.8x</td><td>近 10 年 16.12%</td><td>截至 2026-08-11，第一财经</td></tr>
 <tr><td>宁德时代 PE-TTM</td><td>13.7x</td><td>—</td><td>10-20 口径，股价此后上涨，PE 被动抬升</td></tr>
@@ -547,72 +376,72 @@ td strong{color:var(--navy)}
 <p><b>低估值的原因必须同时写清：</b>一是 2026 年 Q3 龙头利润增速已降至个位数到 15% 区间，市场担心 2027 年税负上升进一步压制利润；二是储能系统价格战未止，市场担心「量增价减」；三是 2027 年出口退税取消，海外收入占比高的公司将面临直接的成本冲击。换言之，<b>1.4% 分位不是「错杀」，而是市场对 2027 年盈利不确定性的定价</b>。估值修复的空间来自「预期不再恶化」，而非「盈利会超预期」。</p>
 
 <h3>4.3 资金：ETF 还在被赎回，融资盘已在高位</h3>
-<div class="grid three">
-  <div class="mini-card"><b>ETF 份额：仍在低位</b><p>广发电池 ETF（159755）11-05 份额 78.81 亿份、规模 63.38 亿元，较 2025 年末分别 <b class="down">-40.18%、-55.01%</b>；易方达（159175）11-06 份额 5.37 亿份（+0.1 亿份）、规模 4.09 亿元；招商（561910）11-04 结束连续 5 日净申购，累计净申购 6,531 万元。</p></div>
-  <div class="mini-card"><b>融资余额：已处高位</b><p>宁德时代融资余额 160.17 亿元（11-05），占流通市值 1.42%，<b class="down">超过历史 80% 分位</b>；两融余额 163.57 亿元。杠杆资金在反弹前已布局，反弹后反而成为潜在抛压。</p></div>
-  <div class="mini-card"><b>主力 vs 散户：11-06 背离</b><p>11-06 电池板块主力净流出 29.17 亿元、超大单净流出 2.84 亿元，散户净流入 32.01 亿元——<b>机构借反弹派发、散户追高</b>的典型结构，短期不是健康信号。</p></div>
+<div class="rp-grid rp-three">
+  <div class="rp-mini-card"><b>ETF 份额：仍在低位</b><p>广发电池 ETF（159755）11-05 份额 78.81 亿份、规模 63.38 亿元，较 2025 年末分别 <b class="rp-down">-40.18%、-55.01%</b>；易方达（159175）11-06 份额 5.37 亿份（+0.1 亿份）、规模 4.09 亿元；招商（561910）11-04 结束连续 5 日净申购，累计净申购 6,531 万元。</p></div>
+  <div class="rp-mini-card"><b>融资余额：已处高位</b><p>宁德时代融资余额 160.17 亿元（11-05），占流通市值 1.42%，<b class="rp-down">超过历史 80% 分位</b>；两融余额 163.57 亿元。杠杆资金在反弹前已布局，反弹后反而成为潜在抛压。</p></div>
+  <div class="rp-mini-card"><b>主力 vs 散户：11-06 背离</b><p>11-06 电池板块主力净流出 29.17 亿元、超大单净流出 2.84 亿元，散户净流入 32.01 亿元——<b>机构借反弹派发、散户追高</b>的典型结构，短期不是健康信号。</p></div>
 </div>
 
 <h3>4.4 拥挤度打分：短期偏热，中期不拥挤</h3>
-<div class="table-wrap">
-<table class="mid">
+<div class="rp-table-wrap">
+<table class="rp-mid">
 <thead><tr><th>指标</th><th>当前读数</th><th>信号</th><th>解读</th></tr></thead>
 <tbody>
-<tr><td>板块 PE-TTM 分位</td><td>1.4%（近 10 年）</td><td class="tag good">低</td><td>中期安全边际充足</td></tr>
-<tr><td>两日涨幅</td><td>+7%</td><td class="tag high">短期过热</td><td>情绪修复的第一波，追高风险大</td></tr>
-<tr><td>11-06 主力资金</td><td>净流出 29.17 亿元</td><td class="tag high">偏空</td><td>机构在反弹中减仓</td></tr>
-<tr><td>融资余额占流通市值（宁德）</td><td>1.42%，&gt;80% 分位</td><td class="tag high">偏高</td><td>杠杆拥挤，回调时放大波动</td></tr>
-<tr><td>ETF 份额（广发 159755）</td><td>较 2025 年末 -40%</td><td class="tag good">低</td><td>被动资金尚未回流，后续有增量空间</td></tr>
-<tr><td>换手率（931719）</td><td>2.52%</td><td class="tag mid">中性</td><td>活跃度回升但未到极端</td></tr>
-<tr><td>成交额（931719）</td><td>648.63 亿元</td><td class="tag mid">中性</td><td>放量但未创天量</td></tr>
+<tr><td>板块 PE-TTM 分位</td><td>1.4%（近 10 年）</td><td class="rp-tag rp-good">低</td><td>中期安全边际充足</td></tr>
+<tr><td>两日涨幅</td><td>+7%</td><td class="rp-tag rp-high">短期过热</td><td>情绪修复的第一波，追高风险大</td></tr>
+<tr><td>11-06 主力资金</td><td>净流出 29.17 亿元</td><td class="rp-tag rp-high">偏空</td><td>机构在反弹中减仓</td></tr>
+<tr><td>融资余额占流通市值（宁德）</td><td>1.42%，&gt;80% 分位</td><td class="rp-tag rp-high">偏高</td><td>杠杆拥挤，回调时放大波动</td></tr>
+<tr><td>ETF 份额（广发 159755）</td><td>较 2025 年末 -40%</td><td class="rp-tag rp-good">低</td><td>被动资金尚未回流，后续有增量空间</td></tr>
+<tr><td>换手率（931719）</td><td>2.52%</td><td class="rp-tag rp-mid">中性</td><td>活跃度回升但未到极端</td></tr>
+<tr><td>成交额（931719）</td><td>648.63 亿元</td><td class="rp-tag rp-mid">中性</td><td>放量但未创天量</td></tr>
 </tbody>
 </table>
 </div>
 
 <h3>4.5 叙事分层：哪些是事实，哪些是解释，哪些是传言</h3>
-<div class="grid three">
-  <div class="mini-card"><b class="good">已确认披露</b><ul class="compact"><li>9M2026 储能电池销量 595.4GWh、+111.8%；动力电池 1,086.4GWh、+38.2%。</li><li>碳酸锂现货 9.36 万元/吨（SMM 11-06）；六氟基准价 9.8 万元/吨、处一年低位（生意社 11-06）。</li><li>消费税 2027-09 升至 4%；出口退税 2027-01-01 取消。</li><li>宁德时代 200—400 亿元回购并注销，至 9-30 已回购 33.03 亿元。</li></ul></div>
-  <div class="mini-card"><b class="mid">媒体 / 分析师解释</b><ul class="compact"><li>「低点已确认、阻断式反弹开启」（东财十大机构论市 2026-11-08）。</li><li>「2027 年供需进一步改善、价格企稳回升」（中信证券 2026-11）。</li><li>「锂板块进入绝对底部，按 2027 年 10 万元锂价对应 10x PE」（长江证券）。</li><li>「美国中期选举后新能源政策边际改善」（界面新闻 2026-11-06）。</li></ul></div>
-  <div class="mini-card"><b class="low">未证实 / 需跟踪</b><ul class="compact"><li>「固态电池 2027 年量产」——公司指引，实为小批量生产。</li><li>「储能 2027 年翻倍」——券商预测，已被中信建投下修。</li><li>「六氟 15 万元/吨、四个月 +200%」——转载旧闻，与生意社基准价 9.8 万元/吨冲突，已剔除。</li><li>「某车企将全面切换某电池厂」——供应链传言，未见公告。</li></ul></div>
+<div class="rp-grid rp-three">
+  <div class="rp-mini-card"><b class="rp-good">已确认披露</b><ul class="rp-compact"><li>9M2026 储能电池销量 595.4GWh、+111.8%；动力电池 1,086.4GWh、+38.2%。</li><li>碳酸锂现货 9.36 万元/吨（SMM 11-06）；六氟基准价 9.8 万元/吨、处一年低位（生意社 11-06）。</li><li>消费税 2027-09 升至 4%；出口退税 2027-01-01 取消。</li><li>宁德时代 200—400 亿元回购并注销，至 9-30 已回购 33.03 亿元。</li></ul></div>
+  <div class="rp-mini-card"><b class="rp-mid">媒体 / 分析师解释</b><ul class="rp-compact"><li>「低点已确认、阻断式反弹开启」（东财十大机构论市 2026-11-08）。</li><li>「2027 年供需进一步改善、价格企稳回升」（中信证券 2026-11）。</li><li>「锂板块进入绝对底部，按 2027 年 10 万元锂价对应 10x PE」（长江证券）。</li><li>「美国中期选举后新能源政策边际改善」（界面新闻 2026-11-06）。</li></ul></div>
+  <div class="rp-mini-card"><b class="rp-low">未证实 / 需跟踪</b><ul class="rp-compact"><li>「固态电池 2027 年量产」——公司指引，实为小批量生产。</li><li>「储能 2027 年翻倍」——券商预测，已被中信建投下修。</li><li>「六氟 15 万元/吨、四个月 +200%」——转载旧闻，与生意社基准价 9.8 万元/吨冲突，已剔除。</li><li>「某车企将全面切换某电池厂」——供应链传言，未见公告。</li></ul></div>
 </div>
 
 <h3>4.6 结论：这一轮行情处在「第一阶段」</h3>
-<div class="verdict">
+<div class="rp-verdict">
 <b>市场正在交易的是「弹性」而非「业绩」。</b>证据是：涨得最多的是铜箔、隔膜、LFP 等价格弹性环节，而不是利润最确定的宁德时代；主力资金在 11-06 反弹中净流出；ETF 份额仍在历史低位。按「估值修复 → 盈利预期上修 → 业绩兑现」三段论，当前处于<b>第一段的中后段</b>：估值修复已走完大半，盈利预期上修需要 Q4 涨价传导验证，业绩兑现要等 2027 年一季报。<b>操作含义：不追高，等回调；优先选「涨价能进报表」的环节，而不是「故事最大」的环节。</b>
 </div>
 </section>
-  <section class="section" id="catalysts">
-    <p class="chapter-no">05 / 催化剂与验证登记</p>
+  <section class="rp-section" id="catalysts">
+    <p class="rp-chapter-no">05 / 催化剂与验证登记</p>
     <h2>把「可能发生」拆成可验证的日期和阈值</h2>
 
     <p>电池板块的催化剂密度在 2026Q4—2027Q3 之间异常高：出口退税取消、消费税翻倍、欧盟电池护照、固态电池小批量、储能独立化，全部落在 12 个月内。以下分为三类——已确认日程（有官方日期/公告）、条件性事件（需要政策或商业条件）、市场传言（未证实）。每条写明验证指标、观察阈值和失效条件；没有阈值的催化剂，不作为研究依据。</p>
 
-    <div class="table-wrap">
-      <table class="wide">
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
         <thead>
           <tr><th>时间</th><th>事件</th><th>类型</th><th>验证指标 / 观察阈值</th><th>失效条件</th></tr>
         </thead>
         <tbody>
-          <tr><td>2026-11 中旬</td><td>10 月动力电池装车与销量数据（CABIA）</td><td><span class="tag good">已确认日程</span></td><td>10 月装车同比 &gt;+15%、环比不降；储能电池销量同比 &gt;+80%</td><td>装车同比 &lt;+10% 或环比 -10% 以上</td></tr>
-          <tr><td>2026-11/12</td><td>2027 年长协与加工费谈判（隔膜、铜箔、LFP、电解液）</td><td><span class="tag mid">条件性</span></td><td>铜箔 6μm 加工费 &gt;2.4 万元/吨；第四代 LFP 溢价维持；隔膜价格止跌</td><td>加工费回落、长协价低于 2026 年</td></tr>
-          <tr><td>2026-12-31</td><td>出口退税取消前的「抢出口」</td><td><span class="tag good">已确认日程</span></td><td>11—12 月电池出口同比 &gt;+40%、环比走高；2027Q1 回落幅度</td><td>抢出口不明显——透支更严重，2027Q1 跌幅更大</td></tr>
-          <tr><td>2027-01-01</td><td>锂电池出口退税 6%→0（按报关单出口日期）</td><td><span class="tag good">已确认日程</span></td><td>2027Q1 出口量、海外客户分担比例、单 Wh 盈利</td><td>出口量同比 -20% 以上、毛利率再降 2pct</td></tr>
-          <tr><td>2027-02-18</td><td>欧盟电池护照生效</td><td><span class="tag good">已确认日程</span></td><td>头部企业碳足迹、回收比例合规进度；欧洲本地化产能</td><td>不合规→欧洲份额下降、被本地供应商替代</td></tr>
-          <tr><td>2027-03/04</td><td>2026 年报 + 2027Q1 季报</td><td><span class="tag good">已确认日程</span></td><td>CATL 储能占比与单 Wh 净利；亿纬 2027Q1 订单；材料环节单吨盈利</td><td>CATL 单 Wh 净利 &lt;0.06 元；材料单吨盈利回落</td></tr>
-          <tr><td>2027-09-01</td><td>锂电池消费税 2%→4%</td><td><span class="tag good">已确认日程</span></td><td>价格传导比例、毛利率、客户分担条款</td><td>无法传导→利润再压缩、二线企业亏损扩大</td></tr>
-          <tr><td>2027 全年</td><td>全固态电池小批量（CATL、比亚迪、国轩、亿纬）</td><td><span class="tag mid">条件性</span></td><td>中试良率 &gt;90%、装车车型数、电芯成本</td><td>良率 &lt;80%、成本 &gt;1.5 元/Wh、量产推迟到 2028</td></tr>
-          <tr><td>2027 全年</td><td>储能需求（中信建投：全球新增 793GWh、+56%）</td><td><span class="tag mid">条件性</span></td><td>国内中标量同比、独立储能 IRR、容量电价省份数</td><td>中标量同比 &lt;+20%；136 号文后 IRR 低于 6%</td></tr>
-          <tr><td>月度</td><td>碳酸锂价格与库存</td><td><span class="tag good">市场数据</span></td><td>价格站上 10 万元/吨且库存继续去化</td><td>跌破 8 万元/吨→成本支撑逻辑失效</td></tr>
-          <tr><td>每周</td><td>板块成交额、换手、融资余额</td><td><span class="tag good">市场数据</span></td><td>成交额 &gt;800 亿元、融资余额止跌回升</td><td>成交额 &lt;500 亿元、融资余额连续下降</td></tr>
+          <tr><td>2026-11 中旬</td><td>10 月动力电池装车与销量数据（CABIA）</td><td><span class="rp-tag rp-good">已确认日程</span></td><td>10 月装车同比 &gt;+15%、环比不降；储能电池销量同比 &gt;+80%</td><td>装车同比 &lt;+10% 或环比 -10% 以上</td></tr>
+          <tr><td>2026-11/12</td><td>2027 年长协与加工费谈判（隔膜、铜箔、LFP、电解液）</td><td><span class="rp-tag rp-mid">条件性</span></td><td>铜箔 6μm 加工费 &gt;2.4 万元/吨；第四代 LFP 溢价维持；隔膜价格止跌</td><td>加工费回落、长协价低于 2026 年</td></tr>
+          <tr><td>2026-12-31</td><td>出口退税取消前的「抢出口」</td><td><span class="rp-tag rp-good">已确认日程</span></td><td>11—12 月电池出口同比 &gt;+40%、环比走高；2027Q1 回落幅度</td><td>抢出口不明显——透支更严重，2027Q1 跌幅更大</td></tr>
+          <tr><td>2027-01-01</td><td>锂电池出口退税 6%→0（按报关单出口日期）</td><td><span class="rp-tag rp-good">已确认日程</span></td><td>2027Q1 出口量、海外客户分担比例、单 Wh 盈利</td><td>出口量同比 -20% 以上、毛利率再降 2pct</td></tr>
+          <tr><td>2027-02-18</td><td>欧盟电池护照生效</td><td><span class="rp-tag rp-good">已确认日程</span></td><td>头部企业碳足迹、回收比例合规进度；欧洲本地化产能</td><td>不合规→欧洲份额下降、被本地供应商替代</td></tr>
+          <tr><td>2027-03/04</td><td>2026 年报 + 2027Q1 季报</td><td><span class="rp-tag rp-good">已确认日程</span></td><td>CATL 储能占比与单 Wh 净利；亿纬 2027Q1 订单；材料环节单吨盈利</td><td>CATL 单 Wh 净利 &lt;0.06 元；材料单吨盈利回落</td></tr>
+          <tr><td>2027-09-01</td><td>锂电池消费税 2%→4%</td><td><span class="rp-tag rp-good">已确认日程</span></td><td>价格传导比例、毛利率、客户分担条款</td><td>无法传导→利润再压缩、二线企业亏损扩大</td></tr>
+          <tr><td>2027 全年</td><td>全固态电池小批量（CATL、比亚迪、国轩、亿纬）</td><td><span class="rp-tag rp-mid">条件性</span></td><td>中试良率 &gt;90%、装车车型数、电芯成本</td><td>良率 &lt;80%、成本 &gt;1.5 元/Wh、量产推迟到 2028</td></tr>
+          <tr><td>2027 全年</td><td>储能需求（中信建投：全球新增 793GWh、+56%）</td><td><span class="rp-tag rp-mid">条件性</span></td><td>国内中标量同比、独立储能 IRR、容量电价省份数</td><td>中标量同比 &lt;+20%；136 号文后 IRR 低于 6%</td></tr>
+          <tr><td>月度</td><td>碳酸锂价格与库存</td><td><span class="rp-tag rp-good">市场数据</span></td><td>价格站上 10 万元/吨且库存继续去化</td><td>跌破 8 万元/吨→成本支撑逻辑失效</td></tr>
+          <tr><td>每周</td><td>板块成交额、换手、融资余额</td><td><span class="rp-tag rp-good">市场数据</span></td><td>成交额 &gt;800 亿元、融资余额止跌回升</td><td>成交额 &lt;500 亿元、融资余额连续下降</td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>5.1 验证顺序：先看价格，再看量，最后看叙事</h3>
-    <div class="grid three">
-      <div class="mini-card"><b>第一优先：材料加工费</b>铜箔 6μm 加工费是否守住 2.4 万元/吨、隔膜是否真正涨价、第四代 LFP 溢价是否维持。这是「反内卷」是否落到利润的唯一硬指标；加工费回落，整条弹性逻辑作废。</div>
-      <div class="mini-card"><b>第二优先：量的兑现</b>10 月装车、11—12 月抢出口、2027Q1 出口回落幅度、储能中标量。量是「以量补价」的前提；量一旦失速，价格与利润同时下杀。</div>
-      <div class="mini-card"><b>第三优先：固态与储能叙事</b>中试良率、装车车型、独立储能 IRR。2026—2027 年固态不贡献利润，只给期权；储能已经是收入，但需要看市场化后的 IRR 而非招标量。</div>
+    <div class="rp-grid rp-three">
+      <div class="rp-mini-card"><b>第一优先：材料加工费</b>铜箔 6μm 加工费是否守住 2.4 万元/吨、隔膜是否真正涨价、第四代 LFP 溢价是否维持。这是「反内卷」是否落到利润的唯一硬指标；加工费回落，整条弹性逻辑作废。</div>
+      <div class="rp-mini-card"><b>第二优先：量的兑现</b>10 月装车、11—12 月抢出口、2027Q1 出口回落幅度、储能中标量。量是「以量补价」的前提；量一旦失速，价格与利润同时下杀。</div>
+      <div class="rp-mini-card"><b>第三优先：固态与储能叙事</b>中试良率、装车车型、独立储能 IRR。2026—2027 年固态不贡献利润，只给期权；储能已经是收入，但需要看市场化后的 IRR 而非招标量。</div>
     </div>
 
     <h3>5.2 关键时间轴</h3>
@@ -624,80 +453,80 @@ td strong{color:var(--navy)}
       <li><strong>2027 年下半年：</strong>全固态小批量装车。良率与成本是唯一标准，发布会与「意向订单」不算。</li>
     </ul>
 
-    <div class="callout warn">
+    <div class="rp-callout rp-warn">
       <b>未证实信息，不作为依据：</b>①「六氟磷酸锂报价突破 15 万元/吨、四个月涨 200%」——与生意社 2026-11-06 基准价 9.8 万元/吨（一年低位）直接冲突，判定为旧闻/误传，已在 2.3、2.4 修正；②「中铝与宁德时代战略合作、宁德 14 亿元雅安锂盐项目」——仅见媒体转载，未见交易所公告，标注待核；③「GGII 2026 前三季度国内装机 560.3GWh、+16%」——仅见搜索摘要，未打开原文，与 CABIA 576.3GWh、+16.7% 存在口径差异，正文采用 CABIA 口径。
     </div>
   </section>
-  <section class="section" id="exit">
-    <p class="chapter-no">06 / 退出与监控</p>
+  <section class="rp-section" id="exit">
+    <p class="rp-chapter-no">06 / 退出与监控</p>
     <h2>研究优先级、市场阶段、退出状态，分开写</h2>
 
     <p>以下「退出」指研究优先级下调或持仓逻辑失效的条件，不构成卖出建议。每家公司至少写一条基本面失效条件和一条资金/估值失效条件；治理与融资项未核实的，明确写「未获取到，需核」，不编造。</p>
 
-    <div class="table-wrap">
-      <table class="wide">
+    <div class="rp-table-wrap">
+      <table class="rp-wide">
         <thead>
           <tr><th>标的 / 板块</th><th>基本面失效</th><th>叙事失效</th><th>价格 / 资金失效</th><th>治理 / 融资</th><th>当前状态</th></tr>
         </thead>
         <tbody>
-          <tr><td><b>宁德时代</b></td><td>单 Wh 净利跌破 0.06 元；储能收入占比连续两季下降；2027Q1 出货环比负增长</td><td>固态电池量产推迟至 2028 之后；欧洲份额被本地供应商替代</td><td>PE 高于 25x 2026E；融资余额跌破 120 亿元</td><td>H 股解禁与回购节奏；未获取到减持计划，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>亿纬锂能</b></td><td>2027Q1 出货环比转负；Fluence 16GWh 交付延期；储能毛利率跌破 12%</td><td>大圆柱客户拓展停滞；消费电池持续拖累</td><td>PE 高于 30x 2026E；成交额萎缩至 30 亿元以下</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>中创新航</b></td><td>2027 出货未实现「倍增」；单 Wh 盈利回落至 0.02 元以下</td><td>小米/小鹏自研订单被分流</td><td>港股流动性折价扩大；PB 高于 2.5x</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>国轩高科</b></td><td>扣非再度转亏；大众合资工厂投产延期</td><td>海外产能落地不及预期</td><td>PB 高于 2.5x；成交额 &lt;20 亿元</td><td>大众持股与董事会安排；未获取到，需核</td><td><span class="tag bad">观察/回避</span></td></tr>
-          <tr><td><b>湖南裕能</b></td><td>第四代产品占比不再提升；单吨盈利跌破 2,000 元</td><td>LFP 涨价证伪、加工费回落</td><td>PE 高于 15x；PB 高于 3x</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>天赐材料</b></td><td>电解液单吨盈利连续两季下降；六氟自供比例低于 60%</td><td>固态电解质中试线迟迟不投产</td><td>PE 高于 20x；股价跌破 24 元</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>恩捷股份</b></td><td>隔膜价格重新下跌；Q4 毛利率跌破 30%</td><td>干法/湿法替代路线切换</td><td>PE 高于 30x；PB 高于 2.5x</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>科达利</b></td><td>海外工厂利用率低于 60%；大圆柱结构件份额丢失</td><td>结构件被电芯厂自供替代</td><td>PE 高于 30x；股价跌破 150 元</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>先导智能</b></td><td>新签订单同比转负；固态设备订单未确认收入</td><td>固态整线被同行替代</td><td>PE 高于 35x；成交额 &lt;30 亿元</td><td>未获取到，需核</td><td><span class="tag mid">观察</span></td></tr>
-          <tr><td><b>固态概念（上海洗霸/当升）</b></td><td>无固态收入、亏损扩大；中试良率低于 80%</td><td>2027 装车验证失败或推迟</td><td>主题溢价回撤 30% 以上、换手率骤降</td><td>未获取到，需核</td><td><span class="tag bad">观察/回避</span></td></tr>
-          <tr><td><b>锂资源（赣锋/天齐）</b></td><td>碳酸锂跌破 8 万元/吨且库存回升</td><td>「绝对底部」判断被证伪</td><td>PB 高于 2x；锂价期货贴水扩大</td><td>未获取到，需核</td><td><span class="tag low">回避</span></td></tr>
-          <tr><td><b>二线电芯（孚能/南都）</b></td><td>持续亏损、净资产为负；产能利用率 &lt;50%</td><td>客户定点流失</td><td>破净、成交额 &lt;5 亿元</td><td>ST 风险；未获取到，需核</td><td><span class="tag bad">回避</span></td></tr>
+          <tr><td><b>宁德时代</b></td><td>单 Wh 净利跌破 0.06 元；储能收入占比连续两季下降；2027Q1 出货环比负增长</td><td>固态电池量产推迟至 2028 之后；欧洲份额被本地供应商替代</td><td>PE 高于 25x 2026E；融资余额跌破 120 亿元</td><td>H 股解禁与回购节奏；未获取到减持计划，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>亿纬锂能</b></td><td>2027Q1 出货环比转负；Fluence 16GWh 交付延期；储能毛利率跌破 12%</td><td>大圆柱客户拓展停滞；消费电池持续拖累</td><td>PE 高于 30x 2026E；成交额萎缩至 30 亿元以下</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>中创新航</b></td><td>2027 出货未实现「倍增」；单 Wh 盈利回落至 0.02 元以下</td><td>小米/小鹏自研订单被分流</td><td>港股流动性折价扩大；PB 高于 2.5x</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>国轩高科</b></td><td>扣非再度转亏；大众合资工厂投产延期</td><td>海外产能落地不及预期</td><td>PB 高于 2.5x；成交额 &lt;20 亿元</td><td>大众持股与董事会安排；未获取到，需核</td><td><span class="rp-tag rp-bad">观察/回避</span></td></tr>
+          <tr><td><b>湖南裕能</b></td><td>第四代产品占比不再提升；单吨盈利跌破 2,000 元</td><td>LFP 涨价证伪、加工费回落</td><td>PE 高于 15x；PB 高于 3x</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>天赐材料</b></td><td>电解液单吨盈利连续两季下降；六氟自供比例低于 60%</td><td>固态电解质中试线迟迟不投产</td><td>PE 高于 20x；股价跌破 24 元</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>恩捷股份</b></td><td>隔膜价格重新下跌；Q4 毛利率跌破 30%</td><td>干法/湿法替代路线切换</td><td>PE 高于 30x；PB 高于 2.5x</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>科达利</b></td><td>海外工厂利用率低于 60%；大圆柱结构件份额丢失</td><td>结构件被电芯厂自供替代</td><td>PE 高于 30x；股价跌破 150 元</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>先导智能</b></td><td>新签订单同比转负；固态设备订单未确认收入</td><td>固态整线被同行替代</td><td>PE 高于 35x；成交额 &lt;30 亿元</td><td>未获取到，需核</td><td><span class="rp-tag rp-mid">观察</span></td></tr>
+          <tr><td><b>固态概念（上海洗霸/当升）</b></td><td>无固态收入、亏损扩大；中试良率低于 80%</td><td>2027 装车验证失败或推迟</td><td>主题溢价回撤 30% 以上、换手率骤降</td><td>未获取到，需核</td><td><span class="rp-tag rp-bad">观察/回避</span></td></tr>
+          <tr><td><b>锂资源（赣锋/天齐）</b></td><td>碳酸锂跌破 8 万元/吨且库存回升</td><td>「绝对底部」判断被证伪</td><td>PB 高于 2x；锂价期货贴水扩大</td><td>未获取到，需核</td><td><span class="rp-tag rp-low">回避</span></td></tr>
+          <tr><td><b>二线电芯（孚能/南都）</b></td><td>持续亏损、净资产为负；产能利用率 &lt;50%</td><td>客户定点流失</td><td>破净、成交额 &lt;5 亿元</td><td>ST 风险；未获取到，需核</td><td><span class="rp-tag rp-bad">回避</span></td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>6.1 研究优先级：P1 到 P4</h3>
-    <div class="table-wrap">
-      <table class="mid">
+    <div class="rp-table-wrap">
+      <table class="rp-mid">
         <thead>
           <tr><th>标的 / 板块</th><th>阵型</th><th>研究优先级</th><th>市场阶段</th><th>退出状态</th><th>依据</th></tr>
         </thead>
         <tbody>
-          <tr><td>宁德时代</td><td>兑现型</td><td><span class="tag high">P1</span></td><td>业绩兑现</td><td>未触发</td><td>13.7x PE、39.1% 全球份额；单 Wh 净利是核心变量</td></tr>
-          <tr><td>亿纬锂能</td><td>兑现型</td><td><span class="tag high">P1</span></td><td>业绩兑现</td><td>未触发</td><td>Q3 扣非 +110.6%、Q4 满产；2027Q1 待确认</td></tr>
-          <tr><td>中创新航</td><td>兑现型</td><td><span class="tag high">P1</span></td><td>业绩兑现</td><td>未触发</td><td>9M 净利 +95.4%；2027「倍增」指引待验证</td></tr>
-          <tr><td>湖南裕能</td><td>弹性型</td><td><span class="tag mid">P2</span></td><td>涨价验证</td><td>观察</td><td>PE 7.6x、归母 +560%；依赖第四代溢价</td></tr>
-          <tr><td>天赐材料</td><td>弹性型</td><td><span class="tag mid">P2</span></td><td>涨价验证</td><td>观察</td><td>PE 11.2x、归母 +827.7%；六氟价格仍在低位</td></tr>
-          <tr><td>恩捷股份</td><td>弹性型</td><td><span class="tag mid">P2</span></td><td>满产验证</td><td>观察</td><td>湿法利用率 98%；价格未涨，弹性弱于铜箔</td></tr>
-          <tr><td>科达利</td><td>兑现型</td><td><span class="tag mid">P2</span></td><td>业绩兑现</td><td>观察</td><td>归母 +28.9%、PE 24.4x；估值已不低</td></tr>
-          <tr><td>先导智能</td><td>期权型（固态）</td><td><span class="tag neutral">P3</span></td><td>叙事</td><td>观察</td><td>固态整线打通，订单未确认收入</td></tr>
-          <tr><td>固态材料（当升/上海洗霸）</td><td>期权型（固态）</td><td><span class="tag neutral">P3</span></td><td>叙事</td><td>观察</td><td>中试/小批量，收入未确认</td></tr>
-          <tr><td>锂资源（赣锋/天齐）</td><td>观察</td><td><span class="tag low">P4</span></td><td>出清</td><td>回避</td><td>锂价 9.36 万元/吨，未见供给出清</td></tr>
-          <tr><td>二线电芯（孚能/南都）</td><td>回避</td><td><span class="tag low">P4</span></td><td>出清</td><td>回避</td><td>亏损扩大、净资产为负</td></tr>
+          <tr><td>宁德时代</td><td>兑现型</td><td><span class="rp-tag rp-high">P1</span></td><td>业绩兑现</td><td>未触发</td><td>13.7x PE、39.1% 全球份额；单 Wh 净利是核心变量</td></tr>
+          <tr><td>亿纬锂能</td><td>兑现型</td><td><span class="rp-tag rp-high">P1</span></td><td>业绩兑现</td><td>未触发</td><td>Q3 扣非 +110.6%、Q4 满产；2027Q1 待确认</td></tr>
+          <tr><td>中创新航</td><td>兑现型</td><td><span class="rp-tag rp-high">P1</span></td><td>业绩兑现</td><td>未触发</td><td>9M 净利 +95.4%；2027「倍增」指引待验证</td></tr>
+          <tr><td>湖南裕能</td><td>弹性型</td><td><span class="rp-tag rp-mid">P2</span></td><td>涨价验证</td><td>观察</td><td>PE 7.6x、归母 +560%；依赖第四代溢价</td></tr>
+          <tr><td>天赐材料</td><td>弹性型</td><td><span class="rp-tag rp-mid">P2</span></td><td>涨价验证</td><td>观察</td><td>PE 11.2x、归母 +827.7%；六氟价格仍在低位</td></tr>
+          <tr><td>恩捷股份</td><td>弹性型</td><td><span class="rp-tag rp-mid">P2</span></td><td>满产验证</td><td>观察</td><td>湿法利用率 98%；价格未涨，弹性弱于铜箔</td></tr>
+          <tr><td>科达利</td><td>兑现型</td><td><span class="rp-tag rp-mid">P2</span></td><td>业绩兑现</td><td>观察</td><td>归母 +28.9%、PE 24.4x；估值已不低</td></tr>
+          <tr><td>先导智能</td><td>期权型（固态）</td><td><span class="rp-tag rp-neutral">P3</span></td><td>叙事</td><td>观察</td><td>固态整线打通，订单未确认收入</td></tr>
+          <tr><td>固态材料（当升/上海洗霸）</td><td>期权型（固态）</td><td><span class="rp-tag rp-neutral">P3</span></td><td>叙事</td><td>观察</td><td>中试/小批量，收入未确认</td></tr>
+          <tr><td>锂资源（赣锋/天齐）</td><td>观察</td><td><span class="rp-tag rp-low">P4</span></td><td>出清</td><td>回避</td><td>锂价 9.36 万元/吨，未见供给出清</td></tr>
+          <tr><td>二线电芯（孚能/南都）</td><td>回避</td><td><span class="rp-tag rp-low">P4</span></td><td>出清</td><td>回避</td><td>亏损扩大、净资产为负</td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>6.2 监控面板：每天/每周/每季看什么</h3>
-    <div class="grid two">
-      <div class="mini-card"><b>每天</b>中证电池主题 931719 与创业板指相对强弱、板块成交额与换手；成交额跌破 500 亿元、换手跌破 2% 时，下调 beta 暴露。</div>
-      <div class="mini-card"><b>每周</b>碳酸锂现货/期货、铜箔加工费、隔膜价格、六氟价格；ETF 份额与融资余额；龙头相对指数超额。价格数据比股价更早反映拐点。</div>
-      <div class="mini-card"><b>每季</b>CATL/亿纬/中创出货与单 Wh 净利；材料环节单吨盈利；储能中标量与 IRR；出口量。低于阈值的标的降级。</div>
-      <div class="mini-card"><b>每半年</b>固态中试良率与装车、欧盟电池护照合规、海外产能投产；叙事没有收入就只给期权，不给估值。</div>
+    <div class="rp-grid rp-two">
+      <div class="rp-mini-card"><b>每天</b>中证电池主题 931719 与创业板指相对强弱、板块成交额与换手；成交额跌破 500 亿元、换手跌破 2% 时，下调 beta 暴露。</div>
+      <div class="rp-mini-card"><b>每周</b>碳酸锂现货/期货、铜箔加工费、隔膜价格、六氟价格；ETF 份额与融资余额；龙头相对指数超额。价格数据比股价更早反映拐点。</div>
+      <div class="rp-mini-card"><b>每季</b>CATL/亿纬/中创出货与单 Wh 净利；材料环节单吨盈利；储能中标量与 IRR；出口量。低于阈值的标的降级。</div>
+      <div class="rp-mini-card"><b>每半年</b>固态中试良率与装车、欧盟电池护照合规、海外产能投产；叙事没有收入就只给期权，不给估值。</div>
     </div>
 
-    <div class="verdict">
+    <div class="rp-verdict">
       <b>组合层面结论：</b>如果只能跟踪三个指标，选「碳酸锂价格、铜箔加工费、CATL 单 Wh 净利」。锂价决定成本项与锂资源股的底、铜箔加工费决定「反内卷」是否真的落到利润、CATL 单 Wh 净利决定龙头能否在税收与退税双重挤压下守住盈利。三者不共振，电池板块就仍是超跌反弹，而不是景气反转。
     </div>
   </section>
-  <section class="section" id="sources">
-    <p class="chapter-no">07 / 来源、方法与限制</p>
+  <section class="rp-section" id="sources">
+    <p class="rp-chapter-no">07 / 来源、方法与限制</p>
     <h2>来源与时间戳</h2>
 
     <p>以下来源按「数据与行情 / 公司公告与财报 / 行业与政策」分组，访问日期均为 2026-11-08。卖方研报原文多需机构权限，本文引用其公开摘要或财经媒体转载；无法附原文链接的，以「机构 + 日期」标注。所有关键判断至少有一个带日期的来源。</p>
 
     <h3>数据与行情</h3>
-    <ol class="source-list">
+    <ol class="rp-source-list">
       <li>东方财富行情：中证电池主题指数 931719、国证新能源车电池指数 980032 及全部个股 2026-11-06 收盘价、成交额、市值、PE/PB。931719 当日收 3030.22、-2.78%，成交 648.63 亿元。<a href="https://quote.eastmoney.com/zs931719.html" target="_blank" rel="noopener">quote.eastmoney.com/zs931719.html</a></li>
       <li>中证电池主题指数估值：PE-TTM 18.12x、近 10 年 1.39% 分位（Wind，经 21 世纪经济报道 2026-11-05 引用）；国证新能源车电池 980032 PE-TTM 21.73x、近 5 年 20.97% 分位（每日经济新闻 2026-11-05）。<a href="https://www.21jingji.com/" target="_blank" rel="noopener">21jingji.com（2026-11-05）</a></li>
       <li>21 世纪经济报道 林典驰《锂电池板块两天涨超 7% 动力电池产业迎年底冲刺》（2026-11-06 07:00）：Q3 业绩、管理层指引、消费税与出口退税、SNE 份额。<a href="https://www.21jingji.com/" target="_blank" rel="noopener">21jingji.com（2026-11-06）</a></li>
@@ -713,7 +542,7 @@ td strong{color:var(--navy)}
     </ol>
 
     <h3>公司公告与财报</h3>
-    <ol class="source-list" start="13">
+    <ol class="rp-source-list" start="13">
       <li>宁德时代：2026 年三季报（9M 营收 4421.37 亿元、归母 645.30 亿元）；2026-07-24 回购公告（200—400 亿元、上限 573 元/股）；2026 年中期分红（10 派 14.11 元）；H 股 2025-05-20 上市。<a href="https://www.catl.com/" target="_blank" rel="noopener">catl.com</a>；<a href="http://www.cninfo.com.cn/" target="_blank" rel="noopener">cninfo.com.cn</a></li>
       <li>亿纬锂能：2026 年三季报（9M 营收 733.90 亿元、归母 52.4 亿元、动力/储能出货 66.17/67.52GWh）；Fluence 2027—2031 框架合同、2027 年确定交付约 16GWh。<a href="http://www.cninfo.com.cn/" target="_blank" rel="noopener">cninfo.com.cn</a></li>
       <li>国轩高科：2026 年三季报（9M 营收 454.37 亿元、归母 8.49 亿元、扣非 2.52 亿元）；与大众 PowerCo 西班牙/斯洛伐克/摩洛哥三家合资公司（总投资约 32.22 亿欧元、国轩出资约 15.98 亿欧元）。<a href="http://www.cninfo.com.cn/" target="_blank" rel="noopener">cninfo.com.cn</a></li>
@@ -726,7 +555,7 @@ td strong{color:var(--navy)}
     </ol>
 
     <h3>行业与政策</h3>
-    <ol class="source-list" start="22">
+    <ol class="rp-source-list" start="22">
       <li>中国汽车动力电池产业创新联盟（CABIA）：2026 年 9 月装车 87.2GWh +14.7%、1—9 月 576.3GWh +16.7%；2026 年前三季度动力电池销量 1,086.4GWh +38.2%、储能电池销量 595.4GWh +111.8%。<a href="https://www.cbea.com/" target="_blank" rel="noopener">cbea.com</a></li>
       <li>SNE Research：2026 年 1—9 月全球 EV 电池使用量 994.5GWh +19.7%，宁德 389.2GWh/39.1%、比亚迪 150.9GWh/15.2%、国轩 5.1%、中创 5.0%、亿纬 3.6%；海外 426.7GWh +24.7%、中企份额 56.4%。<a href="https://www.sneresearch.com/" target="_blank" rel="noopener">sneresearch.com（2026-11）</a></li>
       <li>InfoLink：2026 年上半年全球储能电池出货 467.84GWh +94.76%、全年 1,026GWh；GGII：中国上半年约 485GWh +80%、全年约 1TWh。<a href="https://www.infolink-group.com/" target="_blank" rel="noopener">infolink-group.com</a>；<a href="https://www.gg-lb.com/" target="_blank" rel="noopener">gg-lb.com</a></li>
@@ -752,7 +581,7 @@ td strong{color:var(--navy)}
       <li><strong>限制四：</strong>中创新航 9M「净利 23.39 亿元」与「归母 13.66 亿元」两个口径并存，尚未以港交所公告逐项核对，正文以净利口径引用并标注；所有关键数字最终以公司公告为准。</li>
     </ul>
 
-    <div class="foot">
+    <div class="rp-foot">
       <p>本报告为行业研究，不构成投资建议。数据截止：行情 2026-11-06 收盘，财务 2026-09-30（2026 年三季报），产业与政策事件截至 2026-11-08。报告中的「研究优先级」「退出条件」是研究流程的一部分，不是买卖评级。市场有风险，决策需独立判断。</p>
       <p>钱多多研究 · 电池板块主题深度 · 2026-11-08</p>
     </div>

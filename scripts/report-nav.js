@@ -3,16 +3,16 @@
  * ----------------------------------------------------------------------------
  * 用法：
  *   报告（report/*.html）：<script src="../scripts/report-nav.js" defer></script>
- *   首页（index.html）：  <script src="scripts/report-nav.js" defer></script>
- * 无需为每篇报告写导航内容。
+ *   首页（research/index.html）：<script src="../scripts/report-nav.js" defer></script>
  *
- * 新增报告后，只需重新生成下方清单（不要手工逐篇改报告）：
+ * 新增报告后重新生成下方清单：
  *     pwsh -NoProfile -File .\scripts\update-nav.ps1
  *
  * 设计约束：
- *   1) 清单内嵌在本文件，不使用 fetch，因此 file:// 直接双击打开也能工作；
- *   2) 只依赖 <script src> 经典脚本加载，不用 ES module（file:// 下模块会被 CORS 拦）；
- *   3) 样式自带前缀 rpnav-，并显式覆盖字体/下划线，避免被各报告自身 CSS 影响。
+ *   1) 清单内嵌在本文件，不使用 fetch，file:// 直接打开也能工作；
+ *   2) 只依赖经典脚本加载，不用 ES module；
+ *   3) 卡片样式来自 scripts/report-cards.css，与应用报告库和独立归档共用；
+ *   4) 面板只补布局与浮层样式，不重复定义卡片视觉。
  * ==========================================================================*/
 (function () {
   "use strict";
@@ -20,20 +20,21 @@
   /* 由 update-nav.ps1 自动生成 —— 请勿手工编辑此区块 */
   var REPORTS = [
     //>NAV:BEGIN
-    { f: "泸州老窖-000568-个股深度-2026-11-08.html", t: "泸州老窖（000568）｜个股深度｜2026-11-08", d: "2026-11-08", p: "2026-11-08 23:59", g: "个股深度", s: "品牌资产仍在，但报表与渠道仍处深度出清；2026年7.1%股息率是一次性估值锚，2027年批价与回款才是反转验证。", k: "000568 泸州老窖 国窖1573 白酒 高端白酒 个股深度" },
-    { f: "电池板块-主题深度-2026-11-08.html", t: "电池板块：瓶颈在高端产能，不在锂价", d: "2026-11-08", p: "2026-11-08 23:40", g: "电池/储能", s: "估值处于近十年 1.39% 分位、储能销量同比 +111.8%、铜箔加工费修复与隔膜满产，但行情已进入高波动博弈，盈利兑现度决定分化。", k: "电池,储能,固态电池,碳酸锂,隔膜,铜箔,宁德时代,亿纬锂能,天赐材料" },
-    { f: "AIGC-行业调研-2026-11-06.html", t: "AIGC｜产能革命已至，利润革命未至", d: "2026-11-06", p: "2026-11-06 00:16", g: "AIGC", s: "AIGC 产能革命已发生、利润革命未发生：2026Q3 应用端收入翻倍但集体亏损，100 元流水约 70 元投流、20 元平台、制作方不足 10 元；能确认赚钱的是算力（协创 PE 19.7x）与订阅（金山），内容股 100-1500x PE 在为叙事付费。", k: "AIGC AI应用 AI短剧 漫剧 算力 昆仑万维 300418 协创数据 300857 金山办公 688111 科大讯飞 002230 芒果超媒 300413" },
-    { f: "瑞芯微-603893-个股深度-2026-11-05.html", t: "瑞芯微（603893）｜端侧 AI 主控+协处理器双轨制，Q4 兑现是关键", d: "2026-11-05", p: "2026-11-05 22:10", g: "半导体/AIoT", s: "2026 前三季营收 44.49 亿元、净利 13.32 亿元，毛利率 46.37%；RK182X 协处理器 Q4 放量、RK3572 大规模出货，但 Q3 环比双降、922 亿市值对应 2026E 约 48.5 倍 PE，Q4 须兑现约 19.8 亿元营收。", k: "603893 瑞芯微 AIoT 端侧AI SoC RK3588 RK3576 RK182X RK1860 RK3688 协处理器 机器人 汽车电子 机器视觉" },
-    { f: "健友股份-603707-个股深度-2026-11-05.html", t: "健友股份（603707）｜个股深度", d: "2026-11-05", p: "2026-11-05 22:00", g: "医药/肝素/无菌注射剂/生物类似药", s: "健友已把收入重心搬到美国无菌注射剂，制剂占 2026 前三季营收 94.4%；但“量增价减”使 Q3 归母净利 -40.2%、毛利率 -6.4pct。8.71 元对应约 33 倍 TTM PE，市场提前定价 2027 生物类似药放量，当前风险收益不对称。", k: "603707 健友股份 肝素 依诺肝素 Meitheal 无菌注射剂 ANDA 生物类似药 阿达木单抗 利拉鲁肽 门冬胰岛素 美国关税" },
-    { f: "北特科技-603009-汉威科技-300007-模塑科技-000700-对比调研-2026-11-05.html", t: "北特科技（603009）vs 汉威科技（300007）vs 模塑科技（000700）｜对比调研", d: "2026-11-05", p: "2026-11-05 01:30", g: "人形机器人/丝杠/柔性触觉/外覆盖件", s: "北特产能先于订单、汉威订单先于产能、模塑用汽车现金流托底但机器人收入不足0.1%；174/122/125亿元市值对应扣非TTM PE 141/167/23倍，三种机器人期权的定价与证据缺口完全不同。", k: "603009 北特科技 300007 汉威科技 000700 模塑科技 行星滚柱丝杠 滚珠丝杠 电子皮肤 柔性触觉 机器人外覆盖件 人形机器人 对比调研" },
-    { f: "金融科技-行业调研-2026-11-05.html", t: "金融科技｜行业调研", d: "2026-11-05", p: "2026-11-05 01:10", g: "金融科技", s: "34 只 A 股全景：指数 YTD -32%、PE 40x 处近一年 2.8% 分位，但盈利分层——2C 平台与券商 IT 已现拐点，银行 IT 仍在收缩，稳定币/数币尚无 A 股可确认收入。", k: "金融科技 金融IT 券商IT 银行IT 支付 稳定币 数字人民币 信创 AI Agent 300033 300059 600570 300773 300674" },
-    { f: "安培龙-301413-个股深度-2026-10-30.html", t: "安培龙（301413）｜个股深度", d: "2026-10-30", p: "2026-11-04 23:12", g: "汽车传感器/机器人零部件", s: "2026 年前三季度收入增长 10.01%，归母净利却下降 86.58%，扣非后仅 900.92 万元、经营现金流转负；机器人六维力与力矩传感器已进入部分客户批量交付，但收入占比仍低。当前股价…", k: "301413 安培龙 压力传感器 热敏电阻 温度传感器 六维力传感器 力矩传感器 MEMS 玻璃微熔 人形机器人 汽车电子" },
-    { f: "大智慧-601519-个股深度-2026-11-04.html", t: "大智慧（601519）｜个股深度", d: "2026-11-04", p: "2026-11-04 22:20", g: "金融信息服务/券商合并", s: "大智慧 8.85 元的价格里只有约 3.4% 是到 1.27 倍湘财的换股价值，其余是市场对合并完成与“AI 投顾券商”叙事的定价；主业连续亏损、2026 前三季扣非仍为 -0.28 亿元，9.53 元换股价不是保底价。", k: "601519 大智慧 湘财股份 金融信息服务 证券APP 企业预警通 财汇科技 阿斯达克 换股吸收合并 金融大模型 AI投顾" },
-    { f: "正海磁材-300224-个股深度-2026-10-28.html", t: "正海磁材（300224）｜个股深度", d: "2026-10-28", p: "2026-10-28 23:21", g: "稀土永磁", s: "2026 年三季度利润与营收同步加速，人形机器人也从技术配套跨入规模化量产；但机器人收入尚未单列，毛利率仍同比下降，库存较年初增长 43.69%，当前约 30 倍 TTM PE 更接近“业绩修…", k: "300224 正海磁材 高性能钕铁硼 稀土永磁 人形机器人 新能源汽车" },
-    { f: "A股机器人产业链-公司全景与阵型-2026-10-27.html", t: "A股机器人产业链（107家公司全景与阵型）｜行业调研", d: "2026-10-27", p: "2026-10-28 01:12", g: "机器人", s: "以107家A股公司全景重构机器人产业链：先区分整机、人形总成、传动执行、运控、感知、集成、物流、服务和材料电子，再按规模兑现、小批定点、导入验证和边缘映射分层；行业已经出现真实收入，但利润兑现仍集中在少数公司。", k: "机器人 人形机器人 具身智能 工业机器人 协作机器人 AGV AMR 减速器 谐波减速器 RV减速器 行星滚柱丝杠 执行器 伺服 运动控制 灵巧手 六维力 3D视觉 688836 300124 002979 002472 688017 002747 688306 002048 300607 300532" },
-    { f: "浙江荣泰-603119-个股深度-2026-10-26.html", t: "浙江荣泰（603119）｜个股深度", d: "2026-10-26", p: "2026-10-28 01:12", g: "汽车安全材料", s: "新能源汽车热防护已贡献77.67%收入并支撑量产现金流，机器人精密件已完成小规模交付；但10月低位五日反弹36.14%、TTM PE升至87.98倍，市场正把尚无法单列的第二曲线定价进成熟主业。", k: "603119,浙江荣泰,云母材料,云母制品,新能源汽车,热失控防护,电池安全,绝缘材料,精密结构件,滚珠丝杠,行星滚柱丝杠,机器人零部件,人形机器人,上海狄兹,金力传动,泰国工厂,墨西哥工厂" },
-    { f: "A股AI应用与AI软件板块-主题深度-2026-10-26.html", t: "A股AI应用与AI软件板块（主题组合）｜行业全景与核心公司调研", d: "2026-10-26", p: "2026-10-28 01:12", g: "AI应用与软件", s: "覆盖38只A股、11个子行业的全景调研：AI收入已开始被部分公司量化，但利润和现金流没有同步兑现；首轮深度研究扩到8家，避免用五家核心样本代替行业。", k: "AI应用 AI软件 人工智能 智能体 Agent 工业AI 财税AI 外贸AI 办公软件 金融信息服务 数据库 AI安全 端侧AI 002230 002315 002362 002439 300033 300058 300170 300229 300253 300348 300378 300418 300451 300454 300496 300624 300634 300674 300687 300766 600570 600588 600845 601360 603138 603171 603859 688023 688031 688039 688088 688095 688111 688561 688615 688692 688777 688787" },
-    { f: "斯菱智驱-301550-个股深度-2026-10-25.html", t: "斯菱智驱（301550）｜个股深度", d: "2026-10-25", p: "2026-10-28 01:12", g: "机器人零部件", s: "谐波减速器与减速器专用轴承已经投产，但机器人收入仍低且客户、订单、单价未披露；2026H1主业增收减利，现价却对应约271倍TTM PE，市场正在提前定价尚未量化的第二曲线。", k: "301550,斯菱智驱,斯菱股份,汽车轴承,轮毂轴承,谐波减速器,减速器专用轴承,执行器模组,人形机器人,机器人零部件,浙江新昌,泰国工厂" },
+    { f: "白酒板块-主题深度-2026-11-08.html", t: "白酒板块：报表底已现，价格底未确认", d: "2026-11-08", p: "2026-11-09 00:42", g: "白酒", s: "2025Q4 利润底、2026Q2 收入底先后出现，Q3 只是环比修复；价格底仍未确认，2027 年修复取决于批价、库存与回款。", r: "中高", k: "白酒 000568 泸州老窖 600519 贵州茅台 000858 五粮液 000596 古井贡酒 600809 山西汾酒 002304 洋河股份 603369 今世缘 603198 迎驾贡酒" },
+    { f: "泸州老窖-000568-个股深度-2026-11-08.html", t: "泸州老窖：品牌资产仍在，渠道修复待验证", d: "2026-11-08", p: "2026-11-08 23:59", g: "白酒", s: "品牌资产仍在，但报表与渠道仍处深度出清；2026年7.1%股息率是一次性估值锚，2027年批价与回款才是反转验证。", r: "中", k: "000568 泸州老窖 国窖1573 白酒 高端白酒 个股深度" },
+    { f: "电池板块-主题深度-2026-11-08.html", t: "电池板块：瓶颈在高端产能，不在锂价", d: "2026-11-08", p: "2026-11-08 23:40", g: "电池/储能", s: "估值处于近十年 1.39% 分位、储能销量同比 +111.8%、铜箔加工费修复与隔膜满产，但行情已进入高波动博弈，盈利兑现度决定分化。", r: "高", k: "电池,储能,固态电池,碳酸锂,隔膜,铜箔,宁德时代,亿纬锂能,天赐材料" },
+    { f: "AIGC-行业调研-2026-11-06.html", t: "AIGC｜产能革命已至，利润革命未至", d: "2026-11-06", p: "2026-11-06 00:16", g: "AIGC", s: "AIGC 产能革命已发生、利润革命未发生：2026Q3 应用端收入翻倍但集体亏损，100 元流水约 70 元投流、20 元平台、制作方不足 10 元；能确认赚钱的是算力（协创 PE 19.7x）与订阅（金山），内容股 100-1500x PE 在为叙事付费。", r: "高", k: "AIGC AI应用 AI短剧 漫剧 算力 昆仑万维 300418 协创数据 300857 金山办公 688111 科大讯飞 002230 芒果超媒 300413" },
+    { f: "瑞芯微-603893-个股深度-2026-11-05.html", t: "瑞芯微（603893）｜端侧 AI 主控+协处理器双轨制，Q4 兑现是关键", d: "2026-11-05", p: "2026-11-05 22:10", g: "半导体/AIoT", s: "2026 前三季营收 44.49 亿元、净利 13.32 亿元，毛利率 46.37%；RK182X 协处理器 Q4 放量、RK3572 大规模出货，但 Q3 环比双降、922 亿市值对应 2026E 约 48.5 倍 PE，Q4 须兑现约 19.8 亿元营收。", r: "中高", k: "603893 瑞芯微 AIoT 端侧AI SoC RK3588 RK3576 RK182X RK1860 RK3688 协处理器 机器人 汽车电子 机器视觉" },
+    { f: "健友股份-603707-个股深度-2026-11-05.html", t: "健友股份（603707）｜个股深度", d: "2026-11-05", p: "2026-11-05 22:00", g: "医药/肝素/无菌注射剂/生物类似药", s: "健友已把收入重心搬到美国无菌注射剂，制剂占 2026 前三季营收 94.4%；但“量增价减”使 Q3 归母净利 -40.2%、毛利率 -6.4pct。8.71 元对应约 33 倍 TTM PE，市场提前定价 2027 生物类似药放量，当前风险收益不对称。", r: "中", k: "603707 健友股份 肝素 依诺肝素 Meitheal 无菌注射剂 ANDA 生物类似药 阿达木单抗 利拉鲁肽 门冬胰岛素 美国关税" },
+    { f: "北特科技-603009-汉威科技-300007-模塑科技-000700-对比调研-2026-11-05.html", t: "北特科技（603009）vs 汉威科技（300007）vs 模塑科技（000700）｜对比调研", d: "2026-11-05", p: "2026-11-05 01:30", g: "人形机器人/丝杠/柔性触觉/外覆盖件", s: "北特产能先于订单、汉威订单先于产能、模塑用汽车现金流托底但机器人收入不足0.1%；174/122/125亿元市值对应扣非TTM PE 141/167/23倍，三种机器人期权的定价与证据缺口完全不同。", r: "高", k: "603009 北特科技 300007 汉威科技 000700 模塑科技 行星滚柱丝杠 滚珠丝杠 电子皮肤 柔性触觉 机器人外覆盖件 人形机器人 对比调研" },
+    { f: "金融科技-行业调研-2026-11-05.html", t: "金融科技｜行业调研", d: "2026-11-05", p: "2026-11-05 01:10", g: "金融科技", s: "34 只 A 股全景：指数 YTD -32%、PE 40x 处近一年 2.8% 分位，但盈利分层——2C 平台与券商 IT 已现拐点，银行 IT 仍在收缩，稳定币/数币尚无 A 股可确认收入。", r: "高", k: "金融科技 金融IT 券商IT 银行IT 支付 稳定币 数字人民币 信创 AI Agent 300033 300059 600570 300773 300674" },
+    { f: "安培龙-301413-个股深度-2026-10-30.html", t: "安培龙（301413）｜个股深度", d: "2026-10-30", p: "2026-11-04 23:12", g: "汽车传感器/机器人零部件", s: "2026 年前三季度收入增长 10.01%，归母净利却下降 86.58%，扣非后仅 900.92 万元、经营现金流转负；机器人六维力与力矩传感器已进入部分客户批量交付，但收入占比仍低。当前股价…", r: "中低", k: "301413 安培龙 压力传感器 热敏电阻 温度传感器 六维力传感器 力矩传感器 MEMS 玻璃微熔 人形机器人 汽车电子" },
+    { f: "大智慧-601519-个股深度-2026-11-04.html", t: "大智慧（601519）｜个股深度", d: "2026-11-04", p: "2026-11-04 22:20", g: "金融信息服务/券商合并", s: "大智慧 8.85 元的价格里只有约 3.4% 是到 1.27 倍湘财的换股价值，其余是市场对合并完成与“AI 投顾券商”叙事的定价；主业连续亏损、2026 前三季扣非仍为 -0.28 亿元，9.53 元换股价不是保底价。", r: "低", k: "601519 大智慧 湘财股份 金融信息服务 证券APP 企业预警通 财汇科技 阿斯达克 换股吸收合并 金融大模型 AI投顾" },
+    { f: "正海磁材-300224-个股深度-2026-10-28.html", t: "正海磁材（300224）｜个股深度", d: "2026-10-28", p: "2026-10-28 23:21", g: "稀土永磁", s: "2026 年三季度利润与营收同步加速，人形机器人也从技术配套跨入规模化量产；但机器人收入尚未单列，毛利率仍同比下降，库存较年初增长 43.69%，当前约 30 倍 TTM PE 更接近“业绩修…", r: "中高", k: "300224 正海磁材 高性能钕铁硼 稀土永磁 人形机器人 新能源汽车" },
+    { f: "A股机器人产业链-公司全景与阵型-2026-10-27.html", t: "A股机器人产业链（107家公司全景与阵型）｜行业调研", d: "2026-10-27", p: "2026-10-28 01:12", g: "机器人", s: "以107家A股公司全景重构机器人产业链：先区分整机、人形总成、传动执行、运控、感知、集成、物流、服务和材料电子，再按规模兑现、小批定点、导入验证和边缘映射分层；行业已经出现真实收入，但利润兑现仍集中在少数公司。", r: "高", k: "机器人 人形机器人 具身智能 工业机器人 协作机器人 AGV AMR 减速器 谐波减速器 RV减速器 行星滚柱丝杠 执行器 伺服 运动控制 灵巧手 六维力 3D视觉 688836 300124 002979 002472 688017 002747 688306 002048 300607 300532" },
+    { f: "浙江荣泰-603119-个股深度-2026-10-26.html", t: "浙江荣泰（603119）｜个股深度", d: "2026-10-26", p: "2026-10-28 01:12", g: "汽车安全材料", s: "新能源汽车热防护已贡献77.67%收入并支撑量产现金流，机器人精密件已完成小规模交付；但10月低位五日反弹36.14%、TTM PE升至87.98倍，市场正把尚无法单列的第二曲线定价进成熟主业。", r: "高", k: "603119,浙江荣泰,云母材料,云母制品,新能源汽车,热失控防护,电池安全,绝缘材料,精密结构件,滚珠丝杠,行星滚柱丝杠,机器人零部件,人形机器人,上海狄兹,金力传动,泰国工厂,墨西哥工厂" },
+    { f: "A股AI应用与AI软件板块-主题深度-2026-10-26.html", t: "A股AI应用与AI软件板块（主题组合）｜行业全景与核心公司调研", d: "2026-10-26", p: "2026-10-28 01:12", g: "AI应用与软件", s: "覆盖38只A股、11个子行业的全景调研：AI收入已开始被部分公司量化，但利润和现金流没有同步兑现；首轮深度研究扩到8家，避免用五家核心样本代替行业。", r: "高", k: "AI应用 AI软件 人工智能 智能体 Agent 工业AI 财税AI 外贸AI 办公软件 金融信息服务 数据库 AI安全 端侧AI 002230 002315 002362 002439 300033 300058 300170 300229 300253 300348 300378 300418 300451 300454 300496 300624 300634 300674 300687 300766 600570 600588 600845 601360 603138 603171 603859 688023 688031 688039 688088 688095 688111 688561 688615 688692 688777 688787" },
+    { f: "斯菱智驱-301550-个股深度-2026-10-25.html", t: "斯菱智驱（301550）｜个股深度", d: "2026-10-25", p: "2026-10-28 01:12", g: "机器人零部件", s: "谐波减速器与减速器专用轴承已经投产，但机器人收入仍低且客户、订单、单价未披露；2026H1主业增收减利，现价却对应约271倍TTM PE，市场正在提前定价尚未量化的第二曲线。", r: "高", k: "301550,斯菱智驱,斯菱股份,汽车轴承,轮毂轴承,谐波减速器,减速器专用轴承,执行器模组,人形机器人,机器人零部件,浙江新昌,泰国工厂" },
     { f: "福赛科技-301529-个股深度-2026-10-23.html", t: "福赛科技（301529）｜个股深度", d: "2026-10-23", p: "2026-10-28 01:12", g: "汽车零部件", s: "2026H1收入持平、扣非净利仅增7.1%，机器人零部件仍无正式订单；158.4元现价对应约132倍TTM PE，市场定价已接近“机器人业务必须成功”的期权而非已实现利润。", k: "301529,福赛科技,汽车内饰,功能件,装饰件,新能源三电嵌件,机器人零部件,墨西哥,泰国,汽车零部件" },
     { f: "迈瑞医疗-300760-个股深度-2026-10-23.html", t: "迈瑞医疗（300760）｜个股深度", d: "2026-10-23", p: "2026-10-28 01:12", g: "医疗器械", s: "收入拐点已现、利润拐点未确认；现价已计入海外增长与国内修复，组合质量优秀但安全边际有限。", k: "300760,迈瑞医疗,IVD,体外诊断,生命信息与支持,医学影像,微创介入,医疗器械,海外增长" },
     { f: "鼎捷数智-300378-个股深度-2026-10-21.html", t: "鼎捷数智（300378）｜个股深度", d: "2026-10-21", p: "2026-10-28 01:12", g: "工业软件", s: "AI签约和工业数据闭环已形成中等强度证据，但利润被一次性收益放大、研发资本化和应收账款削弱可信度；38.36元已接近牛情景价值，当前更适合等待Q3经营验证。", k: "鼎捷数智 300378 工业软件 ERP MES PLM 雅典娜 EIOSpace AI 智能体 半导体 数智化" },
@@ -59,19 +60,22 @@
   ];
   /* /自动生成区块 */
 
-  /* 清单生成时间（同样由 update-nav.ps1 写入） */
   var NAV_META = {
     //>META:BEGIN
-    generated: "2026-11-09 00:39"
+    generated: "2026-11-09 22:41"
     //>META:END
   };
 
   /* 报告统一位于工作区 report/ 目录。以本脚本位置反推工作区，确保首页和
    * report/ 内的报告都能生成正确链接，兼容 file:// 直接打开。 */
+  var SCRIPT_URL = "";
   var REPORTS_BASE = "report/";
+  var CARDS_URL = "report-cards.css";
   try {
     if (document.currentScript && document.currentScript.src) {
-      REPORTS_BASE = new URL("../report/", document.currentScript.src).href;
+      SCRIPT_URL = document.currentScript.src;
+      REPORTS_BASE = new URL("../report/", SCRIPT_URL).href;
+      CARDS_URL = new URL("report-cards.css", SCRIPT_URL).href;
     }
   } catch (e) { /* 保留相对路径回退 */ }
 
@@ -83,10 +87,10 @@
     }
   }
 
-  /* 对外暴露清单：首页 index.html 直接复用，避免出现第二份报告列表 */
+  /* 对外暴露清单：首页直接复用，避免出现第二份报告列表 */
   try {
     window.REPORT_NAV_DATA = {
-      version: 1,
+      version: 2,
       generated: NAV_META.generated,
       reports: REPORTS.slice(),
       hrefFor: reportHref
@@ -95,7 +99,10 @@
 
   var ROOT_ID = "rpnav-root";
   var CSS_ID = "rpnav-style";
-  var STORAGE_KEY = "rpnav:collapsed";
+  var CARDS_ID = "rpnav-cards";
+  var CURRENT = basename(window.location.pathname);
+  var CURRENT_ENCODED = "";
+  try { CURRENT_ENCODED = encodeURI(CURRENT); } catch (e) { CURRENT_ENCODED = CURRENT; }
 
   function basename(p) {
     var s = String(p || "");
@@ -104,16 +111,6 @@
     var parts = s.split(/[\\/]/);
     return parts[parts.length - 1];
   }
-
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  var CURRENT = basename(window.location.pathname);
-  var CURRENT_ENCODED = "";
-  try { CURRENT_ENCODED = encodeURI(CURRENT); } catch (e) { CURRENT_ENCODED = CURRENT; }
 
   function isCurrent(file) {
     if (!file) return false;
@@ -125,57 +122,69 @@
   function sorted() {
     return REPORTS.slice().sort(function (a, b) {
       var pa = String(a.p || ""), pb = String(b.p || "");
-      if (pa !== pb) return pb.localeCompare(pa);          // 发布时间倒序
+      if (pa !== pb) return pb.localeCompare(pa);
       var da = String(a.d || ""), db = String(b.d || "");
-      if (da !== db) return db.localeCompare(da);          // 调研日期倒序
+      if (da !== db) return db.localeCompare(da);
       return String(a.t || "").localeCompare(String(b.t || ""), "zh-Hans-CN");
     });
+  }
+
+  function injectCards() {
+    if (document.getElementById(CARDS_ID)) return;
+    var link = document.createElement("link");
+    link.id = CARDS_ID;
+    link.rel = "stylesheet";
+    link.href = CARDS_URL;
+    (document.head || document.documentElement).appendChild(link);
   }
 
   function injectStyle() {
     if (document.getElementById(CSS_ID)) return;
     var css = [
-      "#" + ROOT_ID + "{position:fixed;right:18px;bottom:18px;z-index:2147483000;",
-      "font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-system,'Segoe UI',sans-serif;",
-      "font-size:14px;line-height:1.6;color:#141b26;text-align:left;}",
+      "#" + ROOT_ID + "{position:fixed;left:18px;bottom:18px;z-index:2147483000;",
+      "--ink:#14212a;--ink-soft:#3d4a5c;--muted-light:#68768a;--line:#dfe4ec;",
+      "--line-strong:#c4d0d5;--card:#fff;--green:#0f7b6c;--green-deep:#0c5f53;",
+      "--green-soft:#e6f4f0;--amber-soft:#fbf3df;--sans:'PingFang SC','Microsoft YaHei',-apple-system,'Segoe UI',sans-serif;",
+      "--mono:'IBM Plex Mono',Consolas,monospace;--shadow-soft:0 10px 26px rgba(15,45,61,.12);",
+      "font-family:var(--sans);font-size:14px;line-height:1.55;color:var(--ink);text-align:left;}",
       "#" + ROOT_ID + " *{box-sizing:border-box;}",
-      "#rpnav-btn{display:flex;align-items:center;gap:8px;border:1px solid #1b3a5c;border-radius:999px;",
-      "background:#1b3a5c;color:#fff;padding:10px 16px;font-size:13.5px;font-weight:700;cursor:pointer;",
-      "box-shadow:0 6px 20px rgba(16,35,55,.28);font-family:inherit;line-height:1;}",
-      "#rpnav-btn:hover{background:#2a5480;border-color:#2a5480;}",
-      "#rpnav-btn:focus-visible{outline:2px solid #b8860b;outline-offset:2px;}",
-      ".rpnav-ico{font-size:15px;line-height:1;}",
-      ".rpnav-cnt{background:rgba(255,255,255,.18);border-radius:999px;padding:1px 7px;font-size:12px;}",
-      "#rpnav-panel{position:absolute;right:0;bottom:calc(100% + 10px);width:min(430px,calc(100vw - 36px));",
-      "max-height:min(66vh,620px);display:flex;flex-direction:column;background:#fff;",
-      "border:1px solid #dfe4ec;border-radius:10px;box-shadow:0 16px 44px rgba(16,35,55,.22);overflow:hidden;}",
+      "#rpnav-btn{display:flex;align-items:center;gap:7px;border:1px solid var(--line-strong);",
+      "border-radius:999px;background:var(--card);color:var(--ink);padding:9px 14px;",
+      "font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-soft);",
+      "font-family:inherit;line-height:1;}",
+      "#rpnav-btn:hover{border-color:var(--green);color:var(--green-deep);}",
+      "#rpnav-btn:focus-visible{outline:2px solid var(--green);outline-offset:2px;}",
+      ".rpnav-ico{font-size:15px;line-height:1;color:var(--green);}",
+      ".rpnav-cnt{background:var(--green-soft);color:var(--green-deep);border-radius:999px;",
+      "padding:1px 7px;font-size:12px;font-variant-numeric:tabular-nums;}",
+      "#rpnav-panel{position:absolute;left:0;bottom:calc(100% + 10px);width:min(430px,calc(100vw - 36px));",
+      "max-height:min(68vh,640px);display:flex;flex-direction:column;background:var(--card);",
+      "border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 48px rgba(16,35,55,.22);",
+      "overflow:hidden;}",
       "#rpnav-panel[hidden]{display:none;}",
-      ".rpnav-hd{padding:13px 15px 11px;border-bottom:1px solid #eef1f6;background:#f8fafc;}",
-      ".rpnav-hd .rpnav-ttl{font-size:14px;font-weight:700;color:#1b3a5c;display:flex;",
-      "justify-content:space-between;align-items:baseline;gap:10px;}",
-      ".rpnav-hd .rpnav-sub{font-size:12px;color:#68768a;font-weight:400;}",
-      "#rpnav-q{width:100%;margin-top:9px;padding:7px 10px;border:1px solid #dfe4ec;border-radius:6px;",
-      "font-size:13px;font-family:inherit;color:#141b26;background:#fff;}",
-      "#rpnav-q:focus{outline:none;border-color:#2a5480;box-shadow:0 0 0 3px rgba(42,84,128,.12);}",
-      "#rpnav-list{overflow:auto;padding:7px;margin:0;list-style:none;}",
-      ".rpnav-item{display:block;padding:9px 11px;border-radius:7px;text-decoration:none;",
-      "border:1px solid transparent;color:#141b26;}",
-      "a.rpnav-item:hover{background:#f2f6fb;border-color:#dbe5f0;}",
-      ".rpnav-item .rpnav-t{display:block;font-size:13.5px;font-weight:600;color:#1b3a5c;",
-      "text-decoration:none;word-break:break-word;}",
-      ".rpnav-item .rpnav-m{display:block;margin-top:3px;font-size:12px;color:#68768a;",
-      "font-variant-numeric:tabular-nums;}",
-      ".rpnav-chip{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;",
-      "background:#e7eef6;color:#2a5480;font-size:12px;font-weight:600;}",
-      ".rpnav-item.rpnav-cur{background:#fff8e8;border-color:#f0dcb4;}",
-      ".rpnav-item.rpnav-cur .rpnav-t{color:#8a5a10;}",
-      ".rpnav-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;",
-      "background:#b8860b;color:#fff;font-size:12px;font-weight:700;}",
-      ".rpnav-empty{padding:16px 12px;color:#68768a;font-size:13px;text-align:center;}",
-      ".rpnav-ft{padding:9px 14px;border-top:1px solid #eef1f6;background:#f8fafc;",
-      "font-size:12px;color:#68768a;}",
-      "@media (max-width:520px){#" + ROOT_ID + "{right:12px;bottom:12px;}",
-      ".rpnav-txthide{display:none;}}"
+      ".rpnav-hd{padding:13px 14px 11px;border-bottom:1px solid var(--line);}",
+      ".rpnav-ttl{display:flex;justify-content:space-between;align-items:baseline;gap:10px;",
+      "font-size:14px;font-weight:700;color:var(--ink);}",
+      ".rpnav-sub{font-size:12px;color:var(--muted-light);font-weight:400;}",
+      "#rpnav-q{width:100%;margin-top:9px;padding:7px 10px;border:1px solid var(--line);",
+      "border-radius:8px;font-size:13px;font-family:inherit;color:var(--ink);background:var(--card);}",
+      "#rpnav-q:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(15,123,108,.12);}",
+      "#rpnav-list{overflow:auto;display:grid;gap:5px;padding:8px;margin:0;list-style:none;}",
+      "#rpnav-list li{margin:0;}",
+      "#rpnav-list .report-card{padding:9px 11px;}",
+      "#rpnav-list .report-card h3{font-size:13px;}",
+      ".rpnav-empty{padding:16px 12px;color:var(--muted-light);font-size:13px;text-align:center;}",
+      ".rpnav-ft{padding:9px 14px;border-top:1px solid var(--line);color:var(--muted-light);",
+      "font-size:12px;}",
+      "html[data-theme='dark'] #" + ROOT_ID + "{--ink:#eef2f2;--ink-soft:#c9d2d3;--muted-light:#9aa7aa;",
+      "--line:#2e3638;--line-strong:#46535a;--card:#1d2225;--green:#91d5d5;--green-deep:#b8e6e6;",
+      "--green-soft:#253a3a;--amber-soft:#342c1d;--shadow-soft:0 10px 26px rgba(0,0,0,.4);}",
+      "@media (prefers-color-scheme:dark){:root:not([data-theme]) #" + ROOT_ID + "{",
+      "--ink:#eef2f2;--ink-soft:#c9d2d3;--muted-light:#9aa7aa;--line:#2e3638;",
+      "--line-strong:#46535a;--card:#1d2225;--green:#91d5d5;--green-deep:#b8e6e6;",
+      "--green-soft:#253a3a;--amber-soft:#342c1d;--shadow-soft:0 10px 26px rgba(0,0,0,.4);}}",
+      "@media (max-width:520px){#" + ROOT_ID + "{left:12px;bottom:12px;}",
+      ".rpnav-txthide{display:none;}"
     ].join("");
     var st = document.createElement("style");
     st.id = CSS_ID;
@@ -183,69 +192,58 @@
     (document.head || document.documentElement).appendChild(st);
   }
 
-  function renderList(ul, q) {
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function cardFor(report, current) {
+    var node = document.createElement(current ? "div" : "a");
+    node.className = "report-card report-card--compact" + (current ? " is-current" : "");
+    if (current) {
+      node.setAttribute("aria-current", "page");
+    } else {
+      node.href = reportHref(report.f);
+    }
+
+    var top = el("div", "report-card-top");
+    if (report.g) top.appendChild(el("span", "report-tag", String(report.g)));
+    if (report.d) top.appendChild(el("span", "report-date", String(report.d)));
+    if (report.r) top.appendChild(el("span", "report-priority", "优先级 " + report.r));
+    node.appendChild(top);
+
+    node.appendChild(el("h3", "", String(report.t || report.f || "(未命名报告)")));
+    if (current) node.appendChild(el("span", "report-card-foot", "当前正在阅读"));
+    return node;
+  }
+
+  function renderList(list, q) {
     var data = sorted();
     var query = String(q || "").trim().toLowerCase();
     if (query) {
       data = data.filter(function (r) {
-        return (String(r.t || "") + " " + String(r.d || "") + " " + String(r.p || "") + " " + String(r.g || "") +
-                " " + String(r.f || "")).toLowerCase().indexOf(query) >= 0;
+        return [r.t, r.d, r.p, r.g, r.f, r.r, r.k]
+          .join(" ")
+          .toLowerCase()
+          .indexOf(query) >= 0;
       });
     }
-    while (ul.firstChild) ul.removeChild(ul.firstChild);
+    while (list.firstChild) list.removeChild(list.firstChild);
 
     if (!data.length) {
-      var li0 = document.createElement("li");
-      li0.className = "rpnav-empty";
-      li0.textContent = "没有匹配的报告";
-      ul.appendChild(li0);
+      list.appendChild(el("li", "rpnav-empty", "没有匹配的报告"));
       return;
     }
 
-    data.forEach(function (r) {
+    data.forEach(function (report) {
       var li = document.createElement("li");
-      var cur = isCurrent(r.f);
-      var el;
-
-      if (cur) {
-        el = document.createElement("div");
-        el.className = "rpnav-item rpnav-cur";
-      } else {
-        el = document.createElement("a");
-        el.className = "rpnav-item";
-        el.setAttribute("href", reportHref(r.f));
-      }
-
-      var t = document.createElement("span");
-      t.className = "rpnav-t";
-      t.textContent = String(r.t || r.f || "(未命名报告)");
-      el.appendChild(t);
-
-      if (r.g) {
-        var chip = document.createElement("span");
-        chip.className = "rpnav-chip";
-        chip.textContent = String(r.g);
-        t.appendChild(chip);
-      }
-      if (cur) {
-        var badge = document.createElement("span");
-        badge.className = "rpnav-badge";
-        badge.textContent = "当前";
-        t.appendChild(badge);
-      }
-
-      var meta = document.createElement("span");
-      meta.className = "rpnav-m";
-      meta.textContent = (r.d ? String(r.d) : "日期未标注") +
-        (cur ? "" : "　·　点击打开");
-      el.appendChild(meta);
-
-      li.appendChild(el);
-      ul.appendChild(li);
+      li.appendChild(cardFor(report, isCurrent(report.f)));
+      list.appendChild(li);
     });
   }
 
-  /* 首页自身就是完整清单，可用 <html data-rpnav-off> 关掉悬浮按钮 */
   function isSuppressed() {
     var de = document.documentElement, bd = document.body;
     return (!!de && de.hasAttribute("data-rpnav-off")) ||
@@ -254,14 +252,14 @@
 
   function build() {
     if (document.getElementById(ROOT_ID)) return;
-    if (!document.body) return;
-    if (isSuppressed()) return;
+    if (!document.body || isSuppressed()) return;
+    injectCards();
     injectStyle();
 
-    var root = document.createElement("div");
+    var root = el("div");
     root.id = ROOT_ID;
 
-    var btn = document.createElement("button");
+    var btn = el("button");
     btn.id = "rpnav-btn";
     btn.type = "button";
     btn.setAttribute("aria-expanded", "false");
@@ -271,68 +269,85 @@
       '<span class="rpnav-txthide">报告导航</span>' +
       '<span class="rpnav-cnt">' + REPORTS.length + '</span>';
 
-    var panel = document.createElement("div");
+    var panel = el("div");
     panel.id = "rpnav-panel";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "报告导航");
     panel.hidden = true;
 
-    var hd = document.createElement("div");
-    hd.className = "rpnav-hd";
-    var ttl = document.createElement("div");
-    ttl.className = "rpnav-ttl";
-    var spanT = document.createElement("span");
-    spanT.textContent = "全部调研报告";
-    var spanS = document.createElement("span");
-    spanS.className = "rpnav-sub";
-    spanS.textContent = "共 " + REPORTS.length + " 篇";
-    ttl.appendChild(spanT);
-    ttl.appendChild(spanS);
-    var q = document.createElement("input");
+    var hd = el("div", "rpnav-hd");
+    var ttl = el("div", "rpnav-ttl");
+    ttl.appendChild(el("span", "", "全部调研报告"));
+    ttl.appendChild(el("span", "rpnav-sub", "共 " + REPORTS.length + " 篇"));
+    var q = el("input");
     q.id = "rpnav-q";
     q.type = "search";
-    q.placeholder = "搜索标题 / 日期 / 标签…";
+    q.placeholder = "搜索标题 / 日期 / 分类 / 优先级…";
     q.setAttribute("autocomplete", "off");
+    q.setAttribute("aria-label", "搜索报告");
     hd.appendChild(ttl);
     hd.appendChild(q);
 
-    var ul = document.createElement("ul");
-    ul.id = "rpnav-list";
+    var list = el("ul");
+    list.id = "rpnav-list";
+    list.setAttribute("aria-label", "报告列表");
 
-    var ft = document.createElement("div");
-    ft.className = "rpnav-ft";
-    ft.textContent = "清单由 scripts/update-nav.ps1 自动生成；新增报告无需修改既有报告。";
-
+    var ft = el("div", "rpnav-ft", "清单由 scripts/update-nav.ps1 自动生成；新增报告无需修改既有报告。");
     panel.appendChild(hd);
-    panel.appendChild(ul);
+    panel.appendChild(list);
     panel.appendChild(ft);
     root.appendChild(panel);
     root.appendChild(btn);
     document.body.appendChild(root);
 
-    renderList(ul, "");
+    renderList(list, "");
+
+    function focusFirst() {
+      var first = list.querySelector("a.report-card");
+      if (first) first.focus();
+    }
 
     function open(show) {
       panel.hidden = !show;
       btn.setAttribute("aria-expanded", show ? "true" : "false");
       if (show) {
-        renderList(ul, q.value);
+        renderList(list, q.value);
         q.focus();
         q.select();
       }
     }
-    function toggle() { open(panel.hidden); }
 
-    btn.addEventListener("click", function (e) { e.preventDefault(); toggle(); });
-    // 面板内部点击不关闭；外部点击才关闭。
-    // 用 root.contains 判断比 stopPropagation 更稳：不受事件派发顺序影响。
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      open(panel.hidden);
+    });
     panel.addEventListener("click", function (e) { e.stopPropagation(); });
-    q.addEventListener("input", function () { renderList(ul, q.value); });
+    q.addEventListener("input", function () { renderList(list, q.value); });
     q.addEventListener("keydown", function (e) {
       if (e.key === "Escape") { open(false); btn.focus(); }
+      if (e.key === "ArrowDown") { e.preventDefault(); focusFirst(); }
       if (e.key === "Enter") {
-        var first = ul.querySelector("a.rpnav-item");
+        var first = list.querySelector("a.report-card");
         if (first) window.location.href = first.getAttribute("href");
+      }
+    });
+    list.addEventListener("keydown", function (e) {
+      var links = Array.prototype.slice.call(list.querySelectorAll("a.report-card"));
+      var index = links.indexOf(document.activeElement);
+      if (index < 0) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        (links[index + 1] || links[0]).focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (index === 0) q.focus();
+        else links[index - 1].focus();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        links[0].focus();
+      } else if (e.key === "End") {
+        e.preventDefault();
+        links[links.length - 1].focus();
       }
     });
     document.addEventListener("click", function (e) {
@@ -343,7 +358,6 @@
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && !panel.hidden) { open(false); btn.focus(); }
-      // 快捷键：g 打开导航（不在输入态时）
       if (e.key === "g" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         var tag = (e.target && e.target.tagName || "").toLowerCase();
         if (tag !== "input" && tag !== "textarea" && !e.target.isContentEditable) {
@@ -352,10 +366,6 @@
         }
       }
     });
-
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY) === "1") { /* 预留：可记忆折叠状态 */ }
-    } catch (e) { /* file:// 或隐私模式下忽略 */ }
   }
 
   if (document.readyState === "loading") {

@@ -4,6 +4,10 @@
 
 ## 待办
 
+- **`TD-RESEARCH-TEMPLATE-001` 统一调研报告正文与导航卡片（已完成）**
+  - 已统一 `report/report-template.css` v1、三入口共享卡片和独立归档样式；白酒、AIGC、金融科技、电池 4 篇已迁移，其余 32 篇保留历史回退并在[迁移清单](docs/tasks/active/TD-RESEARCH-TEMPLATE-001/migration.md)登记。
+  - 验收：check/build/E2E/Pages 通过；本任务相关测试 14/14；全量 `npm test` 有 3 项并行未提交 R2 改动的失败。方案与逐项结果见[任务记录](docs/tasks/active/TD-RESEARCH-TEMPLATE-001/TD-RESEARCH-TEMPLATE-001.md)。
+
 - **`TD-R2-STRATEGY-001` v9 统一执行层整合（已完成，生产 v9/1）**
   - 最新独立验收：595/595 单测、check/build/完整 E2E/财务覆盖率/daemon 通过；收益只读 899/899、审计 0 漏洞；08:17 经既有计划任务重启发布，生产 v9/1、派生 job#2 done、真实 11 批次双主题页面正常，schema/核心财务事实指纹一致。11 批次公开证据仍待核；首个工作日真实补采继续观察，周日静默跳过。详见[验收记录](docs/r2-strategy-acceptance-2026-11-08.md)。
   - 2026-11-08 独立验收发现并修复原收口遗漏：当前 v9 配置/持仓 UI、公开可行性校验提交协议、取消余额复活、交易腿与批次绑定、到账日记录、手工决策、冻结历史编辑、持仓评价、换仓组合约束、补采与独立 worker、投影重试和实际自动化同步。最新证据见[独立验收](docs/r2-strategy-acceptance-2026-11-08.md)，此前 577 项验收是修复前历史基线。

@@ -77,11 +77,14 @@ test('Pages artifact contains every report, the report library, and all tech map
   assert.equal(result.reportCount, manifest.count)
   assert.equal(result.reportCount, reportFiles.length)
   assert.equal(result.techMapViews, 3)
-  assert.equal(result.files.length, reportFiles.length + 6)
+  assert.equal(result.files.length, reportFiles.length + 9)
 
   for (const expected of [
     'research/index.html',
     'scripts/report-nav.js',
+    'scripts/report-cards.css',
+    'scripts/report-library.css',
+    'report/report-template.css',
     'public/research/techmap/index.html',
     'public/research/techmap/tree.html',
     'public/research/techmap/table.html',

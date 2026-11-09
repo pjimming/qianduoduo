@@ -309,6 +309,9 @@ foreach ($f in (Get-ChildItem -LiteralPath $reportPath -Filter *.html -File | So
         $tag = Get-ReportTag -Text ($f.Name + " " + $title)
     }
 
+    # --- 研究优先级（与卡片字段契约一致；可被 <!-- rpnav-priority: … --> 覆盖）---
+    $priority = Get-Override -Raw $raw -Key "priority"
+
     # --- 摘要（首页卡片用；可被 <!-- rpnav-summary: … --> 覆盖）---
     $summary = Get-ReportSummary -Raw $raw
 
@@ -321,6 +324,7 @@ foreach ($f in (Get-ChildItem -LiteralPath $reportPath -Filter *.html -File | So
         Date     = $date
         PublishedAt = $publishedAt
         Tag      = $tag
+        Priority = $priority
         Summary  = $summary
         Keywords = $keywords
     })
@@ -338,6 +342,9 @@ foreach ($r in $ordered) {
             '", p: "' + $r.PublishedAt +
             '", g: "' + (ConvertTo-JsString $r.Tag) + '", s: "' +
             (ConvertTo-JsString $r.Summary) + '"'
+    if (-not [string]::IsNullOrWhiteSpace($r.Priority)) {
+        $line += ', r: "' + (ConvertTo-JsString $r.Priority) + '"'
+    }
     if (-not [string]::IsNullOrWhiteSpace($r.Keywords)) {
         $line += ', k: "' + (ConvertTo-JsString $r.Keywords) + '"'
     }

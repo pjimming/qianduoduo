@@ -86,6 +86,8 @@
 - 估值参考允许读取并分析市场分析师文章、券商研报和可靠财经媒体原文，不要求交易所或指数公司官方披露；注明作者/机构、原文链接、文章发布日期、估值数据截至日和指标口径（如 PE TTM、静态/预测 PE、PB，以及分位区间和方法）。允许统计口径差异，逐项标注并统一提示“统计口径可能存在差异，仅供参考”，不同来源不强行拼接或直接比较。可引用最近可得数据，明确其与简报日期的时差；文章未披露的字段写“未获取到”，不猜测，不把旧数据当成当日估值。区分文章观点与本稿分析，不能只凭搜索摘要填数。
 - 百分位网是简报的第三方估值和情绪来源。指数估值以详情页数据日期为准，恐贪指数以 JSON 序列日期为准；页面构建时间不能替代交易日，PE 口径未披露时只写 PE。
 - 股票报告唯一可编辑源是 `report/*.html`；独立归档页是 `research/index.html`，应用阅读页是 `/investment/research/:slug`。
+- 新报告默认使用 `report/report-template.css` v1：`<body class="rp-doc">`、`<main class="rp-wrap">`、`<link rel="stylesheet" href="report-template.css" data-report-template="v1">` 和一处非空 `<style>` 覆盖；示例见 `docs/templates/report-template-example.html`。构建只对带模板标记的报告内联模板 CSS，并把 `data-report-toc` 目录和 `data-report-layout` 双栏在应用阅读器中折叠为单列；未标记的历史报告走原回退。
+- 三处报告卡片共用 `scripts/report-cards.css`：应用库、`research/index.html` 与悬浮导航使用同一 `.report-card` 字段语义（分类、日期、优先级、标题、摘要、发布时间、当前项），样式差异仅由 `.report-card--compact` 控制。
 - `npm run research:publish` 重建报告库导航、`src/data/stockReports.json`、Vue 文档、检索索引和媒体。生成物不手工编辑。
 - 报告以事实、解释和推断分离为核心；Serenity 证据阶梯、市场叙事与资金结构、五红灯和退出条件按 AGENTS 与 skill 执行。
 - GitHub Pages 只发布报告库、源报告和科技图谱三视图；账本、账户事实、截图、服务端代码、Vue 构建物和市场简报不进入公开产物。

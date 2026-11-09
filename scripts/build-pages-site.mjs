@@ -26,6 +26,9 @@ export const PROJECT_ROOT = path.resolve(path.dirname(SCRIPT_PATH), '..')
 const FIXED_FILES = Object.freeze([
   ['research/index.html', 'research/index.html'],
   ['scripts/report-nav.js', 'scripts/report-nav.js'],
+  ['scripts/report-cards.css', 'scripts/report-cards.css'],
+  ['scripts/report-library.css', 'scripts/report-library.css'],
+  ['report/report-template.css', 'report/report-template.css'],
   ['public/research/techmap/index.html', 'public/research/techmap/index.html'],
   ['public/research/techmap/tree.html', 'public/research/techmap/tree.html'],
   ['public/research/techmap/table.html', 'public/research/techmap/table.html'],
@@ -151,7 +154,8 @@ export async function auditPagesArtifact(outputDir, options = {}) {
     if (
       file !== '.nojekyll' &&
       !file.endsWith('.html') &&
-      !file.endsWith('.js')
+      !file.endsWith('.js') &&
+      !(file.endsWith('.css') && FIXED_FILES.some(([, target]) => target === file))
     ) {
       throw new Error(`Pages 产物包含非白名单文件类型：${file}`)
     }
@@ -160,7 +164,7 @@ export async function auditPagesArtifact(outputDir, options = {}) {
     if (!fileStat.isFile() || (file !== '.nojekyll' && fileStat.size === 0)) {
       throw new Error(`Pages 产物文件为空或不是普通文件：${file}`)
     }
-    if (file.endsWith('.html') || file.endsWith('.js')) {
+    if (file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css')) {
       const content = await readFile(path.join(outputDir, ...segments), 'utf8')
       const marker = FORBIDDEN_CONTENT_MARKERS.find((value) => content.includes(value))
       if (marker) {

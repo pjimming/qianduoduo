@@ -172,10 +172,14 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8765
 股票、主题、产业链、候选对比和公司事件研究统一使用 `serenity-skill`。默认生成静态 HTML 报告并进入报告库；用户明确要求“只分析、不要生成文件”时才省略。
 
 - 报告源文件：`report/*.html`
+- 统一正文模板：`report/report-template.css`（v1，示例 `docs/templates/report-template-example.html`）
+- 共享卡片样式：`scripts/report-cards.css`；独立归档页样式 `scripts/report-library.css`
 - 独立归档：`research/index.html`
 - 应用阅读页：`/investment/research/:slug`
 - 报告清单：`src/data/stockReports.json`
 - 构建产物：`src/data/reportDocs/`、`src/data/reportSearch.json`、`public/research/media/`
+
+新报告在 `<head>` 引入 `report-template.css` 并加 `data-report-template="v1"`，正文使用 `rp-hero`、`rp-section`、`rp-table-wrap` 等模板类，根节点为 `body.rp-doc`。应用报告库、独立归档和悬浮导航共用 `.report-card` 卡片；历史报告未加模板标记时继续按原样式渲染。
 
 发布命令：
 

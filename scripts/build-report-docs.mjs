@@ -11,7 +11,7 @@
  */
 
 import { readdir, readFile, writeFile, mkdir, rm } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync as readFileSyncNode } from 'node:fs'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +23,19 @@ const searchPath = path.join(root, 'src', 'data', 'reportSearch.json')
 const mediaDir = path.join(root, 'public', 'research', 'media')
 const scopeRoot = '.rp-doc'
 let sharpLib = null
+
+function readLocalTemplateCss(html, fileName) {
+  const link = html.match(/<link\b[^>]*\bdata-report-template=["']([^"']+)["'][^>]*>/i)
+  if (!link) return { css: '', version: '' }
+  const href = link[0].match(/\bhref=["']([^"']+)["']/i)?.[1] ?? ''
+  const clean = href.split(/[?#]/)[0]
+  const target = path.resolve(sourceDir, clean)
+  if (!clean || !target.startsWith(`${sourceDir}${path.sep}`)) {
+    throw new Error(`${fileName} 的模板样式路径不合法：${href}`)
+  }
+  if (!existsSync(target)) throw new Error(`${fileName} 找不到模板样式：${href}`)
+  return { css: readFileSyncNode(target, 'utf8'), version: link[1] }
+}
 
 function splitTopLevel(value, separator) {
   const parts = []
@@ -352,12 +365,28 @@ async function extractReport(html, fileName) {
 
   const lang = html.match(/<html[^>]*\blang=["']([^"']+)["']/i)?.[1] ?? 'zh-CN'
   const bodyClass = bodyMatch[1].match(/\bclass=["']([^"']*)["']/i)?.[1] ?? ''
-  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
+  const template = readLocalTemplateCss(html, fileName)
+  const inlineStyles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
     .map((match) => match[1])
     .join('\n')
+  const styles = [template.css, inlineStyles].filter(Boolean).join('\n')
   const date = /(\d{4}-\d{2}-\d{2})\.html$/i.exec(fileName)?.[1] ?? ''
   const category = html.match(/<!--\s*rpnav-tag:\s*(.*?)\s*-->/i)?.[1] ?? ''
   let content = stripEmbeddedChrome(bodyMatch[2])
+
+  if (template.version) {
+    content = content.replace(/<nav\b[^>]*\bdata-report-toc\b[\s\S]*?<\/nav>/gi, '')
+    content = content.replace(
+      /(<div\b[^>]*\bclass=["'][^"']*\brp-layout\b[^"']*["'][^>]*)(>)/i,
+      (match, attrs, end) => {
+        if (/\brp-layout--single\b/.test(attrs)) return match
+        return `${attrs.replace(
+          /\bclass=(["'])([^"']*)\1/i,
+          (_, quote, classes) => `class=${quote}${classes} rp-layout--single${quote}`,
+        )}${end}`
+      },
+    )
+  }
 
   if (/<script\b/i.test(content)) {
     throw new Error(`${fileName} 含内联脚本，Vue 阅读器只渲染静态报告内容`)
@@ -381,6 +410,7 @@ async function extractReport(html, fileName) {
       title,
       lang,
       bodyClass,
+      template: template.version || null,
       html: content,
       css: scopeReportCss(styles),
       headings: withIds.headings,
@@ -404,6 +434,7 @@ async function main() {
 
   const files = (await readdir(sourceDir))
     .filter((file) => file.toLowerCase().endsWith('.html'))
+    .filter((file) => !file.startsWith('_'))
     .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
 
   if (files.length === 0) {

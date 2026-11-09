@@ -629,7 +629,7 @@ async function main() {
         staticReportPage.waitForURL(/\/research\/index\.html$/u),
         staticReportPage.locator('[data-report-page-home]').click(),
       ])
-      await staticReportPage.waitForSelector('.grid')
+      await staticReportPage.waitForSelector('.report-grid')
       assert(
         (await staticReportPage.title()).includes('股票调研报告库'),
         '静态报告返回首页后没有进入独立报告库',
@@ -689,7 +689,7 @@ async function main() {
         techMapPage.waitForURL(/\/research\/index\.html$/u),
         techMapPage.locator('#vn [data-research-home]').click(),
       ])
-      await techMapPage.waitForSelector('.grid')
+      await techMapPage.waitForSelector('.report-grid')
       assert(
         (await techMapPage.title()).includes('股票调研报告库'),
         '科技图谱返回首页后没有进入独立报告库',

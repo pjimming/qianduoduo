@@ -107,6 +107,10 @@ Serenity 完成技术或需求变化、系统拆解、瓶颈识别、产业链�
 
 报告源文件是静态 HTML，每篇包含非空正文和作用域化 `<style>`；样式必须适配浅色与深色，状态除颜色外保留文字或图形语义。
 
+新报告默认使用统一正文模板：`<link rel="stylesheet" href="report-template.css" data-report-template="v1">`，根节点为 `<body class="rp-doc">`，正文包在 `<main class="rp-wrap">`，并使用 `rp-hero`、`rp-section`、`rp-chapter-no`、`rp-table-wrap`、`rp-tag` 等模板类。模板报告仍保留一处非空 `<style>`，只写本篇品牌色或一次性微调。可复制 `docs/templates/report-template-example.html` 起步；示例不在 `report/` 下，不进入报告清单和文档构建。
+
+- 静态首页入口、通用导航与模板不重复：需要正文目录时，给目录容器加 `data-report-toc`；需要编辑型双栏时，给布局容器加 `data-report-layout`。构建只从应用阅读器移除这两个标记对应的目录/双栏，静态页保留，章节锚点不变。
+- 未加 `data-report-template` 的历史报告继续使用原有内联样式和构建回退，不得用全局模板选择器覆盖；迁移按 `docs/tasks/active/TD-RESEARCH-TEMPLATE-001/migration.md` 分批登记。
 - 报告正文末尾原样挂载 `scripts/report-nav.js`。构建脚本负责补标题锚点、生成目录/检索/阅读进度数据，并抽取 base64 图片到 `public/research/media/<slug>/`。
 - 每篇静态报告保留原生首页入口 `data-report-page-home`，指向 `../research/index.html`；应用内阅读页使用顶部报告库入口。
 - 科技图谱关键词来自标题、小节标题、表格首列和 `<!-- rpnav-keywords: 002414 -->` 注释。
