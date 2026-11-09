@@ -11,7 +11,7 @@ const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifa
 // Bump whenever engine/account/allocation output can change without a ledger
 // write. It is part of the frozen input hash so a code change invalidates the
 // persisted strategy job instead of reusing a stale result.
-const CALCULATION_VERSION = 3;
+const CALCULATION_VERSION = 4;
 
 function monthEndWindow(date, months) {
   const start = new Date(`${date}T00:00:00Z`);

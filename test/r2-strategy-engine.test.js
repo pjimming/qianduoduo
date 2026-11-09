@@ -101,3 +101,17 @@ test('holding-only supplements change monitoring without changing the official p
   assert.notEqual(result.input_fingerprint, baseline.input_fingerprint);
   assert.deepEqual(compactStrategyResult(result).monitoring.rows[0].identity, { source: 'cmb', channel: 'TEST', code: 'S1' });
 });
+
+test('unknown public term falls back to the confirmed holding term instead of erasing its bucket', () => {
+  const fixture = strategyFixture();
+  fixture.sourceSnapshot.rows = fixture.sourceSnapshot.rows.map(row => row.code === 'M1'
+    ? { ...row, data: { ...row.data, term: { kind: 'unknown', days: null, basis: null } } }
+    : row);
+  fixture.portfolio.holdings = [{ lot_id: 'lot:m1', product_code: 'M1', amount: 25, term_days: 90 }];
+  const result = evaluateStrategy(fixture);
+  const exposure = result.account.exposures.find(row => row.lot_id === 'lot:m1');
+  assert.equal(exposure.bucket, 'medium');
+  assert.equal(exposure.amount_cents, 2500);
+  assert.ok(!result.account.blockers.includes('asset_unverified:M1'));
+  assert.ok(!result.allocation.blockers.includes('exposure_unverified'));
+});

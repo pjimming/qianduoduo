@@ -59,8 +59,13 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], port
     const review = buildPublicLimits({ row, product: productByCode.get(row.mapping.product_code), date });
     if (review.limits) {
       limits[identityKey(row.identity)] = review.limits;
+      // Public detail pages are fetched only for the short list, so most pool
+      // rows carry no parsed term. An unknown term must not erase the term of
+      // an already confirmed holding: leave the bucket out and let
+      // buildAccountContext fall back to the lot's own term_days.
+      const bucket = bucketForTerm(row.term?.days);
       assetsByCode[row.mapping.product_code] = { ...review.limits, evidence_tier: row.evidence_tier,
-        bucket: bucketForTerm(row.term?.days) };
+        ...(bucket === 'unknown' ? {} : { bucket }) };
     }
   }
   applyHoldingClassificationFallback(portfolio?.holdings, products, assetsByCode);
