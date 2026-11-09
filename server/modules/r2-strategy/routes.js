@@ -4,16 +4,13 @@ const { sendJson } = require('../../http/response');
 const { readJsonBody } = require('../../http/middleware/json-body');
 const { strategyError } = require('./repository');
 const BASE = '/api/r2-strategy';
-const REVIEW = /^\/api\/r2-strategy\/reviews\/([^/]+)\/([^/]+)$/;
 const CANCEL_REMAINING = /^\/api\/r2-strategy\/proposals\/(\d+)\/cancel-remaining$/;
-const patterns = [['GET', BASE + '/status'], ['GET', BASE + '/workspace'], ['GET', BASE + '/share-match'], ['GET', REVIEW],
+const patterns = [['GET', BASE + '/status'], ['GET', BASE + '/workspace'],
   ['POST', BASE + '/preview'], ['POST', BASE + '/recompute'], ['POST', BASE + '/proposals'],
-  ['POST', CANCEL_REMAINING], ['POST', BASE + '/mappings'], ['POST', BASE + '/checks']];
+  ['POST', CANCEL_REMAINING]];
 const FINGERPRINT = /^[a-f0-9]{64}$/;
 const PROPOSAL_KEYS = new Set(['expected_input_fingerprint', 'kind', 'lot_id', 'amount_cents', 'target_product_code']);
 const COMPUTE_KEYS = new Set(['expected_input_fingerprint']);
-const MAPPING_KEYS = new Set(['source', 'channel', 'sales_code', 'product_code', 'registration_code', 'supersedes_id', 'expected_seq']);
-const CHECK_KEYS = new Set(['mapping_id', 'lot_id', 'supersedes_id', 'expected_seq', 'facts']);
 const CANCEL_KEYS = new Set(['reason']);
 
 function objectBody(body, message) {
@@ -46,30 +43,11 @@ function proposalOptions(body) {
   return { ...options, kind, lotId: body.lot_id.trim(), amountCents: body.amount_cents,
     targetProductCode: body.target_product_code?.trim() };
 }
-function decode(value) {
-  try { return decodeURIComponent(value); }
-  catch { throw strategyError('invalid_input', '产品身份编码无效', 400); }
-}
 
 function createStrategyRoutes(service, proposals) {
   return patterns.map(([method, path]) => ({ method, path,
     async handler(request, response, context) {
       if (method === 'GET') {
-        if (path === BASE + '/share-match') {
-          const query = context?.requestUrl?.searchParams;
-          sendJson(response, 200, service.matchShare({
-            productCode: query?.get('product_code') ?? '', source: query?.get('source') ?? 'cmb',
-          }));
-          return;
-        }
-        if (path === REVIEW) {
-          const match = REVIEW.exec(context?.pathname ?? '');
-          if (!match) throw strategyError('invalid_input', '产品身份路径无效', 400);
-          const query = context?.requestUrl?.searchParams;
-          sendJson(response, 200, service.review({ channel: decode(match[1]), code: decode(match[2]),
-            lot: query?.get('lot') ?? '', source: query?.get('source') ?? 'cmb' }));
-          return;
-        }
         sendJson(response, 200, path.endsWith('/status') ? service.status() : service.workspace());
         return;
       }
@@ -82,16 +60,6 @@ function createStrategyRoutes(service, proposals) {
           throw strategyError('invalid_input', '取消原因需为500字以内文本', 400);
         }
         sendJson(response, 200, proposals.cancelRemaining(Number(match[1]), { reason: body.reason }));
-        return;
-      }
-      if (path.endsWith('/mappings')) {
-        onlyKeys(body, MAPPING_KEYS, '映射请求包含未知字段');
-        sendJson(response, 200, service.saveMapping(body));
-        return;
-      }
-      if (path.endsWith('/checks')) {
-        onlyKeys(body, CHECK_KEYS, '复核请求包含未知字段');
-        sendJson(response, 200, service.saveCheck(body));
         return;
       }
       if (path.endsWith('/proposals')) {

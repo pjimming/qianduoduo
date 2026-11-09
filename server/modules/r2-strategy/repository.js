@@ -38,9 +38,6 @@ function payload(value) {
   }
   return json;
 }
-function mappedCheck(row) {
-  return row ? { ...row, facts: JSON.parse(row.facts_json) } : null;
-}
 function mappedJob(row) {
   return row ? { ...row, input: JSON.parse(row.input_json), result: JSON.parse(row.result_json) } : null;
 }
@@ -89,64 +86,6 @@ function createStrategyRepository(db, { transactionManager = createTransactionMa
       db.prepare('UPDATE r2_strategy_state SET activation_seq=?,mode=?,updated_at=? WHERE singleton=1').run(seq, mode, stamp);
       db.prepare(`INSERT INTO r2_strategy_transitions VALUES (?,?,?,?,?,?,?)`).run(key, seq, before.mode, mode, CONTRACT_HASH, json, stamp);
       return { activation_seq: seq, from_mode: before.mode, to_mode: mode, existing: false };
-    });
-  }
-  const listMappings = ({ activeOnly = true } = {}) => installed()
-    ? db.prepare(`SELECT * FROM r2_share_mappings ${activeOnly ? 'WHERE revoked_at IS NULL' : ''} ORDER BY id`).all() : [];
-  function appendMapping(input) {
-    integer(input.expected_seq, '策略序号');
-    const code = text(input.product_code, '账本产品代码', 80);
-    const source = text(input.source, '公开来源', 40);
-    const channel = text(input.channel, '销售渠道', 40);
-    const sales = text(input.sales_code, '销售份额', 80);
-    const actor = text(input.verified_by, '核验人');
-    const verified = text(input.verified_at, '核验时间', 40);
-    const hash = text(input.evidence_hash, '证据哈希', 64);
-    if (!/^[a-f0-9]{64}$/.test(hash)) throw strategyError('invalid_input', '证据哈希格式错误', 400);
-    const registration = input.registration_code ? text(input.registration_code, '登记编码', 80) : null;
-    return transactionManager.run(() => {
-      requireState(input.expected_seq);
-      const prior = db.prepare('SELECT * FROM r2_share_mappings WHERE product_code=? AND revoked_at IS NULL').get(code);
-      if (prior && prior.source === source && prior.channel === channel && prior.sales_code === sales &&
-          prior.registration_code === registration && prior.evidence_hash === hash && prior.verified_by === actor && prior.verified_at === verified) return prior;
-      if ((prior?.id ?? null) !== (input.supersedes_id ?? null)) throw strategyError('mapping_changed', '产品映射已变化，请重新核验');
-      const occupied = db.prepare('SELECT * FROM r2_share_mappings WHERE source=? AND channel=? AND sales_code=? AND revoked_at IS NULL').get(source, channel, sales);
-      if (occupied && occupied.id !== prior?.id) throw strategyError('mapping_conflict', '该销售份额已关联其他账本产品');
-      if (prior) db.prepare('UPDATE r2_share_mappings SET revoked_at=? WHERE id=?').run(now(), prior.id);
-      const result = db.prepare(`INSERT INTO r2_share_mappings(product_code,source,channel,sales_code,registration_code,evidence_hash,verified_by,verified_at)
-        VALUES (?,?,?,?,?,?,?,?)`).run(code, source, channel, sales, registration, hash, actor, verified);
-      return db.prepare('SELECT * FROM r2_share_mappings WHERE id=?').get(result.lastInsertRowid);
-    });
-  }
-  const latestCheck = (mappingId, lotId = '') => installed() ? mappedCheck(db.prepare(`SELECT * FROM r2_pretrade_checks
-    WHERE mapping_id=? AND lot_id=? ORDER BY version DESC LIMIT 1`).get(mappingId, lotId)) : null;
-  function currentChecks() {
-    if (!installed()) return [];
-    const rows = db.prepare(`SELECT c.* FROM r2_pretrade_checks c JOIN r2_share_mappings m ON m.id=c.mapping_id
-      WHERE m.revoked_at IS NULL AND c.version=(SELECT max(c2.version) FROM r2_pretrade_checks c2
-        WHERE c2.mapping_id=c.mapping_id AND c2.lot_id=c.lot_id) ORDER BY c.id LIMIT 20001`).all();
-    if (rows.length > 20000) throw strategyError('capacity_limit', '当前复核对象超过受控读取上限', 503);
-    return rows.map(mappedCheck);
-  }
-  function appendCheck({ mappingId, lotId = '', supersedesId = null, facts, verifiedBy, verifiedAt, expectedSeq }) {
-    integer(expectedSeq, '策略序号');
-    integer(mappingId, '映射版本', 1);
-    if (typeof lotId !== 'string' || lotId.length > 160) throw strategyError('invalid_input', '持仓批次格式错误', 400);
-    const json = payload(facts);
-    const hash = fingerprint(facts);
-    const actor = text(verifiedBy, '核验人');
-    const verified = text(verifiedAt, '核验时间', 40);
-    return transactionManager.run(() => {
-      requireState(expectedSeq);
-      if (!db.prepare('SELECT 1 FROM r2_share_mappings WHERE id=? AND revoked_at IS NULL').get(mappingId)) {
-        throw strategyError('mapping_changed', '映射已撤回或不存在');
-      }
-      const previous = latestCheck(mappingId, lotId);
-      if (previous && previous.facts_json === json && previous.verified_by === actor && previous.verified_at === verified) return previous;
-      if ((previous?.id ?? null) !== supersedesId) throw strategyError('check_changed', '复核事实已变化，请重新加载');
-      const inserted = db.prepare(`INSERT INTO r2_pretrade_checks(mapping_id,lot_id,version,supersedes_id,facts_json,evidence_hash,verified_by,verified_at)
-        VALUES (?,?,?,?,?,?,?,?)`).run(mappingId, lotId, (previous?.version ?? 0) + 1, supersedesId, json, hash, actor, verified);
-      return mappedCheck(db.prepare('SELECT * FROM r2_pretrade_checks WHERE id=?').get(inserted.lastInsertRowid));
     });
   }
   const reservations = () => installed() ? db.prepare('SELECT * FROM r2_fund_reservations ORDER BY id').all() : [];
@@ -301,7 +240,7 @@ function createStrategyRepository(db, { transactionManager = createTransactionMa
       FROM r2_derivation_jobs ORDER BY id DESC LIMIT 1`).get() ?? null;
     return { counts, latest: last };
   }
-  return { state, transition, listMappings, appendMapping, latestCheck, currentChecks, appendCheck, reservations, reservedCents,
+  return { state, transition, reservations, reservedCents,
     reserve, reconcileReservation, reconcileReservationFromFacts, getJob, enqueue, claim, complete, fail, watermark, latestCompleted, jobSummary };
 }
 

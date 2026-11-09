@@ -11,7 +11,7 @@ function input() {
     ['S1', 30, 1, 500], ['S2', 30, 2, 1000], ['S3', 30, 3, 1000], ['S4', 30, 4, 3000],
     ['M1', 90, 1, 3000], ['M2', 90, 2, 3000], ['L1', 180, 1, 3000], ['L2', 180, 2, 3000],
   ];
-  const rows = source.map(([code, days, rank]) => ({ identity: { source: 'cmb', channel: 'test', code }, mapping: { id: code },
+  const rows = source.map(([code, days, rank]) => ({ identity: { source: 'cmb', channel: 'test', code }, mapping: { product_code: code },
     rank, term: { days, kind: 'minimum' }, category: 'bond', quota: { status: 0 }, evidence_tier: 'full_1y',
     reference: { status: 'available', value_pct: 2.3 }, yield_state: 'pass', evidence_hash: fingerprint(code), automatic_eligible: true, blockers: [] }));
   const limits = Object.fromEntries(rows.map((row, i) => [identityKey(row.identity), {

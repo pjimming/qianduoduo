@@ -37,9 +37,6 @@ async function setup(t, mode = 'shadow') {
   const { applyMigration } = await import('../scripts/migrate-r2-strategy.mjs');
   applyMigration({ dbPath, screeningPath, backupDir: path.join(folder, 'backups') });
   const store = createStrategyRepository(repository.db, { transactionManager: repository.transactionManager });
-  for (const mapping of fixture.mappings) store.appendMapping({ ...mapping, expected_seq: 0 });
-  for (const check of fixture.checks) store.appendCheck({ expectedSeq: 0, mappingId: check.mapping_id, facts: check.facts,
-    verifiedBy: check.verified_by, verifiedAt: check.verified_at });
   store.transition({ expectedSeq: 0, operationKey: mode, mode });
   let offline = false;
   server = createServer({ repository, screening: { executionSnapshot() { if (offline) throw new Error('offline'); return publicStore.readExecutionSnapshot(); } } });
@@ -120,61 +117,14 @@ test('existing-schema adapter refuses missing or incomplete databases rather tha
   assert.equal(fs.existsSync(missing), false);
 });
 
-test('review, mapping and check entrypoints validate input, append versions and preserve adopted evidence', async t => {
+test('retired review, mapping and check entrypoints are no longer exposed', async t => {
   const context = await setup(t);
-  const reviewResponse = await fetch(`${context.base}/api/r2-strategy/reviews/TEST/S1`);
-  assert.equal(reviewResponse.status, 200);
-  const review = await reviewResponse.json();
-  assert.equal(review.mapping.product_code, 'S1');
-  assert.equal(review.check.version, 1);
-  assert.equal(review.public_evidence.name, '合成产品S1');
-  assert.equal(Number(review.public_evidence.min_amount), 1);
-  assert.equal(review.suggestions.facts.terms.kind, 'minimum');
-  assert.equal(review.suggestions.facts.terms.days, 30);
-  assert.equal(review.suggestions.facts.allocation.minimum_cents, 100);
-  assert.equal(review.suggestions.paths.includes('allocation.minimum_cents'), true);
-  assert.equal(review.activation_seq, 1);
-  assert.equal(typeof review.review, 'object');
-  const missing = await (await fetch(`${context.base}/api/r2-strategy/reviews/TEST/NOPE`)).json();
-  assert.equal(missing.mapping, null);
-  assert.equal(missing.check, null);
-  assert.equal(missing.review.blockers.includes('mapping_missing'), true);
-  assert.equal((await fetch(`${context.base}/api/r2-strategy/reviews/TEST/S1?lot=999%3AS1`)).status, 400);
-  const createdMapping = await (await post(`${context.base}/api/r2-strategy/mappings`, { source: 'cmb', channel: 'TEST',
-    sales_code: 'S3', product_code: 'S3', expected_seq: 1 })).json();
-  assert.equal(createdMapping.mapping.product_code, 'S3');
-  assert.equal(createdMapping.mapping.verified_by, 'local-user');
-  assert.match(createdMapping.mapping.verified_at, /^\d{4}-\d{2}-\d{2}T/);
-  assert.match(createdMapping.mapping.evidence_hash ?? '', /^[a-f0-9]{64}$/);
-  const repeatedMapping = await (await post(`${context.base}/api/r2-strategy/mappings`, { source: 'cmb', channel: 'TEST',
-    sales_code: 'S3', product_code: 'S3', expected_seq: 1 })).json();
-  assert.equal(repeatedMapping.existing, true);
-  assert.equal(repeatedMapping.mapping.id, createdMapping.mapping.id);
-  assert.equal((await post(`${context.base}/api/r2-strategy/mappings`, { source: 'cmb', channel: 'TEST',
-    sales_code: 'S4', expected_seq: 0 })).status, 400);
-  assert.equal((await post(`${context.base}/api/r2-strategy/mappings`, { source: 'cmb', channel: 'TEST',
-    sales_code: 'S4', product_code: 'S4', expected_seq: 0 })).status, 409);
-  const verifiedFacts = { ...context.fixture.checks[1].facts,
-    app: { ...context.fixture.checks[1].facts.app, available_cents: 2900 } };
-  const currentCheck = context.store.latestCheck(2);
-  const newCheck = await (await post(`${context.base}/api/r2-strategy/checks`, { mapping_id: 2, lot_id: '',
-    supersedes_id: currentCheck.id, facts: verifiedFacts, expected_seq: 1 })).json();
-  assert.equal(newCheck.check.version, 2);
-  assert.equal(newCheck.check.verified_by, 'local-user');
-  assert.match(newCheck.check.content_hash, /^[a-f0-9]{64}$/);
-  assert.equal(newCheck.review.check_id, newCheck.check.id);
-  const repeatedCheck = await (await post(`${context.base}/api/r2-strategy/checks`, { mapping_id: 2, lot_id: '',
-    supersedes_id: newCheck.check.id, facts: verifiedFacts, expected_seq: 1 })).json();
-  assert.equal(repeatedCheck.existing, true);
-  assert.equal(repeatedCheck.check.id, newCheck.check.id);
-  assert.equal((await post(`${context.base}/api/r2-strategy/checks`, { mapping_id: 2, lot_id: '',
-    facts: { ...verifiedFacts, identity: { source: 'cmb', channel: 'TEST', code: 'S1' } },
-    expected_seq: 1 })).status, 400);
-  assert.equal((await post(`${context.base}/api/r2-strategy/checks`, { mapping_id: 2, lot_id: '',
-    supersedes_id: 999, facts: verifiedFacts, expected_seq: 1 })).status, 409);
-  const old = context.repository.db.prepare('SELECT version FROM r2_pretrade_checks WHERE id = 2').get();
-  assert.equal(old.version, 1);
-  assert.equal(context.repository.db.prepare('SELECT count(*) n FROM r2_pretrade_checks WHERE mapping_id = 2').get().n, 2);
+  assert.equal((await fetch(`${context.base}/api/r2-strategy/reviews/TEST/S1`)).status, 404);
+  assert.equal((await fetch(`${context.base}/api/r2-strategy/share-match?source=cmb&channel=TEST&code=S1`)).status, 404);
+  assert.equal((await post(`${context.base}/api/r2-strategy/mappings`, { source: 'cmb', channel: 'TEST', sales_code: 'S3', product_code: 'S3' })).status, 404);
+  assert.equal((await post(`${context.base}/api/r2-strategy/checks`, { mapping_id: 1, facts: {} })).status, 404);
+  const tables = context.repository.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name IN ('r2_share_mappings','r2_pretrade_checks')").all();
+  assert.deepEqual(tables, []);
 });
 test('workspace exposes monitoring rows and selected reviews beside the existing result fields', async t => {
   const context = await setup(t);
@@ -182,7 +132,6 @@ test('workspace exposes monitoring rows and selected reviews beside the existing
   const workspace = await (await fetch(`${context.base}/api/r2-strategy/workspace`)).json();
   assert.equal(typeof workspace.result.monitoring.counts, 'object');
   assert.equal(Array.isArray(workspace.result.monitoring.rows), true);
-  assert.equal(Array.isArray(workspace.result.selected_reviews), true);
   assert.equal(workspace.result.allocation.full_investment, true);
   assert.equal(workspace.mode, 'shadow');
   assert.equal(workspace.activation_seq, 1);

@@ -28,25 +28,23 @@
 
 `evidence.js` 是纯适配器，输入该快照、北京时间业务日、账本侧显式映射；不打开库、不联网、不持久化。未知/歧义映射不按名称或相同代码跨渠道替换。`degraded` 按全池完整性及逐份额证据分别处理。每份额保留原始rank、shortlisted、提示、收益原文、数据日、净值摘要/哈希、来源摘要、映射版本、quota假设及参考年化计算结果。快照深冻结；指纹包括批次创建时间、数据内容和证据，不能只用run_id当事件键。
 
-`automatic_eligible` 在本层仅代表**可进入自动配置计算**，不代表交易前复核通过或已有建议金额。HTTP/API、CLI 与独立 worker 已接入统一用例，生产当前为 v9/1。决策快照在现有payload/review_meta中扩展，载荷版本1，单对象≤65536字节，历史缺项标“历史未冻结”。本层不把1M替换为未来收益预测，也不向账本写入公开净值。
+`automatic_eligible` 在本层仅代表**可进入自动配置计算**，不代表可执行或已有建议金额。HTTP/API、CLI 与独立 worker 已接入统一用例，生产当前为 v9/1。决策快照在现有payload/review_meta中扩展，载荷版本1，单对象≤65536字节，历史缺项标“历史未冻结”。本层不把1M替换为未来收益预测，也不向账本写入公开净值。
 
 ## 实际 schema 对照与新增对象
 
 现有 `decision_proposals` 有唯一dedupe和状态，但没有逐交易腿预留金额；`automation_jobs` 有dedupe和尝试次数，但没有租约token/截止、策略序号的条件提交；`holding_review_settings` 只按产品码保存可修改设置，无法作为同份额版本证据；`decision_log.review_meta` 和提案payload可以保留冻结摘要，但不能替代数据库资金唯一约束。
 
-因此采用增量新增7张账本侧表，DDL唯一来源为 `server/modules/r2-strategy/schema.sql`。原说明“8张”为计数笔误，审批所附DDL和下表实际均为7张，字段与对象范围不变。不修改初筛库schema，不改旧表列、索引、约束或历史事实。初筛身份仍由其现有(source,channel,code)主键定义。
+该层最初增量新增 7 张账本侧表；交易前复核与产品映射移除后现存 5 张：`r2_strategy_state`、`r2_strategy_transitions`、`r2_fund_reservations`、`r2_derivation_jobs`、`r2_derivation_watermarks`，DDL 唯一来源为 `server/modules/r2-strategy/schema.sql`。不修改初筛库schema，不改旧表列、索引、约束或历史事实。初筛身份仍由其现有(source,channel,code)主键定义。
 
 | 对象 | 字段与约束 | 生命周期 |
 | --- | --- | --- |
 | r2_strategy_state | singleton=1；schema_version=1；账本UUID；activation_seq；mode；contract_hash；updated_at | 初始legacy/0，不自动启用v9；状态缺失按未迁移处理 |
 | r2_strategy_transitions | operation_key主键；activation_seq唯一；from/to；hash；summary_json；时间 | 每次切换追加，和激活及旧pending处理同事务 |
-| r2_share_mappings | id版本；原账本产品码；source/channel/sales_code；登记码；证据hash；核验人/日；revoked_at | 有效产品码唯一、有效份额身份唯一；撤回旧行后新增；旧快照仍引用旧id |
-| r2_pretrade_checks | mapping_id；lot_id；version；supersedes_id唯一；facts_json；hash；核验人/日 | 产品级lot为空；持仓级填lot；按对象版本唯一；补核/撤回追加版本，不覆盖引用记录 |
 | r2_fund_reservations | proposal/decision外键；leg_key；activation_seq；amount/executed/released整分；state | proposal+leg与decision+leg分别唯一；已执行＋释放≤总额；非active必须闭合 |
 | r2_derivation_jobs | event_type+activation_seq+input_hash唯一；input_json；attempts≤3；租约token/截止；retry_at；result/error | pending→running→done；失败→pending退避/failed；过期输入→superseded；running必须有唯一租约 |
 | r2_derivation_watermarks | event_type主键；activation_seq；input_hash；job外键；completed_at | 只在派生结果提交事务内推进；启动扫描补建丢失通知 |
 
-JSON载荷和hash使用字段类型/check约束；高频任务调度、有效映射和active预留有索引。新表不是新账本事实源。首版不自动清理被引用证据。
+JSON载荷和hash使用字段类型/check约束；高频任务调度和active预留有索引。新表不是新账本事实源。首版不自动清理被引用证据。
 
 ## 用例与并发协议（后续实现验收要求）
 
@@ -80,13 +78,13 @@ JSON载荷和hash使用字段类型/check约束；高频任务调度、有效映
 
 ## 当前验收与剩余范围
 
-已实现：机器契约、显式迁移/预检/空回滚工具、只读已发布快照、纯证据适配器、整数分约束配置、持仓收益退出状态机、逐项交易前复核、版本化映射/复核、资金预留和可恢复任务repository；分版本冻结评估、买入/退出/替换提案、启动/周期调度、三分区前端与 v9 持仓待办投影。基础、配置、持仓、复核、评估和repository均有离线/临时库定向测试。
+已实现：机器契约、显式迁移/预检/空回滚工具、只读已发布快照、纯证据适配器、整数分约束配置、持仓收益退出状态机、资金预留和可恢复任务repository；分版本冻结评估、买入/退出/替换提案、启动/周期调度、三分区前端与 v9 持仓待办投影。基础、配置、持仓、评估和repository均有离线/临时库定向测试。
 
-配置引入精确锁定的 `javascript-lp-solver@1.0.3`（[官方仓库](https://github.com/JWally/jsLPSolver)）。金额由起购二元变量与整分递增变量组成；先最大化已配金额，再最小化各组偏离等预算，最后按组间冻结顺序逐个最大化原v9排名。每轮结果独立以整数复核全部硬约束；证据档位、登记产品聚合、策略族、短桶预算、流动性子集及具体用款日期不可放宽。截止或偏好解未完成时保持pending，不能凭一个可行但未核验排名的解声称完成。即使试算通过，`executable`仍为false，必须经交易前复核和采纳用例。
+配置引入精确锁定的 `javascript-lp-solver@1.0.3`（[官方仓库](https://github.com/JWally/jsLPSolver)）。金额由起购二元变量与整分递增变量组成；先最大化已配金额，再最小化各组偏离等预算，最后按组间冻结顺序逐个最大化原v9排名。每轮结果独立以整数复核全部硬约束；证据档位、登记产品聚合、策略族、短桶预算、流动性子集及具体用款日期不可放宽。截止或偏好解未完成时保持pending，不能凭一个可行但未核验排名的解声称完成。即使试算通过，也只代表公开数据可行，仍须经采纳用例；提案不会因试算完成而自动执行。
 
-`pretrade.js` 将产品级事实定义为 `kind=product_pretrade,payload_version=1`，分开核验identity/registration、正式条款及日历/截止、费用、已读说明书、最新已读报告、禁入资产、权益上限、久期或已核验期限分布、当日App限制，以及金额步长/策略族代理依据。部分复核可保留试算限制，但不能生成可执行指令。`holdings.js` 使用lot级 `kind=holding_redemption` 事实：需要明确核验的最早赎回日；当日可赎还必须有同日App/窗口确认。到期、公开买入开放日不能替代赎回核验。
+`pretrade.js` 与 `r2_share_mappings`、`r2_pretrade_checks` 两张表已于 2026-11-08 按用户决策整体移除，应用内不再有逐项核实表单；交易前核对改为人工一次性尽调，结论写入决策记录。到账事实改由交易表承载：已确认赎回交易的实际到账日写入 `trade_transactions.arrival_date`，核验时间写入 `arrival_verified_at`，经 `PUT /api/trades/:id` 提交。`holdings.js` 使用lot级 `kind=holding_redemption` 事实：需要明确核验的最早赎回日；当日可赎还必须有同日App/窗口确认。到期、公开买入开放日不能替代赎回核验。
 
-当前已接通共享engine、账户占用适配、HTTP状态/工作区/复核/映射/复核写入/预览/重算/提案、CLI、独立worker和启动/周期调度；无初始化适配器使这些入口不隐式迁移、导入CSV或刷新历史审计时间。本地已完成买入、`holding_exit`、`holding_switch`提案生成与采纳重核、同计划逐只采纳、未执行取消、交易/预留原子接续、分版本冻结评估及前端“选品与配置”“决策与评估”三分区。生产已于2026-11-08 01:40发布最新代码并激活v9/1，首个派生job#1完成、watermark seq=1；切换后修复启动投影顺序，消息中心已投影11条evidence_pending。事实修正追加历史版本已完成并随 2026-11-08 02:02 生产重启发布；真实切换前影子对照因直接授权切换未执行；部分执行余额取消已实现、完成本地全量验收并随 2026-11-08 01:55 生产重启发布；保留切换后事实的副本回滚演练已完成，生产回滚未执行。新执行版本被阻止进入旧全局hurdle/年化评估器，不以旧结果代评；legacy模式只读预览仍返回待核，供回滚兼容。
+当前已接通共享engine、账户占用适配、HTTP状态/工作区/预览/重算/提案、CLI、独立worker和启动/周期调度；无初始化适配器使这些入口不隐式迁移、导入CSV或刷新历史审计时间。本地已完成买入、`holding_exit`、`holding_switch`提案生成与采纳重核、同计划逐只采纳、未执行取消、交易/预留原子接续、分版本冻结评估及前端“选品与配置”“决策与评估”三分区。生产已于2026-11-08 01:40发布最新代码并激活v9/1，首个派生job#1完成、watermark seq=1；切换后修复启动投影顺序，消息中心已投影11条evidence_pending。事实修正追加历史版本已完成并随 2026-11-08 02:02 生产重启发布；真实切换前影子对照因直接授权切换未执行；部分执行余额取消已实现、完成本地全量验收并随 2026-11-08 01:55 生产重启发布；保留切换后事实的副本回滚演练已完成，生产回滚未执行。新执行版本被阻止进入旧全局hurdle/年化评估器，不以旧结果代评；legacy模式只读预览仍返回待核，供回滚兼容。
 
 生产迁移验收：两份备份SHA256重新核验通过，旧schema和八类核心事实的逐表签名与备份一致，新状态legacy/0；现有托管启动来源为task-scheduler，Health、新策略API和初筛API为200，收益口径899/899，stderr为空且无停止标记。具体备份路径、账户金额和签名仅留在受控备份manifest中。
 

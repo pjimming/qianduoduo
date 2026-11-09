@@ -177,10 +177,6 @@ async function main() {
       (await page.locator('.workspace-nav [data-section="allocation"][aria-current="page"]').count()) === 1,
       '资金配置分区导航未高亮',
     )
-    assert(
-      (await page.locator('#strategy-review').count()) === 1,
-      '资金配置缺少交易前复核面板',
-    )
 
     await gotoSection(page, base, '/ledger/products?section=holdings', 'holdings')
     await page.locator('#holding-reviews').waitFor()
@@ -192,24 +188,6 @@ async function main() {
       (await page.locator('.holding-view-switch').count()) === 1,
       '持仓复核缺少查看方式切换',
     )
-
-    // 1b. 公开数据预填与只看待补项
-    await page.goto(
-      base + '/ledger/products?section=allocation&channel=D07&code=17318K#strategy-review',
-      { waitUntil: 'networkidle' },
-    )
-    const prefill = page.locator('[data-testid="strategy-prefill"]')
-    await prefill.waitFor()
-    const prefillText = await prefill.innerText()
-    assert(prefillText.includes('公开数据已带出 7 项'), '公开数据没有带出预期字段：' + prefillText)
-    assert(/待补 \d+ 项/.test(prefillText), '没有显示待补数量')
-    const onlyLabels = await page.locator('.strategy-structured-facts .fact-field > span').allTextContents()
-    assert(onlyLabels.includes('已阅读并核实'), '只看待补没有显示缺失字段')
-    assert(!onlyLabels.includes('期限天数'), '只看待补仍显示已带出的期限天数')
-    await page.locator('[data-testid="strategy-prefill-toggle"]').click()
-    const allLabels = await page.locator('.strategy-structured-facts .fact-field > span').allTextContents()
-    assert(allLabels.includes('期限天数'), '查看全部字段没有恢复已带出字段')
-    assert(allLabels.includes('起购金额（分）'), '查看全部字段没有恢复起购金额')
 
     // 2. 旧初筛参数迁移与去循环链接
     await page.goto(base + '/ledger/screening?tab=history&page=2&term=90', {
@@ -353,27 +331,11 @@ async function main() {
     })
     assert(tiny.length === 0, `分区导航存在低于 12px 的文字：${tiny.join(' / ')}`)
 
-    // 8. 真正调用策略写接口，防止前端回传服务端只读字段导致保存被拒绝。
+    // 8. 真正调用策略写接口，确认 v9 工作区可重算且不展示旧配置金额。
     strategyStore.transition({ operationKey: 'e2e-activate', expectedSeq: 0, mode: 'v9' })
     await page.goto(base + '/ledger/products?section=allocation&channel=TEST&code=E2E001', { waitUntil: 'networkidle' })
     await page.locator('[data-testid="strategy-workspace"]').waitFor()
     assert(await page.locator('#allocationCardTitle').count() === 0, 'v9 仍展示旧策略配置金额')
-    await page.locator('input[name="mappingproduct"]').fill('E2E001')
-    let saved = page.waitForResponse(response => response.url().endsWith('/api/r2-strategy/mappings') && response.request().method() === 'POST')
-    await page.locator('[data-testid="strategy-mapping-save"]').click()
-    assert((await saved).status() === 200, '首次映射保存失败')
-    await page.locator('[data-testid="strategy-mapping-save"]').waitFor()
-    // 已存在映射的重复保存不能携带 id/verified_at 等只读字段。
-    saved = page.waitForResponse(response => response.url().endsWith('/api/r2-strategy/mappings') && response.request().method() === 'POST')
-    await page.locator('[data-testid="strategy-mapping-save"]').click()
-    assert((await saved).status() === 200, '已存在映射保存失败')
-    await page.locator('[data-testid="strategy-check-save"]').waitFor()
-    saved = page.waitForResponse(response => response.url().endsWith('/api/r2-strategy/checks') && response.request().method() === 'POST')
-    await page.locator('[data-testid="strategy-check-save"]').click()
-    assert((await saved).status() === 200, '交易前检查保存失败')
-    await page.locator('[data-testid="strategy-check-save"]').waitFor()
-    assert(repository.db.prepare('SELECT COUNT(*) n FROM r2_pretrade_checks').get().n === 1, 'UI 没有保存检查版本')
-    assert(repository.db.prepare('SELECT COUNT(*) n FROM r2_share_mappings').get().n === 1, '重复映射不幂等')
     await page.getByRole('button', { name: '重算当前策略', exact: true }).click()
     await page.waitForResponse(response => response.url().endsWith('/api/r2-strategy/recompute'))
     await page.getByText('组合本金', { exact: true }).waitFor()
@@ -381,13 +343,6 @@ async function main() {
     mkdirSync(captures, { recursive: true })
     for (const width of [1280, 1440, 390]) {
       await page.setViewportSize({ width, height: 900 })
-      // 资金配置与交易前复核是上下两张独立卡片，间距不小于 .r2-stack 的 18px。
-      const panelGap = await page.evaluate(() => {
-        const panels = [...document.querySelectorAll('#allocation > .rw-panel')]
-        if (panels.length < 2) return null
-        return Math.round(panels[1].getBoundingClientRect().top - panels[0].getBoundingClientRect().bottom)
-      })
-      assert(panelGap !== null && panelGap >= 18, '资金配置与交易前复核之间缺少空隙 ' + width + ': ' + panelGap)
       for (const theme of ['light', 'dark']) {
         await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
         await page.waitForTimeout(350)
@@ -446,11 +401,6 @@ async function main() {
     await page.route('**/api/r2-strategy/proposals', async route => route.fulfill({json:{created:[],blockers:['fees_unverified']}}))
     await page.getByRole('button',{name:'生成退出提案',exact:true}).first().click()
     await page.getByText('退出提案暂不可生成：费用待核', {exact:true}).waitFor()
-    const lotLink = page.getByRole('link',{name:'核验此批次',exact:true}).first()
-    const href = await lotLink.getAttribute('href')
-    assert(href.includes('lot=synthetic-lot-0') && href.includes('code=E2E0'), '逐批次复核没有携带真实身份与lot')
-    const unmapped = page.getByRole('link',{name:'先核实同份额映射',exact:true})
-    assert((await unmapped.getAttribute('href')).includes('product_code=E2E10'), '未映射批次没有带入账本产品')
 
     assert(errors.length === 0, `页面运行出错：${errors.join(' / ')}`)
     console.log('e2e-r2-strategy: 全部通过')

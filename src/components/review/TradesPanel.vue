@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { formatDateShort, formatMoney } from '@/composables/useFormatters'
@@ -27,6 +26,7 @@ const { show } = useToast()
 interface TradeForm {
   trade_date: string
   confirm_date: string
+  arrival_date: string
   trade_type: TradeType
   status: TradeStatus
   product_code: string
@@ -92,10 +92,15 @@ function strategyBindingLabel(trade: TradeTransaction): string {
     : '策略未绑定'
 }
 
+function formatArrivalMonthDay(value: string | null | undefined): string {
+  return value ? value.slice(5, 10) : ''
+}
+
 function emptyForm(type: TradeType = 'buy'): TradeForm {
   return {
     trade_date: props.today,
     confirm_date: '',
+    arrival_date: '',
     trade_type: type,
     status: 'pending',
     product_code: '',
@@ -137,6 +142,7 @@ function openEdit(trade: TradeTransaction): void {
   Object.assign(form, {
     trade_date: trade.trade_date,
     confirm_date: trade.confirm_date || '',
+    arrival_date: trade.arrival_date || '',
     trade_type: trade.trade_type,
     status: trade.status,
     product_code: trade.product_code,
@@ -179,6 +185,16 @@ async function save(): Promise<void> {
     (!form.target_product_code.trim() || !form.target_product_name.trim())
   ) {
     show('切换交易需要填写目标产品', { error: true })
+    return
+  }
+  if (
+    editingId.value !== null &&
+    form.trade_type === 'redeem' &&
+    form.status === 'confirmed' &&
+    form.arrival_date &&
+    form.arrival_date < (form.confirm_date || form.trade_date)
+  ) {
+    show('实际到账日不能早于确认日或交易日期', { error: true })
     return
   }
   const termRaw = String(form.term_days ?? '').trim()
@@ -259,7 +275,13 @@ async function save(): Promise<void> {
       await store.createTrade(payload)
       show(`交易已保存，并关联决策 #${decisionId}`)
     } else {
-      await store.updateTrade(editingId.value, payload)
+      await store.updateTrade(editingId.value, {
+        ...payload,
+        arrival_date:
+          form.trade_type === 'redeem' && form.status === 'confirmed'
+            ? form.arrival_date || null
+            : null,
+      })
       show(`交易已更新，并关联决策 #${decisionId}`)
     }
     formOpen.value = false
@@ -430,6 +452,17 @@ function addDays(date: string, days: number): string {
         <label class="rw-field">
           <span>确认日期（已确认时）</span>
           <input v-model="form.confirm_date" type="date" />
+        </label>
+        <label
+          v-if="editingId !== null && form.trade_type === 'redeem' && form.status === 'confirmed'"
+          class="rw-field"
+        >
+          <span>实际到账日</span>
+          <input
+            v-model="form.arrival_date"
+            type="date"
+            :min="form.confirm_date || form.trade_date"
+          />
         </label>
         <label class="rw-field">
           <span>产品代码</span>
@@ -628,14 +661,24 @@ function addDays(date: string, days: number): string {
                 {{ statusLabel(trade.status) }}
               </span>
             </td>
-            <td>{{ trade.confirm_date ? formatDateShort(trade.confirm_date) : '—' }}</td>
+            <td>
+              {{ trade.confirm_date ? formatDateShort(trade.confirm_date) : '—' }}
+              <small
+                v-if="
+                  trade.trade_type === 'redeem' &&
+                  trade.status === 'confirmed' &&
+                  trade.arrival_date
+                "
+              >
+                到账 {{ formatArrivalMonthDay(trade.arrival_date) }}
+              </small>
+            </td>
             <td>{{ trade.maturity_date ? formatDateShort(trade.maturity_date) : '—' }}</td>
             <td>
               <small>{{ sourceLabel(trade.source) }}</small>
             </td>
             <td>
               <div class="rw-row-actions">
-                <RouterLink v-if="trade.status === 'confirmed' && trade.trade_type === 'redeem'" class="rw-link-button" :to="{ name: 'r2-products', query: { section: 'allocation', lot: `trade:${trade.id}`, product_code: trade.product_code }, hash: '#strategy-review' }">核验实际到账</RouterLink>
                 <button type="button" class="rw-link-button" @click="openTrace(trade)">
                   来源与修订
                 </button>

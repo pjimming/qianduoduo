@@ -1,38 +1,46 @@
 'use strict';
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
-const { identityKey } = require('./evidence');
 const { isoDate, shift } = require('../r2-screening/calendar');
 
-// This resolver consumes verified dates, not a public purchase-opening date or
-// a guessed term+calendar calculation. Product calendars are verified by the
-// terms/pretrade use case before the check is saved.
-function resolveHoldingRedemption(holding, evidence, check, date) {
-  const facts = check?.facts;
-  const rules = facts?.redemption;
-  const valid = evidence?.mapping && check?.mapping_id === evidence.mapping.id && check?.lot_id === holding.lot_id &&
-    facts?.kind === 'holding_redemption' && facts.status === 'verified' &&
-    facts.identity && identityKey(facts.identity) === identityKey(evidence.identity) &&
-    rules?.rules_verified === true && /^[a-f0-9]{64}$/.test(rules.source_hash ?? '') &&
-    typeof rules.terms_version === 'string' && rules.terms_version.length > 0;
-  if (!valid || !isoDate(rules.earliest_redeem_date)) return { state: 'unknown', redeemable_now: false,
-    earliest_redeem_date: null, funds_available_date: null, reason: 'redemption_rules_unverified' };
-  const available = isoDate(rules.funds_available_date);
-  if (available && available < rules.earliest_redeem_date) return { state: 'unknown', redeemable_now: false,
-    earliest_redeem_date: null, funds_available_date: null, reason: 'redemption_dates_conflict' };
-  if (rules.earliest_redeem_date > date) return { state: 'locked', redeemable_now: false,
-    earliest_redeem_date: rules.earliest_redeem_date, funds_available_date: available, reason: 'holding_locked' };
-  // Reaching a minimum holding period is not proof that today's redemption
-  // window is open. Require an actual same-day App/window verification.
-  if (rules.as_of !== date || rules.can_redeem_today !== true) return { state: 'window_pending', redeemable_now: false,
-    earliest_redeem_date: rules.earliest_redeem_date, funds_available_date: available, reason: 'current_redemption_window_unverified' };
-  return { state: 'open', redeemable_now: true, earliest_redeem_date: rules.earliest_redeem_date,
-    funds_available_date: available, reason: 'redemption_verified_today' };
+// The pretrade review store is retired, so redemption timing is derived from
+// the ledger's own maturity facts. Fees and arrival dates stay explicitly
+// unverified; the bank's actual execution remains authoritative.
+function redemptionFor(holding, date) {
+  const termDays = Number(holding.term_days);
+  const startDate = isoDate(holding.confirm_date)
+    ? holding.confirm_date
+    : isoDate(holding.purchase_date)
+      ? holding.purchase_date
+      : null;
+  const maturity = isoDate(holding.maturity_date)
+    ? holding.maturity_date
+    : (Number.isFinite(termDays) && termDays > 0 && startDate
+      ? shift(startDate, termDays)
+      : null);
+  if (maturity) {
+    if (date < maturity) {
+      return Object.freeze({ state: 'locked', redeemable_now: false,
+        earliest_redeem_date: maturity, funds_available_date: null,
+        arrival_unverified: true, reason: 'holding_locked_until_maturity' });
+    }
+    return Object.freeze({ state: 'open', redeemable_now: true,
+      earliest_redeem_date: null, funds_available_date: null,
+      arrival_unverified: true, reason: null });
+  }
+  if (!Number.isFinite(termDays) || termDays <= 0) {
+    return Object.freeze({ state: 'open', redeemable_now: true,
+      earliest_redeem_date: null, funds_available_date: null,
+      arrival_unverified: true, reason: null });
+  }
+  return Object.freeze({ state: 'unknown', redeemable_now: false,
+    earliest_redeem_date: null, funds_available_date: null,
+    arrival_unverified: true, reason: 'maturity_date_unverified' });
 }
 
-function buildHoldingMonitoring({ holdings, context, checks = [], date }) {
+function buildHoldingMonitoring({ holdings, context, date }) {
   if (!isoDate(date)) throw new Error('持仓监控业务日无效');
-  if (!Array.isArray(holdings) || !Array.isArray(checks) || holdings.length > 20000) throw new Error('持仓监控输入无效');
+  if (!Array.isArray(holdings) || holdings.length > 20000) throw new Error('持仓监控输入无效');
   const seen = new Set();
   const rows = holdings.map(holding => {
     if (!holding.lot_id || seen.has(holding.lot_id) || !Number.isFinite(holding.amount) || holding.amount <= 0) throw new Error('持仓批次重复或金额无效');
@@ -41,9 +49,7 @@ function buildHoldingMonitoring({ holdings, context, checks = [], date }) {
     const current = matches.length === 1 ? matches[0] : null;
     const hardFailure = context?.blockers?.some(code => ['batch_version_or_status', 'batch_invalid', 'duplicate_identity', 'source_identity_or_calendar'].includes(code));
     const yieldState = (!hardFailure || current?.monitoring_verified === true) && context?.date === date && context.contract_hash === CONTRACT_HASH ? current?.holding_yield_state ?? 'pending' : 'pending';
-    const relevant = checks.filter(row => row.mapping_id === current?.mapping?.id && row.lot_id === holding.lot_id)
-      .sort((a, b) => b.version - a.version);
-    const redemption = resolveHoldingRedemption(holding, current, relevant[0], date);
+    const redemption = redemptionFor(holding, date);
     const riskReasons = [];
     if (['watch', 'reject'].includes(current?.metrics?.drawdown?.band)) riskReasons.push('drawdown_risk');
     // A missing/stale NAV is evidence that needs review, not a yield failure:
@@ -59,7 +65,7 @@ function buildHoldingMonitoring({ holdings, context, checks = [], date }) {
       userAction = true;
       if (redemption.redeemable_now) {
         state = 'exit_required'; action = '赎回'; plannedAction = 'redeem';
-        summary = '有效近1月年化低于2.15%，不符合续持；当前赎回窗口已核验，准备退出。无替代品时仍保留退出结论。';
+        summary = '有效近1月年化低于2.15%，不符合续持；按账本到期日已可赎回，准备退出。赎回费用与到账日仍需银行确认。无替代品时仍保留退出结论。';
       } else if (redemption.state === 'locked') {
         state = 'exit_at_open'; plannedAction = 'exit_at_maturity';
         summary = `续持不达标，锁定中；最早${redemption.earliest_redeem_date}重新核验退出窗口，当前不能提前赎回。`;
@@ -69,7 +75,7 @@ function buildHoldingMonitoring({ holdings, context, checks = [], date }) {
       }
     } else if (yieldState === 'pending') {
       state = 'evidence_pending';
-      userAction = !current || !current.mapping;
+      userAction = !current;
       summary = '当前同份额近期收益缺失、过期或身份待核，续持判断待核；禁止新买或加仓，不将缺失当作收益不达标。';
     } else if (riskReasons.length) {
       state = 'risk_review'; userAction = true;
@@ -90,7 +96,7 @@ function buildHoldingMonitoring({ holdings, context, checks = [], date }) {
       run_id: current?.run_id ?? null, yield_state: yieldState, yield_1m: current?.performance?.['1m'] ?? null,
       performance_date: current?.performance_date ?? null, screening_status: current?.screening_status ?? 'pending',
       hints: current?.hints ?? [], risk_reasons: riskReasons, state, action, planned_action: plannedAction,
-      redemption, check_id: relevant[0]?.id ?? null, next_verify_date: nextVerify, summary,
+      redemption, check_id: null, next_verify_date: nextVerify, summary,
       requires_user_action: userAction,
       message_key: fingerprint({ type: yieldState === 'below' ? 'holding_exit' : 'holding_review', lot_id: holding.lot_id,
         contract_hash: CONTRACT_HASH }) };
@@ -102,4 +108,4 @@ function buildHoldingMonitoring({ holdings, context, checks = [], date }) {
     counts: Object.fromEntries(Object.keys(priorities).map(key => [key, rows.filter(row => row.state === key).length])) });
 }
 
-module.exports = { resolveHoldingRedemption, buildHoldingMonitoring };
+module.exports = { buildHoldingMonitoring };

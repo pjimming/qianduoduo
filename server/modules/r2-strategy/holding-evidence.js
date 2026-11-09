@@ -12,13 +12,12 @@ function monitorContent(batch) {
 
 // Only these codes explain why a holding's own yield evidence is not usable.
 // Screening/candidate codes (yield_below, quota_not_open, ...) are noise here.
-const EVIDENCE_ISSUE_CODES = new Set(['mapping_missing', 'mapping_conflict', 'mapping_ambiguous',
-  'share_identity_conflict', 'registration_unverified', 'scope_unverified', 'yield_unverified',
+const EVIDENCE_ISSUE_CODES = new Set(['share_identity_conflict', 'scope_unverified', 'yield_unverified',
   'nav_stale', 'nav_hash_missing']);
 
 // Returns a separate holding-only view. Do NOT feed this view into allocation:
 // both the context and every row are explicitly ineligible for new purchases.
-function combineHoldingEvidence({ context, supplements = [], mappings = [], date }) {
+function combineHoldingEvidence({ context, supplements = [], date }) {
   if (!context || context.date !== date || context.contract_hash !== CONTRACT_HASH || !Array.isArray(context.rows) || !Array.isArray(supplements)) {
     throw new Error('需先按当前业务日冻结公开上下文，再合并监控证据');
   }
@@ -40,12 +39,12 @@ function combineHoldingEvidence({ context, supplements = [], mappings = [], date
       counts: { total: batch.items.length },
       health: { ...(batch.health ?? {}), pool: { requested: 1, ok: 1, included: batch.items.length } } },
     rows: batch.items.map(row => ({ ...row.identity, data: row.data, nav_hash: row.nav_hash })),
-    evidence: batch.items.flatMap(row => row.evidence.map(proof => ({ ...row.identity, ...proof }))) }, date, mappings);
+    evidence: batch.items.flatMap(row => row.evidence.map(proof => ({ ...row.identity, ...proof }))) }, date);
     for (let index = 0; index < adapted.rows.length; index++) {
       const incoming = adapted.rows[index], raw = batch.items[index], key = identityKey(incoming.identity);
       const prior = rows.get(key);
       const identityFailure = raw.issues.some(code => /identity|pool_scope/.test(code)) || incoming.blockers.some(code =>
-        ['mapping_missing', 'mapping_conflict', 'mapping_ambiguous', 'share_identity_conflict'].includes(code));
+        ['share_identity_conflict'].includes(code));
       const usable = !identityFailure && incoming.mapping && incoming.holding_yield_state !== 'pending' && fresh(incoming.performance_date, date);
       const newer = !prior?.performance_date || incoming.performance_date >= prior.performance_date;
       const replacePerformance = usable && newer;

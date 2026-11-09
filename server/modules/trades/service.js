@@ -94,13 +94,18 @@ function createTradesService({
   async function updateTrade(id, body) {
     const before = tradesRepository.getTrade(id);
     if (!before) throw tradeError(404, '没有找到这笔交易');
-    const value = validationValue(
-      validateTradePayload({
-        ...before,
-        ...body,
-        trade_date: body.trade_date ?? before.trade_date,
-      }),
-    );
+    const validated = validateTradePayload({
+      ...before,
+      ...body,
+      trade_date: body.trade_date ?? before.trade_date,
+    });
+    if (
+      !validated.error &&
+      !Object.prototype.hasOwnProperty.call(body, 'arrival_date')
+    ) {
+      delete validated.value.arrival_date;
+    }
+    const value = validationValue(validated);
     ensureDecision(value);
     let trade;
     try {

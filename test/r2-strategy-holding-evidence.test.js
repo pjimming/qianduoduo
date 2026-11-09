@@ -63,11 +63,6 @@ function contextFor(rows = [], overrides = {}) {
     blockers: [], rows, ...overrides };
 }
 
-const mapping = (idValue, productCode, salesCode = productCode, registrationCode = null) => ({
-  id: idValue, source: 'cmb', channel: 'D07', sales_code: salesCode, product_code: productCode,
-  registration_code: registrationCode, revoked_at: null,
-});
-
 test('监控补采只发公开份额身份，物料中不含账户金额或批次', async () => {
   const stub = stubSource({ pool: [poolRow({ code: 'A' }), poolRow({ code: 'B', yield1m: '3.10' })] });
   const batch = await collect([id('B'), id('A')], stub.options);
@@ -143,10 +138,9 @@ test('售罄/下架与低门槛存量仍补采详情和净值，且永不回流�
   assert.equal(u.data.yield_gate, 'pending');
   assert.ok(u.issues.includes('share_not_listed'));
   // 即使上游上下文把该行标成可自动交易，监控合并后也必须清零。
-  const context = contextFor([{ identity: id('A'), mapping: mapping(1, 'A'), automatic_eligible: true,
+  const context = contextFor([{ identity: id('A'), mapping: { source: 'cmb', channel: 'D07', sales_code: 'A', product_code: 'A' }, automatic_eligible: true,
     holding_yield_state: 'pass', performance: { '1m': '1.90' }, performance_date: '2026-11-06', run_id: 7 }]);
-  const combined = combineHoldingEvidence({ context, mappings: [mapping(1, 'A')], date: DATE,
-    supplements: [batch] });
+  const combined = combineHoldingEvidence({ context, date: DATE, supplements: [batch] });
   assert.equal(combined.available, false);
   for (const row of combined.rows) assert.equal(row.automatic_eligible, false);
 });
@@ -159,8 +153,7 @@ test('缺净值时保留收益证据但标记净值待核，不把其当作收�
   assert.ok(item.issues.includes('nav_unavailable'));
   assert.equal(item.data.metrics.issue, 'nav_unavailable');
   assert.equal(item.data.yield_gate, 'pass');
-  const combined = combineHoldingEvidence({ context: contextFor(), date: DATE,
-    mappings: [mapping(1, 'A')], supplements: [batch] });
+  const combined = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [batch] });
   const row = combined.rows[0];
   assert.equal(row.holding_yield_state, 'pass');
   assert.equal(row.nav_fresh, false);
@@ -168,38 +161,30 @@ test('缺净值时保留收益证据但标记净值待核，不把其当作收�
   assert.ok(row.monitoring_issues.includes('nav_stale'));
   assert.ok(row.monitoring_issues.includes('nav_hash_missing'));
   const monitoring = buildHoldingMonitoring({ holdings: [{ lot_id: 'lot-1', product_code: 'A', amount: 1000 }],
-    context: combined, date: DATE, checks: [] });
+    context: combined, date: DATE });
   assert.equal(monitoring.rows[0].state, 'risk_review');
   assert.ok(monitoring.rows[0].risk_reasons.includes('nav_evidence_unverified'));
   assert.notEqual(monitoring.rows[0].action, '赎回');
 });
 
-test('缺近1月、数据过期或映射冲突只能待核，不能判成低于2.15%', async () => {
+test('缺近1月或数据过期只能待核，不能判成低于2.15%', async () => {
   const no1m = await collect([id('A')], stubSource({ pool: [poolRow({ code: 'A', yield1m: null })] }).options);
   const stale = await collect([id('A')], stubSource({ pool: [poolRow({ code: 'A', performanceDate: '2026-10-20' })] }).options);
-  const fresh = await collect([id('A')], stubSource().options);
   const missing = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [no1m] });
   const old = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [stale] });
-  // 同一销售份额存在两条同 product_code 的有效映射：不得任取一条，只能待核。
-  const conflict = combineHoldingEvidence({ context: contextFor(), date: DATE,
-    mappings: [mapping(1, 'P', 'A'), mapping(2, 'P', 'Z')], supplements: [fresh] });
-  const missingRow = missing.rows[0], oldRow = old.rows[0], conflictRow = conflict.rows[0];
+  const missingRow = missing.rows[0], oldRow = old.rows[0];
   assert.equal(missingRow.holding_yield_state, 'pending');
   assert.equal(missingRow.monitoring_verified, false);
   assert.ok(missingRow.monitoring_issues.includes('yield_unverified'));
   assert.ok(missingRow.monitoring_issues.includes('scope_unverified'));
   assert.equal(oldRow.holding_yield_state, 'pending');
   assert.ok(oldRow.monitoring_issues.includes('yield_unverified'));
-  assert.equal(conflictRow.holding_yield_state, 'pending');
-  assert.equal(conflictRow.mapping, null);
-  assert.ok(conflictRow.monitoring_issues.includes('mapping_conflict'));
-  for (const row of [missingRow, oldRow, conflictRow]) assert.notEqual(row.holding_yield_state, 'below');
+  for (const row of [missingRow, oldRow]) assert.notEqual(row.holding_yield_state, 'below');
 });
 
 test('来源失败保留最近一次公开证据，同时标记复核失败与待核', async () => {
   const good = await collect([id('A')], stubSource().options);
-  const base = combineHoldingEvidence({ context: contextFor(), date: DATE, mappings: [mapping(1, 'A')],
-    supplements: [good] });
+  const base = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [good] });
   assert.equal(base.rows[0].holding_yield_state, 'pass');
   assert.equal(base.rows[0].monitoring_verified, true);
   assert.equal(base.rows[0].nav_hash.length, 64);
@@ -209,7 +194,7 @@ test('来源失败保留最近一次公开证据，同时标记复核失败与�
   // 不能借失败清空旧证据或改判收益，但必须标成未复核并进入风险复核。
   const failed = await collect([id('A')], stubSource({ pool: [] }).options);
   const next = combineHoldingEvidence({ context: { ...contextFor(), fingerprint: base.fingerprint, rows: base.rows },
-    date: DATE, mappings: [mapping(1, 'A')], supplements: [failed] });
+    date: DATE, supplements: [failed] });
   const row = next.rows[0];
   assert.equal(row.performance['1m'], '2.50');
   assert.equal(row.nav_hash.length, 64);
@@ -219,7 +204,7 @@ test('来源失败保留最近一次公开证据，同时标记复核失败与�
   assert.equal(row.monitor_content_hash, failed.content_hash);
   assert.notEqual(row.monitor_content_hash, previousHash);
   const monitoring = buildHoldingMonitoring({ holdings: [{ lot_id: 'lot-1', product_code: 'A', amount: 1000 }],
-    context: next, checks: [], date: DATE });
+    context: next, date: DATE });
   assert.equal(monitoring.rows[0].state, 'risk_review');
   assert.ok(monitoring.rows[0].risk_reasons.includes('monitor_evidence_unverified'));
 });
@@ -227,8 +212,7 @@ test('来源失败保留最近一次公开证据，同时标记复核失败与�
 test('多份额逐条归因，不把一只份额的收益写到另一只', async () => {
   const pool = [poolRow({ code: 'A', yield1m: '1.90' }), poolRow({ code: 'B', yield1m: '3.20' })];
   const batch = await collect([id('A'), id('B')], stubSource({ pool }).options);
-  const combined = combineHoldingEvidence({ context: contextFor(), date: DATE,
-    mappings: [mapping(1, 'A'), mapping(2, 'B')], supplements: [batch] });
+  const combined = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [batch] });
   const a = combined.rows.find(row => row.identity.code === 'A');
   const b = combined.rows.find(row => row.identity.code === 'B');
   assert.equal(a.holding_yield_state, 'below');
@@ -238,8 +222,7 @@ test('多份额逐条归因，不把一只份额的收益写到另一只', async
   assert.equal(b.performance['1m'], '3.20');
   assert.equal(b.mapping.product_code, 'B');
   // 重新合并同一批次是幂等的，批量哈希只保留一个。
-  const again = combineHoldingEvidence({ context: contextFor(), date: DATE,
-    mappings: [mapping(1, 'A'), mapping(2, 'B')], supplements: [batch] });
+  const again = combineHoldingEvidence({ context: contextFor(), date: DATE, supplements: [batch] });
   assert.deepEqual(again.rows, combined.rows);
   assert.equal(again.fingerprint, combined.fingerprint);
   assert.deepEqual(again.monitor_content_hashes, [batch.content_hash]);

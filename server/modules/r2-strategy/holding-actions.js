@@ -2,39 +2,32 @@
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { identityKey } = require('./evidence');
-const { reviewPretrade } = require('./pretrade');
+const { buildPublicLimits } = require('./public-limits');
 const { moneyCents } = require('./account');
 const { buildHoldingMonitoring } = require('./holdings');
 const { isoDate, shift, daysBetween } = require('../r2-screening/calendar');
 const { bucketForTerm, roundHalfAwayFromZero } = require('../../../lib/yield-policy');
 const { calculateSwitch, dynamicMinGainAmount, comparisonDaysForBucket, MIN_YIELD_EDGE_PP, BREAK_EVEN_MARGIN_PP } = require('../../../lib/holdings-review');
 
-const hashPattern = /^[a-f0-9]{64}$/;
 const codeCompare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function latestCheck(checks, mappingId, lotId) {
-  return checks.filter(row => row.mapping_id === mappingId && row.lot_id === lotId).sort((a, b) => b.version - a.version)[0] ?? null;
-}
-function fee(value) { return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 500; }
-function currentPath(check, monitor, date) {
-  const rules = check?.facts?.redemption;
-  const ready = rules?.rules_verified === true && hashPattern.test(rules.source_hash ?? '') &&
-    fee(rules.redemption_fee_bps) && isoDate(monitor.redemption.funds_available_date) && monitor.redemption.funds_available_date >= date;
-  return { verified: Boolean(ready), redemption_fee_bps: ready ? rules.redemption_fee_bps : null,
-    funds_available_date: monitor.redemption.funds_available_date,
-    reason: ready ? null : 'redemption_fee_or_arrival_unverified' };
+// Public screening has no verified redemption fee or arrival facts. Keep the
+// plan's fee/arrival evidence explicitly unverified while allowing the
+// ledger-derived redemption state to decide whether an exit intent can execute.
+function currentPath() {
+  return { verified: false, redemption_fee_bps: null, fee_verified: false,
+    funds_available_date: null, reason: null };
 }
 
-function buildHoldingActionPlans({ holdings, context, monitoringContext = context, checks = [], date,
+function buildHoldingActionPlans({ holdings, context, monitoringContext = context, date,
   validateReplacement = null }) {
   if (!isoDate(date) || context?.date !== date || monitoringContext?.date !== date) throw new Error('持仓计划需使用当前业务日的冻结上下文');
-  const monitoring = buildHoldingMonitoring({ holdings, context: monitoringContext, checks, date });
+  const monitoring = buildHoldingMonitoring({ holdings, context: monitoringContext, date });
   const holdingByLot = new Map(holdings.map(row => [row.lot_id, row]));
   const plans = monitoring.rows.map(monitor => {
     const holding = holdingByLot.get(monitor.lot_id);
     const amountCents = moneyCents(holding.amount);
-    const current = monitoringContext.rows.find(row => row.mapping?.id === monitor.mapping_id && row.mapping?.product_code === holding.product_code) ?? null;
-    const redemptionCheck = current ? latestCheck(checks, current.mapping.id, holding.lot_id) : null;
-    const path = currentPath(redemptionCheck, monitor, date);
+    const current = monitoringContext.rows.find(row => row.mapping?.product_code === holding.product_code) ?? null;
+    const path = currentPath();
     const base = { payload_version: 1, execution_version: CONTRACT.execution_version, review_version: CONTRACT.holding_review_version,
       selection_policy_version: CONTRACT.selection_policy_version, yield_policy_version: CONTRACT.yield_policy_version,
       contract_hash: CONTRACT_HASH, business_date: date, lot_id: holding.lot_id,
@@ -48,14 +41,16 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       redemption: { ...monitor.redemption, ...path },
       dedupe_key: fingerprint({ type: monitor.yield_state === 'below' ? 'mandatory_holding_exit' : 'holding_review',
         lot_id: holding.lot_id, contract_hash: CONTRACT_HASH }),
-      frozen_evidence: { current, redemption_check: redemptionCheck } };
+      frozen_evidence: { current } };
     if (monitor.yield_state === 'below') {
       // This branch deliberately precedes candidate/economic comparison. No
       // replacement or positive net edge is needed to retain an exit intent.
       base.action = monitor.action;
-      base.executable = monitor.redemption.redeemable_now && path.verified;
-      base.blockers = base.executable ? [] : [monitor.redemption.redeemable_now ? path.reason : monitor.redemption.reason];
-      base.warnings = !path.verified ? ['退出意图保留；费用或到账待核，不把不达标产品改判为符合续持'] : [];
+      base.executable = monitor.redemption.redeemable_now;
+      base.blockers = base.executable ? [] : [monitor.redemption.reason];
+      base.warnings = base.executable
+        ? ['赎回费用与到账日未核验，以银行实际扣费/到账为准']
+        : ['退出意图保留；费用或到账待核，不把不达标产品改判为符合续持'];
       return seal(base);
     }
     if (monitor.yield_state !== 'pass' || monitor.state === 'risk_review' || !current) {
@@ -85,18 +80,18 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) ||
       codeCompare(identityKey(a.identity), identityKey(b.identity)));
     const evaluated = candidateRows.map(candidate => {
-      const check = latestCheck(checks, candidate.mapping.id, '');
-      const review = reviewPretrade({ row: candidate, check, date, amountCents });
+      const review = buildPublicLimits({ row: candidate, date, amountCents });
       const blockers = [...review.blockers];
-      if (!path.verified) blockers.push(path.reason);
-      const confirm = check?.facts?.terms?.timing?.expected_confirm_on;
-      if (!isoDate(confirm) || !path.funds_available_date || confirm < path.funds_available_date) blockers.push('switch_funding_date_unverified');
+      const confirm = shift(date, 1);
+      if (!isoDate(confirm) || (path.funds_available_date && confirm < path.funds_available_date)) blockers.push('switch_funding_date_unverified');
       const wait = isoDate(confirm) ? daysBetween(date, confirm) : null;
       let economics = null;
-      if (path.verified && wait !== null && wait >= 0 && fee(check?.facts?.fees?.purchase_bps)) {
+      if (path.redemption_fee_bps === null || !path.fee_verified) {
+        blockers.push('redemption_fee_unverified');
+      } else if (wait !== null && wait >= 0) {
         economics = calculateSwitch({ amount: holding.amount, currentYieldPct: reference.value_pct, horizonDays: horizon,
           redemptionFeeBps: path.redemption_fee_bps, switchWaitDays: wait,
-          newYieldPct: candidate.reference.value_pct, purchaseFeeBps: check.facts.fees.purchase_bps });
+          newYieldPct: candidate.reference.value_pct, purchaseFeeBps: 0 });
       }
       const edge = roundHalfAwayFromZero(candidate.reference.value_pct - reference.value_pct);
       const economicPass = Boolean(economics && edge >= MIN_YIELD_EDGE_PP && economics.difference >= minGain &&
@@ -105,7 +100,7 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       let portfolio = { ok: false, reasons: ['portfolio_revalidation_required'], risk_not_worse: false, liquidity_not_worse: false };
       if (typeof validateReplacement === 'function') {
         const supplied = validateReplacement({ holding: structuredClone(holding), current, candidate, amount_cents: amountCents,
-          comparison_end: end, comparison_days: horizon, pretrade: review });
+          comparison_end: end, comparison_days: horizon, limits: review.limits });
         if (supplied?.then) throw new Error('组合替换核验必须为同步纯计算');
         if (supplied && typeof supplied === 'object') portfolio = supplied;
       }
@@ -116,7 +111,7 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       if (!monitor.redemption.redeemable_now) blockers.push('holding_not_redeemable_now');
       return { identity: candidate.identity, product_code: candidate.mapping.product_code, name: candidate.name,
         group: candidate.group, rank: candidate.rank, evidence_hash: candidate.evidence_hash,
-        check_id: check?.id ?? null, check_hash: check?.evidence_hash ?? null,
+        check_id: null, check_hash: null,
         amount_cents: amountCents, reference_yield_pct: candidate.reference.value_pct, yield_edge_pp: edge,
         comparison_start: date, comparison_end: end, comparison_days: horizon, switch_wait_days: wait,
         min_gain_amount: minGain, economics, economic_pass: economicPass, reinvestment_required: reinvestment,
@@ -137,7 +132,6 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       base.target_identity = chosen.identity; base.target_product_code = chosen.product_code;
       base.reason = `同本金比较至${end}，按v9原组内第${chosen.rank}名选择；扣费及空档后增益${chosen.economics.difference.toFixed(2)}元达到门槛。银行执行前仍需检查当时窗口。`;
       base.frozen_evidence.candidate = target;
-      base.frozen_evidence.candidate_check = latestCheck(checks, target.mapping.id, '');
       base.dedupe_key = fingerprint({ type: 'voluntary_holding_switch', lot_id: holding.lot_id,
         target_identity: chosen.identity, contract_hash: CONTRACT_HASH });
     } else if (future) {

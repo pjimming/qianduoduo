@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import { categoryLabel, drawdownPct, hintLabel, localTime, pct, reasonLabel, recoveryLabel, screeningGet, stateLabel,
   type Detail, type Nav } from './api'
 
@@ -70,13 +69,12 @@ watch(() => [props.run, props.channel, props.code, section.value, navWindow.valu
       </div>
       <button type="button" class="button button-ghost button-small" autofocus @click="emit('close')">关闭详情</button>
     </header>
-    <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-products', query: { section: 'allocation', channel: props.channel, code: props.code }, hash: '#strategy-review' }">带入交易前复核（使用当前证据）</RouterLink>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-else-if="!detail" role="status">正在读取份额证据…</p>
     <template v-else>
       <p class="detail-meta">{{ detail.business_date }} · 规则 {{ detail.rule_version }} · {{ detail.result.issuer }} · {{ categoryLabel[detail.result.category] }}</p>
       <nav class="detail-tabs" aria-label="份额详情分区">
-        <button v-for="[id, name] in [['decision', '判定'], ['nav', '净值与走势'], ['review', '交易前复核']]" :key="id"
+        <button v-for="[id, name] in [['decision', '判定'], ['nav', '净值与走势']]" :key="id"
           type="button" :aria-pressed="section === id" @click="section = id">{{ name }}</button>
       </nav>
       <section v-if="section === 'decision'">
@@ -141,18 +139,6 @@ watch(() => [props.run, props.channel, props.code, section.value, navWindow.valu
           </table>
         </details>
       </section>
-      <section v-else>
-        <h3>交易前核对清单</h3>
-        <p>先查公开条款，再在银行 App 核对实际额度和可办理时间。</p>
-        <dl class="review-list">
-          <div v-for="entry in detail.trade_review" :key="entry.label">
-            <dt>{{ entry.label }} <span>待复核</span></dt>
-            <dd v-if="entry.evidence">{{ entry.evidence }}</dd>
-            <dd v-if="entry.note">{{ entry.note }}</dd>
-            <dd v-if="entry.url"><a :href="entry.url" target="_blank" rel="noopener noreferrer">打开公开报告列表</a></dd>
-          </div>
-        </dl>
-      </section>
       <section v-if="section !== 'nav'" class="detail-sources">
         <h3>公开证据</h3>
         <p v-if="!detail.evidence.length">本份额暂无独立证据条目。</p>
@@ -201,10 +187,7 @@ th, td { text-align: start; padding: 6px 8px; border-bottom: 1px solid var(--lin
 th { background: var(--card-soft); }
 details { margin: 16px 0; }
 summary { cursor: pointer; color: var(--green); }
-.review-list div { border-bottom: 1px solid var(--line); padding: 9px 0; }
-.review-list dt { font-weight: 700; color: var(--ink); }
-.review-list span { font-weight: normal; color: var(--warning-ink); margin-left: 8px; }
-.detail-sources a, .review-list a { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
+.detail-sources a { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
 .detail-sources time { margin-left: 10px; font-size: 13px; }
 .detail-sources small { display: block; }
 :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }

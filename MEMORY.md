@@ -62,7 +62,7 @@
 
 ### 产品池与评估
 
-- “选品与配置”统一入口为 `/ledger/products`，`?section=screening|allocation|holdings` 分别对应初筛、配置和持仓复核；旧 `/ledger/screening` 重定向到初筛分区。公开初筛使用独立 `r2_screening.sqlite`，批次按来源、渠道与销售代码留存证据。启用时由工作台在北京时间工作日 12:00 采集，法定放假日跳过，午后启动补跑。周配置快照、配置建议、提案、持仓复核与观察样本继续使用各自输入。初筛结论、额度假设和交易前复核见 [v9 策略](docs/r2-product-screening-strategy.md)。
+- “选品与配置”统一入口为 `/ledger/products`，`?section=screening|allocation|holdings` 分别对应初筛、配置和持仓复核；旧 `/ledger/screening` 重定向到初筛分区。公开初筛使用独立 `r2_screening.sqlite`，批次按来源、渠道与销售代码留存证据。启用时由工作台在北京时间工作日 12:00 采集，法定放假日跳过，午后启动补跑。周配置快照、配置建议、提案、持仓复核与观察样本继续使用各自输入。初筛结论、额度假设和交易前公开数据可行性校验（配额/起购/递增/期限/持有期）见 [v9 策略](docs/r2-product-screening-strategy.md)。
 
 - 产品池由 `npm run r2:refresh-all` 刷新。`cmb_r2_snapshot-*.csv` 保存开放和未开放的应用快照，供产品快照页按需显示；`cmb_r2_universe-*.csv` 仍是开放研究池的事实来源。未开放记录只可查询和阅读，不进入评分、候选、金额配置、提案或持仓复核。公开额度仅用于初筛，实时额度必须另行核验。
 - 期限调整参考年化按期限桶加权，缺失窗口按剩余权重重归一化；全部缺失时标记“不可计算”，不把缺失当 0。
@@ -73,7 +73,7 @@
 - 初筛批次发布提交后异步唤醒一次策略派生；通知丢失不影响发布事实，由启动补跑和 300 秒周期按最新输入指纹补齐。
 - 2026-11-08 01:40，经用户明确确认后生产已发布最新代码并激活 `mode=v9`、`activation_seq=1`；部分执行余额取消已随 01:55 重启发布，事实修正追加评价版本已随 02:02 重启发布；切换前备份 `data/backups/r2_ledger-2026-11-08.sqlite`，操作键 `prod-v9-activation-20261108T0140+08`。首个派生 job#1 `done`、watermark seq=1；切换后修复启动投影顺序，消息中心已投影 11 条 `evidence_pending`。回滚路径为停服后按 `expected_seq=1` 切回 legacy，或恢复该备份；2026-11-08 01:48 已用生产一致性副本完成保留切换后事实的回滚演练（v9/1→legacy/2→v9/3，财务事实计数、job#1、watermark 与切换审计均保留），真实影子对照与生产回滚仍未执行。
 - 部分成交后，提案区可只取消未执行余额：服务端按冻结交易腿重算已确认金额，释放未用预留，保留已确认交易、决策和冻结证据；重复取消幂等，不生成新决策。
-- 自动评估按买入日、持有期和到期/赎回生成；冻结快照缺失、金额/确认日变化、收益未覆盖或结算未核验时进入待确认或不可用原因，不回落旧年化公式空确认。完整审计历史保留，待验证、未执行和失效结果不计入预测命中率。
+- 自动评估按买入日、持有期和到期/赎回生成；冻结快照缺失、金额/确认日变化、收益未覆盖或结算到账日缺失时进入待确认或不可用原因，不回落旧年化公式空确认。完整审计历史保留，待验证、未执行和失效结果不计入预测命中率。
 - 事实修正后，maturity 评价按冻结证据 `{available,reason,actual,valuation_ids,snapshot_hash}` 的 revision 追加新的去重键；旧 auto/confirmed 评价保留，不被覆盖；buy_day 不追加 revision。生产已随 2026-11-08 02:02 重启发布。
 - 2026-11-08 02:05 TD-R2-STRATEGY-001 收口：全量 577/577、0 todo，check/build/E2E 通过；生产 v9/1、job#1 done、消息中心 17 条（策略 11 条）。保留例外：真实切换前影子未执行（直接授权切换）、生产回滚未执行（副本演练通过）、周末披露归属待核。
 
@@ -112,4 +112,4 @@
 ## 2026-11-08 策略执行入口
 
 <!-- r2-strategy-acceptance-2026-11-08 -->
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。
+v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、公开可行性校验（配额/起购/递增/期限/持有期）及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。交易前只做公开数据可行性校验（配额/起购/递增/期限/持有期），并保留 decision_log 与截图留痕，不再建立产品映射或单独复核表；到账核验只读取交易记录的 arrival_date 字段，arrival_verified_at 记录写入时间。

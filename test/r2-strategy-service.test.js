@@ -27,9 +27,6 @@ async function setup(t, mode = 'shadow') {
   const store = createStrategyRepository(repository.db, { transactionManager: repository.transactionManager });
   store.transition({ operationKey: 'test', expectedSeq: 0, mode });
   const fixture = strategyFixture();
-  for (const mapping of fixture.mappings) store.appendMapping({ ...mapping, expected_seq: 1 });
-  for (const row of fixture.checks) store.appendCheck({ mappingId: row.mapping_id, facts: row.facts,
-    verifiedBy: row.verified_by, verifiedAt: row.verified_at, expectedSeq: 1 });
   const options = { repository, strategyRepository: store, todayProvider: () => fixture.date,
     screening: { executionSnapshot: () => fixture.sourceSnapshot } };
   return { repository, fixture, store, options };
@@ -91,12 +88,6 @@ test('holding exit proposals use an executable holding plan, dedupe and adopt wi
     amount: 50, confirm_date: '2026-10-01' };
   fixture.sourceSnapshot.rows[0].data.performance['1m'] = '1.20';
   fixture.sourceSnapshot.evidence[0].summary.performance['1m'] = '1.20';
-  store.appendCheck({ mappingId: 1, lotId: holding.lot_id, facts: { kind: 'holding_redemption',
-    status: 'verified', identity: { source: 'cmb', channel: 'TEST', code: 'S1' },
-    redemption: { rules_verified: true, source_hash: 'a'.repeat(64), terms_version: 'synthetic-v1',
-      earliest_redeem_date: '2026-10-01', as_of: fixture.date, can_redeem_today: true,
-      redemption_fee_bps: 0, funds_available_date: '2026-11-09' } },
-  verifiedBy: 'fixture', verifiedAt: '2026-11-07T04:00:00.000Z', expectedSeq: 1 });
   const service = createStrategyService(options);
   const withHolding = source => { const next = JSON.parse(JSON.stringify(source)); next.portfolio.holdings = [holding]; return next; };
   const strategy = { status: () => service.status(),
@@ -133,17 +124,6 @@ test('holding exit proposals use an executable holding plan, dedupe and adopt wi
   assert.equal(evaluation[0].process_ok, true);
   assert.equal(evaluation[0].stage, 'holding');
   assert.equal(evaluation[0].outcome, 'unknown');
-  const latest = store.latestCheck(1, holding.lot_id);
-  store.appendCheck({ mappingId: 1, lotId: holding.lot_id, supersedesId: latest.id, facts: { kind: 'holding_redemption',
-    status: 'verified', identity: { source: 'cmb', channel: 'TEST', code: 'S1' },
-    redemption: { rules_verified: true, source_hash: 'b'.repeat(64), terms_version: 'synthetic-v2',
-      earliest_redeem_date: '2026-10-01', as_of: fixture.date, can_redeem_today: false,
-      redemption_fee_bps: 0, funds_available_date: '2026-11-09' } },
-  verifiedBy: 'fixture', verifiedAt: '2026-11-07T05:00:00.000Z', expectedSeq: 1 });
-  const blocked = proposals.generate({ kind: 'holding_exit', lotId: holding.lot_id, amountCents: 5000 });
-  assert.deepEqual(blocked.created, []);
-  assert.equal(blocked.blockers.includes('current_redemption_window_unverified'), true);
-  assert.equal(repository.db.prepare('SELECT count(*) n FROM decision_proposals').get().n, 1);
 });
 
 test('strategy scheduler stays preview-only in legacy, shares recompute and never advances through failures', async () => {
@@ -185,43 +165,4 @@ test('cash change immediately before the completion write lock is rechecked insi
   const service = createStrategyService({ ...options, strategyRepository: wrapped });
   assert.throws(() => service.recompute(), error => error.code === 'input_changed');
   assert.equal(store.watermark('strategy'), null);
-});
-
-test('ledger product code resolves to a unique public share without writing', async t => {
-  const { options, repository } = await setup(t);
-  const service = createStrategyService(options);
-  const before = repository.db.prepare('SELECT total_changes() n').get().n;
-  const match = service.matchShare({ productCode: 'S1' });
-  assert.equal(match.matched, true);
-  assert.deepEqual(match.candidates.map(row => [row.source, row.channel, row.code]), [['cmb', 'TEST', 'S1']]);
-  assert.equal(service.matchShare({ productCode: 'NOPE' }).matched, false);
-  assert.throws(() => service.matchShare({ productCode: '' }), error => error.code === 'invalid_input');
-  assert.equal(repository.db.prepare('SELECT total_changes() n').get().n, before);
-});
-
-test('same-share redemption arrival can be verified and withdrawn through the checks service without writing a holding', async t => {
-  const { options, repository, store, fixture } = await setup(t, 'v9');
-  const trade = { id: 51, trade_type: 'redeem', status: 'confirmed', product_code: 'S1',
-    amount: 50, trade_date: '2026-11-05', confirm_date: '2026-11-06' };
-  t.mock.method(repository.tradeStore, 'listTrades', () => [trade]);
-  const service = createStrategyService(options);
-  assert.equal(service.preview().result.allocation.blocked_cash_cents, 5000);
-  const body = { mapping_id: 1, lot_id: 'trade:51', expected_seq: 1, facts: {
-    kind: 'trade_settlement', payload_version: 1, status: 'verified',
-    identity: { source: 'cmb', channel: 'TEST', code: 'S1' }, trade_id: 51, product_code: 'S1',
-    arrival_date: fixture.date, evidence_hash: 'a'.repeat(64) } };
-  for (const patch of [{ trade_id: 52 }, { product_code: 'M1' }, { arrival_date: '2026-11-04' },
-    { arrival_date: '2026-11-08' }, { evidence_hash: '' }]) {
-    assert.throws(() => service.saveCheck({ ...body, facts: { ...body.facts, ...patch } }), error => error.code === 'invalid_input');
-  }
-  assert.throws(() => service.saveCheck({ ...body, mapping_id: 2 }), error => error.code === 'invalid_input');
-  const saved = service.saveCheck(body);
-  assert.equal(saved.review.executable, true);
-  assert.equal(service.saveCheck(body).existing, true);
-  assert.equal(service.review({ channel: 'TEST', code: 'S1', lot: 'trade:51' }).review.executable, true);
-  assert.equal(service.preview().result.allocation.blocked_cash_cents, 0);
-  service.saveCheck({ ...body, supersedes_id: saved.check.id, facts: { ...body.facts, status: 'withdrawn' } });
-  assert.equal(service.preview().result.allocation.blocked_cash_cents, 5000);
-  assert.equal(store.latestCheck(1, 'trade:51').version, 2);
-  assert.equal(repository.tradeStore.getPortfolio().length, 0);
 });

@@ -37,15 +37,11 @@ function owners(db) {
   return { decisionId, proposalId, legKey: 'buy' };
 }
 const lease = row => ({ id: row.id, expectedSeq: row.activation_seq, inputHash: row.input_hash, token: row.lease_token });
-const mapping = { product_code: 'OLD', source: 'cmb', channel: 'D07', sales_code: 'A', verified_by: 'test',
-  verified_at: '2026-11-07T04:00:00Z', evidence_hash: 'a'.repeat(64), registration_code: 'Z1234567890', expected_seq: 1 };
-
 test('constructor and pre-migration queries are read-only; writes fail closed', () => {
   const db = new DatabaseSync(':memory:');
   try {
     const repo = createStrategyRepository(db);
     assert.equal(repo.state(), null);
-    assert.deepEqual(repo.listMappings(), []);
     assert.deepEqual(repo.reservations(), []);
     assert.equal(repo.reservedCents(), 0);
     assert.throws(() => repo.transition({ expectedSeq: 0, operationKey: 'x', mode: 'shadow' }), error => error.code === 'strategy_unavailable');
@@ -63,25 +59,6 @@ test('activation is atomic, monotonically sequenced, idempotent and rejects old 
   assert.equal(r.transition({ operationKey: 'activate', expectedSeq: 0, mode: 'shadow', summary: { reason: 'test' } }).existing, true);
   assert.throws(() => r.transition({ operationKey: 'activate', expectedSeq: 0, mode: 'v9' }), error => error.code === 'operation_conflict');
   assert.throws(() => r.transition({ operationKey: 'stale', expectedSeq: 0, mode: 'v9' }), error => error.code === 'activation_changed');
-});
-test('same-share mapping versions and pretrade checks append without changing old evidence', async t => {
-  const { repository: r } = await setup(t);
-  const first = r.appendMapping(mapping);
-  assert.equal(r.appendMapping(mapping).id, first.id);
-  assert.throws(() => r.appendMapping({ ...mapping, sales_code: 'B' }), error => error.code === 'mapping_changed');
-  assert.throws(() => r.appendMapping({ ...mapping, product_code: 'OTHER' }), error => error.code === 'mapping_conflict');
-  const check = { mappingId: first.id, expectedSeq: 1, facts: { status: 'pending', assets: { document_hash: 'b'.repeat(64) } }, verifiedBy: 'test', verifiedAt: mapping.verified_at };
-  const a = r.appendCheck(check);
-  assert.equal(r.appendCheck(check).id, a.id);
-  assert.throws(() => r.appendCheck({ ...check, facts: { status: 'withdrawn' } }), error => error.code === 'check_changed');
-  const b = r.appendCheck({ ...check, supersedesId: a.id, facts: { status: 'withdrawn' } });
-  assert.equal(b.version, 2);
-  assert.equal(a.facts.status, 'pending');
-  const second = r.appendMapping({ ...mapping, sales_code: 'B', supersedes_id: first.id });
-  assert.notEqual(second.id, first.id);
-  assert.equal(r.listMappings().length, 1);
-  assert.equal(r.listMappings({ activeOnly: false }).length, 2);
-  assert.throws(() => r.appendCheck({ ...check, supersedesId: b.id, facts: { status: 'verified' } }), error => error.code === 'mapping_changed');
 });
 test('reservations share the business transaction, retries do not reserve twice, and cumulative execution conserves cents', async t => {
   const { db, repository: r, transactionManager } = await setup(t);

@@ -11,6 +11,15 @@ function moneyCents(value) {
 }
 const legKey = code => `buy:${code}`;
 
+function verifiedArrival(settlement, trade) {
+  return settlement?.trade_id === trade.id && settlement.product_code === trade.product_code &&
+    settlement.status === 'verified' && settlement.verified === true &&
+    isoDate(settlement.arrival_date) &&
+    typeof settlement.arrival_verified_at === 'string' &&
+    settlement.arrival_verified_at.trim() !== '' &&
+    Number.isFinite(Date.parse(settlement.arrival_verified_at));
+}
+
 // Convert actual lots, pending trades and accepted intentions into a single
 // post-commitment portfolio. This is a read-only projection: no trades, lots or
 // reservation balances are modified, and in-transit proceeds remain blocked.
@@ -57,8 +66,7 @@ function buildAccountContext({ principal, holdings = [], trades = [], reservatio
     const amount = moneyCents(trade.amount);
     if (trade.status === 'confirmed' && trade.trade_type === 'redeem') {
       const check = settlementChecks[trade.id];
-      const matched = check?.trade_id === trade.id && check.product_code === trade.product_code && check.verified === true &&
-        /^[a-f0-9]{64}$/.test(check.evidence_hash ?? '') && isoDate(check.arrival_date);
+      const matched = verifiedArrival(check, trade);
       if (!matched || check.arrival_date > date) {
         blockedCash += amount;
         if (!matched) blockers.push(`settlement_unverified:${trade.id}`);
@@ -121,7 +129,8 @@ function buildAccountContext({ principal, holdings = [], trades = [], reservatio
       // arrived principal linked to the SAME decision may fund the remainder.
       const arrived = trades.filter(trade => trade.status === 'confirmed' && trade.trade_type === 'redeem' &&
         trade.decision_id === item.decision_id && trade.product_code === item.funding_code &&
-        settlementChecks[trade.id]?.verified === true && settlementChecks[trade.id]?.arrival_date <= date)
+        verifiedArrival(settlementChecks[trade.id], trade) &&
+        settlementChecks[trade.id].arrival_date <= date)
         .reduce((total, trade) => total + moneyCents(trade.amount), 0);
       const alreadyBought = trades.filter(trade => trade.status === 'confirmed' && trade.trade_type === 'buy' &&
         trade.decision_id === item.decision_id && trade.product_code === item.product_code)

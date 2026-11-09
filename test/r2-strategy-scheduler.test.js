@@ -145,16 +145,14 @@ test('holding-monitor cache refreshes public identities only, with bounded retry
   const dbPath = path.join(folder, 'ledger.sqlite');
   const db = new DatabaseSync(dbPath);
   db.exec(`CREATE TABLE r2_strategy_state (singleton INTEGER, ledger_identity TEXT);
-    INSERT INTO r2_strategy_state VALUES(1,'test-ledger-identity');
-    CREATE TABLE r2_share_mappings (id INTEGER,source TEXT,channel TEXT,sales_code TEXT,product_code TEXT,revoked_at TEXT);
-    INSERT INTO r2_share_mappings VALUES(1,'cmb','D07','A','P',NULL)`);
+    INSERT INTO r2_strategy_state VALUES(1,'test-ledger-identity')`);
   t.after(() => { db.close(); fs.rmSync(folder, { recursive: true, force: true }); });
   const ledger = { db, dbPath, tradeStore: { getPortfolio: () => [{ product_code: 'P', lot_id: 'private-lot', amount: 123456 }] } };
   let now = new Date('2026-11-09T04:00:00Z'), calls = 0;
   const args = { ledger, sourceSnapshot: { published: 1 }, date: '2026-11-09', clock: () => now,
     collector: async ({ identities }) => {
       calls++;
-      assert.deepEqual(identities, [{ source: 'cmb', channel: 'D07', code: 'A' }]);
+      assert.deepEqual(identities, [{ source: 'cmb', channel: 'cmb', code: 'P' }]);
       const batch = { scope: 'holding_monitor', business_date: '2026-11-09', collector_version: 'cmb-public-v1',
         captured_at: now.toISOString(), items: [{ identity: identities[0], data: {}, nav_hash: null, issues: [], evidence: [] }] };
       return { ...batch, content_hash: fingerprint(monitorContent(batch)) };

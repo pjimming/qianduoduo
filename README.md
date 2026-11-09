@@ -26,12 +26,12 @@
 
 | 模块 | 路由 | 主要内容 |
 | --- | --- | --- |
-| 收益概览 | `/ledger/overview` | 目标、收益、净值、截图入口和待办 |
+| 收益概览 | `/ledger/overview` | 目标、收益、净值、自动复盘评分、截图入口和待办 |
 | 消息中心 | `/ledger/inbox` | 待补事实、提醒、确认和深链；处理完成后自动清理 |
 | 每日记账 | `/ledger/daily` | 成交/收益截图、例外补正、每日记录、本金 |
 | 交易与持仓 | `/ledger/trades` | 当前持仓净值、交易收件箱、流水和结构 |
-| 选品与配置 | `/ledger/products` | 三分区：初筛（公开份额、批次、证据与交易前复核）、配置、持仓复核；旧 `/ledger/screening` 重定向 |
-| 复盘 | `/ledger/review` | 日/周/月评分、月度五问和季度复盘 |
+| 选品与配置 | `/ledger/products` | 三分区：初筛（公开份额、批次、证据与公开数据可行性校验）、配置、持仓复核；旧 `/ledger/screening` 重定向 |
+| 复盘 | `/ledger/review` | 收益归因、月度五问和季度复盘 |
 | 决策与评估 | `/ledger/evaluation` | 三分区：提案、决策记录、评估与校准 |
 | 每日市场简报 | `/investment/briefs` | 按日期读取收盘简报 |
 | 调研报告库 | `/investment/research` | 报告筛选、全文检索和阅读 |
@@ -201,6 +201,8 @@ npm run pages:build
 
 “选品与配置”分初筛、配置和持仓复核三个分区：初筛按公开销售份额记录业绩、额度、期限和净值，正式候选表示同期限、同分类的研究顺序；配置和持仓复核使用各自冻结输入，不把公开净值当作个人收益。
 
+交易前只做公开数据可行性校验（配额/起购/递增/期限/持有期）并保留 decision_log 与截图留痕；赎回到账核验使用交易记录的 `arrival_date` 字段。
+
 初筛与周配置快照分别刷新，数据库默认使用本机独立的 `data/r2_screening.sqlite`。启用后由工作台在北京时间周一至周五 12:00 采集，法定放假日跳过；午后启动时补跑当日尚未创建的定时批次。查看使用、备份与恢复方法见 [使用手册](USAGE.md#74-选品与配置)。
 
 ## 数据与接口
@@ -240,4 +242,4 @@ npm audit --omit=dev
 ## 2026-11-08 策略执行入口
 
 <!-- r2-strategy-acceptance-2026-11-08 -->
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。
+v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、公开可行性校验（配额/起购/递增/期限/持有期）及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。交易前只做公开数据可行性校验并保留 decision_log 与截图，到账核验只读取交易记录的 arrival_date 字段。

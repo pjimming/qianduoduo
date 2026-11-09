@@ -18,12 +18,10 @@ function frozenV9Snapshot() {
   const row = result.evidence.rows.find(
     (item) => item.identity.code === selected.identity.code,
   );
-  const check = input.checks.find((item) => item.mapping_id === row.mapping.id);
   return buildExecutionSnapshot({
     input,
     result,
     row,
-    check,
     amountCents: selected.amount_cents,
   });
 }
@@ -603,11 +601,14 @@ test('v9 fact corrections append a new maturity evaluation version and keep the 
     ) {
       const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
       if (weekday === 0 || weekday === 6) continue;
+      const coverageStart = shift(date, -2) < snapshot.forecast.confirm_date
+        ? snapshot.forecast.confirm_date
+        : shift(date, -2);
       writeValuation(
         date,
         date === '2026-11-16' ? 0.5 : 0.02,
-        date === snapshot.forecast.confirm_date
-          ? `覆盖收益日期：${date} 至 ${date}`
+        weekday === 1 || date === snapshot.forecast.confirm_date
+          ? `覆盖收益日期：${coverageStart} 至 ${date}`
           : '',
       );
     }

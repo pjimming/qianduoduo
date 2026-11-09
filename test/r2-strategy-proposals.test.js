@@ -30,9 +30,6 @@ async function setup(t, mode = 'v9') {
   const store = createStrategyRepository(repository.db, { transactionManager: repository.transactionManager });
   store.transition({ operationKey: 'test', expectedSeq: 0, mode });
   const fixture = strategyFixture();
-  for (const mapping of fixture.mappings) store.appendMapping({ ...mapping, expected_seq: 1 });
-  for (const check of fixture.checks) store.appendCheck({ mappingId: check.mapping_id, facts: check.facts,
-    verifiedBy: check.verified_by, verifiedAt: check.verified_at, expectedSeq: 1 });
   const strategy = createStrategyService({ repository, strategyRepository: store, todayProvider: () => fixture.date,
     screening: { executionSnapshot: () => fixture.sourceSnapshot } });
   const options = { repository, strategy, strategyRepository: store };
@@ -81,12 +78,11 @@ test('shadow and legacy modes cannot write formal proposals', async t => {
     assert.equal(repository.db.prepare('SELECT count(*) n FROM decision_proposals').get().n, 0);
   }
 });
-test('incomplete asset review can retain a simulation but creates no formal proposal', async t => {
-  const { service, store, repository } = await setup(t);
-  for (const check of store.currentChecks()) store.appendCheck({ mappingId: check.mapping_id, supersedesId: check.id,
-    facts: { ...check.facts, status: 'pending' }, verifiedBy: 'fixture', verifiedAt: check.verified_at, expectedSeq: 1 });
-  assert.deepEqual(service.generate().created, []);
-  assert.equal(repository.db.prepare('SELECT count(*) n FROM decision_proposals').get().n, 0);
+test('no review facts are required to generate proposals and no pretrade code appears', async t => {
+  const { service } = await setup(t);
+  const result = service.generate();
+  assert.equal(result.created.length, 5);
+  assert.ok(!JSON.stringify(result.created.map(row => row.proposal.payload.snapshot.blockers)).includes('pretrade'));
 });
 test('mid-batch write failure rolls back every proposal in the business transaction', async t => {
   const { repository, service } = await setup(t);

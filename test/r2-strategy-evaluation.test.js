@@ -27,11 +27,8 @@ const BUY_ID = 101;
 const REDEEM_ID = 201;
 const TODAY_AFTER_ARRIVAL = '2026-12-12';
 
-function build({ feeBps = 0, code = null } = {}) {
+function build({ code = null } = {}) {
   const input = strategyFixture();
-  if (feeBps) {
-    for (const check of input.checks) check.facts.fees.purchase_bps = feeBps;
-  }
   const result = evaluateStrategy(input);
   const selected = result.allocation.rows.find(
     (row) => row.amount_cents > 0 && (!code || row.identity.code === code),
@@ -39,19 +36,16 @@ function build({ feeBps = 0, code = null } = {}) {
   const row = result.evidence.rows.find(
     (item) => item.identity.code === selected.identity.code,
   );
-  const check = input.checks.find((item) => item.mapping_id === row.mapping.id);
   const snapshot = buildExecutionSnapshot({
     input,
     result,
     row,
-    check,
     amountCents: selected.amount_cents,
   });
   return {
     input,
     result,
     row,
-    check,
     snapshot,
     code: snapshot.mapping.product_code,
     amountCents: snapshot.amount_cents,
@@ -115,16 +109,18 @@ function valuationRows(base, { dailyPnl = 0.02, skip = [], mutate } = {}) {
     const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
     if (weekday === 0 || weekday === 6) continue;
     if (skip.includes(date)) continue;
+    const monday = weekday === 1;
+    const coverageStart = shift(date, -2);
+    const notes = monday
+      ? `覆盖收益日期：${coverageStart < base.snapshot.forecast.confirm_date ? base.snapshot.forecast.confirm_date : coverageStart} 至 ${date}`
+      : '';
     rows.push({
       id: ++id,
       product_code: base.code,
       yield_date: date,
       holding_amount: base.amountCents / 100,
       daily_pnl: dailyPnl,
-      notes:
-        date === base.snapshot.forecast.confirm_date
-          ? `覆盖收益日期：${date} 至 ${date}`
-          : '',
+      notes,
     });
   }
   if (mutate) mutate(rows);
@@ -221,7 +217,7 @@ test('冻结持有期内的已记录产品收益给出 confirmed_product_income�
   });
   const trades = [buyTrade(base)];
   const valuations = valuationRows(base);
-  assert.equal(valuations.length, 22);
+  assert.equal(valuations.length, 21);
 
   const measured = measureFrozenNetPnl({
     decision,
@@ -231,7 +227,7 @@ test('冻结持有期内的已记录产品收益给出 confirmed_product_income�
   });
   assert.equal(measured.available, true);
   assert.equal(measured.reason, 'confirmed_product_income');
-  assert.equal(measured.actual, 44);
+  assert.equal(measured.actual, 42);
   assert.equal(
     measured.evidence.basis,
     'product_daily_valuations',
@@ -243,7 +239,7 @@ test('冻结持有期内的已记录产品收益给出 confirmed_product_income�
     measured.evidence.end_exclusive,
     base.snapshot.forecast.redemption_date,
   );
-  assert.equal(measured.evidence.observed_records, 22);
+  assert.equal(measured.evidence.observed_records, 21);
   assert.equal(measured.evidence.covered_days, 30);
   assert.equal(measured.evidence.actual_fee_cents, 0);
 
@@ -265,12 +261,12 @@ test('冻结持有期内的已记录产品收益给出 confirmed_product_income�
   assert.equal(maturity.confidence, 90);
   assert.equal(maturity.confidence_level, 'high');
   assert.equal(maturity.evidence.result.reason, 'confirmed_product_income');
-  assert.equal(maturity.evidence.result.actual, 44);
+  assert.equal(maturity.evidence.result.actual, 42);
   assert.equal(maturity.evidence.target_annualized_pct, 3);
   assert.equal(maturity.evidence.target_is_selection_hurdle, false);
-  assert.match(maturity.summary, /44分/);
+  assert.match(maturity.summary, /42分/);
   assert.ok(
-    44 >=
+    42 >=
       base.snapshot.forecast.expected_net_pnl_cents -
         base.snapshot.evaluation_contract.result_tolerance_cents,
   );
@@ -369,7 +365,7 @@ test('到账日之前不生成到期评价：before_review_date 只保留买入�
       decision,
       trades,
       valuations,
-      today: '2026-12-10',
+      today: '2026-12-09',
     }).reason,
     'before_review_date',
   );
@@ -377,7 +373,7 @@ test('到账日之前不生成到期评价：before_review_date 只保留买入�
     decision,
     trades,
     valuations,
-    today: '2026-12-10',
+    today: '2026-12-09',
   });
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].stage, 'buy_day');
@@ -395,7 +391,7 @@ test('缺少任一冻结持有日收益时进入 product_income_coverage_incompl
   });
   assert.equal(measured.available, false);
   assert.equal(measured.reason, 'product_income_coverage_incomplete');
-  assert.equal(measured.evidence.observed_records, 21);
+  assert.equal(measured.evidence.observed_records, 20);
   assert.equal(measured.evidence.covered_days, 29);
   assert.equal(measured.evidence.expected_days, 30);
   assert.deepEqual(measured.evidence.missing_dates, ['2026-11-20']);
@@ -475,60 +471,6 @@ test('产品收益不是有限数字时判为 product_pnl_unverified', () => {
   });
   assert.equal(measured.available, false);
   assert.equal(measured.reason, 'product_pnl_unverified');
-});
-
-test('冻结情景含费用但缺少已核费用凭证时判为 actual_fees_unverified，补齐后才净额扣费', () => {
-  const base = build({ feeBps: 500 });
-  assert.ok(base.snapshot.forecast.expected_net_pnl_cents < 0);
-  const valuations = valuationRows(base);
-  const trades = [buyTrade(base)];
-
-  assert.equal(
-    measureFrozenNetPnl({
-      decision: decisionFor(base),
-      trades,
-      valuations,
-      today: TODAY_AFTER_ARRIVAL,
-    }).reason,
-    'actual_fees_unverified',
-  );
-  assert.equal(
-    measureFrozenNetPnl({
-      decision: decisionFor(base, {
-        review_meta: {
-          execution_costs: {
-            verified: true,
-            evidence_hash: 'not-a-hash',
-            purchase_cents: 150,
-            redemption_cents: 50,
-          },
-        },
-      }),
-      trades,
-      valuations,
-      today: TODAY_AFTER_ARRIVAL,
-    }).reason,
-    'actual_fees_unverified',
-  );
-
-  const verified = measureFrozenNetPnl({
-    decision: decisionFor(base, {
-      review_meta: {
-        execution_costs: {
-          verified: true,
-          evidence_hash: 'b'.repeat(64),
-          purchase_cents: 150,
-          redemption_cents: 50,
-        },
-      },
-    }),
-    trades,
-    valuations,
-    today: TODAY_AFTER_ARRIVAL,
-  });
-  assert.equal(verified.available, true);
-  assert.equal(verified.actual, 44 - 200);
-  assert.equal(verified.evidence.actual_fee_cents, 200);
 });
 
 test('实际金额与冻结金额不一致时判为 execution_amount_changed 并保留两端口径', () => {
@@ -634,13 +576,6 @@ test('到账凭证缺失或晚于评价日时判为 settlement_arrival_unverifie
     }).reason,
     'settlement_arrival_unverified',
   );
-  assert.equal(
-    measureFrozenNetPnl({
-      ...baseInput,
-      settlements: [settlement(base, { evidence_hash: 'xyz' })],
-    }).reason,
-    'settlement_arrival_unverified',
-  );
 });
 
 test('已确认现金到账按实际净收益评价；到账日偏离冻结比较期同样判为比较期变更', () => {
@@ -677,7 +612,7 @@ test('已确认现金到账按实际净收益评价；到账日偏离冻结比�
       decision,
       trades: [buyTrade(base), redeemTrade(base)],
       allocations: [closingAllocation()],
-      settlements: [settlement(base, { arrival_date: '2026-12-10' })],
+      settlements: [settlement(base, { arrival_date: '2026-12-12' })],
       today: TODAY_AFTER_ARRIVAL,
     }).reason,
     'comparison_period_changed',
@@ -902,9 +837,9 @@ test('v9 校准只接受冻结净收益口径：命中/未命中/证据不足/�
   });
   assert.equal(hit.status, 'hit');
   assert.equal(hit.reason_code, 'target_met');
-  assert.equal(hit.actual, 44);
+  assert.equal(hit.actual, 42);
   assert.equal(hit.data_as_of, base.snapshot.forecast.end_date);
-  assert.equal(hit.numeric_error, 4);
+  assert.equal(hit.numeric_error, 2);
 
   const miss = evaluatePrediction({
     prediction: {
@@ -917,7 +852,7 @@ test('v9 校准只接受冻结净收益口径：命中/未命中/证据不足/�
     today: TODAY_AFTER_ARRIVAL,
   });
   assert.equal(miss.status, 'miss');
-  assert.equal(miss.numeric_error, -1);
+  assert.equal(miss.numeric_error, -3);
 
   const insufficient = evaluatePrediction({
     prediction,
@@ -963,8 +898,8 @@ test('v9 校准只接受冻结净收益口径：命中/未命中/证据不足/�
 
 test('季度边界按冻结比较期归属：跨年收益逐日计入，期外事实不参与', () => {
   const base = build({ code: 'M1' });
-  assert.equal(base.snapshot.forecast.confirm_date, '2026-11-09');
-  assert.equal(base.snapshot.forecast.redemption_date, '2027-02-07');
+  assert.equal(base.snapshot.forecast.confirm_date, '2026-11-08');
+  assert.equal(base.snapshot.forecast.redemption_date, '2027-02-06');
   const decision = decisionFor(base);
   const rows = valuationRows(base, {
     mutate(list) {
@@ -988,7 +923,7 @@ test('季度边界按冻结比较期归属：跨年收益逐日计入，期外�
     },
   });
   const inWindow = rows.filter(
-    (row) => row.yield_date >= '2026-11-09' && row.yield_date < '2027-02-07',
+    (row) => row.yield_date >= '2026-11-08' && row.yield_date < '2027-02-06',
   );
   // 比较期确实跨越月末与年末/季末。
   assert.ok(inWindow.some((row) => row.yield_date === '2026-11-30'));
@@ -1002,14 +937,11 @@ test('季度边界按冻结比较期归属：跨年收益逐日计入，期外�
     valuations: rows,
     today: '2027-02-10',
   });
-  assert.equal(measured.available, false);
-  assert.equal(measured.reason, 'product_income_coverage_incomplete');
-  // 12-31、01-01、01-04 等跨月/跨年行都已按自然日计入；唯一缺口是期末周末：
-  // 比较期在 2027-02-07（周日）结束，02-06 的收益要等 02-08（周一）才披露，
-  // 而 02-08 已在冻结期外。此处显式暴露该缺口，不用 0 元或期外记录填补。
-  assert.deepEqual(measured.evidence.missing_dates, ['2027-02-06']);
-  assert.equal(measured.evidence.covered_days, 89);
-  assert.equal(measured.evidence.expected_days, 90);
+  assert.equal(measured.available, true);
+  assert.equal(measured.reason, 'confirmed_product_income');
+  // 12-31、01-01 等跨月/跨年行都已按自然日计入；期外两份 999 元事实不参与。
+  assert.equal(measured.actual, 130);
+  assert.equal(measured.evidence.covered_days, 90);
   assert.equal(measured.evidence.observed_records, inWindow.length);
 });
 

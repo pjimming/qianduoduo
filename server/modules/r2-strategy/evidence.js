@@ -8,7 +8,7 @@ const { calculateReferenceYield } = require('../../../lib/yield-policy');
 const identityKey = ({ source, channel, code }) => JSON.stringify([source, channel, code]);
 const numeric = value => value === null || value === undefined || String(value).trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 
-function adaptSnapshot(snapshot, date, mappings = []) {
+function adaptSnapshot(snapshot, date) {
   if (!isoDate(date)) throw new Error('策略业务日必须为有效日期');
   if (!snapshot) return freeze({ date, available: false, blockers: ['no_published_batch'], rows: [], fingerprint: null });
   const { run } = snapshot;
@@ -28,16 +28,21 @@ function adaptSnapshot(snapshot, date, mappings = []) {
     list.push(proof);
     proofs.set(key, list);
   }
-  const active = mappings.filter(row => !row.revoked_at);
   const rows = snapshot.rows.map(row => {
     const data = structuredClone(row.data);
     const identity = { source: row.source, channel: row.channel, code: row.code };
     const evidence = structuredClone(proofs.get(identityKey(row)) ?? []);
     const performance = evidence.find(item => item.kind === 'performance')?.summary;
-    const mapped = active.filter(item => item.source === row.source && item.channel === row.channel && item.sales_code === row.code);
-    const mapping = mapped.length === 1 ? mapped[0] : null;
-    const mappingValid = mapping && active.filter(item => item.product_code === mapping.product_code).length === 1 &&
-      (!mapping.registration_code || !data.detail?.registration || mapping.registration_code === data.detail.registration);
+    // Public share identity is the ledger product identity. The retired product
+    // mapping table is deliberately not consulted.
+    const mapping = {
+      id: null,
+      source: row.source,
+      channel: row.channel,
+      sales_code: row.code,
+      product_code: row.code,
+      registration_code: data.detail?.registration ?? null,
+    };
     const monthly = decimal(data.performance?.['1m']);
     const performanceVerified = performance && ['R2', 'PR2'].includes(performance.risk) && performance.currency === 'CNY' &&
       performance.public_offering === true && performance.performance_date === data.performance_date && monthly !== null &&
@@ -46,10 +51,8 @@ function adaptSnapshot(snapshot, date, mappings = []) {
       : monthly < decimal(CONTRACT.min_monthly_yield) ? 'below' : 'pass';
     const navFresh = fresh(data.metrics?.latest, date) && fresh(data.metrics?.end, date);
     const reasons = [];
-    if (!mappingValid) reasons.push(mapping ? 'mapping_conflict' : mapped.length ? 'mapping_ambiguous' : 'mapping_missing');
     if (data.channel !== row.channel || data.code !== row.code) reasons.push('share_identity_conflict');
     if (!performanceVerified) reasons.push('scope_unverified');
-    if (mapping?.registration_code && !data.detail?.registration) reasons.push('registration_unverified');
     if (yieldState !== 'pass') reasons.push(yieldState === 'below' ? 'yield_below' : 'yield_unverified');
     if (!navFresh) reasons.push('nav_stale');
     if (!/^[a-f0-9]{64}$/.test(row.nav_hash ?? '')) reasons.push('nav_hash_missing');
@@ -70,7 +73,7 @@ function adaptSnapshot(snapshot, date, mappings = []) {
     // The bank's amount is display text. Parsing and order increments belong to
     // the allocation adapter; a blank value is explicitly a policy assumption.
     quota.policy_assumption = quota.status === 0 && quota.amount === null ? CONTRACT.blank_quota_assumption : null;
-    const body = { identity, mapping: mappingValid ? structuredClone(mapping) : null, run_id: run.id,
+    const body = { identity, mapping: structuredClone(mapping), run_id: run.id,
       name: data.name ?? row.code, issuer: data.issuer ?? '', detail: data.detail ?? null,
       registration: data.detail?.registration ?? null, group: `${data.term?.days}/${data.category}`, rank: data.rank,
       shortlisted: data.shortlisted, screening_status: data.status, performance: data.performance,
@@ -80,7 +83,7 @@ function adaptSnapshot(snapshot, date, mappings = []) {
       evidence_tier: tier, reference, evidence, hints: data.hints, blockers: reasons,
       automatic_eligible: blockers.length === 0 && reasons.length === 0,
       // Sale availability and shortlist rank are deliberately absent here.
-      holding_yield_state: mappingValid && data.channel === row.channel && data.code === row.code && performanceVerified
+      holding_yield_state: data.channel === row.channel && data.code === row.code && performanceVerified
         ? yieldState : 'pending' };
     return { ...body, evidence_hash: fingerprint(body) };
   });
@@ -90,8 +93,8 @@ function adaptSnapshot(snapshot, date, mappings = []) {
 }
 
 function createStrategyEvidenceAdapter({ screeningRepository }) {
-  return { read(date, mappings = []) {
-    try { return adaptSnapshot(screeningRepository?.readExecutionSnapshot() ?? null, date, mappings); }
+  return { read(date) {
+    try { return adaptSnapshot(screeningRepository?.readExecutionSnapshot() ?? null, date); }
     catch { return freeze({ date, available: false, blockers: ['screening_unavailable'], rows: [], fingerprint: null }); }
   } };
 }

@@ -2,25 +2,21 @@
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { identityKey } = require('./evidence');
-const { reviewPretrade } = require('./pretrade');
 const { buildBuyForecast } = require('./forecast');
 const { payload } = require('./repository');
 
-function buildExecutionSnapshot({ result, row, check, amountCents, purpose = 'buy' }) {
+function buildExecutionSnapshot({ result, row, amountCents, purpose = 'buy' }) {
   if (purpose !== 'buy') throw new Error('该快照构建器仅支持已核验买入；退出与切换需使用各自用例');
-  const review = reviewPretrade({ row, check, date: result.input.business_date, amountCents });
   const selection = result.allocation.rows.find(item => identityKey(item.identity) === identityKey(row.identity));
-  if (purpose === 'buy' && (!result.may_generate_buy_proposals || !review.executable || !selection || selection.amount_cents !== amountCents)) {
-    throw new Error('当前策略、配置金额或交易前复核未通过，不能冻结正式买入快照');
+  if (purpose === 'buy' && (!result.may_generate_buy_proposals || !selection || selection.amount_cents !== amountCents)) {
+    throw new Error('当前策略、配置金额或公开数据可行性未通过，不能冻结正式买入快照');
   }
-  const forecast = buildBuyForecast({ row, check, amountCents, date: result.input.business_date });
+  const forecast = buildBuyForecast({ row, amountCents, date: result.input.business_date });
   if (purpose === 'buy' && forecast.status !== 'available') throw new Error('收益情景不可计算，不能冻结正式买入快照');
   const body = JSON.parse(JSON.stringify({ payload_version: CONTRACT.payload_version, purpose,
     execution_version: CONTRACT.execution_version, contract_hash: CONTRACT_HASH, contract: CONTRACT,
     input: result.input, input_fingerprint: result.input_fingerprint,
     identity: row.identity, mapping: row.mapping, source_evidence: row,
-    pretrade: { id: check.id, version: check.version, evidence_hash: check.evidence_hash ?? fingerprint(check.facts),
-      verified_at: check.verified_at, verified_by: check.verified_by, facts: check.facts, review_fingerprint: review.fingerprint },
     amount_cents: amountCents,
     portfolio: result.account,
     allocation: { version: result.allocation.version, fingerprint: result.allocation.fingerprint,

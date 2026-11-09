@@ -229,6 +229,9 @@ function validateTradePayload(payload, options = {}) {
       maturity_date: maturityDate,
       decision_id: decisionId,
       notes,
+      ...(Object.prototype.hasOwnProperty.call(payload, 'arrival_date')
+        ? { arrival_date: payload.arrival_date }
+        : {}),
     },
   };
 }

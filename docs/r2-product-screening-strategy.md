@@ -1,8 +1,8 @@
 # R2 理财选品初筛策略
 
-版本 v9 · 2026-11-07 · 产品初筛与交易前复核口径
+版本 v9 · 2026-11-07 · 2026-11-08 修订：产品初筛与人工交易前核对口径
 
-适用于人民币公募 R2/PR2 理财。按销售份额匹配数据，先查近期收益、公开产品期限、历史净值和额度状态，再形成候选。正式最短持有期、到账规则和实际资产配置留到交易前复核，费率和业绩比较基准不参与本轮筛选或排序。工作台现有产品池、收益评分和组合规则见 [MEMORY.md](../MEMORY.md)。初筛进入统一执行层、持仓复核与评估分发的口径见 [R2 策略整合计划](r2-strategy-integration-plan.md)，本地实施与验收状态见 [TD-R2-STRATEGY-001](tasks/active/TD-R2-STRATEGY-001/TD-R2-STRATEGY-001.md)。
+适用于人民币公募 R2/PR2 理财。按销售份额匹配数据，先查近期收益、公开产品期限、历史净值和额度状态，再形成候选。正式最短持有期、到账规则和实际资产配置留到交易前人工一次性核对，应用内不再提供逐项复核表单；费率和业绩比较基准不参与本轮筛选或排序。工作台现有产品池、收益评分和组合规则见 [MEMORY.md](../MEMORY.md)。初筛进入统一执行层、持仓复核与评估分发的口径见 [R2 策略整合计划](r2-strategy-integration-plan.md)，本地实施与验收状态见 [TD-R2-STRATEGY-001](tasks/active/TD-R2-STRATEGY-001/TD-R2-STRATEGY-001.md)。
 
 ## 一、收益与净值门槛
 
@@ -53,7 +53,7 @@
 | 批量查公开剩余额度 | `POST https://mobile.cmbchina.com/ientrustfinance/financelist/alllist` | 以 `evlLvl: "R2"` 查询，从 `bizResult.data.prdList` 按 `ripCod`、`saaCod` 匹配，读取 `dxsTag` 的「剩余额度」金额。分页沿用响应游标 `yDalCod`、`yPagCnt`、`yRipCod`、`ySaaCod`、`timTmp`。实测 25 页 250 只中仅 24 只有金额标签，试传产品代码未能使此接口精确返回单只。 |
 | 产品详情及登记编码 | `POST https://cfweb.paas.cmbchina.com/api/ProductInfo/getSAProductDetailInfo` | `saaCod`、`funCod` 放在查询参数。核对销售代码、登记编码 `regCode`、产品分类、起购及可见状态，详情期限字段用于辅助定位。 |
 | 正式说明书与申赎条款 | `POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getSAProductExplain` | JSON 请求含 `funCod`、`saaCod`，响应可取说明书 PDF 地址。核对持有期、开放日、受理和到账规则。 |
-| 临时公告与定期报告 | `POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getSAProdNoticeList`、`POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getSAProdIRList` | `saaCod`、`funCod` 放在查询参数。公告核对申赎安排变动，定期报告供交易前复核。由列表取 `id`，再请求 `POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getProdNoticeInfoByID?id=601114` 这类详情地址获取附件。 |
+| 临时公告与定期报告 | `POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getSAProdNoticeList`、`POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getSAProdIRList` | `saaCod`、`funCod` 放在查询参数。公告核对申赎安排变动，定期报告供交易前人工核对。由列表取 `id`，再请求 `POST https://cfweb.paas.cmbchina.com/api/ProductNotice/getProdNoticeInfoByID?id=601114` 这类详情地址获取附件。 |
 
 **请求验证。** 统一查询平台和桌面一网通接口使用公开页面生成的当次请求头。桌面接口已观察到 `appid`、`timespan`、`signature`，裸请求返回 `CFN0511`。产品净值请求体为普通 JSON。`120056A` 用 `saaCod=D07`、`pageIndex=1`、`pageSize=500` 实测取回 336 条唯一净值日，覆盖 2025-06-19 至 2026-11-05。另抽查 `100800`、`799001A` 均返回历史净值，但数据深度因产品而异。`saaCod` 按公开接口的销售渠道标识使用。 [招行历史净值页](https://cfweb.paas.cmbchina.com/Personal/saproductdetail?saaCod=D07&funCod=120056A&type=prodvalue#toTarget)
 
@@ -61,7 +61,9 @@
 
 **快照边界。** 工作台 `/api/dashboard/products` 返回已入库研究池，CSV 仅包含产品列表字段。2026-11-02 落盘快照中有 1,000 条公开标记为开放的记录，其中 938 条有近 1 月年化及数据日，业绩日期最晚为 11 月 1 日。统一查询平台另有基准测算说明 `zbasDsc` 及部分交易费字段，本轮筛选无需采集。正式筛选前从公开接口更新数据，历史净值、额度状态及金额、申赎条款和披露报告按上表另取。采集和核验只使用公开产品数据。 [现有快照字段映射](../scripts/fetch-cmb-r2-all.cjs)
 
-## 四、交易前复核与留痕
+## 四、交易前人工核对与留痕
+
+交易前核对仍是人工一次性尽调，下列期限与到账、底层资产、久期和候选记录的方法论不变。应用内不再提供逐项 49 项复核表单；核对结论写入决策记录（`decision_log` 与交易截图）。赎回到账在交易记录填写「实际到账日」，写入 `trade_transactions.arrival_date` 并记录 `arrival_verified_at`。
 
 - **期限与到账。** 买入前由用户协助核对正式封闭期限或最短持有期，以及到账规则。按实际申购或持仓确认日、赎回窗口、申请截止、赎回确认及到账时间计算预计最早资金可用日。`next_open_date` 只作买入开放线索。
 

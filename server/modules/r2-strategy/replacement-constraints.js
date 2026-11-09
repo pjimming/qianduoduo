@@ -8,16 +8,18 @@ const safe = n => Number.isSafeInteger(n) && n >= 0;
 
 // Validate the exact post-switch exposure against the same principal and caps
 // used by allocation. No extra purchase budget or assumed future quota is added.
-function validateReplacementPortfolio({ account, settings = {}, holding, candidate, pretrade, amount_cents: amount }) {
+function validateReplacementPortfolio({ account, settings = {}, holding, candidate, limits = null, amount_cents: amount }) {
   const reasons = [];
   const fail = reason => ({ ok: false, reasons: [reason] });
   if (!account?.verified || account.contract_hash !== CONTRACT_HASH || account.blockers?.length ||
       !safe(account.principal_cents) || account.principal_cents <= 0 || !safe(amount) || amount <= 0 ||
       !Array.isArray(account.exposures)) return fail('replacement_account_unverified');
-  const limits = pretrade?.limits;
-  if (pretrade?.executable !== true || !candidate?.automatic_eligible || !limits?.product_key || !limits.family_key ||
-      typeof limits.liquidity_eligible !== 'boolean' || !isoDate(limits.available_on) ||
-      !['full_1y', 'six_month', 'three_month'].includes(candidate.evidence_tier)) return fail('replacement_limits_unverified');
+  if (!candidate?.automatic_eligible || !limits?.product_key || !limits.family_key ||
+      typeof limits.liquidity_eligible !== 'boolean' || !safe(limits.available_cents) ||
+      limits.minimum_cents > amount || amount % limits.increment_cents !== 0 ||
+      limits.available_cents < amount || !['full_1y', 'six_month', 'three_month'].includes(candidate.evidence_tier)) {
+    return fail('replacement_limits_unverified');
+  }
   const singlePct = settings.max_single_pct ?? CONTRACT.max_single_pct;
   const liquidityPct = settings.liquidity_floor_pct ?? CONTRACT.liquidity_floor_pct;
   if (!Number.isFinite(singlePct) || singlePct < 25 || singlePct > CONTRACT.max_single_pct ||

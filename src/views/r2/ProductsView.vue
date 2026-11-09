@@ -6,7 +6,6 @@ import R2PageHeader from '@/components/r2/R2PageHeader.vue'
 import WorkspaceNav from '@/components/r2/WorkspaceNav.vue'
 import ProductsSection from '@/components/ProductsSection.vue'
 import ProductEventsPanel from '@/components/review/ProductEventsPanel.vue'
-import StrategyReviewPanel from '@/components/review/StrategyReviewPanel.vue'
 import HoldingReviewPanel from '@/components/r2/HoldingReviewPanel.vue'
 import HoldingPerformancePanel from '@/components/r2/HoldingPerformancePanel.vue'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -150,16 +149,6 @@ const navItems = computed(() => [
   },
 ])
 
-const strategyChannel = computed(() =>
-  typeof route.query.channel === 'string' ? route.query.channel : '',
-)
-const strategyCode = computed(() =>
-  typeof route.query.code === 'string' ? route.query.code : '',
-)
-const strategyLot = computed(() =>
-  typeof route.query.lot === 'string' ? route.query.lot : '',
-)
-
 function holdingsLink(
   view: 'review' | 'performance' | 'events',
 ): { path: string; query: Record<string, string | undefined>; hash: string } {
@@ -253,15 +242,6 @@ function holdingsLink(
         <div v-else-if="strategyError" class="rw-alert is-warn" role="alert">{{ strategyError }} <button type="button" class="link-button" @click="loadStrategy">重新读取策略</button></div>
         <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9'" :workspace="strategy" section="allocation" @refresh="loadStrategy" />
         <ProductsSection v-else-if="data && strategy" :dashboard="data" />
-        <section id="strategy-review" class="rw-panel r2-anchor" aria-label="交易前复核与产品映射">
-          <StrategyReviewPanel
-            :channel="strategyChannel"
-            :code="strategyCode"
-            :lot="strategyLot"
-            :ledger-product-code="typeof route.query.product_code === 'string' ? route.query.product_code : ''"
-            @saved="loadStrategy"
-          />
-        </section>
       </section>
 
       <section

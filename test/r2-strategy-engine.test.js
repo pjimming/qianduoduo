@@ -4,14 +4,17 @@ const assert = require('node:assert/strict');
 const { strategyFixture } = require('./fixtures/r2-strategy.cjs');
 const { evaluateStrategy, compactStrategyResult } = require('../server/modules/r2-strategy/engine');
 
-test('same frozen contract connects public screen, allocation, pretrade review and proposal eligibility', () => {
-  const fixture = strategyFixture(), before = JSON.stringify(fixture);
+test('same frozen contract connects public screen, allocation and proposal eligibility without review facts', () => {
+  const fixture = strategyFixture();
+  fixture.mappings = [];
+  fixture.checks = [];
+  const before = JSON.stringify(fixture);
   const result = evaluateStrategy(fixture);
   assert.equal(result.evidence.rows.length, 6);
   assert.equal(result.allocation.status, 'simulation_passed');
   assert.equal(result.allocation.allocated_cents, 10000);
   assert.equal(result.may_generate_buy_proposals, true);
-  assert.ok(result.selected_reviews.every(row => row.executable));
+  assert.ok(!JSON.stringify(result.allocation.blockers).includes('pretrade'));
   assert.equal(JSON.stringify(fixture), before);
   const compact = compactStrategyResult(result);
   assert.equal(compact.input.source_fingerprint, result.evidence.fingerprint);
@@ -28,25 +31,25 @@ test('legacy and shadow execution cannot create formal proposals or exit intents
     assert.deepEqual(result.exit_intents, []);
   }
 });
-test('asset review and current-day App quota stay separate from a valid allocation simulation', () => {
+test('missing review facts no longer block proposal generation or create pretrade blockers', () => {
   const fixture = strategyFixture();
-  fixture.checks.forEach(row => { row.facts.assets.actual_assets_verified = false; });
+  fixture.mappings = [];
+  fixture.checks = [];
   const result = evaluateStrategy(fixture);
   assert.equal(result.allocation.full_investment, true);
-  assert.equal(result.may_generate_buy_proposals, false);
-  assert.ok(result.selected_reviews.every(row => row.blockers.includes('assets_unverified')));
+  assert.equal(result.may_generate_buy_proposals, true);
+  assert.ok(!JSON.stringify(result).includes('pretrade'));
 });
-test('mapping removal, new account commitments and source changes alter the shared input fingerprint', () => {
+test('source and account changes alter the shared input fingerprint without any pretrade fact', () => {
   const fixture = strategyFixture(), before = evaluateStrategy(fixture);
-  fixture.mappings[0].revoked_at = '2026-11-07T05:00:00Z';
+  fixture.sourceSnapshot.run.id = 2;
   const after = evaluateStrategy(fixture);
   assert.notEqual(after.input_fingerprint, before.input_fingerprint);
-  assert.equal(after.pretrade_reviews.some(row => row.identity.code === 'S1'), false);
-  fixture.sourceSnapshot.run.id = 2;
+  fixture.portfolio.holdings = [{ lot_id: 'legacy:FP', product_code: 'S1', amount: 1 }];
   assert.notEqual(evaluateStrategy(fixture).input_fingerprint, after.input_fingerprint);
 });
 
-test('legacy holdings fall back to conservative product-master classification, while verified pretrade limits still win', () => {
+test('legacy holdings fall back to conservative product-master classification, while public limits still win', () => {
   const fixture = strategyFixture();
   fixture.portfolio.holdings = [
     { lot_id: 'legacy:H1', product_code: 'H1', amount: 25, term_days: 90 },

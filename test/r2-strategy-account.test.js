@@ -10,7 +10,8 @@ const reserve = (patch = {}) => ({ id: 1, decision_id: 1, leg_key: 'buy:B', stat
 const holding = (amount = 50, code = 'A', lot = 'old:A') => ({ lot_id: lot, product_code: code, amount, term_days: 30 });
 const pending = (patch = {}) => ({ id: 1, decision_id: 1, status: 'pending', trade_type: 'buy', product_code: 'B', amount: 30, term_days: 30, ...patch });
 const input = patch => ({ principal: 100, date: '2026-11-07', assetsByCode, holdings: [holding()], trades: [], reservations: [], decisions: [decision()], ...patch });
-const settlement = id => ({ trade_id: id, product_code: 'A', verified: true, arrival_date: '2026-11-07', evidence_hash: 'a'.repeat(64) });
+const settlement = id => ({ trade_id: id, product_code: 'A', status: 'verified', verified: true,
+  arrival_date: '2026-11-07', arrival_verified_at: '2026-11-07T00:00:00.000Z', evidence_hash: 'a'.repeat(64) });
 
 test('confirmed holdings, pending screenshot and accepted reservation occupy the same principal once', () => {
   const value = buildAccountContext(input({ trades: [pending()], reservations: [reserve()] }));
@@ -61,19 +62,23 @@ test('pending redemption keeps source capital occupied; confirmation alone does 
   const inTransit = buildAccountContext(input({ holdings: [], trades: [{ ...redeem, status: 'confirmed' }] }));
   assert.equal(inTransit.blocked_cash_cents, 5000);
   assert.ok(inTransit.blockers.includes('settlement_unverified:1'));
-  const arrived = buildAccountContext(input({ holdings: [], trades: [{ ...redeem, status: 'confirmed' }], settlementChecks: { 1: settlement(1) } }));
+  const arrived = buildAccountContext(input({ holdings: [], trades: [{ ...redeem, status: 'confirmed',
+    arrival_date: '2026-11-07', arrival_verified_at: '2026-11-07T00:00:00.000Z' }], settlementChecks: { 1: settlement(1) } }));
   assert.equal(arrived.blocked_cash_cents, 0);
   assert.equal(arrived.verified, true);
 });
 test('a split switch after verified redemption uses the same decision proceeds rather than borrowing unrelated holdings', () => {
-  const trades = [pending({ id: 1, trade_type: 'redeem', product_code: 'A', status: 'confirmed', amount: 50 }),
+  const trades = [pending({ id: 1, trade_type: 'redeem', product_code: 'A', status: 'confirmed', amount: 50,
+    arrival_date: '2026-11-07', arrival_verified_at: '2026-11-07T00:00:00.000Z' }),
     pending({ id: 2, trade_type: 'buy', product_code: 'B', amount: 50 })];
   const value = buildAccountContext(input({ holdings: [], trades, decisions: [decision('切换')],
     reservations: [reserve({ amount_cents: 5000 })], settlementChecks: { 1: settlement(1) } }));
   assert.equal(value.verified, true);
   assert.equal(value.committed_cents, 5000);
   assert.equal(value.available_cents, 5000);
-  const unarrived = buildAccountContext(input({ holdings: [], trades, decisions: [decision('切换')], reservations: [reserve({ amount_cents: 5000 })] }));
+  const unarrived = buildAccountContext(input({ holdings: [],
+    trades: trades.map(trade => trade.id === 1 ? { ...trade, arrival_date: null, arrival_verified_at: null } : trade),
+    decisions: [decision('切换')], reservations: [reserve({ amount_cents: 5000 })] }));
   assert.equal(unarrived.verified, false);
   assert.ok(unarrived.blockers.includes('switch_funding_unavailable'));
 });

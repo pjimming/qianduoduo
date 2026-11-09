@@ -15,7 +15,7 @@ async function exitHolding(lot: string) {
   busy.value = true; error.value = ''; message.value = ''
   try {
     const response = await generateHoldingExit(lot, props.workspace.input_fingerprint)
-    message.value = response.created.length ? '退出提案已生成，请到决策与评估审阅；采纳后仍需在银行执行。' : '退出提案暂不可生成：' + (response.blockers || ['复核证据待补齐']).map(label).join('；')
+    message.value = response.created.length ? '退出提案已生成，请到决策与评估审阅；采纳后仍需在银行执行。' : '退出提案暂不可生成：' + (response.blockers || ['约束条件待满足']).map(label).join('；')
     emit('refresh')
   } catch (caught) { error.value = caught instanceof Error ? caught.message : '生成退出提案失败' }
   finally { busy.value = false }
@@ -23,7 +23,7 @@ async function exitHolding(lot: string) {
 const result = computed(() => props.workspace.result)
 const current = computed(() => !props.workspace.stale && result.value?.input.activation_seq === props.workspace.activation_seq && result.value?.input.mode === props.workspace.mode)
 const stateNames: Record<string, string> = { exit_required: '准备退出', exit_at_open: '锁定中 · 到期核验退出', exit_rules_pending: '退出规则待核', evidence_pending: '续持证据待核', risk_review: '风险复核', hold: '达到续持门槛', simulation_passed: '约束测算通过', pending: '证据或账户待核', no_feasible_full_allocation: '无可行满仓方案' }
-const reasons: Record<string, string> = { principal_unavailable: '本金尚未初始化', evidence_unavailable: '公开证据不可用', account_unverified: '账户占用或持仓信息待核', account_invalid: '账户输入异常', account_overcommitted: '持仓及承诺金额超出本金', existing_evidence_single_cap: '存量持仓超出证据层单一上限', existing_evidence_tier_cap: '存量持仓超出证据层合计上限', existing_product_cap: '存量持仓超出单一产品上限', existing_family_cap: '存量持仓超出策略家族上限', liquidity_or_cashflow_conflict: '流动性或近期用款约束冲突', exposure_unverified: '持仓风险敞口待核', settings_invalid: '配置约束待核', cash_needs_invalid: '用款约束待核', allocation_model_limit: '候选规模超出计算限制', pretrade_identity_unverified: '同份额身份待核', screening_not_automatic: '尚未满足自动配置门槛', pretrade_incomplete: '交易前事实未核实', pretrade_withdrawn: '交易前复核已撤回', formal_terms_unverified: '正式期限条款待核', settlement_path_unverified: '申赎到账路径待核', fees_unverified: '费用待核', assets_unverified: '底层资产待核', prohibited_assets_or_unknown: '禁投资产敞口待核', equity_limit_unverified: '权益上限待核', duration_or_distribution_unverified: '久期或期限分布待核', app_availability_unverified: '当日 App 额度待核', allocation_limits_unverified: '起购、递增或集中度依据待核', public_quota_unverified: '公开额度待核', redemption_fee_or_arrival_unverified: '赎回费用或资金到账安排待核', redemption_rules_unverified: '赎回条款待核', current_redemption_window_unverified: '当日赎回窗口待核', holding_exit_not_current_plan: '当前批次尚未形成可执行退出计划' }
+const reasons: Record<string, string> = { principal_unavailable: '本金尚未初始化', evidence_unavailable: '公开证据不可用', account_unverified: '账户占用或持仓信息待核', account_invalid: '账户输入异常', account_overcommitted: '持仓及承诺金额超出本金', existing_evidence_single_cap: '存量持仓超出证据层单一上限', existing_evidence_tier_cap: '存量持仓超出证据层合计上限', existing_product_cap: '存量持仓超出单一产品上限', existing_family_cap: '存量持仓超出策略家族上限', liquidity_or_cashflow_conflict: '流动性或近期用款约束冲突', exposure_unverified: '持仓风险敞口待核', settings_invalid: '配置约束待核', cash_needs_invalid: '用款约束待核', allocation_model_limit: '候选规模超出计算限制', screening_not_automatic: '尚未满足自动配置门槛', formal_terms_unverified: '正式期限条款待核', settlement_path_unverified: '申赎到账路径待核', fees_unverified: '费用待核', assets_unverified: '底层资产待核', prohibited_assets_or_unknown: '禁投资产敞口待核', equity_limit_unverified: '权益上限待核', duration_or_distribution_unverified: '久期或期限分布待核', app_availability_unverified: '当日 App 额度待核', allocation_limits_unverified: '起购、递增或集中度依据待核', public_quota_unverified: '公开额度待核', redemption_fee_unverified: '赎回费用待核', redemption_fee_or_arrival_unverified: '赎回费用或资金到账安排待核', redemption_rules_unverified: '赎回条款待核', current_redemption_window_unverified: '当日赎回窗口待核', holding_exit_not_current_plan: '当前批次尚未形成可执行退出计划' }
 const label = (value: string) => reasons[value] || stateNames[value] || value
 const money = (cents: number | null) => cents == null ? '未获取到' : `¥${formatMoney(cents / 100, 2)}`
 async function run(kind: 'compute' | 'proposals') {
@@ -35,7 +35,7 @@ async function run(kind: 'compute' | 'proposals') {
       message.value = response.pending ? '重算任务已排队，请稍后读取最新状态。' : '策略快照已重算。'
     } else {
       const response = await generateStrategyProposals(props.workspace.input_fingerprint)
-      message.value = response.created.length ? `已生成或复用 ${response.created.length} 条提案，请到决策与评估审阅。` : '当前未生成提案，请先补齐复核证据或解除约束冲突。'
+      message.value = response.created.length ? `已生成或复用 ${response.created.length} 条提案，请到决策与评估审阅。` : '当前未生成提案，请先解除约束冲突或补齐公开证据。'
     }
     emit('refresh')
   } catch (caught) { error.value = caught instanceof Error ? caught.message : '操作失败，请重试' }
@@ -67,17 +67,16 @@ async function run(kind: 'compute' | 'proposals') {
         <div><dt>未分配金额</dt><dd>{{ money(result.allocation.unallocated_cents) }}</dd></div>
       </dl>
       <ul v-if="result.allocation.blockers.length" class="strategy-blockers"><li v-for="item in result.allocation.blockers" :key="item">{{ label(item) }}</li></ul>
-      <p>配置测算与交易前可执行性分别校验。近 1 月年化用于准入和排序，测算结果不代表未来收益。</p>
-      <div v-if="result.allocation.rows.length" class="strategy-table-wrap"><table><thead><tr><th>销售份额 / 渠道</th><th>组内排名</th><th>配置金额</th><th>交易前状态</th><th>核验</th></tr></thead><tbody>
-        <tr v-for="row in result.allocation.rows" :key="`${row.identity.channel}:${row.identity.code}`"><td>{{ row.identity.code }} / {{ row.identity.channel }}</td><td>{{ row.rank }}</td><td>{{ money(row.amount_cents) }}</td><td>{{ result.selected_reviews.find(item => item.identity.code === row.identity.code && item.identity.channel === row.identity.channel)?.executable ? '复核通过' : '交易前待核' }}</td><td><RouterLink :to="{ name: 'r2-products', query: { section: 'allocation', channel: row.identity.channel, code: row.identity.code }, hash: '#strategy-review' }">交易前复核</RouterLink></td></tr>
+      <p>配置测算基于公开数据与账户现状；近 1 月年化用于准入和排序，测算结果不代表未来收益。</p>
+      <div v-if="result.allocation.rows.length" class="strategy-table-wrap"><table><thead><tr><th>销售份额 / 渠道</th><th>组内排名</th><th>配置金额</th></tr></thead><tbody>
+        <tr v-for="row in result.allocation.rows" :key="`${row.identity.channel}:${row.identity.code}`"><td>{{ row.identity.code }} / {{ row.identity.channel }}</td><td>{{ row.rank }}</td><td>{{ money(row.amount_cents) }}</td></tr>
       </tbody></table></div>
-      <p v-else>尚无可分配份额；可先到候选初筛选择份额，完成产品映射与交易前复核。</p>
-      <ul v-for="review in result.selected_reviews.filter(item => item.blockers.length)" :key="`${review.identity.channel}:${review.identity.code}`"><li>{{ review.identity.code }}：{{ review.blockers.map(label).join('；') }}</li></ul>
+      <p v-else>尚无可分配份额；可先到候选初筛选择公开份额。</p>
       <div class="strategy-actions"><button type="button" class="button button-primary button-small" :disabled="busy || !current || !result.may_generate_buy_proposals" @click="run('proposals')">生成买入提案</button><RouterLink :to="{ name: 'r2-evaluation', query: { section: 'proposals' } }">审阅提案</RouterLink></div>
     </template>
     <template v-else-if="result">
       <p>近 1 月有效年化低于 2.15% 时准备退出；证据缺失保持待核。所有银行交易由你确认执行。</p>
-      <div v-if="result.monitoring.rows.length" class="strategy-table-wrap"><table><thead><tr><th>账本产品 / 批次</th><th>当前结论</th><th>近 1 月年化</th><th>业绩日</th><th>下次核验</th><th>处理</th></tr></thead><tbody><tr v-for="row in result.monitoring.rows" :key="row.lot_id"><td>{{ row.product_code }}<small>{{ row.lot_id }}</small></td><td>{{ label(row.state) }}<small v-if="row.summary">{{ row.summary }}</small></td><td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}</td><td>{{ row.performance_date || '未获取到' }}</td><td>{{ row.next_verify_date }}</td><td><RouterLink v-if="row.identity" :to="{ name: 'r2-products', query: { section: 'allocation', channel: row.identity.channel, code: row.identity.code, lot: row.lot_id }, hash: '#strategy-review' }">核验此批次</RouterLink><RouterLink v-else :to="{ name: 'r2-products', query: { section: 'allocation', lot: row.lot_id, product_code: row.product_code }, hash: '#strategy-review' }">先核实同份额映射</RouterLink><button v-if="row.state === 'exit_required'" class="button button-ghost button-small" type="button" :disabled="busy || !current" @click="exitHolding(row.lot_id)">生成退出提案</button></td></tr></tbody></table></div>
+      <div v-if="result.monitoring.rows.length" class="strategy-table-wrap"><table><thead><tr><th>账本产品 / 批次</th><th>当前结论</th><th>近 1 月年化</th><th>业绩日</th><th>下次核验</th><th>处理</th></tr></thead><tbody><tr v-for="row in result.monitoring.rows" :key="row.lot_id"><td>{{ row.product_code }}<small>{{ row.lot_id }}</small></td><td>{{ label(row.state) }}<small v-if="row.summary">{{ row.summary }}</small></td><td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}</td><td>{{ row.performance_date || '未获取到' }}</td><td>{{ row.next_verify_date }}</td><td><button v-if="row.state === 'exit_required'" class="button button-ghost button-small" type="button" :disabled="busy || !current" @click="exitHolding(row.lot_id)">生成退出提案</button></td></tr></tbody></table></div>
       <p v-else>当前没有已确认持仓批次。</p>
     </template>
   </section>

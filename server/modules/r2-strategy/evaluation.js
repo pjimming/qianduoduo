@@ -41,7 +41,7 @@ function measureFrozenNetPnl({ decision, trades = [], valuations = [], allocatio
     });
     if (!confirmed) return unavailable('settlement_amount_unverified');
     const proof = closing.map(row => settlements.find(fact => fact.trade_id === row.redeem_trade_id && fact.status === 'verified' &&
-      fact.product_code === snapshot.mapping.product_code && /^[a-f0-9]{64}$/.test(fact.evidence_hash ?? '') && isoDate(fact.arrival_date)));
+      fact.product_code === snapshot.mapping.product_code && isoDate(fact.arrival_date)));
     if (proof.some(fact => !fact || fact.arrival_date > today)) return unavailable('settlement_arrival_unverified');
     if (proof.some(fact => fact.arrival_date !== forecast.end_date)) return unavailable('comparison_period_changed');
     return { available: true, reason: 'confirmed_cash_settlement', actual: net,

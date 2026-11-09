@@ -35,14 +35,14 @@ function validateHoldingReplacement({ current, candidate, comparison_days: horiz
 }
 function holdingPlans(input, result) {
   return buildHoldingActionPlans({ holdings: input.portfolio.holdings, context: result.evidence,
-    monitoringContext: result.monitoringEvidence ?? result.evidence, checks: input.checks, date: input.date,
+    monitoringContext: result.monitoringEvidence ?? result.evidence, date: input.date,
     validateReplacement: values => validateHoldingReplacement({ ...values, account: result.account, settings: input.settings }) });
 }
 
 function materialPortfolio(input) {
   // Old evaluations/prediction results can change without moving any money.
   // Freeze the financial facts, review versions and source identity separately.
-  return { state: input.state, date: input.date, mappings: input.mappings, checks: input.checks, settings: input.settings,
+  return { state: input.state, date: input.date, settings: input.settings,
     principal: input.portfolio.principal, holdings: input.portfolio.holdings, trades: input.portfolio.trades,
     reservations: input.portfolio.reservations };
 }
@@ -114,15 +114,14 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
     if (!state || state.mode !== 'v9' || state.contract_hash !== CONTRACT_HASH) throw strategyError('recommendation_disabled', '当前模式不生成正式提案');
     if (expectedInputFingerprint && expectedInputFingerprint !== frozen.fingerprint) throw strategyError('input_changed', '证据或账户已变化，请重算');
     const result = evaluate(frozen.input);
-    if (!result.may_generate_buy_proposals) return { created: [], blockers: ['allocation_pretrade_or_forecast_incomplete'],
+    if (!result.may_generate_buy_proposals) return { created: [], blockers: ['allocation_forecast_incomplete'],
       input_fingerprint: frozen.fingerprint };
     const planHash = fingerprint({ input: result.input_fingerprint, allocation: result.allocation.fingerprint });
     const prepared = result.allocation.rows.filter(row => row.amount_cents > 0).map(allocation => {
       const row = result.evidence.rows.find(item => identityKey(item.identity) === identityKey(allocation.identity));
-      const check = frozen.input.checks.find(item => item.mapping_id === row.mapping.id && item.lot_id === '');
-      const snapshot = buildExecutionSnapshot({ result, row, check, amountCents: allocation.amount_cents });
+      const snapshot = buildExecutionSnapshot({ result, row, amountCents: allocation.amount_cents });
       const dedupe = fingerprint({ execution_version: CONTRACT.execution_version, contract_hash: CONTRACT_HASH, plan_hash: planHash,
-        identity: row.identity, amount_cents: allocation.amount_cents, evidence_hash: row.evidence_hash, check_id: check.id });
+        identity: row.identity, amount_cents: allocation.amount_cents, evidence_hash: row.evidence_hash });
       const forecast = snapshot.forecast;
       const summary = `按v9组内第${row.rank}名配置；参考年化${forecast.reference_yield_pct}%为情景输入，预计资金空档${forecast.idle_days}天，` +
         `扣费情景净收益${(forecast.expected_net_pnl_cents / 100).toFixed(2)}元。采纳后仍待用户在银行执行。`;
@@ -271,13 +270,12 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
     if (fingerprint(admissionMaterial(frozen.input, planHash)) !== expectedMaterial) throw strategyError('input_changed', '账户、复核或非本计划承诺已变化，请重新生成');
     const result = evaluate(frozen.input);
     if (!result.may_generate_buy_proposals || result.evidence.fingerprint !== proposal.payload.snapshot.input.source_fingerprint) {
-      throw strategyError('proposal_revalidation_failed', '当前候选、证据时效、配置或交易前复核未通过，请重算');
+      throw strategyError('proposal_revalidation_failed', '当前候选、证据时效、配置或公开数据可行性未通过，请重算');
     }
     const row = result.evidence.rows.find(item => identityKey(item.identity) === identityKey(proposal.payload.snapshot.identity));
     const selected = result.allocation.rows.find(item => identityKey(item.identity) === identityKey(proposal.payload.snapshot.identity));
     if (!row || selected?.amount_cents !== proposal.payload.snapshot.amount_cents) throw strategyError('proposal_amount_changed', '当前配置金额已变化，请重新生成');
-    const check = frozen.input.checks.find(item => item.mapping_id === row.mapping.id && item.lot_id === '');
-    const acceptedSnapshot = buildExecutionSnapshot({ result, row, check, amountCents: selected.amount_cents });
+    const acceptedSnapshot = buildExecutionSnapshot({ result, row, amountCents: selected.amount_cents });
     if (acceptedSnapshot.forecast.hash !== proposal.payload.forecast.hash) throw strategyError('forecast_changed', '收益情景已变化，请重新生成');
     const outside = strategy.frozenInput();
     if (outside.fingerprint !== frozen.fingerprint) throw strategyError('input_changed', '采纳准备期间输入已变化，请重算');

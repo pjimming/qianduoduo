@@ -2,7 +2,7 @@
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { adaptSnapshot, identityKey } = require('./evidence');
-const { reviewPretrade } = require('./pretrade');
+const { buildPublicLimits } = require('./public-limits');
 const { buildAccountContext } = require('./account');
 const { allocateV9 } = require('./allocation');
 const { buildHoldingMonitoring } = require('./holdings');
@@ -10,6 +10,7 @@ const { bucketForTerm } = require('../../../lib/yield-policy');
 const { productFamilyKey, returnEvidenceTier } = require('../../../lib/products');
 const { buildBuyForecast } = require('./forecast');
 const { combineHoldingEvidence } = require('./holding-evidence');
+const { isoDate } = require('../r2-screening/calendar');
 
 // Legacy holdings predate transaction-level pretrade reviews. Classify them
 // conservatively from the product master so they stop blocking the account,
@@ -45,22 +46,17 @@ function applyHoldingClassificationFallback(holdings, products, assetsByCode) {
 
 // One entry point for HTTP, scheduled worker and CLI. It accepts frozen inputs
 // only; it cannot open a database, refresh a source or submit a business write.
-function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], mappings = [], checks = [], portfolio, products = [], date, settings = {} }, options = {}) {
-  const evidence = adaptSnapshot(sourceSnapshot, date, mappings);
-  const activeMappings = new Set(mappings.filter(row => !row.revoked_at).map(row => row.id));
-  const latest = new Map();
-  for (const row of checks) {
-    if (!activeMappings.has(row.mapping_id)) continue;
-    const key = JSON.stringify([row.mapping_id, row.lot_id]);
-    const prior = latest.get(key);
-    if (!prior || row.version > prior.version) latest.set(key, row);
+function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], portfolio, products = [], date, settings = {} }, options = {}) {
+  const evidence = adaptSnapshot(sourceSnapshot, date);
+  const productByCode = new Map();
+  for (const product of Array.isArray(products) ? products : []) {
+    const code = String(product?.code || '').trim();
+    if (code) productByCode.set(code, product);
   }
-  const limits = {}, reviews = [], assetsByCode = {};
+  const limits = {}, assetsByCode = {};
   for (const row of evidence.rows) {
     if (!row.mapping) continue;
-    const check = latest.get(JSON.stringify([row.mapping.id, '']));
-    const review = reviewPretrade({ row, check, date });
-    reviews.push({ identity: row.identity, ...review });
+    const review = buildPublicLimits({ row, product: productByCode.get(row.mapping.product_code), date });
     if (review.limits) {
       limits[identityKey(row.identity)] = review.limits;
       assetsByCode[row.mapping.product_code] = { ...review.limits, evidence_tier: row.evidence_tier,
@@ -69,33 +65,39 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], mapp
   }
   applyHoldingClassificationFallback(portfolio?.holdings, products, assetsByCode);
   const settlementChecks = {};
-  for (const row of latest.values()) {
-    if (row.facts?.kind !== 'trade_settlement' || row.facts.status !== 'verified') continue;
-    const fact = row.facts;
-    const mapping = mappings.find(item => item.id === row.mapping_id);
-    if (row.lot_id !== `trade:${fact.trade_id}` || fact.product_code !== mapping?.product_code) continue;
-    settlementChecks[fact.trade_id] = { ...fact, verified: true, evidence_hash: row.evidence_hash };
+  for (const trade of portfolio?.trades ?? []) {
+    if (trade.trade_type !== 'redeem' || trade.status !== 'confirmed' ||
+        !isoDate(trade.arrival_date) || !trade.arrival_verified_at) continue;
+    settlementChecks[trade.id] = {
+      trade_id: trade.id,
+      product_code: trade.product_code,
+      arrival_date: trade.arrival_date,
+      status: 'verified',
+      verified: true,
+      arrival_verified_at: trade.arrival_verified_at,
+    };
   }
   const account = buildAccountContext({ ...portfolio, reservations: portfolio.reservations ?? [], date, assetsByCode, settlementChecks });
   const allocation = allocateV9({ context: evidence, account, limits, settings }, options);
   const monitoringEvidence = holdingSupplements.length
-    ? combineHoldingEvidence({ context: evidence, supplements: holdingSupplements, mappings, date }) : evidence;
-  const monitoring = buildHoldingMonitoring({ holdings: portfolio.holdings ?? [], context: monitoringEvidence, checks: [...latest.values()], date });
+    ? combineHoldingEvidence({ context: evidence, supplements: holdingSupplements, date }) : evidence;
+  const monitoring = buildHoldingMonitoring({ holdings: portfolio.holdings ?? [], context: monitoringEvidence, date });
   const selected = allocation.rows.filter(row => row.amount_cents > 0);
   const selectedReviews = selected.map(row => {
     const current = evidence.rows.find(item => identityKey(item.identity) === identityKey(row.identity));
-    const check = latest.get(JSON.stringify([current.mapping.id, '']));
-    return { identity: row.identity, amount_cents: row.amount_cents, ...reviewPretrade({ row: current, check, date, amountCents: row.amount_cents }),
-      forecast: buildBuyForecast({ row: current, check, date, amountCents: row.amount_cents }) };
+    const review = buildPublicLimits({ row: current, product: productByCode.get(current.mapping.product_code),
+      date, amountCents: row.amount_cents });
+    return { identity: row.identity, amount_cents: row.amount_cents, ...review,
+      forecast: buildBuyForecast({ row: current, date, amountCents: row.amount_cents }) };
   });
   const active = state?.schema_version === 1 && state?.contract_hash === CONTRACT_HASH && state?.mode === 'v9';
   const mayPropose = active && allocation.full_investment && selected.length > 0 && selectedReviews.every(row => row.executable && row.forecast.status === 'available');
   const input = { payload_version: CONTRACT.payload_version, contract_hash: CONTRACT_HASH, business_date: date,
     activation_seq: state?.activation_seq ?? 0, mode: state?.mode ?? 'legacy',
     source_fingerprint: evidence.fingerprint, monitoring_fingerprint: monitoringEvidence.fingerprint, account_fingerprint: account.fingerprint,
-    checks_fingerprint: fingerprint([...latest.values()].sort((a, b) => a.id - b.id)), settings_fingerprint: fingerprint(settings) };
+    settings_fingerprint: fingerprint(settings) };
   return freeze({ input, input_fingerprint: fingerprint(input), evidence, monitoringEvidence, account, allocation, monitoring,
-    pretrade_reviews: reviews, selected_reviews: selectedReviews, may_generate_buy_proposals: mayPropose,
+    selected_reviews: selectedReviews, may_generate_buy_proposals: mayPropose,
     // Mandatory-yield exits are independent of full-investment feasibility or
     // replacement availability. The actual write use case still revalidates.
     exit_intents: active ? monitoring.rows.filter(row => row.yield_state === 'below').map(row => ({ lot_id: row.lot_id,
@@ -122,8 +124,8 @@ function compactStrategyResult(result) {
         state: row.state, action: row.action, planned_action: row.planned_action, yield_1m: row.yield_1m,
         performance_date: row.performance_date, next_verify_date: row.next_verify_date,
         requires_user_action: row.requires_user_action, message_key: row.message_key, fingerprint: row.fingerprint })) },
-    selected_reviews: result.selected_reviews.map(row => ({ identity: row.identity, check_id: row.check_id,
-      mapping_id: row.mapping_id, amount_cents: row.amount_cents, executable: row.executable,
+    selected_reviews: result.selected_reviews.map(row => ({ identity: row.identity, check_id: null,
+      mapping_id: null, amount_cents: row.amount_cents, executable: row.executable,
       blockers: row.blockers, fingerprint: row.fingerprint, forecast_status: row.forecast.status,
       forecast_reason: row.forecast.reason, expected_net_pnl_cents: row.forecast.expected_net_pnl_cents ?? null,
       expected_net_annualized_pct: row.forecast.expected_net_annualized_pct ?? null })) };

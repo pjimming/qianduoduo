@@ -17,29 +17,6 @@ CREATE TABLE r2_strategy_transitions (
   summary_json TEXT NOT NULL CHECK (json_valid(summary_json)),
   created_at TEXT NOT NULL
 ) STRICT;
-CREATE TABLE r2_share_mappings (
-  id INTEGER PRIMARY KEY,
-  product_code TEXT NOT NULL CHECK (length(product_code) BETWEEN 1 AND 80),
-  source TEXT NOT NULL, channel TEXT NOT NULL, sales_code TEXT NOT NULL,
-  registration_code TEXT,
-  evidence_hash TEXT NOT NULL CHECK (length(evidence_hash) = 64),
-  verified_by TEXT NOT NULL CHECK (length(verified_by) > 0),
-  verified_at TEXT NOT NULL, revoked_at TEXT
-) STRICT;
-CREATE UNIQUE INDEX r2_mapping_product_active ON r2_share_mappings(product_code) WHERE revoked_at IS NULL;
-CREATE UNIQUE INDEX r2_mapping_share_active ON r2_share_mappings(source, channel, sales_code) WHERE revoked_at IS NULL;
-CREATE TABLE r2_pretrade_checks (
-  id INTEGER PRIMARY KEY,
-  mapping_id INTEGER NOT NULL REFERENCES r2_share_mappings(id),
-  lot_id TEXT NOT NULL DEFAULT '',
-  version INTEGER NOT NULL CHECK (version > 0),
-  supersedes_id INTEGER REFERENCES r2_pretrade_checks(id),
-  facts_json TEXT NOT NULL CHECK (json_valid(facts_json) AND length(CAST(facts_json AS BLOB)) <= 65536),
-  evidence_hash TEXT NOT NULL CHECK (length(evidence_hash) = 64),
-  verified_by TEXT NOT NULL CHECK (length(verified_by) > 0),
-  verified_at TEXT NOT NULL,
-  UNIQUE(mapping_id, lot_id, version), UNIQUE(supersedes_id)
-) STRICT;
 CREATE TABLE r2_fund_reservations (
   id INTEGER PRIMARY KEY,
   proposal_id INTEGER NOT NULL REFERENCES decision_proposals(id),

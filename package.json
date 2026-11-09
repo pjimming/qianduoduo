@@ -68,7 +68,9 @@
     "db:preflight:r2-strategy": "node scripts/migrate-r2-strategy.mjs preflight",
     "db:verify:r2-strategy": "node scripts/migrate-r2-strategy.mjs verify",
     "db:migrate:r2-strategy": "node scripts/migrate-r2-strategy.mjs apply",
-    "db:rollback-empty:r2-strategy": "node scripts/migrate-r2-strategy.mjs rollback-empty"
+    "db:rollback-empty:r2-strategy": "node scripts/migrate-r2-strategy.mjs rollback-empty",
+    "db:migrate:pretrade-removal": "node scripts/migrate-pretrade-removal.mjs apply",
+    "db:verify:pretrade-removal": "node scripts/migrate-pretrade-removal.mjs verify"
   },
   "engines": {
     "node": ">=24"

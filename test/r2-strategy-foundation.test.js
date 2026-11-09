@@ -34,8 +34,7 @@ function fixture(patch = {}) {
   evidence: [{ source: 'cmb', channel: 'C', code: 'S', kind: 'performance', hash: 'b'.repeat(64),
     summary: { risk: 'R2', currency: 'CNY', public_offering: true, performance_date: data.performance_date, performance: data.performance } }] };
 }
-const mapping = { id: 1, source: 'cmb', channel: 'C', sales_code: 'S', product_code: 'OLD', registration_code: 'Z1234567890' };
-const read = (patch = {}, date = '2026-11-07', mappings = [mapping]) => adaptSnapshot(fixture(patch), date, mappings);
+const read = (patch = {}, date = '2026-11-07') => adaptSnapshot(fixture(patch), date);
 
 test('execution contract freezes independent versions and never adopts the legacy family exception', () => {
   assert.equal(CONTRACT.selection_policy_version, 'v9');
@@ -54,12 +53,12 @@ test('same-share dated evidence: 2.14/2.15, age 6/7, future and malformed values
   assert.equal(read({ performance: { '1m': 'NaN' } }).rows[0].holding_yield_state, 'pending');
   assert.equal(read({ metrics: { latest: '2026-10-31', end: '2026-10-31' } }).rows[0].automatic_eligible, false);
 });
-test('explicit mapping is mandatory; no name matching, channel substitution or registration conflict', () => {
-  for (const mappings of [[], [{ ...mapping, channel: 'other' }], [mapping, { ...mapping, product_code: 'OTHER' }],
-    [{ ...mapping, registration_code: 'Z9999999999' }], [mapping, { ...mapping, sales_code: 'DIFFERENT' }]]) {
-    assert.equal(read({}, undefined, mappings).rows[0].automatic_eligible, false);
-    assert.equal(read({}, undefined, mappings).rows[0].holding_yield_state, 'pending');
-  }
+test('no external mapping is required; public share identity is the product identity', () => {
+  const row = read().rows[0];
+  assert.equal(row.automatic_eligible, true);
+  assert.equal(row.holding_yield_state, 'pass');
+  assert.equal(row.identity.code, 'S');
+  assert.equal(typeof row.evidence_hash, 'string');
 });
 test('sale status and shortlist are separate from current holding yield monitoring', () => {
   const sold = read({ quota: { status: 1 }, status: 'rejected' }).rows[0];
@@ -88,19 +87,19 @@ test('term, observation, unknown category, and reference yield cannot silently b
 test('local degraded evidence remains usable; incomplete global pools and identity failures block all', () => {
   const input = fixture();
   input.run.health.pool.ok = 0;
-  const value = adaptSnapshot(input, '2026-11-07', [mapping]);
+  const value = adaptSnapshot(input, '2026-11-07');
   assert.equal(value.available, false);
   assert.equal(value.rows[0].automatic_eligible, false);
   assert.equal(createStrategyEvidenceAdapter({}).read('2026-11-07').available, false);
   assert.equal(createStrategyEvidenceAdapter({ screeningRepository: { readExecutionSnapshot() { throw new Error(); } } }).read('2026-11-07').available, false);
 });
-test('snapshot hashes include evidence, mapping, date and content, and never mutate an older snapshot', () => {
+test('snapshot hashes include evidence, date and content, and never mutate an older snapshot', () => {
   const original = read();
   const next = read({}, '2026-11-08');
   assert.notEqual(original.fingerprint, next.fingerprint);
-  assert.notEqual(original.fingerprint, read({}, undefined, [{ ...mapping, id: 2 }]).fingerprint);
+  assert.notEqual(original.fingerprint, read({ performance: { '1m': '2.16' } }).fingerprint);
   const input = fixture();
-  const frozen = adaptSnapshot(input, '2026-11-07', [mapping]);
+  const frozen = adaptSnapshot(input, '2026-11-07');
   input.rows[0].data.performance['1m'] = '99';
   assert.equal(frozen.rows[0].performance['1m'], '2.15');
   assert.equal(read().fingerprint, original.fingerprint);

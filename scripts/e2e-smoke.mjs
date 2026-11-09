@@ -294,8 +294,8 @@ async function screeningSmoke(browser, base) {
 
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto(base + '/ledger/screening?run=1&channel=D07&code=113356A')
-    await panel.getByRole('button', { name: '交易前复核' }).click()
-    await panel.getByRole('heading', { name: '交易前核对清单' }).waitFor()
+    await panel.getByRole('button', { name: '净值与走势' }).click()
+    await panel.getByRole('img', { name: /单位净值随日期/ }).waitFor()
     await capture(page, 'screening-detail-1280-light')
     await page.keyboard.press('Escape')
     await page.locator('.sidebar-appearance [data-theme-preference="system"]').click()

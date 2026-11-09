@@ -947,6 +947,8 @@ export interface TradeTransaction {
   id: number
   trade_date: string
   confirm_date: string | null
+  arrival_date?: string | null
+  arrival_verified_at?: string | null
   trade_type: TradeType
   status: TradeStatus
   product_code: string
@@ -1758,6 +1760,7 @@ export interface ProductYieldSettingMutationResponse {
 export interface TradeInput {
   trade_date: string
   confirm_date: string | null
+  arrival_date?: string | null
   trade_type: TradeType
   status: TradeStatus
   product_code: string
