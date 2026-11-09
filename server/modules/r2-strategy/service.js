@@ -4,7 +4,6 @@ const { todayShanghai } = require('../../../lib/metrics');
 const { CONTRACT, CONTRACT_HASH, fingerprint } = require('./contract');
 const { createStrategyRepository, strategyError } = require('./repository');
 const { evaluateStrategy, compactStrategyResult } = require('./engine');
-const { buildStrategyInboxItems } = require('./inbox');
 const { moneyCents } = require('./account');
 const { createTransactionManager } = require('../../../lib/transaction');
 const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifact');
@@ -72,14 +71,6 @@ function createStrategyService({ repository, screening = null, strategyRepositor
       run_id: frozen.input.sourceSnapshot?.run?.id ?? null, input_fingerprint: frozen.fingerprint,
       result: previous?.result ?? null, stale: Boolean(previous && previous.input.frozen_input_hash !== frozen.fingerprint) };
   }
-  function inboxItems({ today = todayProvider() } = {}) {
-    const state = store.state();
-    if (state?.mode !== 'v9') return [];
-    const previous = store.latestCompleted('strategy');
-    if (!previous?.result) return [];
-    if ((previous.result.input?.activation_seq ?? null) !== state.activation_seq) return [];
-    return buildStrategyInboxItems({ result: previous.result, mode: state.mode, today });
-  }
   function preview({ expectedInputFingerprint } = {}) {
     const frozen = frozenInput();
     if (expectedInputFingerprint && expectedInputFingerprint !== frozen.fingerprint) throw strategyError('input_changed', '账户或公开证据已更新，请重新加载');
@@ -115,7 +106,7 @@ function createStrategyService({ repository, screening = null, strategyRepositor
       throw error;
     }
   }
-  return { status, workspace, inboxItems, preview, recompute, frozenInput, readLedgerInput: ledgerInput };
+  return { status, workspace, preview, recompute, frozenInput, readLedgerInput: ledgerInput };
 }
 
 module.exports = { createStrategyService, monthEndWindow };

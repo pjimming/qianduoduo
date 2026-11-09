@@ -75,6 +75,7 @@ function selectDashboardSection(payload, section) {
         records: payload.records,
         summary: payload.summary,
         windows: payload.windows,
+        review: payload.review,
         capital: payload.capital,
         workspace: {
           current_holdings_valuation: workspace.current_holdings_valuation,
@@ -84,6 +85,7 @@ function selectDashboardSection(payload, section) {
               }
             : null,
           return_attribution: workspace.return_attribution,
+          notes: workspace.notes,
           events: workspace.events,
         },
         automation: {
@@ -171,7 +173,6 @@ function createDashboardQueryService(repository, options = {}) {
   if (!repository) throw new Error('dashboard 查询服务需要 repository');
   const todayProvider = options.todayProvider || todayShanghai;
   const automationRunner = options.automationRunner || null;
-  const strategy = options.strategy || null;
 
   function readDashboard(today = todayProvider()) {
     const rawRecords = repository.listRecords();
@@ -367,28 +368,16 @@ function createDashboardQueryService(repository, options = {}) {
   }
 
   function projectDashboard(today = todayProvider()) {
-    // Read the strategy projection before the write transaction so a strategy
-    // read failure or slow snapshot lookup cannot hold the ledger write lock.
-    let strategyInbox = [];
-    try {
-      strategyInbox = strategy?.inboxItems({ today }) ?? [];
-    } catch {
-      strategyInbox = [];
-    }
-    const withStrategyInbox = (value) => {
-      if (strategyInbox.length) value.strategy_inbox = strategyInbox;
-      return value;
-    };
     return repository.transactionManager.run(() => {
       let payload = readDashboard(today);
       repository.decisionProposalStore.sync(payload);
       payload = readDashboard(today);
-      repository.inboxCenter.sync(withStrategyInbox(payload));
+      repository.inboxCenter.sync(payload);
       payload = readDashboard(today);
       repository.automationStore.resolveCapitalBridgeNotifications(payload);
       repository.automationStore.resolveProductIncomeNotifications();
       payload = readDashboard(today);
-      payload.inbox_center = repository.inboxCenter.sync(withStrategyInbox(payload));
+      payload.inbox_center = repository.inboxCenter.sync(payload);
       return payload;
     });
   }
