@@ -4,7 +4,7 @@ const PRODUCT_SECTIONS = ['screening', 'allocation', 'holdings'] as const
 const EVALUATION_SECTIONS = ['proposals', 'decisions', 'results'] as const
 const DAILY_SECTIONS = ['today', 'records', 'capital'] as const
 const TRADES_SECTIONS = ['current-value', 'holdings', 'valuations', 'trades', 'inbox'] as const
-const REVIEW_SECTIONS = ['score', 'rhythm', 'monthly-notes', 'quarterly-notes'] as const
+const REVIEW_SECTIONS = ['attribution', 'rhythm', 'monthly-notes', 'quarterly-notes'] as const
 const SCREENING_KEYS = [
   'run',
   'tab',
@@ -45,7 +45,8 @@ const TRADES_ANCHORS: Record<string, string> = {
 }
 
 const REVIEW_ANCHORS: Record<string, string> = {
-  '#score': 'score',
+  '#attribution': 'attribution',
+  '#score': 'attribution',
   '#rhythm': 'rhythm',
   '#monthly-notes': 'monthly-notes',
   '#quarterly-notes': 'quarterly-notes',
@@ -198,14 +199,15 @@ function normalizeTrades(to: RouteLocationNormalized): NormalizedSection {
 
 function normalizeReview(to: RouteLocationNormalized): NormalizedSection {
   const explicit = textQuery(to, 'section')
+  const alias = explicit === 'score' ? 'attribution' : explicit
   const invalid =
-    explicit !== '' && !(REVIEW_SECTIONS as readonly string[]).includes(explicit)
-  let section = (REVIEW_SECTIONS as readonly string[]).includes(explicit)
-    ? explicit
+    alias !== '' && !(REVIEW_SECTIONS as readonly string[]).includes(alias)
+  let section = (REVIEW_SECTIONS as readonly string[]).includes(alias)
+    ? alias
     : ''
-  if (!section) section = REVIEW_ANCHORS[to.hash] || 'score'
+  if (!section) section = REVIEW_ANCHORS[to.hash] || 'attribution'
 
-  let hash = to.hash
+  let hash = to.hash === '#score' ? '' : to.hash
   const anchorTarget = REVIEW_ANCHORS[hash]
   if (anchorTarget && anchorTarget !== section) hash = ''
 
@@ -433,7 +435,7 @@ const TRADES_LABELS: Record<string, string> = {
   inbox: '交易收件箱',
 }
 const REVIEW_LABELS: Record<string, string> = {
-  score: '日周月评分',
+  attribution: '收益归因',
   rhythm: '复盘节奏',
   'monthly-notes': '月度五问',
   'quarterly-notes': '季度复盘',
@@ -454,7 +456,7 @@ router.afterEach((to) => {
   }
   if (to.name === 'r2-review') {
     const section = typeof to.query.section === 'string' ? to.query.section : ''
-    const label = REVIEW_LABELS[section] || REVIEW_LABELS.score
+    const label = REVIEW_LABELS[section] || REVIEW_LABELS.attribution
     document.title = `理财 · 复盘 · ${label} · 钱多多`
     return
   }

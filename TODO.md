@@ -4,6 +4,11 @@
 
 ## 待办
 
+- **R2 v9 流动性策略 v2**
+  - 配置、提案与手工决策接入中期 20%、长期 10% 硬上限。v9 页面和巡检读取同一工作区，按付款日计算用款需求。
+  - 生产账本已由 v9/1 切至 v9/2。中期超限 ¥4,100，长期超限 ¥10,100，存量按已核实的赎回窗口回落。到账日待核，继续补齐持仓赎回与到账证据。
+  - 实施与验收见[旧口径迁移记录](docs/r2-v9-legacy-policy-migration-2026-11-09.md)及[流动性改造计划](docs/r2-v9-liquidity-upgrade-plan-2026-11-09.md)。
+
 - **`TD-RESEARCH-TEMPLATE-001` 统一调研报告正文与导航卡片（已完成）**
   - 已统一 `report/report-template.css` v1、三入口共享卡片和独立归档样式；白酒、AIGC、金融科技、电池 4 篇已迁移，其余 32 篇保留历史回退并在[迁移清单](docs/tasks/active/TD-RESEARCH-TEMPLATE-001/migration.md)登记。
   - 验收：check/build/E2E/Pages 通过；本任务相关测试 14/14；全量 `npm test` 有 3 项并行未提交 R2 改动的失败。方案与逐项结果见[任务记录](docs/tasks/active/TD-RESEARCH-TEMPLATE-001/TD-RESEARCH-TEMPLATE-001.md)。

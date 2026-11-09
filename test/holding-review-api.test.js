@@ -6,9 +6,89 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { openDatabase } = require('../lib/db');
+const { todayShanghai } = require('../lib/metrics');
 const { createServer } = require('../server');
 
 const { productCsv } = require('./fixtures');
+
+function ymdNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function screeningSnapshot(repository) {
+  const today = todayShanghai();
+  const products = repository.listProducts();
+  const codes = ['120056A', 'GD040244'];
+  const rows = codes.map((code) => {
+    const product = products.find((item) => item.code === code);
+    if (!product) throw new Error(`测试产品缺失：${code}`);
+    const toText = (value) => {
+      const number = ymdNumber(value);
+      return number === null ? null : String(number);
+    };
+    const performance = {
+      '1m': toText(product.return_1m),
+      '3m': toText(product.return_3m),
+      '6m': toText(product.return_6m),
+      '1y': toText(product.return_1y),
+    };
+    const data = {
+      code,
+      channel: 'cmb',
+      name: product.name,
+      issuer: product.issuer,
+      min_amount: String(product.min_amount ?? 1),
+      restrictions: [],
+      performance_date: today,
+      performance,
+      quota: { status: 0, amount: null, checked_at: today },
+      term: { kind: 'minimum', days: product.term_days },
+      category: 'bond',
+      detail: { registration: `TEST-${code}` },
+      metrics: { latest: today, end: today, issue: null },
+      status: 'eligible',
+      rank: 1,
+      shortlisted: true,
+      hints: [],
+    };
+    return {
+      source: 'cmb',
+      channel: 'cmb',
+      code,
+      data,
+      nav_hash: 'a'.repeat(64),
+    };
+  });
+  return {
+    run: {
+      id: 99,
+      created_at: today,
+      rule_version: 'v9',
+      status: 'succeeded',
+      business_date: today,
+      counts: { total: rows.length },
+      health: { pool: { requested: 1, ok: 1, included: rows.length } },
+    },
+    rows,
+    evidence: rows.map(({ source, channel, code, data }) => ({
+      source,
+      channel,
+      code,
+      kind: 'performance',
+      summary: {
+        performance_date: data.performance_date,
+        performance: data.performance,
+        risk: 'R2',
+        currency: 'CNY',
+        public_offering: true,
+      },
+      hash: 'b'.repeat(64),
+      url: 'https://example.invalid/test',
+      checked_at: today,
+    })),
+  };
+}
 
 async function startTestServer(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-holding-review-api-'));
@@ -17,7 +97,12 @@ async function startTestServer(t) {
     productCsvPath: productCsv,
     logger: { warn() {} },
   });
-  const server = createServer({ repository });
+  const server = createServer({
+    repository,
+    screening: {
+      executionSnapshot: () => screeningSnapshot(repository),
+    },
+  });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   t.after(async () => {
@@ -132,7 +217,7 @@ test('holding review API builds candidates, stores redemption rules and links a 
     invalidation_condition:
       '候选额度、风险、期限或赎回规则恶化，或比较期净增益低于门槛时取消替换',
     actual_result: '',
-    strategy_version: 'r2-holding-review-v7',
+    strategy_version: 'r2-holding-review-v8',
     target_annualized: 3,
     bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
     evaluation_at: ['holding', 'maturity'],
@@ -286,7 +371,7 @@ test('holding review API exposes snapshot, partial and unavailable reasons', asy
   );
   const partial = reviews.get(partialProduct.code);
   assert.ok(partial);
-  assert.equal(partial.review_version, 'r2-holding-review-v7');
+  assert.equal(partial.review_version, 'r2-holding-review-v8');
   assert.equal(partial.current.yield_status, 'available');
   assert.equal(partial.current.yield_reason, 'partial_history');
   assert.ok(partial.current.yield_available_horizons.length > 0);

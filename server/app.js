@@ -100,7 +100,11 @@ function createRequestHandler(repository, options = {}) {
   const strategy = createStrategyService({ repository, screening: options.screening, strategyRepository });
   const dashboardQuery =
     options.dashboardQuery ||
-    createDashboardQueryService(repository, { automationRunner });
+    createDashboardQueryService(repository, {
+      automationRunner,
+      screening: options.screening,
+      strategyState: strategyRepository.state,
+    });
   const dataTrust = createDataTrustService({ repository });
   const operations = createOperationsService(repository);
   const products = createProductsService(repository);

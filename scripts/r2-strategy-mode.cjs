@@ -4,7 +4,7 @@
 const path = require('node:path');
 const { openStrategyLedger } = require('../server/modules/r2-strategy/existing-ledger');
 const { createStrategyRepository } = require('../server/modules/r2-strategy/repository');
-const { CONTRACT, CONTRACT_HASH } = require('../server/modules/r2-strategy/contract');
+const { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH } = require('../server/modules/r2-strategy/contract');
 const { DEFAULT_DB } = require('../server/config');
 
 function argument(argv, name, fallback = null) {
@@ -59,16 +59,19 @@ function run(argv = process.argv.slice(2)) {
     if (!operationKey) throw new Error('必须传入稳定的--operation-key');
     const reason = argument(argv, '--reason', '生产执行层切换');
     if (reason.length > 500) throw new Error('--reason不得超过500字');
-    if (state.mode === mode && counts.jobs.running) throw new Error('目标模式已生效但仍有运行中的派生任务');
+    const upgrade = state.contract_hash === PREVIOUS_CONTRACT_HASH && argv.includes('--upgrade-contract');
+    if (state.contract_hash !== CONTRACT_HASH && !upgrade) throw new Error('契约不匹配，升级须指定 --upgrade-contract');
+    if (state.mode === mode && counts.jobs.running && !upgrade) throw new Error('目标模式已生效但仍有运行中的派生任务');
 
     const dryRun = argv.includes('--dry-run');
     if (dryRun) return { ok: true, dry_run: true, target_mode: mode, ...counts };
-    if (state.mode === mode) return { ok: true, existing: true, mode, activation_seq: state.activation_seq, ...counts };
+    if (state.mode === mode && !upgrade) return { ok: true, existing: true, mode, activation_seq: state.activation_seq, ...counts };
 
     const result = repository.transition({
       operationKey,
       expectedSeq,
       mode,
+      previousContractHash: upgrade ? PREVIOUS_CONTRACT_HASH : undefined,
       summary: {
         reason,
         from_mode: state.mode,
@@ -90,6 +93,10 @@ function run(argv = process.argv.slice(2)) {
         reject_reason='执行层切换，旧提案作废',updated_at=?
         WHERE status='pending' AND coalesce(json_extract(payload_json,'$.execution_version'),'')<>?`)
         .run(stamp, CONTRACT.execution_version);
+      if (upgrade) ledger.db.prepare(`UPDATE decision_proposals SET status='expired',
+        reject_reason='配置契约升级，请重新生成',updated_at=?
+        WHERE status='pending' AND coalesce(json_extract(payload_json,'$.contract_hash'),'')<>?`)
+        .run(stamp, CONTRACT_HASH);
       return { from_mode: before.mode, activation_seq, reason };
     });
     return { ok: true, db: dbPath, operation_key: operationKey, ...result, ...preflight(ledger.db) };

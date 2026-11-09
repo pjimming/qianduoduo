@@ -188,7 +188,8 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
       current_revalidation_required: true };
     if (proposal.status !== 'pending') throw strategyError('proposal_changed', '只有待采纳提案可以采纳');
     const payload = proposal.payload;
-    if (!HOLDING_KINDS.includes(payload.kind) || payload.execution_version !== CONTRACT.execution_version) {
+    if (!HOLDING_KINDS.includes(payload.kind) || payload.execution_version !== CONTRACT.execution_version ||
+        payload.contract_hash !== CONTRACT_HASH) {
       throw strategyError('proposal_missing', '未找到当前执行策略提案', 404);
     }
     const frozen = strategy.frozenInput(), state = frozen.input.state;

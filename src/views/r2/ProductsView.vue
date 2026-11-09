@@ -102,30 +102,20 @@ const openEvents = computed(
 )
 
 const strategyMeta = computed(() => {
-  if (strategy.value?.mode !== 'v9' || !strategy.value.result) return null
+  if (strategy.value?.mode !== 'v9' || strategyError.value || strategy.value.contract_matches === false ||
+      strategy.value.stale || !strategy.value.result) return null
   return {
     cash: strategy.value.result.allocation.available_cents / 100,
     holdings: strategy.value.result.monitoring.rows.length,
   }
 })
-const v9HoldingsHasEvidence = computed(() => {
-  if (strategy.value?.mode !== 'v9') return false
-  const rows = strategy.value.result?.monitoring?.rows
-  if (!Array.isArray(rows)) return false
-  return rows.some(
-    (row) =>
-      row?.identity ||
-      row?.yield_1m != null ||
-      row?.performance_date ||
-      (row?.state && row.state !== 'evidence_pending'),
-  )
-})
 const allocationMeta = computed(() => {
-  const cash = strategyMeta.value?.cash ?? data.value?.products?.allocation?.available_cash
+  const cash = strategy.value?.mode === 'v9' ? strategyMeta.value?.cash : strategy.value?.mode === 'legacy' ? data.value?.products?.allocation?.available_cash : undefined
   return cash == null ? '' : `可分配 ¥${Math.round(cash).toLocaleString('zh-CN')}`
 })
 const holdingsMeta = computed(() => {
   if (strategyMeta.value) return `${strategyMeta.value.holdings} 只在持`
+  if (strategy.value?.mode !== 'legacy') return ''
   const summary = reviewSummary.value
   if (!summary) return ''
   return summary.replace > 0 ? `${summary.replace} 只建议替换` : `${summary.total} 只在持`
@@ -241,7 +231,8 @@ function holdingsLink(
         <p v-if="strategyLoading && !strategy" role="status">正在读取当前策略…</p>
         <div v-else-if="strategyError" class="rw-alert is-warn" role="alert">{{ strategyError }} <button type="button" class="link-button" @click="loadStrategy">重新读取策略</button></div>
         <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9'" :workspace="strategy" section="allocation" @refresh="loadStrategy" />
-        <ProductsSection v-else-if="data && strategy" :dashboard="data" />
+        <ProductsSection v-else-if="data && strategy?.mode === 'legacy'" :dashboard="data" />
+        <p v-else-if="strategy">当前策略模式暂不提供配置建议。</p>
       </section>
 
       <section
@@ -280,13 +271,14 @@ function holdingsLink(
         <div v-if="data && holdingsView === 'review'" :class="strategy?.mode === 'v9' ? '' : 'rw-panel'">
           <p v-if="strategyLoading && !strategy" role="status">正在读取当前策略…</p>
           <div v-else-if="strategyError" class="rw-alert is-warn" role="alert">{{ strategyError }} <button type="button" class="link-button" @click="loadStrategy">重新读取策略</button></div>
-          <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9' && v9HoldingsHasEvidence" :workspace="strategy" section="holdings" @refresh="loadStrategy" />
-          <HoldingReviewPanel v-else-if="strategy"
+          <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9'" :workspace="strategy" section="holdings" @refresh="loadStrategy" />
+          <HoldingReviewPanel v-else-if="strategy?.mode === 'legacy'"
             :reviews="data.workspace.holding_reviews"
             :today="data.meta.today"
             :snapshot-date="data.meta.product_snapshot_date"
             :history-date="data.meta.product_history_date"
           />
+          <p v-else-if="strategy">当前策略模式暂不提供持仓动作。</p>
         </div>
         <div v-else-if="data && holdingsView === 'performance'" class="rw-panel">
           <HoldingPerformancePanel

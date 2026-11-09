@@ -10,7 +10,7 @@ const { bucketForTerm } = require('../../../lib/yield-policy');
 const { productFamilyKey, returnEvidenceTier } = require('../../../lib/products');
 const { buildBuyForecast } = require('./forecast');
 const { combineHoldingEvidence } = require('./holding-evidence');
-const { isoDate } = require('../r2-screening/calendar');
+const { isoDate, shift } = require('../r2-screening/calendar');
 
 // Legacy holdings predate transaction-level pretrade reviews. Classify them
 // conservatively from the product master so they stop blocking the account,
@@ -87,6 +87,19 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], port
   const monitoringEvidence = holdingSupplements.length
     ? combineHoldingEvidence({ context: evidence, supplements: holdingSupplements, date }) : evidence;
   const monitoring = buildHoldingMonitoring({ holdings: portfolio.holdings ?? [], context: monitoringEvidence, date });
+  const verifiedArrivalByLot = new Map(monitoring.rows.filter(row =>
+    row.redemption?.arrival_unverified === false && isoDate(row.redemption.funds_available_date))
+    .map(row => [row.lot_id, row.redemption.funds_available_date]));
+  const knownArrivals = account.exposures.filter(row => row.source === 'confirmed_holding' && verifiedArrivalByLot.has(row.lot_id));
+  const unknownArrivalCents = account.exposures.filter(row => row.source === 'confirmed_holding' && !verifiedArrivalByLot.has(row.lot_id))
+    .reduce((total, row) => total + row.amount_cents, 0);
+  const liquidityCoverage = [7, 30, 90].map(days => {
+    const by_date = shift(date, days);
+    const arrivalCents = knownArrivals.filter(row => verifiedArrivalByLot.get(row.lot_id) <= by_date)
+      .reduce((total, row) => total + row.amount_cents, 0);
+    return { days, by_date, verified_arrival_cents: arrivalCents,
+      free_cash_cents: account.verified ? account.available_cents : null, unknown_arrival_cents: unknownArrivalCents };
+  });
   const selected = allocation.rows.filter(row => row.amount_cents > 0);
   const selectedReviews = selected.map(row => {
     const current = evidence.rows.find(item => identityKey(item.identity) === identityKey(row.identity));
@@ -102,6 +115,7 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], port
     source_fingerprint: evidence.fingerprint, monitoring_fingerprint: monitoringEvidence.fingerprint, account_fingerprint: account.fingerprint,
     settings_fingerprint: fingerprint(settings) };
   return freeze({ input, input_fingerprint: fingerprint(input), evidence, monitoringEvidence, account, allocation, monitoring,
+    liquidity_coverage: liquidityCoverage,
     selected_reviews: selectedReviews, may_generate_buy_proposals: mayPropose,
     // Mandatory-yield exits are independent of full-investment feasibility or
     // replacement availability. The actual write use case still revalidates.
@@ -119,7 +133,8 @@ function compactStrategyResult(result) {
       committed_cents: allocation.committed_cents, available_cents: allocation.available_cents,
       blocked_cash_cents: allocation.blocked_cash_cents, allocated_cents: allocation.allocated_cents,
       unallocated_cents: allocation.unallocated_cents, full_investment: allocation.full_investment,
-      blockers: allocation.blockers, fingerprint: allocation.fingerprint,
+      blockers: allocation.blockers, fingerprint: allocation.fingerprint, bucket_limits: allocation.bucket_limits ?? {},
+      liquidity_coverage: result.liquidity_coverage,
       rows: allocation.rows.filter(row => row.amount_cents > 0).map(row => ({ identity: row.identity,
         rank: row.rank, group: row.group, amount_cents: row.amount_cents, evidence_hash: row.evidence_hash, reason: row.reason })),
       excluded_reason_counts: excludedCounts },

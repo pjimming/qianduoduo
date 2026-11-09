@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
+import { getStrategyStatus } from '@/api/r2-strategy'
 import { useToast } from '@/composables/useToast'
 import { formatMoney } from '@/composables/useFormatters'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -25,6 +26,14 @@ const pendingAction = ref<{
 } | null>(null)
 const reason = ref('')
 const submitting = ref(false)
+const strategyStatus = ref<Awaited<ReturnType<typeof getStrategyStatus>> | null>(null)
+onMounted(async () => {
+  try { strategyStatus.value = await getStrategyStatus() } catch { /* Adoption is checked by the server. */ }
+})
+function needsPolicyReview(proposal: DecisionProposal): boolean {
+  const state = strategyStatus.value
+  return Boolean(state?.mode === 'v9' && (!state.contract_matches || proposal.payload.contract_hash !== state.contract_hash))
+}
 
 const activeProposals = computed(() => [
   ...props.proposals.pending,
@@ -234,12 +243,13 @@ function yieldPolicyText(proposal: DecisionProposal): string {
             <strong>{{ proposal.title }}</strong>
             <span class="rw-type-badge">{{ proposal.action }}</span>
             <span class="rw-rating" :class="statusClass(proposal)">
-              {{ proposal.status === 'pending' ? '待采纳' : executionLabel(proposal) }}
+              {{ needsPolicyReview(proposal) ? '策略待复核' : proposal.status === 'pending' ? '待采纳' : executionLabel(proposal) }}
             </span>
           </div>
           <span class="rw-muted">置信度 {{ proposal.confidence }}%</span>
         </div>
         <p class="rw-decision-reason">{{ proposal.summary }}</p>
+        <p v-if="needsPolicyReview(proposal)" class="rw-muted">按当前策略重新复核未执行金额。已成交部分可上传凭证，未执行余额可按原流程取消。</p>
         <div class="rw-decision-meta">
           <span>
             <em>产品</em>{{ proposal.product_code || '—' }}
@@ -261,7 +271,7 @@ function yieldPolicyText(proposal: DecisionProposal): string {
               type="button"
               class="rw-button"
               data-testid="proposal-adopt"
-              :disabled="busyId !== null"
+              :disabled="busyId !== null || needsPolicyReview(proposal)"
               @click="askAdopt(proposal)"
             >
               采纳，待我执行

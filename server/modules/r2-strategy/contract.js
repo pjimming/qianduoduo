@@ -20,12 +20,13 @@ const CONTRACT = freeze({
   payload_version: 1,
   execution_version: V9_EXECUTION_STRATEGY_VERSION,
   selection_policy_version: 'v9',
-  allocation_policy_version: 'r2-v9-bucket-allocation-v1',
+  allocation_policy_version: 'r2-v9-bucket-allocation-v2',
   yield_policy_version: 'r2-term-yield-v1',
   holding_review_version: 'r2-v9-holding-review-v1',
   evaluation_policy_version: 'r2-v9-eval-v1',
   min_monthly_yield: '2.15', max_data_age_days: 6, max_term_days: 190,
-  bucket_targets: { cash: 0, short: 30, medium: 35, long: 35 },
+  bucket_targets: { cash: 0, short: 70, medium: 20, long: 10 },
+  bucket_caps_pct: { medium: 20, long: 10 },
   liquidity_floor_pct: 30, max_single_pct: 30, max_strategy_family_pct: 50,
   evidence_caps: { six_month: { single: 10, aggregate: 20 }, three_month: { single: 10, aggregate: 20 } },
   group_order: ['term_days_asc', 'category_asc'],
@@ -37,5 +38,11 @@ const CONTRACT = freeze({
   max_snapshot_bytes: 65536,
 });
 const CONTRACT_HASH = fingerprint(CONTRACT);
+const { bucket_caps_pct: currentCaps, ...v1 } = CONTRACT;
+const PREVIOUS_CONTRACT_HASH = fingerprint({
+  ...v1,
+  allocation_policy_version: 'r2-v9-bucket-allocation-v1',
+  bucket_targets: { cash: 0, short: 30, medium: 35, long: 35 },
+});
 
-module.exports = { CONTRACT, CONTRACT_HASH, fingerprint, stableJson, freeze };
+module.exports = { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH, fingerprint, stableJson, freeze };

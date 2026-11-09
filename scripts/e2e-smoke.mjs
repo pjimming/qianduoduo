@@ -1277,150 +1277,89 @@ async function main() {
       `移动端两张收益图的 X 轴未对齐或出现横向溢出：${JSON.stringify(mobilePlotAreas)}`,
     )
     await page.setViewportSize({ width: 1280, height: 900 })
-    const attributionPanel = page.locator('.return-attribution')
-    await attributionPanel.waitFor()
+    const overviewReview = page.locator('.r2-overview-review')
+    await overviewReview.waitFor()
+    await page.waitForSelector('#reviewTitle')
     const overviewOrderAndGaps = await page.evaluate(() => {
       const charts = document.querySelector('.r2-overview-charts')
-      const attribution = document.querySelector('.r2-overview-attribution')
+      const review = document.querySelector('.r2-overview-review')
       const shortcuts = document.querySelector('.r2-jump-grid')
       const chartPanels = Array.from(
         document.querySelectorAll('.r2-overview-charts .chart-panel'),
       )
-      if (!charts || !attribution || !shortcuts || chartPanels.length < 2) {
+      if (!charts || !review || !shortcuts || chartPanels.length < 2) {
         return null
       }
       const chartsRect = charts.getBoundingClientRect()
-      const attributionRect = attribution.getBoundingClientRect()
+      const reviewRect = review.getBoundingClientRect()
       const shortcutsRect = shortcuts.getBoundingClientRect()
       const firstChartRect = chartPanels[0].getBoundingClientRect()
       const secondChartRect = chartPanels[1].getBoundingClientRect()
       return {
         order:
-          charts.compareDocumentPosition(attribution) &
+          charts.compareDocumentPosition(review) &
           Node.DOCUMENT_POSITION_FOLLOWING
-            ? 'charts-before-attribution'
+            ? 'charts-before-review'
             : 'wrong-order',
         chartGap: secondChartRect.top - firstChartRect.bottom,
-        attributionGap: attributionRect.top - chartsRect.bottom,
-        shortcutGap: shortcutsRect.top - attributionRect.bottom,
+        reviewGap: reviewRect.top - chartsRect.bottom,
+        shortcutGap: shortcutsRect.top - reviewRect.bottom,
       }
     })
     assert(
-      overviewOrderAndGaps?.order === 'charts-before-attribution',
-      '3% 目标差距归因没有放在收益图表之后',
+      overviewOrderAndGaps?.order === 'charts-before-review',
+      '自动复盘评分没有放在收益图表之后',
     )
     assert(
       overviewOrderAndGaps.chartGap >= 17.5 &&
-        overviewOrderAndGaps.attributionGap >= 17.5 &&
+        overviewOrderAndGaps.reviewGap >= 17.5 &&
         overviewOrderAndGaps.shortcutGap >= 17.5,
       `收益概览卡片间距不足：${JSON.stringify(overviewOrderAndGaps)}`,
     )
-    const attributionText = (await attributionPanel.textContent()) ?? ''
+    const overviewReviewText = (await overviewReview.textContent()) ?? ''
     assert(
-      attributionText.includes('3% 目标差距归因') &&
-        attributionText.includes('实际年化') &&
-        attributionText.includes('目标差距') &&
-        attributionText.includes('尺子一') &&
-        attributionText.includes('尺子二') &&
-        attributionText.includes('买入确认前等待') &&
-        attributionText.includes('费用估算') &&
-        attributionText.includes('账本实际收益') &&
-        attributionText.includes('产品明细合计') &&
-        attributionText.includes('实际 vs 期望收益') &&
-        attributionText.includes('实际 vs 3%目标'),
-      `收益概览没有渲染目标差距归因：${attributionText.slice(0, 240)}`,
+      overviewReviewText.includes('自动复盘评分与记录') &&
+        overviewReviewText.includes('AUTO REVIEW') &&
+        overviewReviewText.includes('月度评分与记录'),
+      `收益概览没有渲染自动复盘评分：${overviewReviewText.slice(0, 240)}`,
     )
     assert(
-      attributionText.includes('样本不足') &&
-        attributionText.includes('账户收益始终以账本 daily_pnl 为准'),
-      '样本不足时归因没有显示证据边界',
+      (await page.locator('#reviewTitle').count()) === 1,
+      '收益概览的自动复盘评分标题缺失或重复',
     )
-    await attributionPanel.locator('.ra-products > summary').click()
-    await attributionPanel
-      .locator('.ra-product-table, .ra-empty-copy')
-      .first()
-      .waitFor()
-    const attributionProductRows = attributionPanel.locator(
-      '.ra-product-row:not(.is-head)',
+    assert(
+      (await page.locator('.return-attribution').count()) === 0,
+      '收益概览不应再渲染目标差距归因',
     )
-    if ((await attributionProductRows.count()) > 0) {
-      const firstAttributionProduct = attributionProductRows.first()
-      const referenceCell = firstAttributionProduct.locator(
-        '[data-reference-status]',
-      )
-      assert(
-        (await referenceCell.getAttribute('data-reference-policy-version')) ===
-          'r2-term-yield-v1' &&
-          ((await referenceCell.textContent()) ?? '').includes('可用窗口'),
-        '收益归因产品行没有显示收益策略版本与可用窗口',
-      )
-      const firstAttributionText =
-        (await firstAttributionProduct.textContent()) ?? ''
-      assert(
-        firstAttributionText.includes('当前持有') ||
-          firstAttributionText.includes('已赎回'),
-        '收益归因产品行没有显示当前持有或已赎回状态',
-      )
-      assert(
-        firstAttributionText.includes('期望收益') &&
-          firstAttributionText.includes('3%目标收益'),
-        '收益归因产品行没有同时说明实际、期望收益与3%目标',
-      )
-      const comparisonAmounts = await firstAttributionProduct.evaluate(
-        (row) => {
-          const read = (selector) => {
-            const attributeBySelector = {
-              '[data-actual-pnl]': 'data-actual-pnl',
-              '[data-expected-pnl]': 'data-expected-pnl',
-              '[data-target-pnl]': 'data-target-pnl',
-              '[data-actual-vs-reference-pnl]':
-                'data-actual-vs-reference-pnl',
-              '[data-actual-vs-target-pnl]': 'data-actual-vs-target-pnl',
-            }
-            const value = row
-              .querySelector(selector)
-              ?.getAttribute(attributeBySelector[selector])
-            return value === null || value === undefined ? null : Number(value)
-          }
-          return {
-            actual: read('[data-actual-pnl]'),
-            expected: read('[data-expected-pnl]'),
-            target: read('[data-target-pnl]'),
-            actualVsExpected: read(
-              '[data-actual-vs-reference-pnl]',
-            ),
-            actualVsTarget: read('[data-actual-vs-target-pnl]'),
-          }
-        },
-      )
-      if (
-        Number.isFinite(comparisonAmounts.actual) &&
-        Number.isFinite(comparisonAmounts.expected) &&
-        Number.isFinite(comparisonAmounts.actualVsExpected)
-      ) {
-        assert(
-          Math.abs(
-            comparisonAmounts.actualVsExpected -
-              (comparisonAmounts.actual - comparisonAmounts.expected),
-          ) <= 0.011,
-          `收益归因“实际 vs 期望收益”未按实际收益减期望收益：${JSON.stringify(comparisonAmounts)}`,
-        )
-      }
-      if (
-        Number.isFinite(comparisonAmounts.actual) &&
-        Number.isFinite(comparisonAmounts.target) &&
-        Number.isFinite(comparisonAmounts.actualVsTarget)
-      ) {
-        assert(
-          Math.abs(
-            comparisonAmounts.actualVsTarget -
-              (comparisonAmounts.actual - comparisonAmounts.target),
-          ) <= 0.011,
-          `收益归因“实际 vs 3%目标”未按实际收益减目标收益：${JSON.stringify(comparisonAmounts)}`,
-        )
-      }
-    }
-    await assertFontFloor(page, '.return-attribution', '目标差距归因桌面端')
+    assert(
+      (await page
+        .locator('.r2-overview-review.review-module-card')
+        .count()) === 1,
+      '收益概览复盘卡应只渲染一个模块卡',
+    )
+    assert(
+      (await page.locator('.r2-overview-review .record-day').count()) >= 28,
+      '收益概览的月度记录日历没有渲染完整月份',
+    )
+    const recentDayRows = await page.locator('.recent-day-row').count()
+    const recentReviewHead =
+      (await page
+        .locator('.recent-review-card .review-card-head')
+        .textContent()) ?? ''
+    const recentDayLabel = recentReviewHead.match(/最近\s*(\d+)\s*天/u)
+    assert(
+      recentDayRows >= 1 &&
+        recentDayRows <= 7 &&
+        Number(recentDayLabel?.[1]) === recentDayRows,
+      `最近记录卡片行数与标题不一致：${recentDayRows} / ${recentReviewHead.trim()}`,
+    )
+    await page.locator('.r2-overview-review .review-history-row').first().hover()
+    await assertNoLargeLightSurface(
+      page,
+      '.r2-overview-review',
+      '收益概览复盘卡深色主题',
+    )
+    await assertFontFloor(page, '.r2-overview-review', '收益概览复盘卡桌面端')
     await page.setViewportSize({ width: 390, height: 844 })
     const mobileCurrentValueCardLayout = await currentValueCard.evaluate(
       (card) => {
@@ -1456,141 +1395,38 @@ async function main() {
     await assertFontFloor(page, '.stat-primary', '收益概览移动端持仓卡')
     await assertNoLargeLightSurface(
       page,
-      '.return-attribution',
-      '目标差距归因移动深色主题',
+      '.r2-overview-review',
+      '收益概览复盘卡移动深色主题',
     )
-    await assertFontFloor(page, '.return-attribution', '目标差距归因移动端')
+    await assertFontFloor(page, '.r2-overview-review', '收益概览复盘卡移动端')
     assert(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
       ),
-      '目标差距归因移动端出现横向溢出',
+      '收益概览复盘卡移动端出现横向溢出',
     )
     await page.setViewportSize({ width: 1280, height: 900 })
-
-    const reasonOverviewPatch = await fetch(
-      `${base}/api/dashboard/sections?include=overview`,
-    ).then((response) => response.json())
-    const reasonTemplate =
-      reasonOverviewPatch.workspace.return_attribution.product_evidence
-        .products[0]
-    const reasonRows = [
-      {
-        reason: 'no_product_snapshot',
-        code: 'E2E-NO-SNAPSHOT',
-        label: '当前快照缺失',
-        policy: null,
-        holdingStatus: 'held',
-      },
-      {
-        reason: 'unknown_term',
-        code: 'E2E-UNKNOWN-TERM',
-        label: '期限无法分桶',
-        policy: 'r2-term-yield-v1',
-        holdingStatus: 'redeemed',
-      },
-      {
-        reason: 'no_available_horizons',
-        code: 'E2E-NO-HORIZONS',
-        label: '指定窗口均缺失',
-        policy: 'r2-term-yield-v1',
-        holdingStatus: 'held',
-      },
-    ]
-    reasonOverviewPatch.workspace.return_attribution.product_evidence.products =
-      reasonRows.map((row) => ({
-        ...reasonTemplate,
-        product_code: row.code,
-        product_name: row.label,
-        holding_status: row.holdingStatus,
-        current_holding_amount: row.holdingStatus === 'held' ? 1000 : 0,
-        reference_yield_pct: null,
-        reference_yield_status: 'unavailable',
-        reference_yield_reason: row.reason,
-        reference_available_horizons: [],
-        reference_normalized_weights: {},
-        reference_yield_policy_version: row.policy,
-        reference_data_date: null,
-        reference_pnl: null,
-        selection_estimate_pnl: null,
-        actual_vs_reference_pnl: null,
-        actual_vs_target_pnl: null,
-        recorded_product_pnl: 0,
-        recorded_days: 0,
-      }))
-    const reasonPage = await browser.newPage({
-      viewport: { width: 1280, height: 900 },
-    })
-    try {
-      await reasonPage.route(
-        '**/api/dashboard/sections?include=overview',
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(reasonOverviewPatch),
-          })
-        },
-      )
-      await reasonPage.goto(`${base}/ledger/overview`, {
-        waitUntil: 'networkidle',
-      })
-      const reasonPanel = reasonPage.locator('.return-attribution')
-      await reasonPanel.waitFor()
-      await reasonPanel.locator('.ra-products > summary').click()
-      const reasonCells = reasonPanel.locator('[data-reference-reason]')
-      assert(
-        (await reasonCells.count()) === 3,
-        '收益归因三类不可计算原因没有全部渲染',
-      )
-      const renderedReasons = await reasonCells.evaluateAll((cells) =>
-        cells.map((cell) => ({
-          reason: cell.getAttribute('data-reference-reason'),
-          policy: cell.getAttribute('data-reference-policy-version'),
-          text: cell.textContent?.replace(/\s+/g, ' ').trim() || '',
-        })),
-      )
-      for (const expected of reasonRows) {
-        const rendered = renderedReasons.find(
-          (item) => item.reason === expected.reason,
-        )
-        assert(
-          rendered?.text.includes(expected.label),
-          `收益归因原因码 ${expected.reason} 的文案不正确：${JSON.stringify(rendered)}`,
-        )
-        assert(
-          rendered.policy === (expected.policy || ''),
-          `收益归因原因码 ${expected.reason} 的策略版本不正确：${JSON.stringify(rendered)}`,
-        )
-      }
-      const renderedHoldingStates = await reasonPanel
-        .locator('.ra-holding-status')
-        .allTextContents()
-      assert(
-        renderedHoldingStates.some((text) => text.includes('当前持有')) &&
-          renderedHoldingStates.some((text) => text.includes('已赎回')),
-        `收益归因未同时显示当前持有与已赎回状态：${renderedHoldingStates.join('、')}`,
-      )
-      await assertFontFloor(
-        reasonPage,
-        '.return-attribution',
-        '收益归因原因码桌面端',
-      )
-      await reasonPage.setViewportSize({ width: 390, height: 844 })
-      await assertFontFloor(
-        reasonPage,
-        '.return-attribution',
-        '收益归因原因码移动端',
-      )
-      assert(
-        await reasonPage.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-        ),
-        '收益归因原因码移动端出现横向溢出',
-      )
-    } finally {
-      await reasonPage.close()
-    }
+    await assertNoLargeLightSurface(page, '.app-main', '收益概览深色主题')
+    const missingDay = page
+      .locator('.r2-overview-review .record-day.is-missing')
+      .first()
+    const missingText = (await missingDay.textContent())?.trim() || ''
+    await missingDay.click()
+    await page.waitForSelector('#recordDate')
+    assert(
+      new URL(page.url()).pathname === '/ledger/daily',
+      '点击缺记日期应跳到每日记账',
+    )
+    assert(
+      new URL(page.url()).searchParams.get('section') === 'today',
+      '点击缺记日期应落到每日记账的两类截图分区',
+    )
+    assert(
+      (await page.locator('#recordDate').inputValue()).endsWith(
+        missingText.padStart(2, '0'),
+      ),
+      '点击缺记日期没有带入记账表单',
+    )
 
     await page.goto(`${base}/investment/briefs`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.briefs-page')
@@ -1830,40 +1666,274 @@ async function main() {
     )
 
     await page.goto(`${base}/ledger/review`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('#score .review-history-row')
+    const reviewAttribution = page.locator('#attribution .return-attribution')
+    await reviewAttribution.waitFor()
     await assertNoLargeLightSurface(page, '.app-main', '复盘深色主题')
     const reviewSectionIds = await page
       .locator('.r2-stack > section')
       .evaluateAll((sections) => sections.map((section) => section.id))
     assert(
-      reviewSectionIds.join(',') === 'score',
+      reviewSectionIds.join(',') === 'attribution',
       `复盘页一次只应渲染一个分区：${reviewSectionIds.join(',')}`,
     )
     assert(
       ((await page
         .locator('.workspace-nav a[aria-current="page"]')
-        .getAttribute('data-section')) ?? '') === 'score',
-      '复盘页默认没有停在日周月评分分区',
+        .getAttribute('data-section')) ?? '') === 'attribution',
+      '复盘页默认没有停在收益归因分区',
     )
     assert(
-      (await page.locator('.review-module-card').count()) === 1,
-      '复盘默认分区只应渲染评分模块卡',
+      (await page.locator('.review-module-card').count()) === 0,
+      '复盘页的收益归因不应再套评分模块卡',
     )
     assert(
-      (await page.locator('.record-day').count()) >= 28,
-      '月度记录日历没有渲染完整月份',
+      (await page.locator('.review-section').count()) === 0,
+      '复盘页不应再渲染自动复盘评分',
     )
-    const recentDayRows = await page.locator('.recent-day-row').count()
-    const recentReviewHead =
-      (await page.locator('.recent-review-card .review-card-head').textContent()) ??
-      ''
-    const recentDayLabel = recentReviewHead.match(/最近\s*(\d+)\s*天/u)
+    const reviewAttributionText = (await reviewAttribution.textContent()) ?? ''
     assert(
-      recentDayRows >= 1 &&
-        recentDayRows <= 7 &&
-        Number(recentDayLabel?.[1]) === recentDayRows,
-      `最近记录卡片行数与标题不一致：${recentDayRows} / ${recentReviewHead.trim()}`,
+      reviewAttributionText.includes('3% 目标差距归因') &&
+        reviewAttributionText.includes('实际年化') &&
+        reviewAttributionText.includes('目标差距') &&
+        reviewAttributionText.includes('尺子一') &&
+        reviewAttributionText.includes('尺子二') &&
+        reviewAttributionText.includes('买入确认前等待') &&
+        reviewAttributionText.includes('费用估算') &&
+        reviewAttributionText.includes('账本实际收益') &&
+        reviewAttributionText.includes('产品明细合计') &&
+        reviewAttributionText.includes('实际 vs 期望收益') &&
+        reviewAttributionText.includes('实际 vs 3%目标'),
+      `复盘页没有渲染目标差距归因：${reviewAttributionText.slice(0, 240)}`,
     )
+    assert(
+      reviewAttributionText.includes('样本不足') &&
+        reviewAttributionText.includes('账户收益始终以账本 daily_pnl 为准'),
+      '样本不足时归因没有显示证据边界',
+    )
+    await reviewAttribution.locator('.ra-products > summary').click()
+    await reviewAttribution
+      .locator('.ra-product-table, .ra-empty-copy')
+      .first()
+      .waitFor()
+    const reviewProductRows = reviewAttribution.locator(
+      '.ra-product-row:not(.is-head)',
+    )
+    if ((await reviewProductRows.count()) > 0) {
+      const firstReviewProduct = reviewProductRows.first()
+      const referenceCell = firstReviewProduct.locator(
+        '[data-reference-status]',
+      )
+      assert(
+        (await referenceCell.getAttribute('data-reference-policy-version')) ===
+          'r2-term-yield-v1' &&
+          ((await referenceCell.textContent()) ?? '').includes('可用窗口'),
+        '收益归因产品行没有显示收益策略版本与可用窗口',
+      )
+      const firstReviewText = (await firstReviewProduct.textContent()) ?? ''
+      assert(
+        firstReviewText.includes('当前持有') ||
+          firstReviewText.includes('已赎回'),
+        '收益归因产品行没有显示当前持有或已赎回状态',
+      )
+      assert(
+        firstReviewText.includes('期望收益') &&
+          firstReviewText.includes('3%目标收益'),
+        '收益归因产品行没有同时说明实际、期望收益与3%目标',
+      )
+      const comparisonAmounts = await firstReviewProduct.evaluate((row) => {
+        const read = (selector) => {
+          const attributeBySelector = {
+            '[data-actual-pnl]': 'data-actual-pnl',
+            '[data-expected-pnl]': 'data-expected-pnl',
+            '[data-target-pnl]': 'data-target-pnl',
+            '[data-actual-vs-reference-pnl]': 'data-actual-vs-reference-pnl',
+            '[data-actual-vs-target-pnl]': 'data-actual-vs-target-pnl',
+          }
+          const value = row
+            .querySelector(selector)
+            ?.getAttribute(attributeBySelector[selector])
+          return value === null || value === undefined ? null : Number(value)
+        }
+        return {
+          actual: read('[data-actual-pnl]'),
+          expected: read('[data-expected-pnl]'),
+          target: read('[data-target-pnl]'),
+          actualVsExpected: read('[data-actual-vs-reference-pnl]'),
+          actualVsTarget: read('[data-actual-vs-target-pnl]'),
+        }
+      })
+      if (
+        Number.isFinite(comparisonAmounts.actual) &&
+        Number.isFinite(comparisonAmounts.expected) &&
+        Number.isFinite(comparisonAmounts.actualVsExpected)
+      ) {
+        assert(
+          Math.abs(
+            comparisonAmounts.actualVsExpected -
+              (comparisonAmounts.actual - comparisonAmounts.expected),
+          ) <= 0.011,
+          `收益归因“实际 vs 期望收益”未按实际收益减期望收益：${JSON.stringify(comparisonAmounts)}`,
+        )
+      }
+      if (
+        Number.isFinite(comparisonAmounts.actual) &&
+        Number.isFinite(comparisonAmounts.target) &&
+        Number.isFinite(comparisonAmounts.actualVsTarget)
+      ) {
+        assert(
+          Math.abs(
+            comparisonAmounts.actualVsTarget -
+              (comparisonAmounts.actual - comparisonAmounts.target),
+          ) <= 0.011,
+          `收益归因“实际 vs 3%目标”未按实际收益减目标收益：${JSON.stringify(comparisonAmounts)}`,
+        )
+      }
+    }
+    await assertFontFloor(page, '.return-attribution', '复盘归因桌面端')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await assertNoLargeLightSurface(
+      page,
+      '.return-attribution',
+      '复盘归因移动深色主题',
+    )
+    await assertFontFloor(page, '.return-attribution', '复盘归因移动端')
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+      '复盘归因移动端出现横向溢出',
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
+
+    const reasonReviewPatch = await fetch(
+      `${base}/api/dashboard/sections?include=summary,ledger,trades,evaluation`,
+    ).then((response) => response.json())
+    const reasonTemplate =
+      reasonReviewPatch.workspace.return_attribution.product_evidence.products[0]
+    const reasonRows = [
+      {
+        reason: 'no_product_snapshot',
+        code: 'E2E-NO-SNAPSHOT',
+        label: '当前快照缺失',
+        policy: null,
+        holdingStatus: 'held',
+      },
+      {
+        reason: 'unknown_term',
+        code: 'E2E-UNKNOWN-TERM',
+        label: '期限无法分桶',
+        policy: 'r2-term-yield-v1',
+        holdingStatus: 'redeemed',
+      },
+      {
+        reason: 'no_available_horizons',
+        code: 'E2E-NO-HORIZONS',
+        label: '指定窗口均缺失',
+        policy: 'r2-term-yield-v1',
+        holdingStatus: 'held',
+      },
+    ]
+    reasonReviewPatch.workspace.return_attribution.product_evidence.products =
+      reasonRows.map((row) => ({
+        ...reasonTemplate,
+        product_code: row.code,
+        product_name: row.label,
+        holding_status: row.holdingStatus,
+        current_holding_amount: row.holdingStatus === 'held' ? 1000 : 0,
+        reference_yield_pct: null,
+        reference_yield_status: 'unavailable',
+        reference_yield_reason: row.reason,
+        reference_available_horizons: [],
+        reference_normalized_weights: {},
+        reference_yield_policy_version: row.policy,
+        reference_data_date: null,
+        reference_pnl: null,
+        selection_estimate_pnl: null,
+        actual_vs_reference_pnl: null,
+        actual_vs_target_pnl: null,
+        recorded_product_pnl: 0,
+        recorded_days: 0,
+      }))
+    const reasonPage = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    })
+    try {
+      await reasonPage.route(
+        (url) =>
+          url.pathname === '/api/dashboard/sections' &&
+          (url.searchParams.get('include') ?? '').includes('evaluation'),
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(reasonReviewPatch),
+          })
+        },
+      )
+      await reasonPage.goto(`${base}/ledger/review`, {
+        waitUntil: 'networkidle',
+      })
+      const reasonPanel = reasonPage.locator('#attribution .return-attribution')
+      await reasonPanel.waitFor()
+      assert(
+        (await reasonPage.locator('.review-section').count()) === 0,
+        '复盘原因码页不应再渲染自动复盘评分',
+      )
+      await reasonPanel.locator('.ra-products > summary').click()
+      const reasonCells = reasonPanel.locator('[data-reference-reason]')
+      assert(
+        (await reasonCells.count()) === 3,
+        '收益归因三类不可计算原因没有全部渲染',
+      )
+      const renderedReasons = await reasonCells.evaluateAll((cells) =>
+        cells.map((cell) => ({
+          reason: cell.getAttribute('data-reference-reason'),
+          policy: cell.getAttribute('data-reference-policy-version'),
+          text: cell.textContent?.replace(/\s+/g, ' ').trim() || '',
+        })),
+      )
+      for (const expected of reasonRows) {
+        const rendered = renderedReasons.find(
+          (item) => item.reason === expected.reason,
+        )
+        assert(
+          rendered?.text.includes(expected.label),
+          `收益归因原因码 ${expected.reason} 的文案不正确：${JSON.stringify(rendered)}`,
+        )
+        assert(
+          rendered.policy === (expected.policy || ''),
+          `收益归因原因码 ${expected.reason} 的策略版本不正确：${JSON.stringify(rendered)}`,
+        )
+      }
+      const renderedHoldingStates = await reasonPanel
+        .locator('.ra-holding-status')
+        .allTextContents()
+      assert(
+        renderedHoldingStates.some((text) => text.includes('当前持有')) &&
+          renderedHoldingStates.some((text) => text.includes('已赎回')),
+        `收益归因未同时显示当前持有与已赎回状态：${renderedHoldingStates.join('、')}`,
+      )
+      await assertFontFloor(
+        reasonPage,
+        '.return-attribution',
+        '收益归因原因码桌面端',
+      )
+      await reasonPage.setViewportSize({ width: 390, height: 844 })
+      await assertFontFloor(
+        reasonPage,
+        '.return-attribution',
+        '收益归因原因码移动端',
+      )
+      assert(
+        await reasonPage.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+        '收益归因原因码移动端出现横向溢出',
+      )
+    } finally {
+      await reasonPage.close()
+    }
+
     await page.locator('.workspace-nav a[data-section="monthly-notes"]').click()
     await page.waitForSelector('#monthly-notes .rw-question')
     await assertNoLargeLightSurface(page, '#monthly-notes', '月度五问深色主题')
@@ -1887,28 +1957,9 @@ async function main() {
       '季度复盘应显示问题清单',
     )
 
-    await page.locator('.workspace-nav a[data-section="score"]').click()
-    await page.waitForSelector('#score .review-history-row')
-    await page.locator('#score .review-history-row').first().hover()
-    await assertNoLargeLightSurface(page, '#score', '复盘历史悬浮深色主题')
-    const missingDay = page.locator('.record-day.is-missing').first()
-    const missingText = (await missingDay.textContent())?.trim() || ''
-    await missingDay.click()
-    await page.waitForSelector('#recordDate')
-    assert(
-      new URL(page.url()).pathname === '/ledger/daily',
-      '点击缺记日期应跳到每日记账',
-    )
-    assert(
-      new URL(page.url()).searchParams.get('section') === 'today',
-      '点击缺记日期应落到每日记账的两类截图分区',
-    )
-    assert(
-      (await page.locator('#recordDate').inputValue()).endsWith(
-        missingText.padStart(2, '0'),
-      ),
-      '点击缺记日期没有带入记账表单',
-    )
+    await page.locator('.workspace-nav a[data-section="attribution"]').click()
+    await page.waitForSelector('#attribution .return-attribution')
+    await assertNoLargeLightSurface(page, '#attribution', '复盘归因深色主题')
 
     await page.goto(`${base}/ledger/trades`, { waitUntil: 'networkidle' })
     await page.waitForSelector('#current-value')
@@ -3750,7 +3801,7 @@ async function main() {
       `控制台出现错误：\n${consoleErrors.join('\n')}`,
     )
     console.log(
-      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、选品初筛深链与双主题、双截图入口、消息中心、决策提案采纳、复盘模块卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
+      `E2E 通过：正文检索 ${hits} 条命中、报告直达无 iframe、静态原文入口退出、报告与科技图谱三版返回首页、桌面与移动报告页、左侧目录 ${outlineItems} 项、搜索切换、键盘切换、样式卸载、侧边栏七入口、选品初筛深链与双主题、双截图入口、消息中心、决策提案采纳、收益概览复盘卡与跨页补记、逐产品收益档案、产品配置、未开放快照只读展示、持仓复核与替换决策、候选池逐只详情与筛选/滚动恢复、交易流水、收件箱、自动评估、确认弹窗、错误兜底。`,
     )
   } finally {
     await browser.close()

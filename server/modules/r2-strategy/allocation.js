@@ -84,6 +84,14 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
   const existing = (field, key) => sum(exposures.filter(row => row[field] === key).map(row => row.amount_cents));
   const bucketAmount = Object.fromEntries(BUCKETS.map(bucket => [bucket, existing('bucket', bucket)]));
   const existingViolations = [];
+  const bucketLimits = Object.fromEntries(Object.entries(CONTRACT.bucket_caps_pct).map(([bucket, percent]) => {
+    const limit = pct(principal, percent);
+    const occupied = bucketAmount[bucket];
+    if (occupied > limit) existingViolations.push(`existing_${bucket}_bucket_cap`);
+    const actual = Array.isArray(account.actual_holdings) ? sum(account.actual_holdings.filter(row => row.bucket === bucket).map(row => row.amount_cents)) : null;
+    return [bucket, { limit_cents: limit, occupied_cents: occupied, actual_cents: actual,
+      remaining_cents: Math.max(0, limit - occupied), excess_cents: Math.max(0, occupied - limit) }];
+  }));
   for (const [field, maximum, reason] of [['product_key', pct(principal, singlePct), 'existing_product_cap'],
     ['family_key', pct(principal, CONTRACT.max_strategy_family_pct), 'existing_family_cap']]) {
     for (const key of new Set(exposures.map(row => row[field]))) if (existing(field, key) > maximum) existingViolations.push(reason);
@@ -96,12 +104,8 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
   }
   const existingLiquid = sum(exposures.filter(row => row.liquidity_eligible === true).map(row => row.amount_cents));
   const budgets = {};
-  let remaining = available;
   for (const bucket of BUCKETS) {
-    let target = Math.max(0, pct(principal, CONTRACT.bucket_targets[bucket]) - bucketAmount[bucket]);
-    if (bucket === 'short') target = Math.max(target, pct(principal, liquidityPct) - existingLiquid);
-    budgets[bucket] = Math.min(remaining, target);
-    remaining -= budgets[bucket];
+    budgets[bucket] = Math.min(available, bucketLimits[bucket]?.remaining_cents ?? available);
   }
   const model = { optimize: 'invested', opType: 'max', constraints: { total: { max: available } },
     variables: {}, ints: {}, binaries: {}, options: { timeout: timeoutMs, tolerance: 0, exitOnCycles: true } };
@@ -155,7 +159,17 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
     });
   };
   addRequirement('liquidity', pct(principal, liquidityPct), row => row.liquidity_eligible === true);
-  cashNeeds.forEach((need, index) => addRequirement(`cash_need_${index}`, need.required_cents, row => Boolean(isoDate(row.available_on) && row.available_on <= need.by_date)));
+  cashNeeds.forEach((need, index) => {
+    const name = `cash_need_${index}`;
+    const arrives = row => isoDate(row.available_on) && row.available_on <= need.by_date;
+    const already = sum(exposures.filter(arrives).map(row => row.amount_cents));
+    model.constraints[name] = { min: need.required_cents - already - available };
+    rows.forEach((row, i) => {
+      if (arrives(row.limit)) return;
+      add(name, model.variables[`y_${i}`], -row.minimum);
+      add(name, model.variables[`z_${i}`], -row.increment);
+    });
+  });
 
   let solveCount = 0;
   let exhausted = false;
@@ -205,6 +219,17 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
     solver: { name: 'javascript-lp-solver@1.0.3', calls: solveCount }, bucket_budgets_cents: budgets });
   const invested = sum(values);
   model.constraints.total = { equal: invested };
+  model.optimize = 'short_invested';
+  rows.forEach((row, index) => {
+    if (row.bucket !== 'short') return;
+    model.variables[`y_${index}`].short_invested = row.minimum;
+    model.variables[`z_${index}`].short_invested = row.increment;
+  });
+  const shortValues = amounts(run());
+  if (!shortValues) return done({ ...base, bucket_limits: bucketLimits,
+    blockers: [exhausted ? 'solver_budget_exhausted' : 'allocation_preferences_not_verified'] });
+  values = shortValues;
+  model.constraints.short_invested = { equal: sum(rows.map((row, index) => row.bucket === 'short' ? values[index] : 0)) };
 
   // At fixed invested amount, prefer equal group budgets. Then optimize each
   // original v9-ranked share in stable group order while preserving all prior
@@ -256,7 +281,7 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
     status: full ? 'simulation_passed' : !preferencesComplete ? 'pending' : 'no_feasible_full_allocation', full_investment: full,
     blockers: full ? [] : [...new Set(existingViolations), ...(!preferencesComplete ? ['allocation_preferences_not_verified'] : []), ...(!requirementsPassed ? ['liquidity_or_cashflow_conflict'] : []),
       ...(allocated < available ? ['capacity_or_increment_gap'] : []), ...(blockedCash ? ['cash_in_transit'] : [])],
-    bucket_budgets_cents: budgets, liquidity_cents: liquidAfter, liquidity_required_cents: pct(principal, liquidityPct),
+    bucket_budgets_cents: budgets, bucket_limits: bucketLimits, liquidity_cents: liquidAfter, liquidity_required_cents: pct(principal, liquidityPct),
     constraints: Object.fromEntries(capacities),
     solver: { name: 'javascript-lp-solver@1.0.3', calls: solveCount, preference_complete: preferencesComplete } });
 }

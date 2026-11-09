@@ -67,23 +67,26 @@ function createStrategyRepository(db, { transactionManager = createTransactionMa
     if (result && typeof result.then === 'function') throw new Error('策略事务不允许异步回调');
     return result;
   }
-  function transition({ operationKey, expectedSeq, mode, summary = {} }, work = () => {}) {
+  function transition({ operationKey, expectedSeq, mode, summary = {}, previousContractHash }, work = () => {}) {
     integer(expectedSeq, '策略序号');
     const key = text(operationKey, '切换操作标识');
     if (!['legacy', 'shadow', 'v9', 'suspended'].includes(mode)) throw strategyError('invalid_input', '策略模式无效', 400);
     const json = payload(summary);
     return transactionManager.run(() => {
-      requireState();
+      if (!installed()) requireState();
       const existing = db.prepare('SELECT * FROM r2_strategy_transitions WHERE operation_key=?').get(key);
       if (existing) {
         if (existing.to_mode !== mode || existing.summary_json !== json) throw strategyError('operation_conflict', '相同切换操作标识对应不同输入');
         return { ...existing, existing: true };
       }
-      const before = requireState(expectedSeq);
+      const stored = state();
+      const before = previousContractHash && stored?.schema_version === 1 &&
+        stored.contract_hash === previousContractHash && stored.activation_seq === expectedSeq
+        ? stored : requireState(expectedSeq);
       const seq = before.activation_seq + 1;
       const stamp = now();
       synchronous(() => work({ before, activation_seq: seq }));
-      db.prepare('UPDATE r2_strategy_state SET activation_seq=?,mode=?,updated_at=? WHERE singleton=1').run(seq, mode, stamp);
+      db.prepare('UPDATE r2_strategy_state SET activation_seq=?,mode=?,contract_hash=?,updated_at=? WHERE singleton=1').run(seq, mode, CONTRACT_HASH, stamp);
       db.prepare(`INSERT INTO r2_strategy_transitions VALUES (?,?,?,?,?,?,?)`).run(key, seq, before.mode, mode, CONTRACT_HASH, json, stamp);
       return { activation_seq: seq, from_mode: before.mode, to_mode: mode, existing: false };
     });

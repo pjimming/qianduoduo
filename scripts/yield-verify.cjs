@@ -10,6 +10,8 @@ const EXPECTED = Object.freeze({
   overview_path: '/api/dashboard/sections?include=overview',
   evaluation_path: '/api/dashboard/sections?include=evaluation',
   selection_version: 'r2-dynamic-v4',
+  holding_review_version: 'r2-holding-review-v8',
+  candidate_policy_version: 'v9',
   yield_policy_version: 'r2-term-yield-v1',
   front_load_scheme: 'B',
   reference_weights: Object.freeze({
@@ -726,9 +728,11 @@ function evaluateApiPayloads({
       const label = `持仓复核/${review.product_code}`;
       verifier.check(
         `${label} 规则与策略版本正确`,
-        review.review_version === 'r2-holding-review-v7' &&
+        review.review_version === EXPECTED.holding_review_version &&
+          review.candidate_policy_version ===
+            EXPECTED.candidate_policy_version &&
           review.yield_policy_version === EXPECTED.yield_policy_version,
-        `${review.review_version}, ${review.yield_policy_version}`,
+        `${review.review_version}, ${review.candidate_policy_version}, ${review.yield_policy_version}`,
       );
       validateYieldEvidence(verifier, `${label}/当前`, {
         ...review.current,
@@ -740,6 +744,13 @@ function evaluateApiPayloads({
         yield_policy_version: review.current?.yield_policy_version,
       });
       for (const candidate of review.candidates || []) {
+        verifier.check(
+          `${label}/候选 ${candidate.code} 来自 v9 初筛`,
+          candidate.candidate_source === 'v9' &&
+            Number.isInteger(candidate.v9_rank) &&
+            Number.isFinite(candidate.yield_1m_pct),
+          `${candidate.candidate_source}, rank=${candidate.v9_rank}, 1m=${candidate.yield_1m_pct}`,
+        );
         verifier.check(
           `${label}/候选 ${candidate.code} 不是 cash`,
           candidate.bucket !== 'cash' &&

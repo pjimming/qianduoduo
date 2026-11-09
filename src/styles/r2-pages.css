@@ -1537,6 +1537,15 @@ button.hr-compare-name {
   letter-spacing: 0.02em;
 }
 
+.hr-top-tag.is-v9 {
+  border-color: var(--line);
+  background: var(--card);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 .hr-candidate-head {
   display: flex;
   align-items: flex-start;
@@ -2519,7 +2528,7 @@ button.hr-compare-name {
   margin-top: 18px;
 }
 
-.r2-overview-attribution {
+.r2-overview-review {
   min-width: 0;
   margin-top: 18px;
 }

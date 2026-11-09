@@ -87,6 +87,16 @@ function createProductsService(repository, options = {}) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       throw validationError('分配设置格式不正确');
     }
+    if (body.cashflow_dates !== undefined) {
+      const dates = body.cashflow_dates;
+      const { isoDate } = require('../r2-screening/calendar');
+      if (!Array.isArray(dates) || dates.length > 12 || dates.some(row =>
+        !row || !isoDate(row.by_date) || !Number.isSafeInteger(row.amount_cents) ||
+        row.amount_cents <= 0 || row.amount_cents > 1e14) ||
+        new Set(dates.map(row => row.by_date)).size !== dates.length) {
+        throw validationError('现金需求须使用有效且不重复的付款日和正数金额，最多 12 笔');
+      }
+    }
     if (
       body.principal_override !== null &&
       body.principal_override !== undefined &&

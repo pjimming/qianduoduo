@@ -43,6 +43,10 @@ function validateReplacementPortfolio({ account, settings = {}, holding, candida
   const total = rows.reduce((n,row)=>n+row.amount_cents,0);
   if (!safe(total) || total !== account.committed_cents || !safe(account.blocked_cash_cents) || total + account.blocked_cash_cents > account.principal_cents) return fail('replacement_account_unverified');
   const sum = (field, key) => rows.filter(row => row[field] === key).reduce((n,row)=>n+row.amount_cents,0);
+  if (CONTRACT.bucket_caps_pct[bucket] !== undefined &&
+      sum('bucket', bucket) > pct(account.principal_cents, CONTRACT.bucket_caps_pct[bucket])) {
+    reasons.push(`replacement_${bucket}_bucket_cap`);
+  }
   for (const row of rows.filter(row => row.amount_cents > 0)) {
     if (seen.has(row.product_key)) continue;
     seen.add(row.product_key);

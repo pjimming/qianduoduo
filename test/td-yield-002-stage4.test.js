@@ -190,6 +190,30 @@ test('raw returns flow through ranking, holding review, attribution and proposal
   assert.equal(decoratedCurrent.reference_yield_pct, 2.08);
   assert.equal(decoratedBetter.reference_yield_pct, 3.86);
 
+  const reviewProducts = productView.all.map((product) => ({
+    ...product,
+    v9: {
+      automatic_eligible: true,
+      rank: 1,
+      group: `${product.term_days}/bond`,
+      category: 'bond',
+      term_days: product.term_days,
+      status: 'eligible',
+      yield_1m_pct: product.return_1m,
+      reference_value_pct: product.reference_yield_pct,
+      evidence_tier: product.evidence_tier,
+      evidence_hash: 'a'.repeat(64),
+      run_id: 1,
+      performance_date: product.data_date,
+      min_amount: product.min_amount,
+      returns: {
+        return_1m: product.return_1m,
+        return_3m: product.return_3m,
+        return_6m: product.return_6m,
+        return_1y: product.return_1y,
+      },
+    },
+  }));
   const review = buildHoldingReview({
     holding: {
       id: 1,
@@ -203,7 +227,7 @@ test('raw returns flow through ranking, holding review, attribution and proposal
       term_days: 30,
       maturity_date: '2026-10-19',
     },
-    products: productView.all,
+    products: reviewProducts,
     universe: products,
     principal: 50000,
     settingsByCode: {

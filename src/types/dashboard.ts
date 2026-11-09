@@ -793,6 +793,15 @@ export interface HoldingReviewCandidate {
   evidence_label: string
   evidence_single_cap_pct: number | null
   evidence_single_cap_amount: number | null
+  candidate_source: 'v9'
+  v9_rank: number | null
+  v9_group: string
+  v9_category: string
+  v9_status: string
+  yield_1m_pct: number | null
+  screening_evidence_hash: string
+  screening_run_id: number | null
+  screening_performance_date: string
   selection_score: number | null
   return_1m: number | null
   return_3m: number | null
@@ -862,6 +871,12 @@ export interface HoldingReview {
   days_to_redeem_open: number | null
   horizon_days: number
   review_version: string
+  candidate_policy_version: string
+  screening_available: boolean | null
+  screening_run_id: number | null
+  screening_date: string
+  screening_blockers: string[]
+  screening_eligible_count: number | null
   yield_policy_version: string
   current: {
     found: boolean

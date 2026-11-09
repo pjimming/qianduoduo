@@ -8,7 +8,7 @@ const { shift } = require('../../server/modules/r2-screening/calendar');
 function strategyFixture() {
   const date = '2026-11-07', stamp = '2026-11-07T04:00:00.000Z';
   const times = ['2026-10-29', '2026-10-30', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06'];
-  const products = [['S1', 30], ['S2', 30], ['M1', 90], ['M2', 90], ['L1', 180], ['L2', 180]].map(([code, days], i) => ({
+  const products = [['S1', 30], ['S2', 30], ['S3', 30], ['M1', 90], ['M2', 90], ['L1', 180], ['L2', 180]].map(([code, days], i) => ({
     code, channel: 'TEST', name: `合成产品${code}`, issuer: '合成机构', min_amount: '1',
     performance_date: '2026-11-06', performance: { '1m': '2.5', '3m': '2.4', '6m': '2.4', '1y': '2.4' },
     quota: { status: 0, amount: null, checked_at: stamp },

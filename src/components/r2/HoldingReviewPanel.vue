@@ -330,7 +330,7 @@ function startDecision(review: HoldingReview, candidate: HoldingReviewCandidate)
   decisionForm.reason =
     `${actionableNow ? '持仓复核' : '到期后计划（锁定期内不可赎回）'} ` +
     `${review.evidence_date || props.today}：${review.product_name}（${review.product_code}）` +
-    `${candidateScopeLabel(review)}候选 ${candidate.name}（${candidate.code}）期限调整参考年化 ${yieldLabel(candidate.yield_pct, candidate.yield_status)}，` +
+    `${candidateScopeLabel(review)}候选 ${candidate.name}（${candidate.code}）切换测算参考年化 ${yieldLabel(candidate.yield_pct, candidate.yield_status)}，` +
     `当前 ${yieldLabel(currentYield, review.current.yield_status)}；本桶统一比较 ${candidate.comparison_days} 天、切换等待 ${switchWaitLabel(candidate)}、有效计息 ${candidate.effective_days ?? '待核'} 天，` +
     `费用 ¥${formatMoney(switchResult?.fee_drag ?? 0, 2)}，切换后预计多赚 ` +
     `¥${formatMoney(switchResult?.difference ?? 0, 2)}，盈亏平衡 ${formatPct(
@@ -558,7 +558,7 @@ function clearReviewFilters(): void {
         <p class="kicker">HOLDING REVIEW</p>
         <strong class="rw-panel-title">当前持仓 vs 同桶候选</strong>
         <p class="rw-panel-sub">
-          用最新产品快照逐只复核。短、中、长期限桶统一按 30、100、360 天比较；本次切换等待的赎回、到账和申购确认时间不计收益，到期后的自动续作不再重复扣空档。日开持仓改看短期限候选。
+          候选先经 v9 初筛正式名单（近1月收益、期限上限、额度、回撤与净值证据）筛出，再按同期限桶、同风险档和起购金额匹配。短、中、长期限桶统一按 30、100、360 天测算；参考年化（期限调整口径）只用于切换测算，不参与 v9 排序。
         </p>
       </div>
       <div class="rw-toolbar-actions">
@@ -726,7 +726,7 @@ function clearReviewFilters(): void {
             比较期限 <strong>{{ review.horizon_days }} 天</strong>
           </span>
           <span>
-            当前期限调整参考年化
+            当前参考年化（测算）
             <strong>{{ yieldLabel(review.current.yield_pct, review.current.yield_status) }}</strong>
           </span>
           <span>
@@ -786,7 +786,7 @@ function clearReviewFilters(): void {
                 <span class="hr-compare-label">当前持仓</span>
                 <strong class="hr-compare-name">{{ review.product_name }}</strong>
                 <div class="hr-compare-yield">
-                  <span>期限调整参考年化</span>
+                  <span>切换测算参考年化</span>
                   <strong>{{ yieldLabel(review.current.yield_pct, review.current.yield_status) }}</strong>
                 </div>
                 <div class="hr-compare-bar">
@@ -813,7 +813,7 @@ function clearReviewFilters(): void {
                   {{ top.name }}
                 </button>
                 <div class="hr-compare-yield">
-                  <span>期限调整参考年化</span>
+                  <span>切换测算参考年化</span>
                   <strong>{{ yieldLabel(top.yield_pct, top.yield_status) }}</strong>
                   <em :class="{ 'is-positive': (top.yield_gap_pp ?? 0) > 0 }">
                     {{ formatPp(top.yield_gap_pp, 2, true) }}
@@ -939,12 +939,17 @@ function clearReviewFilters(): void {
           </form>
 
           <div v-if="review.candidates.length === 0" class="rw-empty is-compact">
-            {{ candidateScopeLabel(review) }}、同风险档暂无满足起购金额的候选；继续持有并等待下一期快照。
+            <template v-if="review.screening_available === false">
+              v9 初筛批次不可用（{{ review.screening_blockers.join('、') || '待核' }}），本日不生成替代候选。
+            </template>
+            <template v-else>
+              {{ candidateScopeLabel(review) }}、同风险档暂无通过 v9 初筛且满足起购金额的候选；继续持有并等待下一期快照。
+            </template>
           </div>
           <div v-else class="hr-candidate-list">
             <div class="hr-candidate-list-head">
-              <strong>{{ candidateScopeLabel(review) }}候选</strong>
-              <span>同桶统一比较期限；首选置顶，其余按结论和期限调整参考年化排序；默认显示前 3 个</span>
+              <strong>{{ candidateScopeLabel(review) }} v9 正式候选</strong>
+              <span>来自 v9 初筛正式名单，同桶、同风险档、起购不高于本批次；先按结论，再按期限、分类、组内排名排序；默认显示前 3 个</span>
             </div>
             <article
               v-for="candidate in visibleCandidates(review)"
@@ -955,6 +960,12 @@ function clearReviewFilters(): void {
               <div class="hr-candidate-head">
                 <div class="hr-candidate-title">
                   <div class="hr-candidate-title-line">
+                    <span
+                      v-if="candidate.candidate_source === 'v9'"
+                      class="hr-top-tag is-v9"
+                    >
+                      v9 #{{ candidate.v9_rank ?? '—' }}
+                    </span>
                     <span
                       v-if="candidate.code === topCandidateMap[review.lot_id]?.code"
                       class="hr-top-tag"
@@ -972,6 +983,9 @@ function clearReviewFilters(): void {
                   <small>
                     <span>{{ candidate.code }}</span>
                     <span>{{ candidate.issuer }}</span>
+                    <span v-if="candidate.yield_1m_pct !== null">
+                      近1月 {{ formatPct(candidate.yield_1m_pct, 2) }}
+                    </span>
                     <span :data-evidence-tier="candidate.evidence_tier">
                       {{ candidate.evidence_label }}
                     </span>
@@ -988,7 +1002,7 @@ function clearReviewFilters(): void {
 
               <div class="hr-candidate-scoreboard">
                 <div class="hr-candidate-kpi is-yield">
-                  <span>期限调整参考年化</span>
+                  <span>切换测算参考年化</span>
                   <div>
                     <strong>{{ yieldLabel(candidate.yield_pct, candidate.yield_status) }}</strong>
                     <em :class="{ 'is-positive': (candidate.yield_gap_pp ?? 0) > 0 }">
@@ -1087,7 +1101,7 @@ function clearReviewFilters(): void {
 
               <div class="hr-mini-compare">
                 <div class="hr-mini-label is-current">
-                  <span>当前期限调整参考年化</span>
+                  <span>当前参考年化（测算）</span>
                   <strong>{{ yieldLabel(review.current.yield_pct, review.current.yield_status) }}</strong>
                 </div>
                 <div class="hr-mini-track">
@@ -1102,7 +1116,7 @@ function clearReviewFilters(): void {
                   ></span>
                 </div>
                 <div class="hr-mini-label is-candidate">
-                  <span>候选期限调整参考年化</span>
+                  <span>候选参考年化（测算）</span>
                   <strong>{{ yieldLabel(candidate.yield_pct, candidate.yield_status) }}</strong>
                 </div>
               </div>

@@ -8,7 +8,7 @@ const { identityKey } = require('../server/modules/r2-strategy/evidence');
 
 function input() {
   const source = [
-    ['S1', 30, 1, 500], ['S2', 30, 2, 1000], ['S3', 30, 3, 1000], ['S4', 30, 4, 3000],
+    ['S1', 30, 1, 500], ['S2', 30, 2, 2000], ['S3', 30, 3, 2000], ['S4', 30, 4, 3000],
     ['M1', 90, 1, 3000], ['M2', 90, 2, 3000], ['L1', 180, 1, 3000], ['L2', 180, 2, 3000],
   ];
   const rows = source.map(([code, days, rank]) => ({ identity: { source: 'cmb', channel: 'test', code }, mapping: { product_code: code },
@@ -34,24 +34,22 @@ test('v9 allocation closes to the cent, preserves rank and uses reserves beyond 
   assert.equal(value.allocated_cents, 10000);
   assert.equal(value.unallocated_cents, 0);
   assert.equal(amountFor(value, 'S1'), 500);
-  assert.equal(amountFor(value, 'S2'), 1000);
-  assert.equal(amountFor(value, 'S3'), 1000);
-  assert.equal(amountFor(value, 'S4'), 500);
+  assert.equal(amountFor(value, 'S2'), 2000);
+  assert.equal(amountFor(value, 'S3'), 2000);
+  assert.equal(amountFor(value, 'S4'), 3000);
   assert.equal(value.rows.find(row => row.identity.code === 'S4').reason, 'ranked_reserve_used');
-  assert.deepEqual(value.bucket_budgets_cents, { short: 3000, medium: 3500, long: 3500 });
+  assert.deepEqual(value.bucket_budgets_cents, { short: 10000, medium: 2000, long: 1000 });
   assert.equal(JSON.stringify(model), before);
   assert.equal(allocateV9(model).fingerprint, value.fingerprint);
 });
 test('LP repairs a greedy dead end across bucket and family limits', () => {
   const model = input();
-  // Medium M1 and both long products share a strategy family. Long needs3500,
-  // so only1500 of this family may be assigned to M1 despite its higher rank.
-  for (const code of ['M1', 'L1', 'L2']) limitFor(model, code).family_key = 'shared';
+  // Sharing a family across terms must leave room for the other eligible shares.
+  for (const code of ['S2', 'S3', 'S4', 'M1', 'L1']) limitFor(model, code).family_key = 'shared';
+  limitFor(model, 'S1').available_cents = 3000;
   const value = allocateV9(model);
   assert.equal(value.full_investment, true);
-  assert.equal(amountFor(value, 'M1'), 1500);
-  assert.equal(amountFor(value, 'M2'), 2000);
-  assert.equal(['M1', 'L1', 'L2'].reduce((sum, code) => sum + amountFor(value, code), 0), 5000);
+  assert.equal(['S2', 'S3', 'S4', 'M1', 'L1'].reduce((sum, code) => sum + amountFor(value, code), 0), 5000);
 });
 test('an early rank is skipped only when its minimum/increment would prevent the full plan', () => {
   const model = input();
@@ -59,10 +57,29 @@ test('an early rank is skipped only when its minimum/increment would prevent the
   limitFor(model, 'S2').minimum_cents = 1000; limitFor(model, 'S2').increment_cents = 1000;
   limitFor(model, 'S3').minimum_cents = 1000; limitFor(model, 'S3').increment_cents = 1000;
   limitFor(model, 'S4').minimum_cents = 1000; limitFor(model, 'S4').increment_cents = 1000;
+  for (const code of ['M1', 'M2', 'L1', 'L2']) {
+    limitFor(model, code).minimum_cents = 1000;
+    limitFor(model, code).increment_cents = 1000;
+  }
   const value = allocateV9(model);
   assert.equal(value.full_investment, true);
   assert.equal(amountFor(value, 'S1'), 0);
-  assert.equal(amountFor(value, 'S4'), 1000);
+  assert.equal(amountFor(value, 'S4'), 3000);
+});
+test('medium and long limits are independent and an extra cent freezes that bucket', () => {
+  const model = input();
+  model.account.exposures = [
+    { key: 'old-m', amount_cents: 2000, bucket: 'medium', product_key: 'old-m', family_key: 'old-m', evidence_tier: 'full_1y' },
+    { key: 'old-l', amount_cents: 999, bucket: 'long', product_key: 'old-l', family_key: 'old-l', evidence_tier: 'full_1y' },
+  ];
+  const atLimit = allocateV9(model);
+  assert.equal(atLimit.bucket_limits.medium.remaining_cents, 0);
+  assert.equal(atLimit.bucket_limits.long.remaining_cents, 1);
+  model.account.exposures[0].amount_cents++;
+  const excess = allocateV9(model);
+  assert.equal(excess.bucket_limits.medium.excess_cents, 1);
+  assert.ok(excess.blockers.includes('existing_medium_bucket_cap'));
+  assert.equal(amountFor(excess, 'M1') + amountFor(excess, 'M2'), 0);
 });
 test('different term groups share the budget before stable group-order preferences', () => {
   const model = input();
@@ -70,8 +87,8 @@ test('different term groups share the budget before stable group-order preferenc
   limitFor(model, 'S1').available_cents = 3000;
   const value = allocateV9(model);
   assert.equal(value.full_investment, true);
-  assert.equal(amountFor(value, 'S1'), 1500);
-  assert.equal(amountFor(value, 'S2') + amountFor(value, 'S3') + amountFor(value, 'S4'), 1500);
+  assert.equal(amountFor(value, 'S1'), 3000);
+  assert.equal(amountFor(value, 'S2') + amountFor(value, 'S3') + amountFor(value, 'S4'), 7000);
 });
 test('single-family100% exception is not imported; source and issuer data cannot relax family caps', () => {
   const model = input();
@@ -97,10 +114,8 @@ test('evidence caps, registered-product aggregation and existing commitments sha
   const model = input();
   for (const row of model.context.rows.filter(row => row.term.days === 180)) row.evidence_tier = 'six_month';
   const value = allocateV9(model);
-  assert.equal(value.full_investment, false);
-  assert.equal(amountFor(value, 'L1'), 1000);
-  assert.equal(amountFor(value, 'L2'), 1000);
-  assert.equal(value.unallocated_cents, 1500);
+  assert.equal(value.full_investment, true);
+  assert.equal(amountFor(value, 'L1') + amountFor(value, 'L2'), 500);
   const held = input();
   held.account.exposures = [{ key: 'lot:1', amount_cents: 2000, bucket: 'short', product_key: 'S1', family_key: 'family-0',
     evidence_tier: 'full_1y', liquidity_eligible: true }];
@@ -122,13 +137,29 @@ test('explicit tiny quotas and order increments are never enlarged to meet the m
 test('cash-flow dates and cash in transit remain unavailable until verified arrival', () => {
   const model = input();
   model.settings = { cash_needs: [{ by_date: '2026-12-01', required_cents: 1000 }] };
-  assert.ok(allocateV9(model).blockers.includes('liquidity_or_cashflow_conflict'));
+  const reserved = allocateV9(model);
+  assert.equal(reserved.allocated_cents, 9000);
+  assert.equal(reserved.unallocated_cents, 1000);
   delete model.settings;
   model.account.blocked_cash_cents = 100;
   const value = allocateV9(model);
   assert.equal(value.full_investment, false);
   assert.ok(value.unallocated_cents >= 100);
   assert.ok(value.blockers.includes('cash_in_transit'));
+});
+test('quota loss and a delayed arrival show a funding gap without exceeding the term caps', () => {
+  const model = input();
+  model.settings = { cash_needs: [{ by_date: '2026-11-20', required_cents: 1000 }] };
+  const short = limitFor(model, 'S4');
+  short.available_on = '2026-11-20';
+  assert.equal(allocateV9(model).full_investment, true);
+  short.available_on = '2026-11-25';
+  assert.equal(allocateV9(model).unallocated_cents, 1000);
+  short.available_cents = 0;
+  const stressed = allocateV9(model);
+  assert.ok(stressed.unallocated_cents > 1000);
+  assert.ok(amountFor(stressed, 'M1') + amountFor(stressed, 'M2') <= 2000);
+  assert.ok(amountFor(stressed, 'L1') + amountFor(stressed, 'L2') <= 1000);
 });
 test('ineligible or unavailable input cannot fall back to legacy score or missing reference yield', () => {
   const model = input();

@@ -31,7 +31,7 @@ v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-stra
 如果自动化 shell 找不到 npm，使用本机 Node.js 24+ 的绝对路径执行：
 <NODE_EXE> <WORKSPACE>\scripts\fetch-cmb-r2-all.cjs
 
-脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买研究池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、期限可解析，并分为完整 1Y、缺 1Y 的 6M 档、仅 3M、仅 1M 新品观察和无有效收益五档）和 data/cmb_r2_selected-YYYY-MM-DD.csv（研究观察池，不含资金分配），并调用本地 /api/products/refresh 让应用立即使用新研究池。参考年化按期限桶计算：cash `1M70/3M30`、short `1M20/3M50/6M30`、medium `3M50/6M30/1Y20`、long `3M20/6M40/1Y40`；缺失窗口按剩余权重归一化，全部缺失时为不可计算。6M 档和仅 3M 档可参与自动评分，单只最多 10%、同类合计最多 20%；仅 1M 的新品只进入观察，不自动分配。实际买什么、买多少由应用按本金、持仓、待确认买入、短期桶下限和额度动态计算。本项目新增日开目标固定为 0%，target3 固定为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实。
+脚本会调用招行理财产品统一查询平台公开接口，按 R2、开放中、代销、公募/不限条件分页拉取全量产品，生成 data/cmb_r2_all-YYYY-MM-DD.csv（全量原始）、data/cmb_r2_universe-YYYY-MM-DD.csv（普通可买研究池：人民币、公募、R2/PR2、开放中、非私行/私银/私享/尊享/企享/专属/私募、期限可解析，并分为完整 1Y、缺 1Y 的 6M 档、仅 3M、仅 1M 新品观察和无有效收益五档）和 data/cmb_r2_selected-YYYY-MM-DD.csv（研究观察池，不含资金分配），并调用本地 /api/products/refresh 让应用立即使用新研究池。参考年化按期限桶计算：cash `1M70/3M30`、short `1M20/3M50/6M30`、medium `3M50/6M30/1Y20`、long `3M20/6M40/1Y40`；缺失窗口按剩余权重归一化，全部缺失时为不可计算。6M 档和仅 3M 档可参与自动评分，单只最多 10%、同类合计最多 20%；仅 1M 的新品只进入观察，不自动分配。实际买什么、买多少由应用按本金、持仓、待确认买入、短期桶下限和额度动态计算。本项目新增日开目标固定为 0%，旧版 target3 的历史基线为短期 30% / 中期 35% / 长期 35%；现有日开持仓只保留为迁移事实。
 
 运行后检查 http://127.0.0.1:8765/api/dashboard/products 的 `meta.product_csv`、`products.all.length`、`products.stats.observation_ready`、`products.stats.evidence_counts`、`products.stats.reference_status_counts`、`products.stats.universe_median_3m/6m/1y`、`products.stats.universe_median_reference`、`products.allocation.allocation_policy.evidence_caps` 和 `products.watchlist.length`，确认五档研究池、期限调整参考年化、10%/20% 上限与观察池已生效。
 
@@ -72,3 +72,7 @@ npm run r2:refresh-all
 - 报告错误原因和缺失的数据；
 - 提醒用户到招行 App 手动核对；
 - 不伪造产品数量、收益率或额度。
+
+### v9 流动性配置
+
+当前建议以 GET /api/r2-strategy/workspace 为准。使用 contract.bucket_caps_pct 读取中期、长期上限，使用 result.allocation.bucket_limits 读取实际策略占用和超限，字段缺失标记待更新。现金需求以 cash_needs 的付款日为准，旧区间末日标注估算。过期、契约不匹配、缺结果或接口异常时标注待核。当前配置与持仓动作仅使用 v9 工作区，CSV 与样本外结果标明各自的证据和冻结版本。r2-2、r2-3 原运行日闸门和财务事实巡检继续适用。

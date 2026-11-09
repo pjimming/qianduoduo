@@ -39,7 +39,7 @@ async function setup(t, mode = 'v9') {
 test('generation freezes one auditable proposal per selected share and never creates transactions or decisions', async t => {
   const { repository, service } = await setup(t);
   const result = service.generate();
-  assert.equal(result.created.length, 5);
+  assert.equal(result.created.length, 4);
   const sum = result.created.reduce((total, row) => total + row.proposal.amount, 0);
   assert.equal(sum, 100);
   for (const row of result.created) {
@@ -81,7 +81,7 @@ test('shadow and legacy modes cannot write formal proposals', async t => {
 test('no review facts are required to generate proposals and no pretrade code appears', async t => {
   const { service } = await setup(t);
   const result = service.generate();
-  assert.equal(result.created.length, 5);
+  assert.equal(result.created.length, 4);
   assert.ok(!JSON.stringify(result.created.map(row => row.proposal.payload.snapshot.blockers)).includes('pretrade'));
 });
 test('mid-batch write failure rolls back every proposal in the business transaction', async t => {
@@ -114,10 +114,10 @@ test('same portfolio plan can be adopted share by share, freezing the new whole-
   const { repository, service, store } = await setup(t);
   const generated = service.generate();
   const accepted = generated.created.map(row => service.adopt(row.proposal.id));
-  assert.equal(accepted.length, 5);
+  assert.equal(accepted.length, 4);
   assert.equal(store.reservedCents(), 10000);
-  assert.equal(store.reservations().length, 5);
-  assert.equal(repository.listDecisions().length, 5);
+  assert.equal(store.reservations().length, 4);
+  assert.equal(repository.listDecisions().length, 4);
   for (const result of accepted) {
     assert.equal(result.decision.strategy_version, CONTRACT.execution_version);
     assert.equal(result.proposal.status, 'accepted');

@@ -125,7 +125,7 @@ test('multi-snapshot backtest builds a reviewable anomaly register without write
 });
 
 test('holding-review projection surfaces current cross-module drift and verdict changes', () => {
-  const filePath = snapshotFiles().at(-1);
+  const filePath = path.join(__dirname, '..', 'data', 'cmb_r2_universe-2026-11-02.csv');
   const report = buildReport(filePath);
   const current = report.rows.find((row) => row.code === 'JX040210');
   const candidate = report.rows.find((row) => row.code === '134022A');

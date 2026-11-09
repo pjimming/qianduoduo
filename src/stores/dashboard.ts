@@ -704,7 +704,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function createDecision(
-    input: DecisionInput,
+    input: Omit<DecisionInput, 'strategy_version' | 'bucket_plan'> & Partial<Pick<DecisionInput, 'strategy_version' | 'bucket_plan'>>,
   ): Promise<DecisionMutationResponse> {
     const response = await apiRequest<DecisionMutationResponse>('/api/review/decisions', {
       method: 'POST',

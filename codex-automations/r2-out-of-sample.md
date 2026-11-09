@@ -53,3 +53,7 @@ npm run yield:observe:review -- --json
 - 新增 independent sample：静默更新台账；
 - disqualified/error/cadence_broken/ledger_invalid 或需要用户的 review_required：先写消息中心，再发一条短卡；
 - 正式权重和提案：始终不自动修改。
+
+### v9 流动性配置
+
+当前建议以 GET /api/r2-strategy/workspace 为准。使用 contract.bucket_caps_pct 读取中期、长期上限，使用 result.allocation.bucket_limits 读取实际策略占用和超限，字段缺失标记待更新。现金需求以 cash_needs 的付款日为准，旧区间末日标注估算。过期、契约不匹配、缺结果或接口异常时标注待核。当前配置与持仓动作仅使用 v9 工作区，CSV 与样本外结果标明各自的证据和冻结版本。r2-2、r2-3 原运行日闸门和财务事实巡检继续适用。

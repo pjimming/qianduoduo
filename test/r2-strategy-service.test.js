@@ -43,6 +43,22 @@ test('workspace and preview queries have no writes, and legacy recompute stays a
   assert.equal(repository.db.prepare('SELECT total_changes() n').get().n, before);
   assert.deepEqual(store.jobSummary().counts, {});
 });
+test('dated payment needs replace the estimated windows and accumulate by payment day', async t => {
+  const { repository, options } = await setup(t, 'v9');
+  const service = createStrategyService(options);
+  repository.saveAllocationSettings({ cashflow_0_3: 30 });
+  assert.equal(service.workspace().cash_needs[0].basis, 'legacy_window_end');
+  repository.saveAllocationSettings({ cashflow_dates: [
+    { by_date: '2026-12-09', amount_cents: 500 },
+    { by_date: '2026-11-10', amount_cents: 1000 },
+  ] });
+  assert.deepEqual(service.workspace().cash_needs, [
+    { by_date: '2026-11-10', required_cents: 1000, basis: 'payment_date' },
+    { by_date: '2026-12-09', required_cents: 1500, basis: 'payment_date' },
+  ]);
+  repository.saveAllocationSettings({ cashflow_dates: [] });
+  assert.deepEqual(service.workspace().cash_needs, []);
+});
 test('shadow recompute persists one resumable projection without creating proposals, decisions or messages', async t => {
   const { repository, options, store } = await setup(t);
   const service = createStrategyService(options);

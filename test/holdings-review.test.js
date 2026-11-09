@@ -11,12 +11,13 @@ const {
   referenceYield,
   resolveSwitchWaitDays,
 } = require('../lib/holdings-review');
+const { returnEvidenceTier } = require('../lib/products');
 
 let sequence = 0;
 
 function product(overrides = {}) {
   sequence += 1;
-  return {
+  const item = {
     name: `测试产品${sequence}`,
     code: `H${String(sequence).padStart(4, '0')}`,
     short_name: '',
@@ -48,6 +49,28 @@ function product(overrides = {}) {
     selection_score: 3,
     ...overrides,
   };
+  item.v9 = item.v9 || {
+    automatic_eligible: true,
+    rank: 1,
+    group: `${item.term_days}/bond`,
+    category: 'bond',
+    term_days: item.term_days,
+    status: 'eligible',
+    yield_1m_pct: item.return_1m,
+    reference_value_pct: referenceYield(item),
+    evidence_tier: item.evidence_tier || returnEvidenceTier(item),
+    evidence_hash: 'a'.repeat(64),
+    run_id: 1,
+    performance_date: item.data_date,
+    min_amount: item.min_amount,
+    returns: {
+      return_1m: item.return_1m,
+      return_3m: item.return_3m,
+      return_6m: item.return_6m,
+      return_1y: item.return_1y,
+    },
+  };
+  return item;
 }
 
 function holding(overrides = {}) {
@@ -130,7 +153,7 @@ test('holding review exposes term-adjusted yield status and policy metadata', ()
     today: '2026-10-20',
   });
   assert.equal(review.yield_policy_version, 'r2-term-yield-v1');
-  assert.equal(review.review_version, 'r2-holding-review-v7');
+  assert.equal(review.review_version, 'r2-holding-review-v8');
   assert.equal(review.current.yield_pct, 3.1);
   assert.equal(review.current.yield_status, 'available');
   assert.equal(review.current.yield_reason, 'complete_history');
@@ -149,7 +172,7 @@ test('holding review distinguishes missing snapshot, partial history and unavail
     universe: [],
     today: '2026-10-20',
   });
-  assert.equal(missingSnapshot.review_version, 'r2-holding-review-v7');
+  assert.equal(missingSnapshot.review_version, 'r2-holding-review-v8');
   assert.equal(missingSnapshot.current.found, false);
   assert.equal(missingSnapshot.current.yield_status, 'unavailable');
   assert.equal(missingSnapshot.current.yield_reason, 'no_product_snapshot');
@@ -722,4 +745,163 @@ test('a locked fixed-term lot cannot be labelled replace-now', () => {
   assert.equal(review.candidates[0].verdict_label, '到期后可替换');
   assert.equal(review.planned_action?.candidate_code, 'NEW90');
   assert.match(review.summary, /现在不能执行替换/);
+});
+
+function v9Meta(termDays, rank, category = 'bond') {
+  return {
+    automatic_eligible: true,
+    rank,
+    group: `${termDays}/${category}`,
+    category,
+    term_days: termDays,
+    status: 'eligible',
+    yield_1m_pct: 3.5,
+    reference_value_pct: 3.5,
+    evidence_tier: 'full_1y',
+    evidence_hash: 'b'.repeat(64),
+    run_id: 7,
+    performance_date: '2026-10-19',
+    min_amount: 1,
+    returns: {
+      return_1m: 3.5,
+      return_3m: 3.5,
+      return_6m: 3.5,
+      return_1y: 3.5,
+    },
+  };
+}
+
+function v9Candidate(code, termDays, rank, category = 'bond') {
+  return product({
+    code,
+    name: code,
+    term_days: termDays,
+    return_1m: 3.5,
+    return_3m: 3.5,
+    return_6m: 3.5,
+    return_1y: 3.5,
+    v9: v9Meta(termDays, rank, category),
+  });
+}
+
+test('v9 preliminary eligibility is the sole candidate admission gate', () => {
+  const excluded = product({
+    code: 'V9NO',
+    name: 'V9 淘汰产品',
+    observation_ready: true,
+    v9: { ...v9Meta(90, 1), automatic_eligible: false },
+  });
+  const included = product({
+    code: 'V9YES',
+    name: 'V9 正式候选',
+    observation_ready: false,
+    return_3m: 3.5,
+    return_6m: 3.5,
+    return_1y: 3.5,
+    v9: v9Meta(90, 1),
+  });
+  const review = buildHoldingReview({
+    holding: holding(),
+    products: [excluded, included],
+    universe: [current()],
+    setting: { redemption_days: 1, arrival_days: 1, verified_at: '2026-10-20' },
+    settingsByCode: candidateRule('V9YES'),
+    quotaByCode: { V9YES: { available: 50000, verified_at: '2026-10-20' } },
+    today: '2026-10-20',
+  });
+  assert.equal(review.candidate_policy_version, 'v9');
+  assert.deepEqual(
+    review.candidates.map((candidate) => candidate.code),
+    ['V9YES'],
+  );
+  assert.equal(review.candidates[0].candidate_source, 'v9');
+  assert.equal(review.candidates[0].v9_rank, 1);
+  assert.equal(review.candidates[0].screening_run_id, 7);
+});
+
+test('v9 evidence returns drive candidate economics instead of the pool returns', () => {
+  const candidate = product({
+    code: 'V9REF',
+    name: 'V9 参考年化产品',
+    return_1m: 9,
+    return_3m: 9,
+    return_6m: 9,
+    return_1y: 9,
+    v9: {
+      ...v9Meta(90, 1),
+      returns: {
+        return_1m: 3.2,
+        return_3m: 3.2,
+        return_6m: 3.2,
+        return_1y: 3.2,
+      },
+    },
+  });
+  const review = buildHoldingReview({
+    holding: holding(),
+    products: [candidate],
+    universe: [current()],
+    setting: { redemption_days: 1, arrival_days: 1, verified_at: '2026-10-20' },
+    settingsByCode: candidateRule('V9REF'),
+    quotaByCode: { V9REF: { available: 50000, verified_at: '2026-10-20' } },
+    today: '2026-10-20',
+  });
+  assert.equal(review.candidates[0].yield_pct, 3.2);
+  assert.equal(review.candidates[0].return_3m, 3.2);
+  assert.equal(review.candidates[0].yield_1m_pct, 3.2);
+});
+
+test('v9 candidates sort by term, category and group rank', () => {
+  const products = [
+    v9Candidate('V9B', 90, 2),
+    v9Candidate('V9D', 60, 1, 'deposit'),
+    v9Candidate('V9A', 90, 1),
+    v9Candidate('V9C', 60, 1),
+  ];
+  const review = buildHoldingReview({
+    holding: holding(),
+    products,
+    universe: [current()],
+    setting: { redemption_days: 1, arrival_days: 1, verified_at: '2026-10-20' },
+    settingsByCode: {
+      ...candidateRule('V9A'),
+      ...candidateRule('V9B'),
+      ...candidateRule('V9C'),
+      ...candidateRule('V9D'),
+    },
+    quotaByCode: {
+      V9A: { available: 50000, verified_at: '2026-10-20' },
+      V9B: { available: 50000, verified_at: '2026-10-20' },
+      V9C: { available: 50000, verified_at: '2026-10-20' },
+      V9D: { available: 50000, verified_at: '2026-10-20' },
+    },
+    today: '2026-10-20',
+  });
+  assert.deepEqual(
+    review.candidates.map((candidate) => candidate.code),
+    ['V9C', 'V9D', 'V9A', 'V9B'],
+  );
+});
+
+test('an unavailable v9 batch yields no candidates and records the gap', () => {
+  const review = buildHoldingReview({
+    holding: holding(),
+    products: [v9Candidate('V9X', 90, 1)],
+    universe: [current()],
+    setting: { redemption_days: 1, arrival_days: 1, verified_at: '2026-10-20' },
+    today: '2026-10-20',
+    screening: {
+      available: false,
+      blockers: ['no_published_batch'],
+      date: '2026-10-20',
+      run_id: null,
+      eligible_count: 0,
+    },
+  });
+  assert.equal(review.screening_available, false);
+  assert.deepEqual(review.screening_blockers, ['no_published_batch']);
+  assert.deepEqual(review.candidates, []);
+  assert.ok(
+    review.data_gaps.some((gap) => gap.includes('v9 初筛批次不可用')),
+  );
 });

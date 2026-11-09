@@ -136,7 +136,7 @@ watch(
             </span>
             <span class="sidebar-link-copy">
               <strong>收益概览</strong>
-              <small>净值 · 收益 · 曲线</small>
+              <small>净值 · 收益 · 评分</small>
             </span>
           </RouterLink>
           <RouterLink
@@ -229,7 +229,7 @@ watch(
             </span>
             <span class="sidebar-link-copy">
               <strong>复盘</strong>
-              <small>评分 · 五问 · 季度</small>
+              <small>归因 · 五问 · 季度</small>
             </span>
           </RouterLink>
           <RouterLink

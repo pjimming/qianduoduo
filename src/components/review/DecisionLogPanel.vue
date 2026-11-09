@@ -35,8 +35,20 @@ const ratings: DecisionRating[] = [
 ]
 
 const activeStrategyVersion = ref('r2-3pct-v1')
+const activeBucketPlan = ref({ short: 30, medium: 35, long: 35, max_single: 30 })
 onMounted(async () => {
-  try { const state = await getStrategyStatus(); if (state.mode === 'v9') activeStrategyVersion.value = state.contract.execution_version }
+  try {
+    const state = await getStrategyStatus()
+    if (state.mode === 'v9') {
+      const { short, medium, long } = state.contract.bucket_targets
+      activeBucketPlan.value = { short, medium, long, max_single: state.contract.max_single_pct }
+      activeStrategyVersion.value = state.contract.execution_version
+      if (editingId.value === null) {
+        form.strategy_version = activeStrategyVersion.value
+        form.bucket_plan = { ...activeBucketPlan.value }
+      }
+    }
+  }
   catch { /* The server owns the final strategy assignment. */ }
 })
 const formOpen = ref(false)
@@ -86,7 +98,7 @@ function emptyForm(): DecisionInput {
     actual_result: '',
     strategy_version: activeStrategyVersion.value,
     target_annualized: 3,
-    bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
+    bucket_plan: { ...activeBucketPlan.value },
     evaluation_at: ['buy_day', 'holding', 'maturity'],
     evidence_date: props.today,
     verify_date: addDays(props.today, 14),
@@ -624,7 +636,7 @@ function runNextUpdate(run: ReturnType<typeof latestRun>): string {
           该决策已绑定交易，日期、动作、产品、策略版本和期限桶已冻结。需要调整策略时，请新建决策并改绑交易。
         </p>
         <p class="rw-form-hint is-wide">
-          本项目日开新增额度固定为 0%；`r2-3pct-v1` / target3 固定为短期 30% / 中期 35% / 长期 35%。
+          日开新增额度固定为 0%。{{ /r2-v9/.test(form.strategy_version) ? '中期、长期数值为上限。' : '期限桶按所选策略版本记录。' }}
           现有日开持仓只作为真实持仓事实保留，按赎回规则迁移。
         </p>
         <label class="rw-field is-wide">

@@ -168,9 +168,7 @@ async function applyDraft(item: TradeInboxItem): Promise<void> {
         expectation: draft.decision_expectation.trim(),
         invalidation_condition: draft.decision_invalidation_condition.trim(),
         actual_result: '',
-        strategy_version: 'r2-3pct-v1',
         target_annualized: 3,
-        bucket_plan: { short: 30, medium: 35, long: 35, max_single: 30 },
         evaluation_at: ['buy_day', 'holding', 'maturity'],
         evidence_date:
           draft.decision_evidence_date || draft.trade_date || props.today,

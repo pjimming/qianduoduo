@@ -128,6 +128,8 @@ function startServer(options = {}) {
   const strategy = createStrategyService({ repository, screening, strategyRepository });
   const dashboardQuery = createDashboardQueryService(repository, {
     automationRunner,
+    screening,
+    strategyState: strategyRepository.state,
   });
   try {
     dashboardQuery.projectDashboard();

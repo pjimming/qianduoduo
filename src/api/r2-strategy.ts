@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { StrategyWorkspace, StrategyComputation } from '@/types/r2-strategy'
+import type { StrategyWorkspace, StrategyComputation, StrategyCashflow } from '@/types/r2-strategy'
 import type { DecisionProposal } from '@/types/dashboard'
 const base = '/api/r2-strategy'
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -57,4 +57,5 @@ export const cancelStrategyProposalRemaining = (id: number, reason = '') => stra
 }>(`/proposals/${id}/cancel-remaining`, { method: 'POST', body: JSON.stringify({ reason }) })
 
 export const generateHoldingExit = (lot: string, fingerprint: string) => strategyRequest<{ created: unknown[]; blockers?: string[] }>('/proposals', { method: 'POST', body: JSON.stringify({kind: 'holding_exit', lot_id: lot, expected_input_fingerprint: fingerprint}) })
-export const getStrategyStatus = () => strategyRequest<{ mode: string; contract: { execution_version: string } }>('/status')
+export const getStrategyStatus = () => strategyRequest<{ mode: string; contract_hash: string; contract_matches: boolean; contract: { execution_version: string; bucket_targets: { short: number; medium: number; long: number }; max_single_pct: number } }>('/status')
+export const saveStrategyCashflow = (cashflow_dates: StrategyCashflow[]) => apiRequest('/api/products/allocation', { method: 'PUT', body: JSON.stringify({ cashflow_dates }) })

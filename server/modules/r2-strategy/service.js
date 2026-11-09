@@ -11,7 +11,7 @@ const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifa
 // Bump whenever engine/account/allocation output can change without a ledger
 // write. It is part of the frozen input hash so a code change invalidates the
 // persisted strategy job instead of reusing a stale result.
-const CALCULATION_VERSION = 4;
+const CALCULATION_VERSION = 5;
 
 function monthEndWindow(date, months) {
   const start = new Date(`${date}T00:00:00Z`);
@@ -29,9 +29,17 @@ function createStrategyService({ repository, screening = null, strategyRepositor
     const capital = repository.getCapitalState(date);
     const cashNeeds = [];
     let required = 0;
-    for (const [months, field] of [[3, 'cashflow_0_3'], [6, 'cashflow_3_6'], [12, 'cashflow_6_12']]) {
-      required += moneyCents(settings[field] ?? 0);
-      if (required) cashNeeds.push({ by_date: monthEndWindow(date, months), required_cents: required, basis: 'legacy_window_end' });
+    if (Array.isArray(settings.cashflow_dates)) {
+      for (const entry of [...settings.cashflow_dates].sort((a, b) => a.by_date.localeCompare(b.by_date))) {
+        required += entry.amount_cents;
+        cashNeeds.push({ by_date: entry.by_date < date ? date : entry.by_date,
+          required_cents: required, basis: 'payment_date' });
+      }
+    } else {
+      for (const [months, field] of [[3, 'cashflow_0_3'], [6, 'cashflow_3_6'], [12, 'cashflow_6_12']]) {
+        required += moneyCents(settings[field] ?? 0);
+        if (required) cashNeeds.push({ by_date: monthEndWindow(date, months), required_cents: required, basis: 'legacy_window_end' });
+      }
     }
     return { state: store.state(),
       portfolio: { principal: settings.principal_override ?? capital.current_principal ?? 0,
@@ -39,7 +47,7 @@ function createStrategyService({ repository, screening = null, strategyRepositor
         reservations: store.reservations(), decisions: repository.listDecisions() },
       products: repository.listProducts(),
       settings: { max_single_pct: settings.max_single_pct, liquidity_floor_pct: settings.liquidity_floor_pct, cash_needs: cashNeeds }, date,
-      calculation_version: CALCULATION_VERSION };
+      cashflow_dates: settings.cashflow_dates ?? null, calculation_version: CALCULATION_VERSION };
   }
   function ledgerInput(date) {
     if (transactionManager.isActive()) return readLedger(date);
@@ -68,6 +76,7 @@ function createStrategyService({ repository, screening = null, strategyRepositor
     const frozen = frozenInput();
     const previous = store.latestCompleted('strategy');
     return { ...status(), business_date: frozen.input.date, source_issue: frozen.sourceIssue,
+      cashflow_dates: frozen.input.cashflow_dates, cash_needs: frozen.input.settings.cash_needs,
       run_id: frozen.input.sourceSnapshot?.run?.id ?? null, input_fingerprint: frozen.fingerprint,
       result: previous?.result ?? null, stale: Boolean(previous && previous.input.frozen_input_hash !== frozen.fingerprint) };
   }

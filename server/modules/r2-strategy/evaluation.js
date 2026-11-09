@@ -1,6 +1,6 @@
 'use strict';
 
-const { CONTRACT, CONTRACT_HASH, fingerprint } = require('./contract');
+const { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH, fingerprint } = require('./contract');
 const { verifyExecutionSnapshot } = require('./snapshot');
 const { effectiveCoveredYieldDates } = require('../../../lib/product-income-coverage');
 const { daysBetween, isoDate, shift } = require('../r2-screening/calendar');
@@ -11,7 +11,7 @@ const codeFor = trade => trade.trade_type === 'switch' ? trade.target_product_co
 const startFor = trade => trade.confirm_date || trade.trade_date;
 const safeSnapshot = decision => {
   const value = decision?.review_meta?.execution_snapshot;
-  try { return verifyExecutionSnapshot(value) ? value : null; } catch { return null; }
+  try { return verifyExecutionSnapshot(value, { historical: true }) ? value : null; } catch { return null; }
 };
 
 function measureFrozenNetPnl({ decision, trades = [], valuations = [], allocations = [], settlements = [], today }) {
@@ -174,7 +174,8 @@ function evaluateHoldingDecision({ decision, trades, today }) {
   const snapshot = decision.review_meta.execution_snapshot, plan = snapshot.plan;
   const { content_hash: planHash, ...body } = plan ?? {};
   const valid = Boolean(plan && planHash === snapshot.plan_hash && planHash === fingerprint(body) &&
-    plan.execution_version === CONTRACT.execution_version && plan.contract_hash === CONTRACT_HASH &&
+    plan.execution_version === CONTRACT.execution_version &&
+    [CONTRACT_HASH, PREVIOUS_CONTRACT_HASH].includes(plan.contract_hash) &&
     plan.lot_id === snapshot.lot_id && plan.executable === true && plan.action === decision.action);
   const linked = trades.filter(row => row.decision_id === decision.id && row.status !== 'cancelled');
   if (!linked.length) return [];

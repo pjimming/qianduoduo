@@ -10,7 +10,7 @@ test('same frozen contract connects public screen, allocation and proposal eligi
   fixture.checks = [];
   const before = JSON.stringify(fixture);
   const result = evaluateStrategy(fixture);
-  assert.equal(result.evidence.rows.length, 6);
+  assert.equal(result.evidence.rows.length, 7);
   assert.equal(result.allocation.status, 'simulation_passed');
   assert.equal(result.allocation.allocated_cents, 10000);
   assert.equal(result.may_generate_buy_proposals, true);

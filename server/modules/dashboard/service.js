@@ -14,6 +14,7 @@ const {
 } = require('../../../lib/metrics');
 const { buildProductView } = require('../../../lib/products');
 const { buildHoldingReviews } = require('../../../lib/holdings-review');
+const { adaptSnapshot } = require('../r2-strategy/evidence');
 const {
   buildReturnAttribution,
 } = require('../../../lib/return-attribution');
@@ -29,6 +30,81 @@ const DASHBOARD_SECTIONS = Object.freeze([
   'inbox',
 ]);
 const DASHBOARD_SECTION_SET = new Set(DASHBOARD_SECTIONS);
+
+function finiteOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function readScreening(screening, today) {
+  const fallback = {
+    available: false,
+    blockers: ['screening_unavailable'],
+    rows: [],
+    date: today,
+    run_id: null,
+    eligible_count: 0,
+  };
+  if (!screening || typeof screening.executionSnapshot !== 'function') {
+    return fallback;
+  }
+  try {
+    const adapted = adaptSnapshot(screening.executionSnapshot(), today);
+    const rows = Array.isArray(adapted.rows) ? adapted.rows : [];
+    return {
+      available: adapted.available === true,
+      blockers: Array.isArray(adapted.blockers) ? adapted.blockers : [],
+      rows,
+      date: adapted.date || today,
+      run_id: adapted.run?.id ?? null,
+      eligible_count: rows.filter((row) => row.automatic_eligible === true)
+        .length,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function v9Metadata(row) {
+  const performance = row.performance || {};
+  return {
+    automatic_eligible: true,
+    rank: row.rank ?? null,
+    group: row.group || '',
+    category: row.category || '',
+    term_days: row.term?.days ?? null,
+    status: row.screening_status || '',
+    yield_1m_pct: finiteOrNull(performance['1m']),
+    reference_value_pct: finiteOrNull(row.reference?.value_pct),
+    evidence_tier: row.evidence_tier || '',
+    evidence_hash: row.evidence_hash || '',
+    run_id: row.run_id ?? null,
+    performance_date: row.performance_date || '',
+    quota: row.quota || null,
+    min_amount: row.min_amount ?? null,
+    returns: {
+      return_1m: finiteOrNull(performance['1m']),
+      return_3m: finiteOrNull(performance['3m']),
+      return_6m: finiteOrNull(performance['6m']),
+      return_1y: finiteOrNull(performance['1y']),
+    },
+  };
+}
+
+function attachV9Evidence(products, screeningView) {
+  if (!screeningView.available || !screeningView.rows.length) return products;
+  const byCode = new Map();
+  for (const row of screeningView.rows) {
+    const code = row.mapping?.product_code;
+    if (code && row.automatic_eligible === true) byCode.set(code, row);
+  }
+  if (!byCode.size) return products;
+  return products.map((product) => {
+    const row = byCode.get(product.code);
+    return row ? { ...product, v9: v9Metadata(row) } : product;
+  });
+}
 
 function mergeSectionData(target, source) {
   const output =
@@ -129,6 +205,7 @@ function selectDashboardSection(payload, section) {
       return {
         meta: payload.meta,
         products: payload.products,
+        strategy_recommendation: payload.strategy_recommendation,
         workspace: {
           holding_reviews: workspace.holding_reviews,
           holding_reviews_summary: workspace.holding_reviews_summary,
@@ -173,8 +250,10 @@ function createDashboardQueryService(repository, options = {}) {
   if (!repository) throw new Error('dashboard 查询服务需要 repository');
   const todayProvider = options.todayProvider || todayShanghai;
   const automationRunner = options.automationRunner || null;
+  const screening = options.screening || null;
 
   function readDashboard(today = todayProvider()) {
+    const strategyMode = options.strategyState?.()?.mode ?? 'legacy';
     const rawRecords = repository.listRecords();
     const tradeOverview = repository.tradeStore.getOverview(today);
     const holdingAmountsByDate = buildHoldingAmountsByDate(
@@ -214,6 +293,11 @@ function createDashboardQueryService(repository, options = {}) {
         (item) => item.status === 'pending',
       ),
     });
+    const screeningView = readScreening(screening, today);
+    const productsForReview = attachV9Evidence(
+      productView.all,
+      screeningView,
+    );
     const snapshotDate =
       productView.all
         .map((product) => product.data_date)
@@ -255,7 +339,7 @@ function createDashboardQueryService(repository, options = {}) {
     });
     const holdingReviews = buildHoldingReviews({
       holdings: tradeOverview.holdings,
-      products: productView.all,
+      products: productsForReview,
       universe: repository.listProducts(),
       principal,
       settingsByCode: holdingReviewSettings,
@@ -263,6 +347,13 @@ function createDashboardQueryService(repository, options = {}) {
       today,
       snapshotDate: snapshotDate || '',
       decisions,
+      screening: {
+        available: screeningView.available,
+        blockers: screeningView.blockers,
+        date: screeningView.date,
+        run_id: screeningView.run_id,
+        eligible_count: screeningView.eligible_count,
+      },
     });
     const workspace = repository.getReviewWorkspace({
       today,
@@ -315,7 +406,7 @@ function createDashboardQueryService(repository, options = {}) {
         tradeOverview.holdings,
       ),
     );
-    for (const item of holdingReviews) {
+    for (const item of strategyMode === 'legacy' ? holdingReviews : []) {
       if (item.reminder.level === 'none') continue;
       workspace.holdings_summary.alerts.push({
         level: item.reminder.level === 'urgent' ? 'warn' : 'info',
@@ -331,6 +422,11 @@ function createDashboardQueryService(repository, options = {}) {
         : {}),
     };
     const payload = {
+      strategy_recommendation: {
+        mode: strategyMode,
+        allocation_and_holding_reviews: 'legacy',
+        current_workspace: '/api/r2-strategy/workspace',
+      },
       meta: {
         today,
         reporting_date: reportingDate,

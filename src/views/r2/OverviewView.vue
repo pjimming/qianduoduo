@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import HeroSection from '@/components/HeroSection.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import AssetChart from '@/components/AssetChart.vue'
 import PnlChart from '@/components/PnlChart.vue'
-import ReturnAttributionPanel from '@/components/r2/ReturnAttributionPanel.vue'
+import ReviewSection from '@/components/ReviewSection.vue'
 import type { DashboardPayload, RangeValue } from '@/types/dashboard'
 
 const props = defineProps<{
   dashboard: DashboardPayload
 }>()
 
+const router = useRouter()
 const chartRange = ref<RangeValue>(30)
 const chartHoverDate = ref<string | null>(null)
 
@@ -46,6 +47,10 @@ function setChartRange(value: RangeValue): void {
 
 function setChartHoverDate(value: string | null): void {
   chartHoverDate.value = value
+}
+
+function handleRecord(date: string): void {
+  void router.push({ name: 'r2-daily', query: { section: 'today', date } })
 }
 
 const shortcuts = computed(() => [
@@ -105,12 +110,13 @@ const shortcuts = computed(() => [
       />
     </section>
 
-    <div
-      v-if="dashboard.workspace.return_attribution"
-      class="r2-overview-attribution"
-    >
-      <ReturnAttributionPanel
-        :attribution="dashboard.workspace.return_attribution"
+    <div class="r2-overview-review review-module-card">
+      <ReviewSection
+        :review="dashboard.review"
+        :notes="dashboard.workspace.notes"
+        :today="dashboard.meta.today"
+        :reporting-date="dashboard.meta.reporting_date"
+        @record="handleRecord"
       />
     </div>
 

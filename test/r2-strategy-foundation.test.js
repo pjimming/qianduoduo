@@ -39,7 +39,8 @@ const read = (patch = {}, date = '2026-11-07') => adaptSnapshot(fixture(patch), 
 test('execution contract freezes independent versions and never adopts the legacy family exception', () => {
   assert.equal(CONTRACT.selection_policy_version, 'v9');
   assert.equal(CONTRACT.max_strategy_family_pct, 50);
-  assert.equal(CONTRACT.bucket_targets.short, 30);
+  assert.equal(CONTRACT.bucket_targets.short, 70);
+  assert.deepEqual(CONTRACT.bucket_caps_pct, { medium: 20, long: 10 });
   assert.equal(CONTRACT.yield_policy_version, 'r2-term-yield-v1');
   assert.equal(CONTRACT_HASH, fingerprint(CONTRACT));
   assert.equal(fingerprint({ b: 1, a: 2 }), fingerprint({ a: 2, b: 1 }));

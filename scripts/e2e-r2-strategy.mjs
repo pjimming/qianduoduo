@@ -333,11 +333,17 @@ async function main() {
 
     // 8. 真正调用策略写接口，确认 v9 工作区可重算且不展示旧配置金额。
     strategyStore.transition({ operationKey: 'e2e-activate', expectedSeq: 0, mode: 'v9' })
+    const compatibleProducts = await page.request.get(base + '/api/dashboard/products')
+    const compatiblePayload = await compatibleProducts.json()
+    assert(compatibleProducts.ok() && compatiblePayload.strategy_recommendation?.mode === 'v9' &&
+      compatiblePayload.strategy_recommendation?.allocation_and_holding_reviews === 'legacy', '旧产品 API 缺少 v9 兼容标记')
     await page.goto(base + '/ledger/products?section=allocation&channel=TEST&code=E2E001', { waitUntil: 'networkidle' })
     await page.locator('[data-testid="strategy-workspace"]').waitFor()
     assert(await page.locator('#allocationCardTitle').count() === 0, 'v9 仍展示旧策略配置金额')
+    const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/r2-strategy/recompute'))
     await page.getByRole('button', { name: '重算当前策略', exact: true }).click()
-    await page.waitForResponse(response => response.url().endsWith('/api/r2-strategy/recompute'))
+    const recompute = await responsePromise
+    assert(recompute.ok(), `v9 重算失败 ${recompute.status()} ${(await recompute.text()).slice(0, 500)}`)
     await page.getByText('组合本金', { exact: true }).waitFor()
     const captures = path.join(root, 'run', 'acceptance-ui')
     mkdirSync(captures, { recursive: true })
@@ -378,9 +384,8 @@ async function main() {
       '候选初筛未预取资金配置金额',
     )
     await gotoSection(page, base, '/ledger/products?section=holdings', 'holdings')
-    await page.locator('#holding-reviews').waitFor()
-    assert(await page.locator('.holding-review-body').count() === 1, '无可用逐批次证据时未回退到逐只复核')
-    assert(await page.locator('[data-testid="strategy-workspace"]').count() === 0, '无可用逐批次证据时仍展示 v9 空表')
+    await page.locator('[data-testid="strategy-workspace"]').waitFor()
+    assert(await page.locator('.holding-review-body').count() === 0, 'v9 证据待核时不应回退到旧复核')
 
     // 9. 11 个合成持仓批次覆盖退出、待核、锁定和持有，验证可处理入口。
     await page.route('**/api/r2-strategy/workspace', async route => {

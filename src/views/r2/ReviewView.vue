@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import R2PageHeader from '@/components/r2/R2PageHeader.vue'
 import WorkspaceNav from '@/components/r2/WorkspaceNav.vue'
 import ReviewTimeline from '@/components/review/ReviewTimeline.vue'
-import ReviewSection from '@/components/ReviewSection.vue'
+import ReturnAttributionPanel from '@/components/r2/ReturnAttributionPanel.vue'
 import ReviewNotesPanel from '@/components/review/ReviewNotesPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
 
@@ -18,19 +18,19 @@ const workspace = computed(() => props.dashboard.workspace)
 const latestMonth = computed(() => workspace.value.notes[0]?.month ?? '暂无')
 const latestQuarter = computed(() => workspace.value.quarterly[0]?.quarter ?? '暂无')
 
-const SECTIONS = ['score', 'rhythm', 'monthly-notes', 'quarterly-notes'] as const
+const SECTIONS = ['attribution', 'rhythm', 'monthly-notes', 'quarterly-notes'] as const
 type Section = (typeof SECTIONS)[number]
 
 const section = computed<Section>(() => {
   const value = typeof route.query.section === 'string' ? route.query.section : ''
-  return (SECTIONS as readonly string[]).includes(value) ? (value as Section) : 'score'
+  return (SECTIONS as readonly string[]).includes(value) ? (value as Section) : 'attribution'
 })
 
 const navItems = computed(() => [
   {
-    key: 'score',
-    label: '日周月评分',
-    meta: `${props.dashboard.review.monthly.length} 个月`,
+    key: 'attribution',
+    label: '收益归因',
+    meta: '3% 目标 · 逐产品',
   },
   {
     key: 'rhythm',
@@ -52,18 +52,14 @@ const navItems = computed(() => [
 function dismissNotice(): void {
   void router.replace({ query: { ...route.query, notice: undefined } })
 }
-
-function handleRecord(date: string): void {
-  void router.push({ name: 'r2-daily', query: { section: 'today', date } })
-}
 </script>
 
 <template>
   <div class="r2-page">
     <R2PageHeader
       kicker="REVIEW"
-      title="日、周、月复盘的评分与记录"
-      description="先看自动评分、记录缺口和提醒，再写月度五问与季度清单。评分只用于个人复盘，不构成收益承诺。"
+      title="收益归因与日、周、月复盘"
+      description="先看 3% 目标差距归因，再写月度五问与季度清单；自动日周月评分已移到收益概览。归因只解释差距来源，不构成收益承诺。"
     >
       <template #actions>
         <RouterLink class="button button-ghost button-small" :to="{ name: 'r2-daily' }">
@@ -85,18 +81,16 @@ function handleRecord(date: string): void {
 
     <div class="r2-stack">
       <section
-        v-if="section === 'score'"
-        id="score"
-        class="review-module-card r2-anchor"
-        aria-label="自动复盘评分"
+        v-if="section === 'attribution'"
+        id="attribution"
+        class="r2-anchor"
+        aria-label="收益归因"
       >
-        <ReviewSection
-          :review="dashboard.review"
-          :notes="workspace.notes"
-          :today="dashboard.meta.today"
-          :reporting-date="dashboard.meta.reporting_date"
-          @record="handleRecord"
+        <ReturnAttributionPanel
+          v-if="workspace.return_attribution"
+          :attribution="workspace.return_attribution"
         />
+        <p v-else class="rw-panel">收益归因暂未生成。</p>
       </section>
 
       <section
