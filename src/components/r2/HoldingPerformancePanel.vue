@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const periods = [
-  { key: 'weekly', label: '近 1 周' },
+  { key: 'weekly', label: '最近 7 笔' },
   { key: 'return_1m', label: '近 1 月' },
   { key: 'return_3m', label: '近 3 月' },
   { key: 'return_6m', label: '近 6 月' },
@@ -22,7 +22,7 @@ const statusLabels = {
   'short-holding': '持仓不足 7 天',
   'cross-boundary': '合并收益跨区间',
   waiting: '等待收益披露',
-  missing: '账本收益有缺口',
+  missing: '暂无可估算收益',
 }
 
 type Period = (typeof periods)[number]['key']
@@ -73,10 +73,7 @@ function sortBy(period: Period) {
     <div class="rw-card-heading">
       <h2 class="rw-panel-title performance-heading">持仓收益排行</h2>
       <p class="performance-note">
-        近 1 周按账本实得收益估算年化。
-        <span v-if="performance" class="performance-dates">
-          {{ performance.start_date }} 至 {{ performance.end_date }}
-        </span>
+        各产品按最近 7 笔账本收益估算年化，不足 7 笔按已有记录计算。
       </p>
       <p class="performance-note">
         其余周期为产品披露的历史年化，成立以来的起点因产品而异。
@@ -138,6 +135,9 @@ function sortBy(period: Period) {
                   {{ statusLabels[row.weekly?.status ?? 'missing'] }}
                 </span>
                 <span v-else class="performance-value">{{ formatPct(annualized(row, period.key), 2) }}</span>
+                <small v-if="period.key === 'weekly' && row.weekly?.record_count" class="performance-sample">
+                  {{ row.weekly.record_count }} 笔 · 截至 {{ row.weekly.end_date }}
+                </small>
               </td>
               <td class="is-number">{{ row.review.current.data_date || '—' }}</td>
               <td class="is-number">¥{{ formatMoney(row.amount, 2) }}</td>
@@ -160,8 +160,10 @@ function sortBy(period: Period) {
   font-size: 13px;
 }
 
-.performance-dates {
-  display: inline-block;
+.performance-sample {
+  display: block;
+  font-size: 12px;
+  white-space: normal;
   font-variant-numeric: tabular-nums;
 }
 
@@ -216,7 +218,7 @@ function sortBy(period: Period) {
 }
 
 .performance-weekly {
-  width: 104px;
+  width: 118px;
 }
 
 .performance-date {

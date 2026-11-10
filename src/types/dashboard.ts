@@ -773,6 +773,9 @@ export interface HoldingPerformance {
   weekly_by_code: Record<string, {
     status: 'ready' | 'short-holding' | 'cross-boundary' | 'waiting' | 'missing'
     annualized_pct: number | null
+    record_count?: number
+    start_date?: string
+    end_date?: string
   }>
 }
 

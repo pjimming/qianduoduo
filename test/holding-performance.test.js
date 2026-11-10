@@ -57,6 +57,9 @@ test('weekly return uses confirmed daily principal and counts a merged weekend o
   assert.equal(result.end_date, endDate);
   assert.deepEqual(result.weekly_by_code[code], {
     status: 'ready',
+    record_count: 5,
+    start_date: startDate,
+    end_date: endDate,
     annualized_pct: (7 / (3 * 10000 + 2 * 15000 + 2 * 11000)) * 365 * 100,
   });
 });
@@ -78,30 +81,52 @@ test('weekly return treats a confirmed switch as a source redemption and target 
   assert.equal(result.weekly_by_code[otherCode].annualized_pct, (7 / 90040) * 365 * 100);
 });
 
-test('weekly return distinguishes zero, negative, incomplete holding and disclosure gaps', () => {
-  assert.deepEqual(calculate(mergedWeek.map((item) => ({ ...item, daily_pnl: 0 }))).weekly_by_code[code], {
-    status: 'ready', annualized_pct: 0,
+
+test('uses at most seven latest facts per product even with gaps and different cutoffs', () => {
+  const otherCode = '120026A';
+  const facts = ['01', '03', '06', '07', '08', '09', '10', '13'].map((day) =>
+    fact(`2026-10-${day}`, day === '01' ? 500 : 1),
+  );
+  const result = buildHoldingPerformance(
+    [{ product_code: code }, { product_code: otherCode }],
+    [buy(), buy({ id: 2, product_code: otherCode, confirm_date: today })],
+    [facts[4], ...facts.slice(0, 4), ...facts.slice(5),
+      { ...fact(today, 2), product_code: otherCode },
+      { ...fact('2026-11-07', 100), product_code: otherCode }],
+    disclosure,
+    today,
+  );
+  assert.deepEqual(result.weekly_by_code[code], {
+    status: 'ready',
+    record_count: 7,
+    start_date: '2026-10-03',
+    end_date: '2026-10-13',
+    annualized_pct: (7 / 70000) * 365 * 100,
   });
-  assert.ok(calculate(mergedWeek.map((item) => ({ ...item, daily_pnl: -1 }))).weekly_by_code[code].annualized_pct < 0);
-  assert.equal(calculate(mergedWeek, [buy({ confirm_date: '2026-10-31' })]).weekly_by_code[code].status, 'short-holding');
-  assert.equal(calculate(mergedWeek.slice(0, -1)).weekly_by_code[code].status, 'waiting');
-  assert.equal(calculate(mergedWeek.slice(1)).weekly_by_code[code].status, 'missing');
-  const weekendPolicy = { ...disclosure, reporting_date: '2026-11-01' };
-  assert.equal(calculate(mergedWeek, [buy()], weekendPolicy, '2026-11-02').weekly_by_code[code].status, 'cross-boundary');
+  assert.deepEqual(result.weekly_by_code[otherCode], {
+    status: 'ready',
+    record_count: 1,
+    start_date: today,
+    end_date: today,
+    annualized_pct: (2 / 10000) * 365 * 100,
+  });
 });
 
-test('weekly return detects cross-boundary merges but accepts separately recorded weekend days', () => {
-  const mondayPolicy = { ...disclosure, reporting_date: '2026-11-02' };
-  const saturdayPolicy = { ...disclosure, reporting_date: '2026-11-07' };
-  const pastWeek = ['2026-10-27', '2026-10-28', '2026-10-29'].map((date) => fact(date, 1));
-  const splitWeek = [...pastWeek, fact(startDate, 1), fact('2026-10-31', 1), fact('2026-11-01', 1), fact('2026-11-02', 1)];
-  assert.equal(calculate(splitWeek, [buy()], mondayPolicy).weekly_by_code[code].status, 'ready');
+test('preserves zero and negative returns and leaves empty samples unavailable', () => {
+  assert.equal(calculate([fact(endDate, 0)]).weekly_by_code[code].annualized_pct, 0);
+  assert.ok(calculate([fact(endDate, -1)]).weekly_by_code[code].annualized_pct < 0);
+  assert.deepEqual(calculate([]).weekly_by_code[code], {
+    status: 'missing', annualized_pct: null, record_count: 0,
+  });
+  assert.equal(calculate([fact(endDate, 1)], []).weekly_by_code[code].annualized_pct, null);
+});
 
-  const sundayToSaturday = [fact('2026-11-02', 3), ...['03', '04', '05', '06', '07'].map((day) => fact(`2026-11-${day}`, 1))];
-  assert.equal(calculate(sundayToSaturday, [buy()], saturdayPolicy, '2026-11-08').weekly_by_code[code].status, 'cross-boundary');
-  const splitOutside = [fact('2026-10-31', 1), fact('2026-11-01', 1), ...sundayToSaturday];
-  assert.equal(calculate(splitOutside, [buy()], saturdayPolicy, '2026-11-08').weekly_by_code[code].status, 'ready');
-
-  const explicit = fact('2026-11-02', 3, '覆盖收益日期：2026-10-31 至 2026-11-02');
-  assert.equal(calculate([...splitOutside.filter((item) => item.yield_date !== '2026-11-02'), explicit], [buy()], saturdayPolicy, '2026-11-08').weekly_by_code[code].status, 'cross-boundary');
+test('separate weekend facts outside the sample supersede inferred Monday coverage', () => {
+  const facts = [
+    fact('2026-10-31', 1), fact('2026-11-01', 1), fact('2026-11-02', 1),
+    ...['03', '04', '05', '06', '07', '08'].map((day) => fact(`2026-11-${day}`, 1)),
+  ];
+  const estimate = calculate(facts, [buy()], disclosure, '2026-11-09').weekly_by_code[code];
+  assert.equal(estimate.start_date, '2026-11-02');
+  assert.equal(estimate.annualized_pct, (7 / 70000) * 365 * 100);
 });

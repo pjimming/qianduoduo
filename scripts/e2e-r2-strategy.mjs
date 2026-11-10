@@ -269,6 +269,7 @@ async function main() {
     await page.route('**/api/dashboard/sections**', async (route) => {
       const response = await route.fetch()
       const payload = await response.json()
+      payload.workspace?.holding_reviews?.push({ product_code: 'E2E0', product_name: '测试持仓产品名称' })
       payload.decision_proposals = {
         generated_for: todayShanghai(),
         proposals: [proposalFixture],
@@ -396,6 +397,7 @@ async function main() {
       Object.assign(payload.result.monitoring.rows[0], { amount: 1000 })
       Object.assign(payload.result.monitoring.rows[1], { product_code: 'E2E0', amount: 2500, yield_1m: '2.10' })
       Object.assign(payload.result.monitoring.rows[8], { product_code: 'E2E3', identity: null, yield_1m: null, performance_date: null })
+      Object.assign(payload.result.monitoring.rows[9], { yield_1m: '10.10' })
       await route.fulfill({response,json:payload})
     })
     await page.goto(base + '/ledger/products?section=holdings', {waitUntil:'networkidle'})
@@ -403,21 +405,45 @@ async function main() {
     await page.getByRole('heading', { name: '持仓产品复核' }).waitFor()
     const holdingRows = page.locator('.strategy-table-wrap tbody tr')
     assert(await holdingRows.count() === 9, '主表应按产品合并持仓')
-    const merged = holdingRows.filter({ has: page.getByRole('rowheader', { name: 'E2E0', exact: true }) })
+    const merged = holdingRows.filter({ has: page.getByRole('rowheader', { name: 'E2E0 测试持仓产品名称', exact: true }) })
     await merged.getByText('¥3,500.00', { exact: true }).waitFor()
     await merged.getByText('未达续持门槛 · 准备换出', { exact: true }).waitFor()
     await page.getByText('未匹配同份额证据', { exact: true }).waitFor()
     assert(!await merged.getByRole('button', { name: '生成退出提案' }).isVisible(), '默认不展开赎回安排')
+    const holdingGeometry = () => page.locator('.strategy-holdings-table').evaluate(table => ({
+      columns: [...table.tHead.rows[0].cells].map(cell => [cell.getBoundingClientRect().x, cell.getBoundingClientRect().width]),
+      rowText: [...table.tBodies[0].rows[0].cells].slice(0, 5).map(cell => {
+        const text = document.createRange()
+        text.selectNodeContents(cell)
+        return text.getBoundingClientRect().y - cell.parentElement.getBoundingClientRect().y
+      }),
+    }))
+    const redemption = merged.getByText('查看赎回安排', { exact: true })
     for (const theme of ['light','dark']) {
       await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
       await page.waitForTimeout(350)
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme} 持仓页横向溢出`)
+      const before = await holdingGeometry()
+      await redemption.click()
+      await merged.getByText('¥2,500.00 · 锁定中 · 到期核验退出', { exact: true }).waitFor()
+      assert(JSON.stringify(await holdingGeometry()) === JSON.stringify(before), `${theme} 展开赎回安排后表格列或摘要位置变化`)
       await page.screenshot({path:path.join(captures,'holdings-11-1280-' + theme + '.png'),fullPage:true})
+      await redemption.click()
+      assert(JSON.stringify(await holdingGeometry()) === JSON.stringify(before), `${theme} 折叠赎回安排后表格位置变化`)
     }
-    await merged.getByText('查看赎回安排', { exact: true }).click()
+    await redemption.click()
+    const yieldSort = page.getByRole('button', { name: '近 1 月年化', exact: true })
+    for (const direction of ['ascending', 'descending']) {
+      await yieldSort.click()
+      assert(await page.getByRole('columnheader', { name: '近 1 月年化' }).getAttribute('aria-sort') === direction, '排序方向应可读')
+      const values = await holdingRows.locator('td:nth-child(3)').allTextContents()
+      const expected = values.filter(value => value.includes('%')).sort((a, b) =>
+        (parseFloat(a) - parseFloat(b)) * (direction === 'ascending' ? 1 : -1))
+      assert(values.join('|') === [...expected, '未获取到'].join('|'), '年化应按数值排序，缺失项置底')
+    }
     await merged.getByText('¥2,500.00 · 锁定中 · 到期核验退出', { exact: true }).waitFor()
     await page.route('**/api/r2-strategy/proposals', async route => route.fulfill({json:{created:[],blockers:['fees_unverified']}}))
-    await page.getByRole('button',{name:'生成退出提案',exact:true}).first().click()
+    await merged.getByRole('button',{name:'生成退出提案',exact:true}).click()
     await page.getByText('退出提案暂不可生成：费用待核', {exact:true}).waitFor()
 
     assert(errors.length === 0, `页面运行出错：${errors.join(' / ')}`)

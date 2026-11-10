@@ -126,8 +126,11 @@ test('market brief Markdown files use valid unique trading-date names and the fi
         assert.ok(funds.includes(code), `${file} 缺少基准模板 ETF ${code}`)
       }
       assert.ok(funds.includes('合计'), `${file} ETF 应展示合计及变化`)
-      for (const slug of ['hs300', 'cyb', 'kc50']) {
-        assert.ok(sections[6].includes(`/index/${slug}/`), `${file} 缺少基准估值来源 ${slug}`)
+      const valuationTables = marked.lexer(sections[6]).filter((token) => token.type === 'table')
+      const valuationIndices = valuationTables.flatMap((table) => table.rows.map((row) =>
+        row[0].tokens.map((token) => token.text).join('')))
+      for (const index of ['沪深300', '创业板指', '科创50']) {
+        assert.ok(valuationIndices.includes(index), `${file} 缺少基准估值指数 ${index}`)
       }
     }
     const outlook = sections[7]

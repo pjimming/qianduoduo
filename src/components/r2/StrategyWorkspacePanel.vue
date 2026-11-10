@@ -4,9 +4,14 @@ import { RouterLink } from 'vue-router'
 import { computeStrategy, generateStrategyProposals, generateHoldingExit, saveStrategyCashflow } from '@/api/r2-strategy'
 import type { StrategyCashflow, StrategyHoldingRow } from '@/types/r2-strategy'
 import type { StrategyWorkspace } from '@/types/r2-strategy'
+import type { HoldingReview } from '@/types/dashboard'
 import { formatMoney } from '@/composables/useFormatters'
 
-const props = defineProps<{ workspace: StrategyWorkspace; section: 'allocation' | 'holdings' }>()
+const props = defineProps<{
+  workspace: StrategyWorkspace
+  section: 'allocation' | 'holdings'
+  holdingReviews?: readonly Pick<HoldingReview, 'product_code' | 'product_name'>[]
+}>()
 const emit = defineEmits<{ refresh: [] }>()
 const busy = ref(false)
 const message = ref('')
@@ -43,6 +48,14 @@ async function exitHolding(lot: string) {
 const result = computed(() => props.workspace.result)
 const current = computed(() => props.workspace.contract_matches !== false && !props.workspace.stale && result.value?.input.activation_seq === props.workspace.activation_seq && result.value?.input.mode === props.workspace.mode)
 const exitStates = new Set(['exit_required', 'exit_at_open', 'exit_rules_pending'])
+const holdingNames = computed(() => {
+  const names = new Map<string, string>()
+  for (const { product_code, product_name } of props.holdingReviews ?? []) {
+    const name = product_name.trim()
+    if (name && name !== product_code) names.set(product_code, name)
+  }
+  return names
+})
 const holdingProducts = computed(() => {
   const groups = new Map<string, StrategyHoldingRow[]>()
   for (const row of result.value?.monitoring.rows ?? []) {
@@ -62,6 +75,48 @@ const stateNames: Record<string, string> = { exit_required: '准备退出', exit
 const reasons: Record<string, string> = { principal_unavailable: '本金尚未初始化', evidence_unavailable: '公开证据不可用', account_unverified: '账户占用或持仓信息待核', account_invalid: '账户输入异常', account_overcommitted: '持仓及承诺金额超出本金', existing_evidence_single_cap: '存量持仓超出证据层单一上限', existing_evidence_tier_cap: '存量持仓超出证据层合计上限', existing_product_cap: '存量持仓超出单一产品上限', existing_family_cap: '存量持仓超出策略家族上限', liquidity_or_cashflow_conflict: '流动性或近期用款约束冲突', exposure_unverified: '持仓风险敞口待核', settings_invalid: '配置约束待核', cash_needs_invalid: '用款约束待核', allocation_model_limit: '候选规模超出计算限制', screening_not_automatic: '尚未满足自动配置门槛', formal_terms_unverified: '正式期限条款待核', settlement_path_unverified: '申赎到账路径待核', fees_unverified: '费用待核', assets_unverified: '底层资产待核', prohibited_assets_or_unknown: '禁投资产敞口待核', equity_limit_unverified: '权益上限待核', duration_or_distribution_unverified: '久期或期限分布待核', app_availability_unverified: '当日 App 额度待核', allocation_limits_unverified: '起购、递增或集中度依据待核', public_quota_unverified: '公开额度待核', redemption_fee_unverified: '赎回费用待核', redemption_fee_or_arrival_unverified: '赎回费用或资金到账安排待核', redemption_rules_unverified: '赎回条款待核', current_redemption_window_unverified: '当日赎回窗口待核', holding_exit_not_current_plan: '当前批次尚未形成可执行退出计划' }
 const bucketReasons: Record<string, string> = { existing_medium_bucket_cap: '中期占用超过 20%', existing_long_bucket_cap: '长期占用超过 10%' }
 const label = (value: string) => reasons[value] || bucketReasons[value] || stateNames[value] || value
+type HoldingProduct = (typeof holdingProducts.value)[number]
+const holdingColumns = [
+  { key: 'product', title: '持仓产品', value: ({ row }: HoldingProduct) => row.product_code },
+  { key: 'amount', title: '持仓本金', value: ({ amount }: HoldingProduct) => amount },
+  { key: 'yield', title: '近 1 月年化', value: ({ row }: HoldingProduct) => row.yield_1m == null ? null : Number(row.yield_1m) },
+  { key: 'date', title: '业绩日', value: ({ row }: HoldingProduct) => row.performance_date || null },
+  { key: 'conclusion', title: '复核结论', value: ({ row, exits }: HoldingProduct) => holdingConclusion(row, exits) },
+] as const
+type HoldingColumn = (typeof holdingColumns)[number]
+const holdingSort = ref<{ column: HoldingColumn; direction: 'ascending' | 'descending' }>()
+const holdingCollator = new Intl.Collator('zh-CN', { numeric: true })
+
+function holdingConclusion(row: StrategyHoldingRow, exits: StrategyHoldingRow[]) {
+  if (exits.length) return '未达续持门槛 · 准备换出'
+  if (row.state === 'evidence_pending') return row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据'
+  return label(row.state)
+}
+
+function sortHoldings(column: HoldingColumn) {
+  holdingSort.value = {
+    column,
+    direction: holdingSort.value?.column.key === column.key && holdingSort.value.direction === 'ascending' ? 'descending' : 'ascending',
+  }
+}
+
+const sortedHoldingProducts = computed(() => {
+  const sort = holdingSort.value
+  if (!sort) return holdingProducts.value
+  const { column } = sort
+  return [...holdingProducts.value].sort((left, right) => {
+    const a = column.value(left)
+    const b = column.value(right)
+    if (a === b) return 0
+    if (a == null) return 1
+    if (b == null) return -1
+    const comparison = typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : holdingCollator.compare(String(a), String(b))
+    return sort.direction === 'ascending' ? comparison : -comparison
+  })
+})
+
 const money = (cents: number | null) => cents == null ? '未获取到' : `¥${formatMoney(cents / 100, 2)}`
 async function run(kind: 'compute' | 'proposals') {
   if (busy.value) return
@@ -140,17 +195,32 @@ async function run(kind: 'compute' | 'proposals') {
     <template v-else-if="result">
       <p>按产品复核。有效近 1 月年化低于 2.15% 时准备换出，按赎回窗口处理。缺少有效证据的产品暂停新增或加仓。</p>
       <div v-if="holdingProducts.length" class="strategy-table-wrap">
-          <table>
-            <thead><tr><th>持仓产品</th><th>持仓本金</th><th>近 1 月年化</th><th>业绩日</th><th>复核结论</th><th>处理</th></tr></thead>
+          <table class="strategy-holdings-table">
+            <thead>
+              <tr>
+                <th v-for="column in holdingColumns" :key="column.key" scope="col"
+                  :aria-sort="holdingSort?.column.key === column.key ? holdingSort.direction : undefined">
+                  <button type="button" class="strategy-holding-sort" @click="sortHoldings(column)">
+                    {{ column.title }}
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor">
+                      <path v-if="holdingSort?.column.key !== column.key || holdingSort.direction === 'ascending'" d="M2 5l4-3 4 3" />
+                      <path v-if="holdingSort?.column.key !== column.key || holdingSort.direction === 'descending'" d="M2 7l4 3 4-3" />
+                    </svg>
+                  </button>
+                </th>
+                <th scope="col">处理</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="{ row, exits, amount } in holdingProducts" :key="row.product_code">
-                <th scope="row">{{ row.product_code }}</th>
+              <tr v-for="{ row, exits, amount } in sortedHoldingProducts" :key="row.product_code">
+                <th scope="row">
+                  {{ row.product_code }}
+                  <small v-if="holdingNames.has(row.product_code)" class="strategy-holding-name">{{ holdingNames.get(row.product_code) }}</small>
+                </th>
                 <td>{{ money(amount) }}</td>
                 <td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}<small v-if="row.yield_1m != null && row.state === 'evidence_pending'">待核</small></td>
                 <td>{{ row.performance_date || '未获取到' }}</td>
-                <td v-if="exits.length">未达续持门槛 · 准备换出</td>
-                <td v-else-if="row.state === 'evidence_pending'">{{ row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据' }}</td>
-                <td v-else>{{ label(row.state) }}</td>
+                <td>{{ holdingConclusion(row, exits) }}</td>
                 <td>
                   <details v-if="exits.length" class="strategy-exit">
                     <summary>查看赎回安排</summary>
@@ -194,5 +264,27 @@ dt { color: var(--ink-soft); font-size: 12px; } dd { margin: 5px 0 0; font-size:
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; min-width: 100px; }
 th { color: var(--ink-soft); font-size: 12px; } small { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+.strategy-holdings-table { table-layout: fixed; min-width: 900px; overflow-wrap: anywhere; }
+.strategy-holdings-table th,
+.strategy-holdings-table td { vertical-align: top; }
+.strategy-holdings-table thead th:first-child { width: 20%; }
+.strategy-holdings-table thead th:nth-child(n + 2):nth-child(-n + 4) { width: 12%; }
+.strategy-holdings-table thead th:nth-child(5) { width: 20%; }
+.strategy-holding-name { font-weight: 400; }
+.strategy-holding-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.strategy-holding-sort svg { flex: none; }
+.strategy-holding-sort:hover,
+.strategy-holdings-table th[aria-sort] .strategy-holding-sort { color: var(--green-deep); }
+.strategy-holding-sort:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 a { color: var(--green-deep); } a:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 </style>

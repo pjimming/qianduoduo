@@ -275,7 +275,13 @@ function holdingsLink(
         <div v-if="data && holdingsView === 'review'" :class="strategy?.mode === 'v9' ? '' : 'rw-panel'">
           <p v-if="strategyLoading && !strategy" role="status">正在读取当前策略…</p>
           <div v-else-if="strategyError" class="rw-alert is-warn" role="alert">{{ strategyError }} <button type="button" class="link-button" @click="loadStrategy">重新读取策略</button></div>
-          <StrategyWorkspacePanel v-else-if="strategy?.mode === 'v9'" :workspace="strategy" section="holdings" @refresh="loadStrategy" />
+          <StrategyWorkspacePanel
+            v-else-if="strategy?.mode === 'v9'"
+            :workspace="strategy"
+            :holding-reviews="data.workspace.holding_reviews"
+            section="holdings"
+            @refresh="loadStrategy"
+          />
           <HoldingReviewPanel v-else-if="strategy?.mode === 'legacy'"
             :reviews="data.workspace.holding_reviews"
             :today="data.meta.today"

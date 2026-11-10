@@ -2417,6 +2417,72 @@ async function main() {
     )
     await page.setViewportSize({ width: 1280, height: 900 })
 
+    const performancePage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+    const productsResponse = await fetch(`${base}/api/dashboard/products`).then((response) => response.json())
+    const lots = productsResponse.workspace.holding_reviews
+    const weeklyPerformance = productsResponse.workspace.holding_performance
+
+    await performancePage.goto(`${base}/ledger/trades`)
+    await performancePage.getByRole('link', { name: '持仓收益排行' }).click()
+    const ranking = performancePage.getByRole('table', { name: '持仓产品收益排行' })
+    await ranking.waitFor()
+    assert(new URL(performancePage.url()).hash === '#holding-reviews', '交易页入口未定位到持仓排行')
+    const codesInTable = () => ranking.locator('tbody td:first-child small').allTextContents()
+    const returnColumns = [
+      ['weekly', '最近 7 笔'],
+      ['return_1m', '近 1 月'],
+      ['return_3m', '近 3 月'],
+      ['return_6m', '近 6 月'],
+      ['return_1y', '近 1 年'],
+      ['return_since_inception', '成立以来'],
+    ]
+    assert(await ranking.getByRole('columnheader').count() === 9, '排行没有同时展示六档收益及产品字段')
+    assert(await ranking.locator('tbody tr').first().getByRole('cell').count() === 9, '排行行列未对齐')
+    assert(await ranking.locator('select').count() === 0, '排行仍需选择时间范围')
+    for (const [key, label] of returnColumns) {
+      const header = ranking.getByRole('columnheader', { name: label })
+      const button = header.getByRole('button')
+      if (key !== 'weekly') await button.click()
+      const expectedProducts = new Map(lots.map((lot) => [
+        lot.product_code,
+        (key === 'weekly'
+          ? weeklyPerformance.weekly_by_code[lot.product_code]?.annualized_pct
+          : lot.current[key]) ?? null,
+      ]))
+      for (const descending of [true, false]) {
+        assert(await header.getAttribute('aria-sort') === (descending ? 'descending' : 'ascending'), `${label} 排序状态错误`)
+        const expectedCodes = [...expectedProducts.keys()].sort((left, right) => {
+          const a = expectedProducts.get(left)
+          const b = expectedProducts.get(right)
+          if (a === null && b !== null) return 1
+          if (a !== null && b === null) return -1
+          return (descending ? (b ?? 0) - (a ?? 0) : (a ?? 0) - (b ?? 0)) || left.localeCompare(right)
+        })
+        assert((await codesInTable()).join(',') === expectedCodes.join(','), `${label} 排序不正确或重复展示了持仓批次`)
+        if (descending) await button.press('Space')
+      }
+    }
+
+    const principal = lots.filter((lot) => lot.product_code === '120056A').reduce((sum, lot) => sum + lot.amount, 0)
+    const principalText = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(principal)
+    const productRow = ranking.getByRole('row').filter({ hasText: '120056A' })
+    assert((await productRow.textContent()).includes(`¥${principalText}`), '排行未合计同产品本金')
+
+    const sample = weeklyPerformance.weekly_by_code['120056A']
+    assert(sample.record_count >= 1 && sample.record_count <= 7, '排行未使用产品自己的收益记录')
+    assert((await productRow.locator('.performance-sample').textContent()).includes(
+      `${sample.record_count} 笔 · 截至 ${sample.end_date}`,
+    ), '排行未显示产品样本笔数和日期')
+    for (const theme of ['light', 'dark']) {
+      await performancePage.evaluate((value) => { document.documentElement.dataset.theme = value }, theme)
+      await assertFontFloor(performancePage, '#holding-reviews', `桌面 ${theme} 收益排行`)
+      assert(await performancePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '收益排行出现页面横向溢出')
+      assert(await performancePage.locator('.performance-table-wrap').evaluate((table) => table.scrollWidth <= table.clientWidth), '桌面排行未完整显示全部列')
+    }
+    await performancePage.getByRole('link', { name: '逐只复核' }).click()
+    await performancePage.locator('#holding-reviews .hr-card').first().waitFor()
+    await performancePage.close()
+
     if (
       process.argv.includes('--skip-legacy-workspace') ||
       process.env.E2E_SKIP_LEGACY_WORKSPACE === '1'
@@ -3600,73 +3666,6 @@ async function main() {
       automationText.includes('下次更新'),
       '自动评估没有说明结论更新时间',
     )
-
-    const performancePage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
-    const productsResponse = await fetch(`${base}/api/dashboard/products`).then((response) => response.json())
-    const lots = productsResponse.workspace.holding_reviews
-    const weeklyPerformance = productsResponse.workspace.holding_performance
-    assert(weeklyPerformance.end_date === productsResponse.meta.reporting_date, '周收益未使用统一报告日')
-
-    await performancePage.goto(`${base}/ledger/trades`)
-    await performancePage.getByRole('link', { name: '持仓收益排行' }).click()
-    const ranking = performancePage.getByRole('table', { name: '持仓产品收益排行' })
-    await ranking.waitFor()
-    await performancePage.waitForFunction(() => {
-      const top = document.getElementById('holding-reviews')?.getBoundingClientRect().top
-      return top !== undefined && top >= 0 && top <= 80
-    })
-    const codesInTable = () => ranking.locator('tbody td:first-child small').allTextContents()
-    const returnColumns = [
-      ['weekly', '近 1 周'],
-      ['return_1m', '近 1 月'],
-      ['return_3m', '近 3 月'],
-      ['return_6m', '近 6 月'],
-      ['return_1y', '近 1 年'],
-      ['return_since_inception', '成立以来'],
-    ]
-    assert(await ranking.getByRole('columnheader').count() === 9, '排行没有同时展示六档收益及产品字段')
-    assert(await ranking.locator('tbody tr').first().getByRole('cell').count() === 9, '排行行列未对齐')
-    assert(await ranking.locator('select').count() === 0, '排行仍需选择时间范围')
-    for (const [key, label] of returnColumns) {
-      const header = ranking.getByRole('columnheader', { name: label })
-      const button = header.getByRole('button')
-      if (key !== 'weekly') await button.click()
-      const expectedProducts = new Map(lots.map((lot) => [
-        lot.product_code,
-        (key === 'weekly'
-          ? weeklyPerformance.weekly_by_code[lot.product_code]?.annualized_pct
-          : lot.current[key]) ?? null,
-      ]))
-      for (const descending of [true, false]) {
-        assert(await header.getAttribute('aria-sort') === (descending ? 'descending' : 'ascending'), `${label} 排序状态错误`)
-        const expectedCodes = [...expectedProducts.keys()].sort((left, right) => {
-          const a = expectedProducts.get(left)
-          const b = expectedProducts.get(right)
-          if (a === null && b !== null) return 1
-          if (a !== null && b === null) return -1
-          return (descending ? (b ?? 0) - (a ?? 0) : (a ?? 0) - (b ?? 0)) || left.localeCompare(right)
-        })
-        assert((await codesInTable()).join(',') === expectedCodes.join(','), `${label} 排序不正确或重复展示了持仓批次`)
-        if (descending) await button.press('Space')
-      }
-    }
-
-    const principal = lots.filter((lot) => lot.product_code === '120056A').reduce((sum, lot) => sum + lot.amount, 0)
-    const principalText = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(principal)
-    const productRow = ranking.getByRole('row').filter({ hasText: '120056A' })
-    assert((await productRow.textContent()).includes(`¥${principalText}`), '排行未合计同产品本金')
-
-    const weeklyText = await performancePage.locator('.performance-dates').textContent()
-    assert(weeklyText.includes(weeklyPerformance.start_date) && weeklyText.includes(weeklyPerformance.end_date), '周收益未显示完整区间')
-    for (const theme of ['light', 'dark']) {
-      await performancePage.evaluate((value) => { document.documentElement.dataset.theme = value }, theme)
-      await assertFontFloor(performancePage, '#holding-reviews', `桌面 ${theme} 收益排行`)
-      assert(await performancePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '收益排行出现页面横向溢出')
-      assert(await performancePage.locator('.performance-table-wrap').evaluate((table) => table.scrollWidth <= table.clientWidth), '桌面排行未完整显示全部列')
-    }
-    await performancePage.getByRole('link', { name: '逐只复核' }).click()
-    await performancePage.locator('#holding-reviews .hr-card').first().waitFor()
-    await performancePage.close()
 
     const sectionPage = await browser.newPage({
       viewport: { width: 1280, height: 900 },
