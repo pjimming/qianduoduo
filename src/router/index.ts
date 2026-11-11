@@ -442,6 +442,8 @@ const REVIEW_LABELS: Record<string, string> = {
 }
 
 router.afterEach((to) => {
+  // 简报页面按异步原文及早/午/收盘时段维护标题。
+  if (to.name === 'investment-briefs') return
   if (to.name === 'r2-daily') {
     const section = typeof to.query.section === 'string' ? to.query.section : ''
     const label = DAILY_LABELS[section] || DAILY_LABELS.today

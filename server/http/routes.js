@@ -2,9 +2,11 @@
 
 const { patterns: screeningPatterns } = require('../modules/r2-screening/routes');
 const { patterns: strategyPatterns } = require('../modules/r2-strategy/routes');
+const { patterns: marketBriefPatterns } = require('../modules/market-briefs/routes');
 
 const API_ROUTE_PATTERNS = Object.freeze([
   ['GET', '/api/health'],
+  ...marketBriefPatterns,
   ...screeningPatterns,
   ...strategyPatterns,
   ['GET', '/api/backups'],

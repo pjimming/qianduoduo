@@ -3,6 +3,7 @@
 const { bucketForTerm } = require('../../../lib/yield-policy');
 const { CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { isoDate } = require('../r2-screening/calendar');
+const { buildCapitalFunding, verifiedArrival } = require('../../../lib/capital-funding');
 
 function moneyCents(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || !Number.isSafeInteger(Math.round(value * 100)) ||
@@ -11,22 +12,14 @@ function moneyCents(value) {
 }
 const legKey = code => `buy:${code}`;
 
-function verifiedArrival(settlement, trade) {
-  return settlement?.trade_id === trade.id && settlement.product_code === trade.product_code &&
-    settlement.status === 'verified' && settlement.verified === true &&
-    isoDate(settlement.arrival_date) &&
-    typeof settlement.arrival_verified_at === 'string' &&
-    settlement.arrival_verified_at.trim() !== '' &&
-    Number.isFinite(Date.parse(settlement.arrival_verified_at));
-}
-
 // Convert actual lots, pending trades and accepted intentions into a single
 // post-commitment portfolio. This is a read-only projection: no trades, lots or
 // reservation balances are modified, and in-transit proceeds remain blocked.
 function buildAccountContext({ principal, holdings = [], trades = [], reservations = [], decisions = [],
-  assetsByCode = {}, settlementChecks = {}, date }) {
+  assetsByCode = {}, settlementChecks = {}, initialDate = null, date }) {
   if (!isoDate(date)) throw new Error('账户业务日无效');
-  const principalCents = moneyCents(principal);
+  const funding = buildCapitalFunding({ principal, holdings, trades, date, initialDate, settlementChecks });
+  const principalCents = funding.funding_capacity_cents;
   const blockers = [];
   const actual = [];
   const seenLots = new Set(), seenTrades = new Set(), seenReservations = new Set();
@@ -65,6 +58,7 @@ function buildAccountContext({ principal, holdings = [], trades = [], reservatio
     if (trade.status === 'cancelled') continue;
     const amount = moneyCents(trade.amount);
     if (trade.status === 'confirmed' && trade.trade_type === 'redeem') {
+      if (trade.confirm_date > date || (initialDate && trade.confirm_date < initialDate)) continue;
       const check = settlementChecks[trade.id];
       const matched = verifiedArrival(check, trade);
       if (!matched || check.arrival_date > date) {
@@ -128,10 +122,11 @@ function buildAccountContext({ principal, holdings = [], trades = [], reservatio
       // If a split switch has already redeemed its source, only verified
       // arrived principal linked to the SAME decision may fund the remainder.
       const arrived = trades.filter(trade => trade.status === 'confirmed' && trade.trade_type === 'redeem' &&
+        !(trade.confirm_date > date) && !(initialDate && trade.confirm_date < initialDate) &&
         trade.decision_id === item.decision_id && trade.product_code === item.funding_code &&
         verifiedArrival(settlementChecks[trade.id], trade) &&
         settlementChecks[trade.id].arrival_date <= date)
-        .reduce((total, trade) => total + moneyCents(trade.amount), 0);
+        .reduce((total, trade) => total + moneyCents(trade.settlement_amount ?? trade.amount), 0);
       const alreadyBought = trades.filter(trade => trade.status === 'confirmed' && trade.trade_type === 'buy' &&
         trade.decision_id === item.decision_id && trade.product_code === item.product_code)
         .reduce((total, trade) => total + moneyCents(trade.amount), 0);
@@ -146,7 +141,9 @@ function buildAccountContext({ principal, holdings = [], trades = [], reservatio
   const exposures = projected.filter(row => row.amount_cents > 0);
   const committed = exposures.reduce((total, row) => total + row.amount_cents, 0);
   if (!Number.isSafeInteger(committed + blockedCash) || committed + blockedCash > principalCents) blockers.push('account_overcommitted');
-  const result = { date, contract_hash: CONTRACT_HASH, principal_cents: principalCents, exposures,
+  const result = { date, contract_hash: CONTRACT_HASH, principal_cents: principalCents,
+    external_principal_cents: funding.net_contributions_cents,
+    settled_realized_pnl_cents: funding.settled_realized_pnl_cents, exposures,
     blocked_cash_cents: blockedCash, committed_cents: committed, available_cents: Math.max(0, principalCents - committed - blockedCash),
     actual_holdings: actual, commitments: reconciled, pending_trade_ids: pendingTradeIds,
     blockers: [...new Set(blockers)], verified: blockers.length === 0 };

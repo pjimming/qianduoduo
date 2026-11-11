@@ -11,7 +11,7 @@ const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifa
 // Bump whenever engine/account/allocation output can change without a ledger
 // write. It is part of the frozen input hash so a code change invalidates the
 // persisted strategy job instead of reusing a stale result.
-const CALCULATION_VERSION = 6;
+const CALCULATION_VERSION = 7;
 
 function monthEndWindow(date, months) {
   const start = new Date(`${date}T00:00:00Z`);
@@ -43,6 +43,7 @@ function createStrategyService({ repository, screening = null, strategyRepositor
     }
     return { state: store.state(),
       portfolio: { principal: settings.principal_override ?? capital.current_principal ?? 0,
+        initialDate: capital.initial_date ?? null,
         holdings: repository.tradeStore.getPortfolio(), trades: repository.tradeStore.listTrades(),
         reservations: store.reservations(), decisions: repository.listDecisions() },
       products: repository.listProducts(),

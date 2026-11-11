@@ -130,6 +130,8 @@ function compactStrategyResult(result) {
   const value = { input: result.input, input_fingerprint: result.input_fingerprint,
     may_generate_buy_proposals: result.may_generate_buy_proposals,
     allocation: { status: allocation.status, principal_cents: allocation.principal_cents,
+      external_principal_cents: allocation.external_principal_cents,
+      settled_realized_pnl_cents: allocation.settled_realized_pnl_cents,
       committed_cents: allocation.committed_cents, available_cents: allocation.available_cents,
       blocked_cash_cents: allocation.blocked_cash_cents, allocated_cents: allocation.allocated_cents,
       unallocated_cents: allocation.unallocated_cents, full_investment: allocation.full_investment,

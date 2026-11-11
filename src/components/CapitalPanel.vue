@@ -26,6 +26,8 @@ const pendingEventId = ref<number | null>(null)
 
 const capital = computed(() => props.dashboard.capital)
 const initialized = computed(() => capital.value.initialized)
+const funding = computed(() => capital.value.funding)
+const fundingMoney = (value: number) => `¥${formatMoney(value / 100)}`
 const orderedEvents = computed(() => [...capital.value.events].reverse())
 const minEventDate = computed(() => capital.value.initial_date ?? '')
 const maxEventDate = computed(() => props.dashboard.meta.today)
@@ -109,7 +111,6 @@ async function confirmDeleteEvent(): Promise<void> {
   <section class="panel capital-panel" id="capitalPanel" aria-labelledby="capitalTitle">
     <div class="panel-head">
       <div>
-        <p class="kicker">本金账户</p>
         <h2 id="capitalTitle">本金管理</h2>
       </div>
       <div class="capital-head-actions">
@@ -133,14 +134,14 @@ async function confirmDeleteEvent(): Promise<void> {
 
     <div class="capital-layout">
       <div class="capital-overview">
-        <span class="capital-label">当前 R2 本金</span>
+        <span class="capital-label">自己投入的钱</span>
         <strong id="capitalCurrent" class="capital-current">
           {{ initialized ? `¥${formatMoney(capital.current_principal)}` : '—' }}
         </strong>
         <p id="capitalBreakdown" class="capital-breakdown">
           {{
             initialized
-              ? `起始 + 转入 − 转出 · 自 ${capital.initial_date} 起算 · 截至 ${
+              ? `最初投入 + 后来转入 − 已经转出 · 自 ${capital.initial_date} 起算 · 截至 ${
                   capital.as_of || dashboard.meta.today
                 }`
               : '等待初始化本金账户'
@@ -148,24 +149,43 @@ async function confirmDeleteEvent(): Promise<void> {
         </p>
         <div class="capital-metrics">
           <div>
-            <span>起始本金</span>
+            <span>最初投入的钱</span>
             <strong id="capitalInitial">
               {{ initialized ? `¥${formatMoney(capital.initial_principal)}` : '—' }}
             </strong>
           </div>
           <div>
-            <span>累计转入</span>
+            <span>后来转进的钱</span>
             <strong id="capitalDeposits">
               {{ initialized ? `+¥${formatMoney(capital.total_deposits)}` : '—' }}
             </strong>
           </div>
           <div>
-            <span>累计转出</span>
+            <span>已经转出的钱</span>
             <strong id="capitalWithdrawals">
               {{ initialized ? `−¥${formatMoney(capital.total_withdrawals)}` : '—' }}
             </strong>
           </div>
         </div>
+        <section v-if="initialized" id="capitalFunding" class="capital-funding" aria-label="钱现在放在哪里">
+          <h3>钱现在放在哪里</h3>
+          <template v-if="funding">
+            <dl class="capital-funding-list">
+              <div title="赎回到账金额减去原买入成本；亏损显示负数，不是全部理财收益"><dt>赎回收益（已到账）</dt><dd id="capitalRealized">{{ fundingMoney(funding.settled_realized_pnl_cents) }}</dd></div>
+              <div title="自己投入的钱加上已到账的赎回收益，用来核对资金，不是当前总资产"><dt>本金＋已到账收益</dt><dd id="capitalFundingBase">{{ fundingMoney(funding.funding_capacity_cents) }}</dd></div>
+              <div title="目前仍持有的理财买入时花的钱，不含持有期间的收益"><dt>持有理财的买入金额</dt><dd id="capitalHoldingCost">{{ fundingMoney(funding.holding_cost_cents) }}</dd></div>
+              <div title="买入金额超过自己投入的钱、且有已到账收益支持的部分，已包含在上面的买入金额中"><dt>用收益再买的部分</dt><dd id="capitalReinvested">{{ fundingMoney(funding.reinvested_pnl_cents) }}</dd></div>
+              <div><dt>暂未计入持仓的钱</dt><dd id="capitalOutsideHoldings">{{ fundingMoney(funding.outside_holdings_cents) }}</dd></div>
+            </dl>
+            <p>本金＋已到账收益＝持有理财的买入金额＋暂未计入持仓的钱。这里只统计赎回后已到账的收益，不包含持有中的理财收益。</p>
+            <p>暂未计入持仓的钱不代表银行可用余额，可能还在到账途中，或已预留用于买入。</p>
+            <p v-if="funding.unverified_settlement_count" class="capital-funding-status">
+              {{ funding.unverified_settlement_count }} 笔赎回的到账或金额待核，其盈亏暂未计入。
+            </p>
+            <router-link to="/ledger/trades">核对交易与持仓</router-link>
+          </template>
+          <p v-else>交易资金联动数据待更新，请刷新页面。</p>
+        </section>
         <div v-if="!initialized" id="capitalUninitialized" class="capital-uninitialized">
           <p>本金账户尚未初始化，初始化后才能记录收益。</p>
           <button
@@ -309,5 +329,67 @@ async function confirmDeleteEvent(): Promise<void> {
 
 .capital-event-list {
   margin: 0;
+}
+
+.capital-funding {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.capital-funding h3 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.capital-funding-list {
+  margin: 0 0 12px;
+}
+
+.capital-funding-list > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 5px 0;
+}
+
+.capital-funding-list dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.capital-funding p {
+  margin: 10px 0;
+}
+
+.capital-funding a {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.capital-overview .capital-label,
+.capital-overview .capital-breakdown,
+.capital-overview .capital-metrics span {
+  color: var(--ink-soft);
+}
+
+.capital-overview .capital-metrics {
+  grid-template-columns: 1fr;
+}
+
+.capital-overview .capital-metrics > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  grid-column: auto;
 }
 </style>

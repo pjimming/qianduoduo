@@ -164,7 +164,11 @@ async function run(kind: 'compute' | 'proposals') {
     <template v-if="result && section === 'allocation'">
       <h3>{{ label(result.allocation.status) }}{{ !current ? '（旧快照）' : '' }}</h3>
       <dl class="strategy-amounts">
-        <div><dt>组合本金</dt><dd>{{ money(result.allocation.principal_cents) }}</dd></div>
+        <div><dt>{{ result.allocation.external_principal_cents === undefined ? '组合本金（旧口径）' : '本金＋已到账收益' }}</dt><dd>{{ money(result.allocation.principal_cents) }}</dd></div>
+        <template v-if="result.allocation.external_principal_cents !== undefined">
+          <div><dt>自己投入的钱</dt><dd>{{ money(result.allocation.external_principal_cents) }}</dd></div>
+          <div><dt>赎回收益（已到账）</dt><dd>{{ money(result.allocation.settled_realized_pnl_cents ?? null) }}</dd></div>
+        </template>
         <div><dt>持仓及承诺占用</dt><dd>{{ money(result.allocation.committed_cents) }}</dd></div>
         <div><dt>可分配资金</dt><dd>{{ money(result.allocation.available_cents) }}</dd></div>
         <div><dt>本次配置金额</dt><dd>{{ money(result.allocation.allocated_cents) }}</dd></div>

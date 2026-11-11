@@ -1,13 +1,35 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
-type MarkdownLoader = () => Promise<unknown>
+export type AnalysisType = 'morning_brief' | 'midday_brief' | 'market_overview'
 
-export interface MarketBriefEntry {
-  date: string
-  fileName: string
-  load: () => Promise<string>
+export const analysisPeriods: { type: AnalysisType; label: string }[] = [
+  { type: 'morning_brief', label: '早盘分析' },
+  { type: 'midday_brief', label: '午盘分析' },
+  { type: 'market_overview', label: '收盘分析' },
+]
+
+export interface MarketAnalysis {
+  analysis_type: AnalysisType
+  title: string
+  content_markdown: string
+  published_at: string
+  generated_at: string | null
+  validation_status: string | null
 }
+
+async function readBriefApi<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api/market-briefs/${path}`, { signal, cache: 'no-store' })
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.error || '市场分析读取失败，请重新读取')
+  return data as T
+}
+
+export const loadMarketBriefDates = (signal?: AbortSignal) =>
+  readBriefApi<{ dates: string[] }>('dates', signal)
+
+export const loadMarketAnalyses = (date: string, signal?: AbortSignal) =>
+  readBriefApi<{ trade_date: string; analyses: MarketAnalysis[] }>(date, signal)
 
 export interface RenderedMarketBrief {
   title: string
@@ -20,15 +42,7 @@ export interface RenderedMarketBrief {
 // 页面用它作为主标题；日期由页眉和日期选择器呈现。
 const headlinePattern = /^>\s*今日标题[：:]\s*(.+?)\s*$/mu
 
-const markdownModules = import.meta.glob(
-  '../../market-briefs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md',
-  {
-    query: '?raw',
-    import: 'default',
-  },
-) as Record<string, MarkdownLoader>
-
-function isCalendarDate(value: string): boolean {
+export function isCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false
   const [year, month, day] = value.split('-').map(Number)
   const parsed = new Date(Date.UTC(year, month - 1, day))
@@ -37,28 +51,6 @@ function isCalendarDate(value: string): boolean {
     parsed.getUTCMonth() === month - 1 &&
     parsed.getUTCDate() === day
   )
-}
-
-export const marketBriefEntries: MarketBriefEntry[] = Object.entries(
-  markdownModules,
-)
-  .flatMap(([path, load]) => {
-    const match = path.match(
-      /^\.\.\/\.\.\/market-briefs\/(\d{4}-\d{2}-\d{2})\.md$/u,
-    )
-    if (!match || !isCalendarDate(match[1])) return []
-    return [
-      {
-        date: match[1],
-        fileName: `market-briefs/${match[1]}.md`,
-        load: async () => String(await load()),
-      },
-    ]
-  })
-  .sort((left, right) => right.date.localeCompare(left.date))
-
-export function findMarketBrief(date: string): MarketBriefEntry | undefined {
-  return marketBriefEntries.find((entry) => entry.date === date)
 }
 
 function cleanMarkdownTitle(value: string): string {
@@ -92,7 +84,7 @@ export function renderMarketBrief(source: string): RenderedMarketBrief {
   }) as string
   const sanitizedHtml = DOMPurify.sanitize(rawHtml, {
     USE_PROFILES: { html: true },
-    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'img', 'video', 'audio', 'source'],
     FORBID_ATTR: ['style'],
   })
   const template = document.createElement('template')

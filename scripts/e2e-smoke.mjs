@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+import { briefFixtureService, marketBriefSmoke } from './e2e-market-briefs.mjs'
 /**
  * 端到端冒烟：用本机 Chrome/Edge 验证
  * - 报告库 → 正文检索 → 报告直达（无 iframe）
@@ -327,25 +327,9 @@ async function main() {
     repository: screeningStore, enabled: true, schedule: false, collector: async () => screeningFixture,
     clock: () => new Date('2026-11-07T04:26:00Z'),
   })
-  const server = createServer({ repository, screening })
+  const server = createServer({ repository, screening, marketBriefs: briefFixtureService })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const base = `http://127.0.0.1:${server.address().port}`
-  const briefDates = readdirSync(path.join(root, 'market-briefs'))
-    .filter((file) => /^\d{4}-\d{2}-\d{2}\.md$/u.test(file))
-    .map((file) => file.slice(0, -3))
-    .sort((left, right) => right.localeCompare(left))
-  const briefHeadline = (date) => {
-    const source = readFileSync(
-      path.join(root, 'market-briefs', `${date}.md`),
-      'utf8',
-    )
-    return (
-      source
-        .match(/^>[ \t]*今日标题[：:][ \t]*(.+?)[ \t]*$/mu)?.[1]
-        .replace(/\s+/gu, ' ') ?? ''
-    )
-  }
-
   const browser = await chromium.launch({ executablePath, headless: true })
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   const consoleErrors = []
@@ -356,168 +340,7 @@ async function main() {
 
   try {
     await screeningSmoke(browser, base)
-    await page.goto(`${base}/investment/briefs`, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.briefs-page')
-    assert(
-      (await page.locator('#nav-group-investment .sidebar-link').count()) === 3,
-      '侧边栏投资分区应有 3 个入口',
-    )
-    assert(
-      (await page
-        .locator('#nav-group-investment .sidebar-link')
-        .first()
-        .innerText()).includes('每日简报'),
-      '投资菜单第一项应为“每日简报”',
-    )
-    if (briefDates.length) {
-      const latestHeadline = briefHeadline(briefDates[0])
-      assert(latestHeadline, '最新简报缺少“今日标题”')
-      await page.waitForFunction(
-        (headline) =>
-          document.querySelector('.briefs-heading h1')?.textContent?.trim() ===
-          headline,
-        latestHeadline,
-      )
-      assert(
-        (await page.title()) === `${latestHeadline} · 每日市场简报`,
-        '每日简报浏览器标题应使用当日标题',
-      )
-      assert(
-        (await page.locator('.briefs-heading h1').innerText()).trim() ===
-          latestHeadline,
-        '每日简报页头应显示“今日标题”',
-      )
-      assert(
-        (await page.locator('.briefs-kicker').innerText()).includes(
-          briefDates[0],
-        ),
-        '每日简报页眉应显示所选日期',
-      )
-    } else {
-      assert(
-        (await page.title()).includes('每日市场简报'),
-        '每日简报页面标题不正确',
-      )
-    }
-    if (!briefDates.length) {
-      await page.waitForSelector('.briefs-message')
-      const emptyText = (await page.locator('.briefs-message').innerText()) ?? ''
-      assert(
-        emptyText.includes('还没有每日简报') &&
-          emptyText.includes('YYYY-MM-DD.md'),
-        '空简报目录没有显示正确的引导状态',
-      )
-      assert(
-        (await page.locator('.briefs-date-picker').count()) === 0,
-        '空简报目录不应显示日期选择器',
-      )
-      await assertFontFloor(page, '.briefs-page', '每日简报空状态桌面端')
-      assert(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-        ),
-        '每日简报空状态桌面端出现横向溢出',
-      )
-      await page.setViewportSize({ width: 390, height: 844 })
-      await assertFontFloor(page, '.briefs-page', '每日简报空状态移动端')
-      assert(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-        ),
-        '每日简报空状态移动端出现横向溢出',
-      )
-      await page.setViewportSize({ width: 1280, height: 900 })
-    } else {
-      assert(
-        new URL(page.url()).searchParams.get('date') === briefDates[0],
-        '每日简报未默认打开最新日期',
-      )
-      assert(
-        (await page.locator('.briefs-date-picker option').count()) ===
-          briefDates.length,
-        '日期选择器没有只列出实际存在的 Markdown 简报',
-      )
-      const renderedTableCount = await page
-        .locator('.brief-markdown table')
-        .count()
-      const wrappedTableCount = await page
-        .locator('.brief-markdown .brief-table-scroll table')
-        .count()
-      assert(
-        renderedTableCount === wrappedTableCount,
-        'Markdown 表格没有全部放入独立滚动容器',
-      )
-      const latestBriefText =
-        (await page.locator('.brief-markdown').innerText()) ?? ''
-      assert(
-        latestBriefText.includes('收盘概览') &&
-          latestBriefText.includes('市场为何这样走？') &&
-          latestBriefText.includes('结构性亮点：') &&
-          !latestBriefText.includes('结构性亮点：资金高切低的三个承接方向') &&
-          latestBriefText.includes('关键资金信号') &&
-          latestBriefText.includes('政策面信号') &&
-          latestBriefText.includes('估值参考') &&
-          latestBriefText.includes('后续影响与展望') &&
-          latestBriefText.includes('短期（1-2 周）') &&
-          latestBriefText.includes('中期（1-3 个月）') &&
-          latestBriefText.includes('结论') &&
-          (await page.locator('.briefs-heading h1').innerText()).trim() ===
-            briefHeadline(briefDates[0]),
-        '最新 Markdown 简报正文没有完整渲染',
-      )
-      await assertFontFloor(page, '.briefs-page', '每日简报桌面端')
-      assert(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-        ),
-        '每日简报桌面端出现横向溢出',
-      )
-
-      if (briefDates[1]) {
-        const nextHeadline = briefHeadline(briefDates[1])
-        assert(nextHeadline, `${briefDates[1]} 简报缺少“今日标题”`)
-        await page
-          .locator('.briefs-date-picker select')
-          .selectOption(briefDates[1])
-        await page.waitForFunction(
-          (date) =>
-            new URL(window.location.href).searchParams.get('date') === date,
-          briefDates[1],
-        )
-        await page.waitForFunction(
-          (headline) =>
-            document
-              .querySelector('.briefs-heading h1')
-              ?.textContent?.trim() === headline,
-          nextHeadline,
-        )
-        await page.waitForFunction(
-          (headline) => document.title === `${headline} · 每日市场简报`,
-          nextHeadline,
-        )
-        assert(
-          (await page.locator('.briefs-kicker').innerText()).includes(
-            briefDates[1],
-          ),
-          '切换日期后页眉没有显示指定日期',
-        )
-        assert(
-          (await page.locator('.briefs-heading h1').innerText()).trim() ===
-            nextHeadline,
-          '切换日期后没有渲染指定日期的当日标题',
-        )
-      }
-
-      await page.setViewportSize({ width: 390, height: 844 })
-      await assertFontFloor(page, '.briefs-page', '每日简报移动端')
-      assert(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-        ),
-        '每日简报移动端出现横向溢出',
-      )
-      await page.setViewportSize({ width: 1280, height: 900 })
-    }
+    await marketBriefSmoke(page, base, assertFontFloor)
 
     await page.goto(`${base}/investment/research`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.library-page')
@@ -3787,6 +3610,20 @@ async function main() {
         `${scenario.label}最近本金变动没有完整展示：${JSON.stringify(capitalHistory)}`,
       )
       await assertFontFloor(page, '#capitalPanel', `本金变动${scenario.label}`)
+      const capitalPayload = await (await fetch(`${base}/api/dashboard/ledger`)).json()
+      for (const [selector, cents] of [
+        ['#capitalRealized', capitalPayload.capital.funding.settled_realized_pnl_cents],
+        ['#capitalFundingBase', capitalPayload.capital.funding.funding_capacity_cents],
+        ['#capitalHoldingCost', capitalPayload.capital.funding.holding_cost_cents],
+        ['#capitalReinvested', capitalPayload.capital.funding.reinvested_pnl_cents],
+      ]) {
+        const rendered = Number((await page.locator(selector).innerText()).replace(/[^\d.-]/g, ''))
+        assert(Math.round(rendered * 100) === cents, `${scenario.label}本金联动金额与API不一致：${selector}`)
+      }
+      assert((await page.locator('#capitalFunding').innerText()).includes('不代表银行可用余额'), '本金页面缺少账面差额口径说明')
+      if (scenario.width === 1280) {
+        await page.locator('#capitalPanel').screenshot({ path: path.join(root, 'run', `capital-funding-e2e-${scenario.theme}.png`) })
+      }
       assert(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth + 1,

@@ -175,6 +175,18 @@ export interface CapitalState {
   total_withdrawals: number
   as_of: string
   events: CapitalEvent[]
+  funding?: {
+    as_of: string
+    net_contributions_cents: number
+    settled_realized_pnl_cents: number
+    funding_capacity_cents: number
+    holding_cost_cents: number
+    reinvested_pnl_cents: number
+    outside_holdings_cents: number
+    in_transit_principal_cents: number
+    unverified_settlement_count: number
+    sources: { trade_id: number; arrival_date: string; realized_pnl_cents: number }[]
+  }
 }
 
 export interface HoldingValuationItem {

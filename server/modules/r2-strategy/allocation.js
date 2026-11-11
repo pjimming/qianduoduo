@@ -75,6 +75,8 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
   const base = { version: CONTRACT.allocation_policy_version, contract_hash: CONTRACT_HASH, date: context?.date ?? null,
     source_fingerprint: context?.fingerprint ?? null, account_fingerprint: account ? fingerprint(account) : null,
     principal_cents: principal ?? null, committed_cents: committed, blocked_cash_cents: blockedCash,
+    external_principal_cents: account?.external_principal_cents ?? principal ?? null,
+    settled_realized_pnl_cents: account?.settled_realized_pnl_cents ?? 0,
     available_cents: available, rows: [], excluded, allocated_cents: 0,
     unallocated_cents: available + (safe(blockedCash) ? blockedCash : 0), blockers: [...new Set(blockers)],
     status: 'pending', full_investment: false, executable: false };

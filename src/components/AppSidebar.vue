@@ -299,7 +299,7 @@ watch(
             </span>
             <span class="sidebar-link-copy">
               <strong>每日简报</strong>
-              <small>收盘 · 板块 · 事件</small>
+              <small>早盘 · 午盘 · 收盘</small>
             </span>
           </RouterLink>
           <RouterLink

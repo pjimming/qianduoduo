@@ -43,7 +43,8 @@ function materialPortfolio(input) {
   // Old evaluations/prediction results can change without moving any money.
   // Freeze the financial facts, review versions and source identity separately.
   return { state: input.state, date: input.date, settings: input.settings,
-    principal: input.portfolio.principal, holdings: input.portfolio.holdings, trades: input.portfolio.trades,
+    principal: input.portfolio.principal, initialDate: input.portfolio.initialDate,
+    holdings: input.portfolio.holdings, trades: input.portfolio.trades,
     reservations: input.portfolio.reservations };
 }
 function createStrategyProposalService({ repository, strategy, strategyRepository, evaluate = evaluateStrategy }) {

@@ -1,156 +1,113 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  findMarketBrief,
-  marketBriefEntries,
-  renderMarketBrief,
+  analysisPeriods, isCalendarDate, loadMarketAnalyses, loadMarketBriefDates,
+  renderMarketBrief, type AnalysisType, type MarketAnalysis,
 } from '@/data/marketBriefs'
 
 const route = useRoute()
 const router = useRouter()
-const selectedDate = ref(
-  normalizeRouteDate() ?? marketBriefEntries[0]?.date ?? '',
-)
-const renderedTitle = ref('')
-const headline = ref('')
-const markdownHtml = shallowRef('')
-const hasTables = ref(false)
-const loading = ref(false)
+const dates = ref<string[]>([])
+const selectedDate = ref(routeDate() ?? '')
+const selectedType = ref<AnalysisType>(routeType())
+const analyses = shallowRef<MarketAnalysis[]>([])
+const loading = ref(true)
+const loadingDates = ref(true)
 const errorMessage = ref('')
-const requestSequence = ref(0)
-
-const selectedIndex = computed(() =>
-  marketBriefEntries.findIndex((entry) => entry.date === selectedDate.value),
-)
-const selectedEntry = computed(() => findMarketBrief(selectedDate.value))
-const newerDate = computed(
-  () =>
-    selectedIndex.value > 0
-      ? marketBriefEntries[selectedIndex.value - 1]?.date
-      : undefined,
-)
-const olderDate = computed(
-  () =>
-    selectedIndex.value >= 0 &&
-    selectedIndex.value < marketBriefEntries.length - 1
-      ? marketBriefEntries[selectedIndex.value + 1]?.date
-      : undefined,
-)
-const visibleTitle = computed(
-  () => headline.value || renderedTitle.value || '每日市场简报',
-)
-const visibleKicker = computed(
-  () =>
-    `DAILY MARKET NOTE · ${
-      selectedDate.value ? formatDate(selectedDate.value) : '收盘后更新'
-    }`,
-)
+let detailController: AbortController | undefined
+let datesController: AbortController | undefined
+let initialized = false
+let disposed = false
+const selectedIndex = computed(() => dates.value.indexOf(selectedDate.value))
+const newerDate = computed(() => selectedIndex.value > 0 ? dates.value[selectedIndex.value - 1] : undefined)
+const olderDate = computed(() => selectedIndex.value >= 0 ? dates.value[selectedIndex.value + 1] : undefined)
+const selectedAnalysis = computed(() => analyses.value.find(a => a.analysis_type === selectedType.value))
+const periodLabel = computed(() => analysisPeriods.find(p => p.type === selectedType.value)!.label)
+const rendered = computed(() => selectedAnalysis.value ? renderMarketBrief(selectedAnalysis.value.content_markdown) : null)
+const visibleTitle = computed(() => rendered.value?.headline || rendered.value?.title || periodLabel.value)
+const publishedTime = computed(() => selectedAnalysis.value ? new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+}).format(new Date(selectedAnalysis.value.published_at)) : '')
+const visibleKicker = computed(() => selectedDate.value ? `DAILY MARKET NOTE · ${formatDate(selectedDate.value)}` : 'DAILY MARKET NOTE')
 
 function formatDate(date: string): string {
-  const parsed = new Date(`${date}T00:00:00+08:00`)
-  const weekday = new Intl.DateTimeFormat('zh-CN', {
-    weekday: 'short',
-    timeZone: 'Asia/Shanghai',
-  }).format(parsed)
+  const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(`${date}T00:00:00+08:00`))
   return `${date} · ${weekday}`
 }
-
-function normalizeRouteDate(): string | undefined {
-  const rawDate = Array.isArray(route.query.date)
-    ? route.query.date[0]
-    : route.query.date
-  return typeof rawDate === 'string' && findMarketBrief(rawDate)
-    ? rawDate
-    : undefined
+function routeDate(): string | undefined {
+  const value = route.query.date
+  return typeof value === 'string' && isCalendarDate(value) ? value : undefined
 }
-
+function routeType(): AnalysisType {
+  const value = route.query.period
+  return analysisPeriods.some(p => p.type === value) ? value as AnalysisType : 'market_overview'
+}
+function syncRoute(): void {
+  if (!selectedDate.value) return
+  if (route.query.date === selectedDate.value && route.query.period === selectedType.value) return
+  void router.replace({ name: 'investment-briefs', query: {
+    ...route.query, date: selectedDate.value, period: selectedType.value,
+  } })
+}
 async function loadSelectedBrief(): Promise<void> {
-  const entry = selectedEntry.value
-  if (!entry) {
-    renderedTitle.value = ''
-    headline.value = ''
-    markdownHtml.value = ''
-    hasTables.value = false
-    return
+  detailController?.abort()
+  analyses.value = []
+  errorMessage.value = ''
+  if (!selectedDate.value) { loading.value = false; return }
+  const controller = new AbortController()
+  detailController = controller
+  loading.value = true
+  try {
+    const data = await loadMarketAnalyses(selectedDate.value, controller.signal)
+    if (disposed || controller.signal.aborted) return
+    analyses.value = data.analyses
+  } catch (error) {
+    if (disposed || controller.signal.aborted) return
+    errorMessage.value = error instanceof Error ? error.message : '分析读取失败，请重新读取'
+  } finally {
+    if (!disposed && detailController === controller) loading.value = false
   }
-
-  const sequence = ++requestSequence.value
+}
+async function refreshDates(): Promise<void> {
+  datesController?.abort()
+  detailController?.abort()
+  analyses.value = []
+  loadingDates.value = true
   loading.value = true
   errorMessage.value = ''
+  const controller = new AbortController()
+  datesController = controller
   try {
-    const source = await entry.load()
-    if (sequence !== requestSequence.value) return
-    const rendered = renderMarketBrief(source)
-    renderedTitle.value = rendered.title
-    headline.value = rendered.headline
-    markdownHtml.value = rendered.html
-    hasTables.value = rendered.hasTables
+    const data = await loadMarketBriefDates(controller.signal)
+    if (disposed || controller.signal.aborted) return
+    dates.value = data.dates
+    initialized = false
+    selectedDate.value = routeDate() ?? data.dates[0] ?? ''
+    // 首次装载由这里读取，后续日期切换由 watcher 读取。
+    await loadSelectedBrief()
+    if (disposed || controller.signal.aborted) return
+    initialized = true
+    syncRoute()
   } catch (error) {
-    if (sequence !== requestSequence.value) return
-    renderedTitle.value = ''
-    headline.value = ''
-    markdownHtml.value = ''
-    hasTables.value = false
-    errorMessage.value =
-      error instanceof Error ? error.message : 'Markdown 文件读取失败'
+    if (disposed || controller.signal.aborted) return
+    errorMessage.value = error instanceof Error ? error.message : '日期列表读取失败'
+    loading.value = false
   } finally {
-    if (sequence === requestSequence.value) loading.value = false
+    if (!disposed && datesController === controller) loadingDates.value = false
   }
 }
-
-function selectRelativeDate(date: string | undefined): void {
-  if (date) selectedDate.value = date
-}
-
-watch(
-  selectedDate,
-  (date, previousDate) => {
-    if (!date) return
-    void loadSelectedBrief()
-    if (date === previousDate) return
-    void router.replace({
-      name: 'investment-briefs',
-      query: { ...route.query, date },
-    })
-  },
-  { immediate: true },
-)
-
-watch(
-  () => route.query.date,
-  () => {
-    const routeDate = normalizeRouteDate()
-    if (!routeDate) {
-      const latestDate = marketBriefEntries[0]?.date
-      if (latestDate && selectedDate.value !== latestDate) {
-        selectedDate.value = latestDate
-      }
-      return
-    }
-    if (routeDate !== selectedDate.value) selectedDate.value = routeDate
-  },
-)
-
-onMounted(() => {
-  const routeDate = normalizeRouteDate()
-  const latestDate = marketBriefEntries[0]?.date
-  if (routeDate && routeDate !== selectedDate.value) {
-    selectedDate.value = routeDate
-  } else if (!routeDate && latestDate && selectedDate.value !== latestDate) {
-    selectedDate.value = latestDate
-  }
+watch(selectedDate, () => { if (initialized) { void loadSelectedBrief(); syncRoute() } })
+watch(selectedType, () => { if (initialized) syncRoute() })
+watch(() => [route.query.date, route.query.period], () => {
+  selectedType.value = routeType()
+  if (initialized) selectedDate.value = routeDate() ?? dates.value[0] ?? ''
 })
-
-watch(
-  [headline, selectedDate],
-  () => {
-    document.title = headline.value
-      ? `${headline.value} · 每日市场简报`
-      : '钱多多 · 投资 · 每日市场简报'
-  },
-  { immediate: true },
-)
+watch([visibleTitle, () => route.fullPath], ([title]) => {
+  document.title = `${title} · 每日市场简报`
+}, { immediate: true, flush: 'post' })
+onMounted(() => { void refreshDates() })
+onUnmounted(() => { disposed = true; detailController?.abort(); datesController?.abort() })
 </script>
 
 <template>
@@ -159,111 +116,84 @@ watch(
       <div class="briefs-heading">
         <p class="research-kicker briefs-kicker">{{ visibleKicker }}</p>
         <h1>{{ visibleTitle }}</h1>
-        <p class="briefs-lede">
-          每日市场简报 · 一页读取市场状态、关键事件、报告库关联与下一交易日关注点
-          <span>· {{ marketBriefEntries.length }} 篇本地 Markdown</span>
-        </p>
+        <p class="briefs-lede">投资科学每日市场分析，按日期查看早盘、午盘与收盘原文。</p>
       </div>
-
-      <div
-        v-if="marketBriefEntries.length"
-        class="briefs-date-control"
-        aria-label="选择简报日期"
-      >
+      <div v-if="dates.length" class="briefs-date-control">
         <label for="market-brief-date">选择日期</label>
         <div class="briefs-date-picker">
-          <button
-            class="briefs-step"
-            type="button"
-            :disabled="!newerDate"
-            :aria-label="newerDate ? `打开 ${formatDate(newerDate)} 的更新简报` : '已经是最新简报'"
-            @click="selectRelativeDate(newerDate)"
-          >
-            ←
-          </button>
-          <select
-            id="market-brief-date"
-            v-model="selectedDate"
-            aria-describedby="brief-date-help"
-          >
-            <option
-              v-for="entry in marketBriefEntries"
-              :key="entry.date"
-              :value="entry.date"
-            >
-              {{ formatDate(entry.date) }}
-            </option>
+          <button class="briefs-step" type="button" :disabled="!newerDate || loadingDates" aria-label="较新日期" @click="selectedDate = newerDate!">←</button>
+          <select id="market-brief-date" v-model="selectedDate" :disabled="loadingDates" aria-describedby="brief-date-help">
+            <option v-if="selectedDate && !dates.includes(selectedDate)" :value="selectedDate">{{ formatDate(selectedDate) }}（未收录）</option>
+            <option v-for="date in dates" :key="date" :value="date">{{ formatDate(date) }}</option>
           </select>
-          <button
-            class="briefs-step"
-            type="button"
-            :disabled="!olderDate"
-            :aria-label="olderDate ? `打开 ${formatDate(olderDate)} 的较早简报` : '已经是最早简报'"
-            @click="selectRelativeDate(olderDate)"
-          >
-            →
-          </button>
+          <button class="briefs-step" type="button" :disabled="!olderDate || loadingDates" aria-label="较早日期" @click="selectedDate = olderDate!">→</button>
         </div>
       </div>
     </header>
 
-    <div v-if="marketBriefEntries.length" class="briefs-utility">
-      <span id="brief-date-help" class="briefs-source">
-        {{ selectedEntry?.fileName }}
-      </span>
-      <div class="briefs-status">
-        <span class="briefs-status-dot" aria-hidden="true"></span>
-        <span>{{ loading ? '正在读取 Markdown' : '已按日期加载原文' }}</span>
-      </div>
-    </div>
-
-    <div
-      v-if="errorMessage"
-      class="briefs-message briefs-message-error"
-      role="alert"
-    >
-      <strong>简报读取失败</strong>
-      <p>{{ errorMessage }}</p>
-      <button class="button button-ghost button-small" type="button" @click="loadSelectedBrief">
-        重新读取
+    <div class="briefs-periods" role="group" aria-label="分析时段">
+      <button v-for="period in analysisPeriods" :key="period.type" type="button"
+        :aria-pressed="selectedType === period.type" @click="selectedType = period.type">
+        {{ period.label }}
       </button>
     </div>
-
-    <div
-      v-else-if="!marketBriefEntries.length"
-      class="briefs-message"
-    >
-      <strong>还没有每日简报</strong>
-      <p>在 <code>market-briefs/</code> 中添加名为 <code>YYYY-MM-DD.md</code> 的 Markdown 文件，刷新后即可按日期阅读。</p>
+    <div class="briefs-utility">
+      <span id="brief-date-help" class="briefs-source">来源：投资科学<span v-if="publishedTime"> · 发布于 {{ publishedTime }}（北京时间）</span></span>
+      <button class="button button-ghost button-small" type="button" :disabled="loading" @click="refreshDates">{{ loading ? '正在读取…' : '刷新分析' }}</button>
     </div>
 
-    <article
-      v-else
-      class="briefs-paper"
-      :aria-busy="loading"
-      aria-live="polite"
-    >
-      <div class="briefs-paper-rule">
-        <span>MARKET BRIEF</span>
-        <span>{{ selectedDate }}</span>
-      </div>
-      <p v-if="hasTables" class="briefs-table-hint">
-        宽表可在表格区域内横向滚动，页面主体不会横向溢出。
-      </p>
-      <div v-if="markdownHtml" class="brief-markdown" v-html="markdownHtml"></div>
-      <div v-else-if="loading" class="briefs-loading" aria-live="polite">
-        <span></span>
-        <p>正在渲染 {{ selectedDate }} 的 Markdown 简报…</p>
-      </div>
+    <div v-if="errorMessage" class="briefs-message briefs-message-error" role="alert">
+      <strong>分析读取失败</strong><p>{{ errorMessage }}</p>
+      <button class="button button-ghost button-small" type="button" @click="refreshDates">重新读取</button>
+    </div>
+    <div v-else-if="!loading && !dates.length" class="briefs-message">
+      <strong>暂时没有市场分析</strong><p>源站尚未提供可阅读的日期，可稍后刷新。</p>
+    </div>
+    <div v-else-if="!loading && !selectedAnalysis" class="briefs-message" role="status">
+      <strong>{{ selectedDate }} 的{{ periodLabel }}尚未发布</strong>
+      <p>可切换其他时段或日期，稍后刷新查看更新。</p>
+    </div>
+    <article v-else class="briefs-paper" :aria-busy="loading" aria-live="polite">
+      <div class="briefs-paper-rule"><span>{{ periodLabel }}</span><span>{{ selectedDate }}</span></div>
+      <p v-if="rendered?.hasTables" class="briefs-table-hint">宽表可在表格区域内横向滚动。</p>
+      <div v-if="rendered" class="brief-markdown" v-html="rendered.html"></div>
+      <div v-else class="briefs-loading"><span></span><p>正在读取{{ periodLabel }}…</p></div>
     </article>
-
-    <p class="briefs-footnote">
-      Markdown 原文件保存在本机工作区，不进入 R2 账本；页面中的市场结论仅供参考，不构成投资建议。
-    </p>
+    <p class="briefs-footnote">内容由投资科学提供，钱多多展示源站原文；市场分析仅供参考，不构成投资建议。</p>
   </section>
 </template>
-
 <style scoped>
+.briefs-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 10px;
+}
+
+.briefs-periods button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.briefs-periods button[aria-pressed='true'] {
+  border-color: var(--green);
+  background: var(--green-wash);
+  color: var(--green-deep);
+  font-weight: 700;
+}
+
+.briefs-periods button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .briefs-page {
   width: min(1420px, 100%);
   min-height: calc(100vh - 160px);

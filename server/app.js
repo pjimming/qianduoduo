@@ -66,6 +66,8 @@ const { createReviewsRepository } = require('./modules/reviews/repository');
 const { createReviewsRoutes } = require('./modules/reviews/routes');
 const { createReviewsService } = require('./modules/reviews/service');
 const { createResearchService } = require('./modules/research/service');
+const { createMarketBriefService } = require('./modules/market-briefs/service');
+const { createMarketBriefRoutes } = require('./modules/market-briefs/routes');
 
 const { createScreeningRoutes } = require('./modules/r2-screening/routes');
 const { createStrategyService } = require('./modules/r2-strategy/service');
@@ -160,12 +162,14 @@ function createRequestHandler(repository, options = {}) {
     ocr: createIncomeOcrAdapter(),
   });
   const router = createRouter();
+  const marketBriefs = options.marketBriefs || createMarketBriefService();
   const migrated = new Set();
 
   registerModuleRoutes(
     router,
     [
       ...createOperationsRoutes(operations),
+      ...createMarketBriefRoutes(marketBriefs),
       ...createScreeningRoutes(options.screening),
       ...createStrategyRoutes(strategy, executionProposals),
       ...createDataTrustRoutes(dataTrust),
@@ -233,10 +237,11 @@ function createRequestHandler(repository, options = {}) {
   };
 }
 
-function createServer({ repository, dashboardQuery, automationRunner, screening }) {
+function createServer({ repository, dashboardQuery, automationRunner, screening, marketBriefs }) {
   if (!repository) throw new Error('createServer 需要 repository');
   return http.createServer(
     createRequestHandler(repository, {
+      marketBriefs,
       screening,
       dashboardQuery,
       automationRunner,

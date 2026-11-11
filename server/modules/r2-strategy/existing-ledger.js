@@ -29,7 +29,7 @@ function openStrategyLedger(file, { readOnly = false } = {}) {
         if (!raw) return { current_principal: 0, initialized: false };
         const settings = { initial_principal: raw.initial_principal, initial_date: raw.initial_date };
         const events = db.prepare('SELECT event_date AS date,event_type AS type,amount FROM capital_events ORDER BY event_date,id').all();
-        return { current_principal: principalAt(settings, events, date), initialized: true };
+        return { current_principal: principalAt(settings, events, date), initial_date: settings.initial_date, initialized: true };
       },
       getAllocationSettings() {
         const raw = db.prepare("SELECT value FROM app_meta WHERE key='product_allocation_settings_v1'").get();

@@ -345,7 +345,7 @@ async function main() {
     await page.getByRole('button', { name: '重算当前策略', exact: true }).click()
     const recompute = await responsePromise
     assert(recompute.ok(), `v9 重算失败 ${recompute.status()} ${(await recompute.text()).slice(0, 500)}`)
-    await page.getByText('组合本金', { exact: true }).waitFor()
+    await page.getByText('本金＋已到账收益', { exact: true }).waitFor()
     const captures = path.join(root, 'run', 'acceptance-ui')
     mkdirSync(captures, { recursive: true })
     for (const width of [1280, 1440, 390]) {

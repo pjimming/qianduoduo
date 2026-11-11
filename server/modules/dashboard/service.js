@@ -19,6 +19,7 @@ const {
   buildReturnAttribution,
 } = require('../../../lib/return-attribution');
 const { buildHoldingPerformance } = require('./holding-performance');
+const { buildCapitalFunding } = require('../../../lib/capital-funding');
 
 const DASHBOARD_SECTIONS = Object.freeze([
   'summary',
@@ -277,6 +278,9 @@ function createDashboardQueryService(repository, options = {}) {
     const reportingRecord =
       rawRecords.find((record) => record.date === reportingDate) || null;
     const capital = repository.getCapitalState(today);
+    capital.funding = buildCapitalFunding({ principal: capital.current_principal,
+      initialDate: capital.initial_date, date: today,
+      holdings: tradeOverview.holdings, trades: tradeOverview.trades });
     const allocationSettings = repository.getAllocationSettings();
     const principal =
       allocationSettings.principal_override ??
