@@ -88,6 +88,22 @@ test('current value derives from confirmed principal and product income without 
   assert.deepEqual(current.stale_reasons, []);
 });
 
+test('partial redemption removes realized profit from remaining holding value', (t) => {
+  const repository = openTemp(t);
+  createTrade(repository.tradeStore, { amount: 1000 });
+  addIncome(repository, '120026A', 10, '招银理财14天');
+  repository.tradeStore.createTrade({
+    trade_date: '2026-10-23', confirm_date: '2026-10-23',
+    trade_type: 'redeem', status: 'confirmed', product_code: '120026A',
+    product_name: '招银理财14天', issuer: '招银理财', risk_level: 'R2',
+    amount: 400, settlement_amount: 404, shares: 400,
+  });
+  const current = repository.holdingValuationStore.getCurrent('2026-10-24');
+  assert.equal(current.active_cost, 600);
+  assert.equal(current.product_income, 6);
+  assert.equal(current.current_value, 606);
+});
+
 test('bank snapshot is reconciliation only and a one-cent difference is accepted', (t) => {
   const repository = openTemp(t);
   createTrade(repository.tradeStore, {

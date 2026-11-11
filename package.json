@@ -48,7 +48,7 @@
     "yield:observe:review": "node scripts/yield-observe.cjs review",
     "income:entry": "node scripts/income-entry.mjs",
     "pretest": "node scripts/build-report-docs.mjs",
-    "test": "node --test",
+    "test": "node --test \"test/**/*.test.js\" \"test/**/*.test.mjs\"",
     "pretest:e2e": "npm run build",
     "test:e2e": "node scripts/e2e-smoke.mjs --skip-legacy-workspace && node scripts/e2e-r2-strategy.mjs",
     "test:daemon": "powershell -NoProfile -ExecutionPolicy Bypass -File test/daemon-exit-smoke.ps1",
