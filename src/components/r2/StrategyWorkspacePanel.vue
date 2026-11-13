@@ -73,7 +73,31 @@ const holdingProducts = computed(() => {
 })
 const stateNames: Record<string, string> = { exit_required: '准备退出', exit_at_open: '锁定中 · 到期核验退出', exit_rules_pending: '退出规则待核', risk_review: '风险复核', hold: '达到续持门槛', simulation_passed: '约束测算通过', pending: '证据或账户待核', no_feasible_full_allocation: '无可行满仓方案' }
 const reasons: Record<string, string> = { principal_unavailable: '本金尚未初始化', evidence_unavailable: '公开证据不可用', account_unverified: '账户占用或持仓信息待核', account_invalid: '账户输入异常', account_overcommitted: '持仓及承诺金额超出本金', existing_evidence_single_cap: '存量持仓超出证据层单一上限', existing_evidence_tier_cap: '存量持仓超出证据层合计上限', existing_product_cap: '存量持仓超出单一产品上限', existing_family_cap: '存量持仓超出策略家族上限', liquidity_or_cashflow_conflict: '流动性或近期用款约束冲突', exposure_unverified: '持仓风险敞口待核', settings_invalid: '配置约束待核', cash_needs_invalid: '用款约束待核', allocation_model_limit: '候选规模超出计算限制', screening_not_automatic: '尚未满足自动配置门槛', formal_terms_unverified: '正式期限条款待核', settlement_path_unverified: '申赎到账路径待核', fees_unverified: '费用待核', assets_unverified: '底层资产待核', prohibited_assets_or_unknown: '禁投资产敞口待核', equity_limit_unverified: '权益上限待核', duration_or_distribution_unverified: '久期或期限分布待核', app_availability_unverified: '当日 App 额度待核', allocation_limits_unverified: '起购、递增或集中度依据待核', public_quota_unverified: '公开额度待核', redemption_fee_unverified: '赎回费用待核', redemption_fee_or_arrival_unverified: '赎回费用或资金到账安排待核', redemption_rules_unverified: '赎回条款待核', current_redemption_window_unverified: '当日赎回窗口待核', holding_exit_not_current_plan: '当前批次尚未形成可执行退出计划' }
-const bucketReasons: Record<string, string> = { existing_medium_bucket_cap: '中期占用超过 20%', existing_long_bucket_cap: '长期占用超过 10%' }
+Object.assign(reasons, {
+  capacity_or_increment_gap: '现有约束下，仍有可分配资金无法配置',
+  cash_in_transit: '部分资金尚未到账，暂不能用于配置',
+  solver_budget_exhausted: '配置测算未在计算时限内完成，请重算',
+  allocation_not_verified: '配置金额尚未通过校验，请重算',
+  allocation_preferences_not_verified: '配置排序尚未完成校验，请重算',
+  candidate_limit: '候选数量超过计算上限',
+  duplicate_candidate: '候选产品存在重复记录，需核对公开批次',
+  existing_evidence_single_cap: '现有单只产品持仓超过其证据等级允许的上限',
+  existing_evidence_tier_cap: '同一证据等级的现有持仓合计超过上限',
+  liquidity_or_cashflow_conflict: '当前方案无法同时满足流动性要求和用款安排',
+})
+function allocationHint(code: string) {
+  if (code === 'capacity_or_increment_gap') {
+    const allocation = result.value?.allocation
+    const gap = allocation ? Math.max(0, allocation.available_cents - allocation.allocated_cents) : null
+    return `尚有 ${money(gap)} 可分配资金未配置。可能受可买额度、配置上限、起购或递增金额限制；请结合下方期限占用与候选明细核对。`
+  }
+  if (code === 'existing_medium_bucket_cap' || code === 'existing_long_bucket_cap') return '具体占用和超出金额见下方期限明细；复核现有持仓及待确认买入后，再重算配置。'
+  if (code === 'existing_evidence_tier_cap' || code === 'existing_evidence_single_cap') return '证据等级取决于可核验的业绩历史；请核对持仓匹配的证据等级与集中度限制。'
+  if (code === 'liquidity_or_cashflow_conflict') return '请核对付款日、所需金额及产品到账安排；当前配置金额仅供诊断，尚未满足全部约束。'
+  if (code === 'cash_in_transit') return '资金到账并完成记账后，重新测算配置。'
+  return ''
+}
+const bucketReasons: Record<string, string> = { existing_medium_bucket_cap: '中期持仓及承诺占用超过组合的 20% 上限', existing_long_bucket_cap: '长期持仓及承诺占用超过组合的 10% 上限' }
 const label = (value: string) => reasons[value] || bucketReasons[value] || stateNames[value] || value
 type HoldingProduct = (typeof holdingProducts.value)[number]
 const holdingColumns = [
@@ -174,7 +198,13 @@ async function run(kind: 'compute' | 'proposals') {
         <div><dt>本次配置金额</dt><dd>{{ money(result.allocation.allocated_cents) }}</dd></div>
         <div><dt>未分配金额</dt><dd>{{ money(result.allocation.unallocated_cents) }}</dd></div>
       </dl>
-      <ul v-if="result.allocation.blockers.length" class="strategy-blockers"><li v-for="item in result.allocation.blockers" :key="item">{{ label(item) }}</li></ul>
+      <div v-if="result.allocation.blockers.length" class="strategy-blockers" role="status">
+        <p><strong>配置前需处理以下事项</strong></p>
+        <ul><li v-for="item in result.allocation.blockers" :key="item">
+          {{ label(item) }}
+          <p v-if="allocationHint(item)" class="strategy-blocker-hint">{{ allocationHint(item) }}</p>
+        </li></ul>
+      </div>
       <ul v-if="result.allocation.bucket_limits">
         <li v-for="(limit, bucket) in result.allocation.bucket_limits" :key="bucket">
           {{ bucket === 'medium' ? '中期' : '长期' }}上限 {{ money(limit.limit_cents) }}，实际持仓 {{ money(limit.actual_cents) }}，含承诺占用 {{ money(limit.occupied_cents) }}，
@@ -259,7 +289,10 @@ p { color: var(--ink-soft); line-height: 1.6; overflow-wrap: anywhere; }
 .strategy-cashflow textarea { box-sizing: border-box; width: 100%; padding: 8px; font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; }
 .strategy-amounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 16px; margin: 20px 0; }
 dt { color: var(--ink-soft); font-size: 12px; } dd { margin: 5px 0 0; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.strategy-blockers { color: var(--warning-ink); line-height: 1.8; }
+.strategy-blockers { color: var(--warning-ink); line-height: 1.8; font-size: 13px; }
+.strategy-blockers > p { margin-bottom: 6px; }
+.strategy-blockers li + li { margin-top: 10px; }
+.strategy-blocker-hint { margin: 2px 0 0; max-width: 75ch; font-size: 13px; line-height: 1.6; }
 .strategy-exit summary { cursor: pointer; }
 .strategy-exit ul { padding-left: 16px; }
 .strategy-exit li + li { margin-top: 8px; }
