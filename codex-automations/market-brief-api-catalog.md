@@ -19,6 +19,6 @@
 - 响应：`trade_date` 必须等于请求日；`analyses[]` 包含 `analysis_type`、`title`、`content_markdown`、`published_at`、`generated_at`、`validation_status`。
 - 类型：morning_brief早盘、midday_brief午盘、market_overview收盘；只展示已发布、非空正文。源站validation_status仅为来源字段，不代表本地事实核验。
 - 本地转发：GET /api/market-briefs/{YYYY-MM-DD}；内存缓存30秒、合并同键并发请求、最多100个缓存键。
-- 10秒超时、2MiB响应上限、固定主机且不跟随跳转；日期不符或格式错误拒绝展示，未发布显示对应空状态，网络失败提供重试。不使用其他时段或本地稿冒充。
+- 10秒超时、2MiB响应上限、固定主机且不跟随跳转；日期不符或格式错误拒绝展示，仅显示当天已发布报告的时段按钮；当前时段缺失时切换到当天最新可用时段，并同步选中项与链接；当天全无报告时显示未发布状态，网络失败提供重试。正文标注实际时段，不使用本地稿冒充。
 
 内容仅在本地应用呈现，不写R2账本、报告库或GitHub Pages；源站新内容无需构建即可读取。

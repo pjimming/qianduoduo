@@ -22,6 +22,7 @@ let disposed = false
 const selectedIndex = computed(() => dates.value.indexOf(selectedDate.value))
 const newerDate = computed(() => selectedIndex.value > 0 ? dates.value[selectedIndex.value - 1] : undefined)
 const olderDate = computed(() => selectedIndex.value >= 0 ? dates.value[selectedIndex.value + 1] : undefined)
+const availablePeriods = computed(() => analysisPeriods.filter(p => analyses.value.some(a => a.analysis_type === p.type)))
 const selectedAnalysis = computed(() => analyses.value.find(a => a.analysis_type === selectedType.value))
 const periodLabel = computed(() => analysisPeriods.find(p => p.type === selectedType.value)!.label)
 const rendered = computed(() => selectedAnalysis.value ? renderMarketBrief(selectedAnalysis.value.content_markdown) : null)
@@ -50,6 +51,11 @@ function syncRoute(): void {
     ...route.query, date: selectedDate.value, period: selectedType.value,
   } })
 }
+function selectAvailablePeriod(): void {
+  if (!selectedAnalysis.value && availablePeriods.value.length) {
+    selectedType.value = availablePeriods.value[availablePeriods.value.length - 1]!.type
+  }
+}
 async function loadSelectedBrief(): Promise<void> {
   detailController?.abort()
   analyses.value = []
@@ -62,6 +68,8 @@ async function loadSelectedBrief(): Promise<void> {
     const data = await loadMarketAnalyses(selectedDate.value, controller.signal)
     if (disposed || controller.signal.aborted) return
     analyses.value = data.analyses
+    selectAvailablePeriod()
+    if (initialized) syncRoute()
   } catch (error) {
     if (disposed || controller.signal.aborted) return
     errorMessage.value = error instanceof Error ? error.message : '分析读取失败，请重新读取'
@@ -100,8 +108,14 @@ async function refreshDates(): Promise<void> {
 watch(selectedDate, () => { if (initialized) { void loadSelectedBrief(); syncRoute() } })
 watch(selectedType, () => { if (initialized) syncRoute() })
 watch(() => [route.query.date, route.query.period], () => {
+  const nextDate = routeDate() ?? dates.value[0] ?? ''
+  const sameDate = nextDate === selectedDate.value
   selectedType.value = routeType()
-  if (initialized) selectedDate.value = routeDate() ?? dates.value[0] ?? ''
+  if (initialized) selectedDate.value = nextDate
+  if (!loading.value && sameDate) {
+    selectAvailablePeriod()
+    if (initialized) syncRoute()
+  }
 })
 watch([visibleTitle, () => route.fullPath], ([title]) => {
   document.title = `${title} · 每日市场简报`
@@ -131,8 +145,8 @@ onUnmounted(() => { disposed = true; detailController?.abort(); datesController?
       </div>
     </header>
 
-    <div class="briefs-periods" role="group" aria-label="分析时段">
-      <button v-for="period in analysisPeriods" :key="period.type" type="button"
+    <div v-if="availablePeriods.length" class="briefs-periods" role="group" aria-label="分析时段">
+      <button v-for="period in availablePeriods" :key="period.type" type="button"
         :aria-pressed="selectedType === period.type" @click="selectedType = period.type">
         {{ period.label }}
       </button>
@@ -150,8 +164,8 @@ onUnmounted(() => { disposed = true; detailController?.abort(); datesController?
       <strong>暂时没有市场分析</strong><p>源站尚未提供可阅读的日期，可稍后刷新。</p>
     </div>
     <div v-else-if="!loading && !selectedAnalysis" class="briefs-message" role="status">
-      <strong>{{ selectedDate }} 的{{ periodLabel }}尚未发布</strong>
-      <p>可切换其他时段或日期，稍后刷新查看更新。</p>
+      <strong>{{ selectedDate }} 的市场分析尚未发布</strong>
+      <p>可切换其他日期，稍后刷新查看更新。</p>
     </div>
     <article v-else class="briefs-paper" :aria-busy="loading" aria-live="polite">
       <div class="briefs-paper-rule"><span>{{ periodLabel }}</span><span>{{ selectedDate }}</span></div>

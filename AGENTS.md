@@ -70,7 +70,7 @@
 
 股票、个股、主题、产业链、候选公司对比和公司事件研究以 `$serenity-skill`（`%USERPROFILE%\.codex\skills\serenity-skill\SKILL.md`）为唯一工作流。执行前完整读取 `SKILL.md`，再按任务读取必要的 `references/` 和 `assets/`。
 
-每日市场简报入口为 `/investment/briefs`，按需读取投资科学公开 API，不调用 Serenity，也不再自行采集、整理或生成日报。日期来自源站 `/api/daily-market-analyses/dates`；正文来自 `/api/daily-market-analyses/YYYY-MM-DD` 的 `analyses`，支持早盘（morning_brief）、午盘（midday_brief）、收盘（market_overview），默认最新日期的收盘分析，可用 `?date=YYYY-MM-DD&period=midday_brief` 深链定位。正文保持源站 Markdown 内容，通过 DOMPurify 安全渲染；标注来源和北京时间发布时间，未发布或接口失败明确显示并允许重试，不用旧本地稿伪装成功。后端固定主机转发，不携带 Cookie 或凭证，仅短时内存缓存，不写账本或研究报告。Codex 任务 `a` 已暂停；`market-briefs/*.md` 保留为历史归档，原八章模板只约束历史手工稿，不约束接口原文。简报不进入报告清单、独立报告库或 GitHub Pages。
+每日市场简报入口为 `/investment/briefs`，按需读取投资科学公开 API，不调用 Serenity，也不再自行采集、整理或生成日报。日期来自源站 `/api/daily-market-analyses/dates`；正文来自 `/api/daily-market-analyses/YYYY-MM-DD` 的 `analyses`，支持早盘（morning_brief）、午盘（midday_brief）、收盘（market_overview），只显示当天已发布报告对应的时段按钮；默认最新日期，优先收盘分析，当前或链接指定时段缺失时切换至当天最新可用时段并同步链接；当天没有报告时显示未发布状态。可用 `?date=YYYY-MM-DD&period=midday_brief` 深链定位。正文保持源站 Markdown 内容，通过 DOMPurify 安全渲染；标注来源和北京时间发布时间，未发布或接口失败明确显示并允许重试，不用旧本地稿伪装成功。后端固定主机转发，不携带 Cookie 或凭证，仅短时内存缓存，不写账本或研究报告。Codex 任务 `a` 已暂停；`market-briefs/*.md` 保留为历史归档，原八章模板只约束历史手工稿，不约束接口原文。简报不进入报告清单、独立报告库或 GitHub Pages。
 
 
 

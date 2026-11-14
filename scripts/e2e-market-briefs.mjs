@@ -45,14 +45,33 @@ export async function marketBriefSmoke(page, base, assertFontFloor) {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
   }
 
-  // 未发布时段不自动展示另一个时段或旧本地稿。
+  // 只显示已发布时段；当前时段缺失时选择当天最新可用报告并同步深链。
   await page.route('**/api/market-briefs/2026-11-11', route => route.fulfill({ json: {
     trade_date: dates[0], analyses: [fixture(dates[0], 'morning_brief')],
   } }))
   await page.goto(`${base}/investment/briefs?date=${dates[0]}`, { waitUntil: 'networkidle' })
-  await page.getByText(`${dates[0]} 的收盘分析尚未发布`, { exact: true }).waitFor()
-  await page.getByRole('button', { name: '早盘分析', exact: true }).click()
   await page.getByRole('heading', { level: 1, name: `${dates[0]} morningbrief原文` }).waitFor()
+  assert.deepEqual(await page.locator('.briefs-periods button').allTextContents().then(labels => labels.map(label => label.trim())), ['早盘分析'])
+  assert.equal(await page.getByRole('button', { name: '早盘分析', exact: true }).getAttribute('aria-pressed'), 'true')
+  assert.equal(new URL(page.url()).searchParams.get('period'), 'morning_brief')
+  await page.goto(`${base}/investment/briefs?date=${dates[0]}&period=midday_brief`, { waitUntil: 'networkidle' })
+  await page.getByRole('heading', { level: 1, name: `${dates[0]} morningbrief原文` }).waitFor()
+  assert.equal(new URL(page.url()).searchParams.get('period'), 'morning_brief')
+  await page.selectOption('#market-brief-date', dates[1])
+  await page.getByRole('heading', { level: 1, name: `${dates[1]} morningbrief原文` }).waitFor()
+  await page.getByRole('button', { name: '午盘分析', exact: true }).click()
+  await page.selectOption('#market-brief-date', dates[0])
+  await page.getByRole('heading', { level: 1, name: `${dates[0]} morningbrief原文` }).waitFor()
+  assert.equal(await page.locator('.briefs-periods button').count(), 1)
+  await page.unroute('**/api/market-briefs/2026-11-11')
+
+  await page.route('**/api/market-briefs/2026-11-11', route => route.fulfill({ json: {
+    trade_date: dates[0], analyses: [],
+  } }))
+  await page.goto(`${base}/investment/briefs?date=${dates[0]}`, { waitUntil: 'networkidle' })
+  await page.getByText(`${dates[0]} 的市场分析尚未发布`, { exact: true }).waitFor()
+  assert.equal(await page.locator('.briefs-periods').count(), 0)
+  assert.equal(await page.locator('.brief-markdown').count(), 0)
   await page.unroute('**/api/market-briefs/2026-11-11')
 
   // 故障与恶意内容使用独立测试页，避免预期502/CSP日志污染全站零错误检查。
@@ -62,6 +81,7 @@ export async function marketBriefSmoke(page, base, assertFontFloor) {
     await safetyPage.route('**/api/market-briefs/dates', route => route.fulfill({ status: 502, json: { error: '源站暂时不可用' } }))
     await safetyPage.goto(`${base}/investment/briefs`, { waitUntil: 'networkidle' })
     await safetyPage.getByRole('alert').getByText('源站暂时不可用').waitFor()
+    assert.equal(await safetyPage.locator('.briefs-periods').count(), 0)
     await safetyPage.unroute('**/api/market-briefs/dates')
     await safetyPage.route('**/api/market-briefs/2026-11-11', route => route.fulfill({ json: {
       trade_date: dates[0], analyses: [fixture(dates[0], 'market_overview', true)],
@@ -91,5 +111,6 @@ export async function marketBriefSmoke(page, base, assertFontFloor) {
   await page.goto(`${base}/investment/briefs`, { waitUntil: 'networkidle' })
   await page.getByText('暂时没有市场分析', { exact: true }).waitFor()
   assert.equal(await page.locator('.brief-markdown').count(), 0)
+  assert.equal(await page.locator('.briefs-periods').count(), 0)
   await page.unroute('**/api/market-briefs/dates')
 }
