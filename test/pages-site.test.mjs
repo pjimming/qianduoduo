@@ -148,7 +148,7 @@ test('every published report and tech map view returns to the report library', a
       links[0][0].includes(`href="${page.href}"`),
       `${page.path} 的首页链接应指向 ${page.href}`,
     )
-    assert.match(links[0][0], /返回首页/u)
+    assert.match(links[0][0], /返回(?:首页|报告库)/u)
 
     const homeResponse = await fetch(
       new URL(page.href, response.url),

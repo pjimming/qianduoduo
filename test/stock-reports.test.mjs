@@ -72,7 +72,7 @@ test('source reports and the Vue library manifest contain the same complete file
       /\bhref=["']\.\.\/research\/index\.html["']/,
       `${report.file} 的首页链接路径不正确`,
     )
-    assert.match(pageHomeLinks[0][0], /返回首页/u)
+    assert.match(pageHomeLinks[0][0], /返回(?:首页|报告库)/u)
   }
 })
 

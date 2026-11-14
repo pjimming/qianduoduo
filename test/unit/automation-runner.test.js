@@ -19,23 +19,42 @@ function openTemp(t) {
     dataTrustMode: 'off',
     logger: { warn() {} },
   });
-  t.after(() => {
+  const runners = [];
+  const workerExits = [];
+  t.after(async () => {
+    for (const runner of runners) await runner.stop('test-cleanup');
+    // run() 在收到结果消息时完成；worker 随后才关闭自身的 SQLite 连接。
+    await Promise.all(workerExits);
     repository.close();
     fs.rmSync(directory, { recursive: true, force: true });
   });
-  return repository;
+  return {
+    repository,
+    createRunner(options) {
+      const factory = options.workerFactory || ((file, settings) => new Worker(file, settings));
+      const runner = createAutomationRunner({
+        ...options,
+        repository,
+        workerFactory(file, settings) {
+          const worker = factory(file, settings);
+          workerExits.push(new Promise((resolve) => worker.once('exit', resolve)));
+          return worker;
+        },
+      });
+      runners.push(runner);
+      return runner;
+    },
+  };
 }
 
 test('automation runner executes the cycle in a worker and rejects reentry', async (t) => {
-  const repository = openTemp(t);
-  const runner = createAutomationRunner({
-    repository,
+  const { repository, createRunner } = openTemp(t);
+  const runner = createRunner({
     timeoutMs: 5000,
     dataTrustMode: 'off',
     migrationPolicy: 'auto',
     logger: { warn() {} },
   });
-  t.after(() => runner.stop('test-cleanup'));
 
   const first = runner.run({
     today: '2026-10-23',
@@ -58,10 +77,9 @@ test('automation runner executes the cycle in a worker and rejects reentry', asy
 });
 
 test('automation runner terminates a worker at the hard timeout', async (t) => {
-  const repository = openTemp(t);
+  const { createRunner } = openTemp(t);
   let terminated = false;
-  const runner = createAutomationRunner({
-    repository,
+  const runner = createRunner({
     timeoutMs: 30,
     workerFactory: () => {
       const worker = new Worker('setInterval(() => {}, 1000)', {
@@ -76,7 +94,6 @@ test('automation runner terminates a worker at the hard timeout', async (t) => {
     },
     logger: { warn() {} },
   });
-  t.after(() => runner.stop('test-cleanup'));
 
   const result = await runner.run({
     today: '2026-10-23',
@@ -91,10 +108,9 @@ test('automation runner terminates a worker at the hard timeout', async (t) => {
 });
 
 test('automation runner stop terminates an active worker and releases the caller', async (t) => {
-  const repository = openTemp(t);
+  const { createRunner } = openTemp(t);
   let terminated = false;
-  const runner = createAutomationRunner({
-    repository,
+  const runner = createRunner({
     timeoutMs: 5000,
     workerFactory: () => {
       const worker = new Worker('setInterval(() => {}, 1000)', {
@@ -123,10 +139,9 @@ test('automation runner stop terminates an active worker and releases the caller
 });
 
 test('automation runner can start a fresh cycle after a timeout', async (t) => {
-  const repository = openTemp(t);
+  const { createRunner } = openTemp(t);
   let attempt = 0;
-  const runner = createAutomationRunner({
-    repository,
+  const runner = createRunner({
     timeoutMs: 500,
     workerFactory: () => {
       attempt += 1;
@@ -151,7 +166,6 @@ test('automation runner can start a fresh cycle after a timeout', async (t) => {
     },
     logger: { warn() {} },
   });
-  t.after(() => runner.stop('test-cleanup'));
 
   const timedOut = await runner.run({
     today: '2026-10-23',
