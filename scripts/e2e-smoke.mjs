@@ -31,12 +31,13 @@ const { createScreeningService } = require('../server/modules/r2-screening/servi
 const screeningFixture = require('../test/fixtures/r2-screening/2026-11-07.json')
 const { shiftDate, todayShanghai } = require('../lib/metrics.js')
 const { weekendDisclosureBase } = require('../lib/product-income-coverage.js')
+const { shiftDisclosureWorkdays } = require('../lib/yield-disclosure-calendar.js')
 const { resolveProductCsv } = require('../server.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const e2eToday = todayShanghai()
 const waitingYieldDate = shiftDate(e2eToday, -1)
-const waitingFinalDate = shiftDate(weekendDisclosureBase(waitingYieldDate), 2)
+const waitingFinalDate = shiftDisclosureWorkdays(weekendDisclosureBase(waitingYieldDate), 2)
 const ONE_PIXEL_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII='
 const chromeCandidates = [

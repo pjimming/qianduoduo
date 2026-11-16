@@ -9,6 +9,7 @@ const { openDatabase } = require('../lib/db');
 const { createServer } = require('../server');
 const { shiftDate, todayShanghai } = require('../lib/metrics');
 const { makeSourceItems } = require('../lib/inbox-center');
+const { shiftDisclosureWorkdays } = require('../lib/yield-disclosure-calendar');
 
 const ONE_PIXEL_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII=';
@@ -296,7 +297,7 @@ test('product lag remains informational and never blocks a user-provided income 
   const { base, repository } = await startTestServer(t);
   const today = todayShanghai();
   const yesterday = shiftDate(today, -1);
-  const latestComplete = shiftDate(today, -2);
+  const latestComplete = shiftDisclosureWorkdays(today, -2);
   await postJson(`${base}/api/capital/init`, {
     initial_principal: 30000,
     initial_date: shiftDate(today, -10),
@@ -908,7 +909,7 @@ test('product-only income derives the account total through T+N and never asks f
   const { base, repository } = await startTestServer(t);
   const today = todayShanghai();
   const waitingDate = shiftDate(today, -1);
-  const finalDate = shiftDate(today, -3);
+  const finalDate = shiftDisclosureWorkdays(today, -3);
   await postJson(`${base}/api/capital/init`, {
     initial_principal: 30000,
     initial_date: '2026-10-01',

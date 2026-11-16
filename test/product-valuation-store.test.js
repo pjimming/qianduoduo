@@ -57,6 +57,45 @@ function createRedeem(repository, amount, overrides = {}) {
   });
 }
 
+test('T+2 disclosures skip weekends and holidays, retain final-day waiting and preserve income facts', (t) => {
+  const { repository } = openTemp(t);
+  repository.initializeCapital(30000, '2026-09-01');
+  createBuy(repository, { trade_date: '2026-09-01', confirm_date: '2026-09-01' });
+  createBuy(repository, { product_code: '120026A', trade_date: '2026-09-01', confirm_date: '2026-09-01' });
+  repository.productValuationStore.saveYieldSetting('120026A', { yield_lag_days: 2, source: 'user-confirmed' });
+  const cases = [
+    ['2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18'],
+    ['2026-09-30', '2026-10-08', '2026-10-09', '2026-10-10'],
+    // Existing Monday-merged weekend policy still waits for Monday + T+2.
+    ['2026-11-14', '2026-11-17', '2026-11-18', '2026-11-19'],
+  ];
+  for (const [yieldDate, before, deadline, after] of cases) {
+    repository.productValuationStore.upsertValuation({ yield_date: yieldDate, product_code: '120056A', daily_pnl: 0.52 });
+    for (const today of [before, deadline]) {
+      const item = repository.productValuationStore.getReconciliationForDate(yieldDate, { today });
+      assert.equal(item.status, 'waiting');
+      assert.equal(item.final_disclosure_date, deadline);
+      assert.equal(item.is_final, false);
+      assert.equal(item.account_projection_status, 'ready');
+      assert.equal(item.product_pnl, 0.52);
+      assert.equal(item.account_pnl, 0.52);
+      assert.equal(item.difference, null);
+    }
+    assert.equal(repository.productValuationStore.getReconciliationForDate(yieldDate, { today: after }).status, 'missing-product-details');
+    assert.equal(repository.getRecord(yieldDate).daily_pnl, 0.52);
+  }
+  const policy = repository.productValuationStore.getDisclosurePolicy('2026-11-16');
+  assert.equal(policy.reporting_date, '2026-11-12');
+  assert.equal(policy.lag_day_basis, 'workdays');
+  assert.equal(policy.calendar_gap, false);
+  assert.equal(policy.products.find((p) => p.product_code === '120026A').todays_yield_visible_date, '2026-11-18');
+  repository.productValuationStore.upsertValuation({ yield_date: '2027-01-04', product_code: '120056A', daily_pnl: 0.52 });
+  const unknown = repository.productValuationStore.getReconciliationForDate('2027-01-04', { today: '2027-01-08' });
+  assert.equal(unknown.calendar_gap, true);
+  assert.equal(unknown.status, 'waiting');
+  assert.match(unknown.message, /日历覆盖不足/);
+});
+
 test('product valuations dedupe, reconcile, preserve history and audit corrections', (t) => {
   const { repository } = openTemp(t);
   repository.initializeCapital(30000, '2026-10-01');
