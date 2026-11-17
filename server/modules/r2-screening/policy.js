@@ -67,6 +67,69 @@ function drawdown(points) {
   };
 }
 
+// Observation only: never feeds the screening gates, ranking or yield floor.
+// Cumulative NAV preserves cash distributions; unit-only history is insufficient.
+function navObservation(points, date, calendar, valuationBasis) {
+  const pending = reason => ({ status: 'pending', reason });
+  const result = { version: 2, basis: 'cumulative_change_over_start_unit',
+    recent: pending('nav_insufficient'), trend: pending('nav_insufficient') };
+  if (valuationBasis !== 'trading_days') {
+    result.recent = result.trend = pending('valuation_basis_unverified');
+    return result;
+  }
+  const end = points.at(-1);
+  if (!end || !fresh(end.date, date)) return result;
+  const byDate = new Map(points.map(point => [point.date, point]));
+  const read = point => point && decimal(point.cumulative, true);
+  const interval = (start, finish) => {
+    const first = read(start), last = read(finish), unit = start && decimal(start.unit, true);
+    if (first == null || last == null || unit == null) return null;
+    const days = daysBetween(start.date, finish.date);
+    if (days <= 0) return null;
+    return { delta: last - first, denominator: unit * BigInt(days), days };
+  };
+  const annualized = value => Number(value.delta) / Number(value.denominator) * 36500;
+  const rounded = value => Math.round(value * 10000) / 10000;
+  const startDate = shift(end.date, -7), start = byDate.get(startDate);
+  let issue = null;
+  for (let day = startDate; day <= end.date; day = shift(day, 1)) {
+    const open = calendar.isOpen(day);
+    if (open === null) { issue = 'calendar_gap'; break; }
+    // Holiday windows are deliberately pending; ordinary weekends still count
+    // in the seven calendar days and are never synthetic zero-NAV points.
+    const weekday = new Date(day).getUTCDay();
+    if (!open && weekday >= 1 && weekday <= 5) { issue = 'holiday_window'; break; }
+    if (open && !byDate.has(day)) { issue = 'nav_gap'; break; }
+  }
+  const recent = points.filter(point => point.date >= startDate && point.date <= end.date);
+  const week = interval(start, end);
+  if (issue || !week || recent.some(point => read(point) == null)) {
+    result.recent = pending(issue ?? (!start ? 'nav_gap' : 'cumulative_unavailable'));
+  } else {
+    const changes = recent.slice(1).map((point, index) => read(point) - read(recent[index]));
+    result.recent = { status: 'available', reason: null, start_date: startDate, end_date: end.date,
+      // Keep the period return unrounded for the threshold comparison. Display
+      // rounding must never decide which side of the review line a product is on.
+      days: week.days, return_pct: Number(week.delta) / Number(decimal(start.unit, true)) * 100,
+      annualized_pct: rounded(annualized(week)), interval_count: changes.length,
+      zero_count: changes.filter(value => value === 0n).length,
+      negative_count: changes.filter(value => value < 0n).length };
+  }
+  const ends = monthEnds(date, calendar);
+  const months = ends.slice(1).map((day, index) => interval(byDate.get(ends[index]), byDate.get(day)));
+  if (ends.some(day => !day)) result.trend = pending('calendar_gap');
+  else if (ends.some(day => !byDate.has(day))) result.trend = pending('month_end_missing');
+  else if (months.some(value => !value)) result.trend = pending('cumulative_unavailable');
+  else {
+    result.trend = { status: 'available', reason: null,
+      weak: months[0].delta * months[1].denominator > months[1].delta * months[0].denominator &&
+        months[1].delta * months[2].denominator > months[2].delta * months[1].denominator,
+      periods: months.map((value, index) => ({ start_date: ends[index], end_date: ends[index + 1],
+        days: value.days, annualized_pct: rounded(annualized(value)) })) };
+  }
+  return result;
+}
+
 function navMetrics(nav, date, calendar, valuationBasis) {
   const metrics = {
     latest: null, start: null, end: null, count: 0, recent: [], zero_dates: null,
@@ -77,11 +140,13 @@ function navMetrics(nav, date, calendar, valuationBasis) {
   if (!nav?.points?.length) return metrics;
 
   const byDate = new Map();
+  let cumulativeConflict = false;
   for (const point of nav.points) {
     const value = decimal(point.unit, true);
     if (!isoDate(point.date) || point.date > date || value === null) return { ...metrics, issue: 'nav_invalid' };
     const prior = byDate.get(point.date);
     if (prior && prior.value !== value) return { ...metrics, issue: 'nav_conflict' };
+    if (prior && decimal(prior.cumulative, true) !== decimal(point.cumulative, true)) cumulativeConflict = true;
     if (!prior) byDate.set(point.date, { ...point, value });
   }
   const all = [...byDate.values()].sort((a, b) => compareKey(a.date, b.date));
@@ -96,6 +161,9 @@ function navMetrics(nav, date, calendar, valuationBasis) {
   if (!fresh(metrics.latest, date) || !fresh(metrics.end, date)) return { ...metrics, issue: 'nav_stale' };
   if (points.length < 2) return { ...metrics, issue: 'nav_insufficient' };
   metrics.issue = null;
+  metrics.observation = navObservation(points, date, calendar, valuationBasis);
+  if (cumulativeConflict) metrics.observation = { version: 2, basis: 'cumulative_change_over_start_unit',
+    recent: { status: 'pending', reason: 'cumulative_conflict' }, trend: { status: 'pending', reason: 'cumulative_conflict' } };
   metrics.drawdown = drawdown(points);
   const recent = points.slice(-7);
   metrics.recent = recent.map(({ date, unit }) => ({ date, unit }));
@@ -204,4 +272,4 @@ function screen(products, date, calendar) {
   };
 }
 
-module.exports = { RULE_VERSION, CATEGORIES, STATES, HINTS, decimal, fresh, yearStart, navMetrics, evaluateProduct, screen };
+module.exports = { RULE_VERSION, CATEGORIES, STATES, HINTS, decimal, fresh, yearStart, navMetrics, navObservation, evaluateProduct, screen };

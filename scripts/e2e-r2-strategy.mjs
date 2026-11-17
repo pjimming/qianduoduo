@@ -395,6 +395,15 @@ async function main() {
       payload.result.monitoring.rows = Array.from({length: 11}, (_, i) => ({ lot_id: 'synthetic-lot-' + i, product_code: 'E2E' + i, identity: i === 10 ? null : {source:'cmb',channel:'TEST',code:'E2E' + i}, state: ['exit_required','exit_at_open','exit_rules_pending','evidence_pending','hold'][i % 5], action:'观察',planned_action:'verify_holding',yield_1m: i % 2 ? '2.50' : '2.10',performance_date:'2026-11-07',next_verify_date:'2026-11-09',summary:'合成验收数据：此批次用于检查交互，不是银行事实。',requires_user_action:true,fingerprint:'synthetic' }))
       Object.assign(payload.result.monitoring.rows[3], { identity: null, yield_1m: null, performance_date: null })
       Object.assign(payload.result.monitoring.rows[0], { amount: 1000 })
+      Object.assign(payload.result.monitoring.rows[4], { yield_1m: '2.30', observation: {
+        version: 2, state: 'watch', threshold_pct: 2.5, recent_return_threshold_pct: 2.15 * 7 / 365, reasons: ['recent_yield_weak'],
+        metrics: { version: 2, basis: 'cumulative_change_over_start_unit', recent: { status: 'available', reason: null,
+          start_date: '2026-10-30', end_date: '2026-11-06', days: 7, return_pct: 1.23 * 7 / 365, annualized_pct: 1.23,
+          interval_count: 5, zero_count: 3, negative_count: 1 }, trend: { status: 'pending', reason: 'month_end_missing' } },
+      } })
+      Object.assign(payload.result.monitoring.rows[9], { observation: {
+        version: 1, state: 'pending', threshold_pct: 2.5, reasons: [], metrics: null,
+      } })
       Object.assign(payload.result.monitoring.rows[1], { product_code: 'E2E0', amount: 2500, yield_1m: '2.10' })
       Object.assign(payload.result.monitoring.rows[8], { product_code: 'E2E3', identity: null, yield_1m: null, performance_date: null })
       Object.assign(payload.result.monitoring.rows[9], { yield_1m: '10.10' })
@@ -432,6 +441,34 @@ async function main() {
       assert(JSON.stringify(await holdingGeometry()) === JSON.stringify(before), `${theme} 折叠赎回安排后表格位置变化`)
     }
     await redemption.click()
+    const warning = page.locator('.strategy-holdings-table tbody tr').filter({ hasText: 'E2E4' })
+    await warning.getByText('收益预警 · 观察', { exact: true }).waitFor()
+    assert(await warning.getByRole('button', { name: '生成退出提案' }).count() === 0, '收益预警不能提供退出提案按钮')
+    await warning.getByText('查看收益证据', { exact: true }).click()
+    await warning.getByText('7日涨跌幅 0.023589%', { exact: true }).waitFor()
+    await warning.getByText('预警参考线约 0.04%（精确按2.15%×7÷365计算）', { exact: true }).waitFor()
+    await warning.getByText('零、负收益次数仅作展示，不单独触发预警。', { exact: true }).waitFor()
+    await warning.getByText('5个披露区间：零收益3次，负收益1次', { exact: true }).waitFor()
+    await warning.getByText('月度趋势：完整月份端点不足', { exact: true }).waitFor()
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
+      await page.setViewportSize({ width: 1280, height: 900 })
+      const visual = await page.locator('.strategy-holdings-table').evaluate(table => {
+        const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number)
+        const light = values => values.map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((a, v, i) => a + v * [.2126, .7152, .0722][i], 0)
+        return [...table.querySelectorAll('.strategy-observation-watch, .strategy-observation summary, .strategy-observation small')]
+          .filter(e => e.getClientRects().length).map(e => {
+            const style = getComputedStyle(e)
+            let parent = e, bg = style.backgroundColor
+            while (/rgba.*0\)$/.test(bg) && parent.parentElement) { parent = parent.parentElement; bg = getComputedStyle(parent).backgroundColor }
+            const a = light(rgb(style.color)), b = light(rgb(bg))
+            return { text: e.textContent.trim().slice(0, 40), size: parseFloat(style.fontSize), ratio: (Math.max(a,b)+.05)/(Math.min(a,b)+.05) }
+          })
+      })
+      assert(visual.every(row => row.size >= 12 && row.ratio >= 4.5), '预警字号或对比度不达标 ' + theme + ': ' + JSON.stringify(visual))
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '预警展开后页面横向溢出')
+      await page.screenshot({ path: path.join(captures, 'holding-observation-1280-' + theme + '.png'), fullPage: true })
+    }
     const yieldSort = page.getByRole('button', { name: '近 1 月年化', exact: true })
     for (const direction of ['ascending', 'descending']) {
       await yieldSort.click()

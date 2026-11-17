@@ -114,8 +114,20 @@ const holdingCollator = new Intl.Collator('zh-CN', { numeric: true })
 function holdingConclusion(row: StrategyHoldingRow, exits: StrategyHoldingRow[]) {
   if (exits.length) return '未达续持门槛 · 准备换出'
   if (row.state === 'evidence_pending') return row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据'
+  if (row.state === 'hold' && row.observation?.state === 'watch') return '收益预警 · 观察'
   return label(row.state)
 }
+
+const observationLabels: Record<string, string> = {
+  monthly_trend_weak: '连续三个月收益走弱', recent_yield_weak: '近7天收益偏低',
+  nav_insufficient: '净值样本不足', valuation_basis_unverified: '估值日规则待核',
+  cumulative_unavailable: '缺少累计净值，分红影响待核', calendar_gap: '日历覆盖不足',
+  holiday_window: '跨节假日，暂不比较', nav_gap: '披露日或区间端点不完整',
+  month_end_missing: '完整月份端点不足', cumulative_conflict: '累计净值存在冲突',
+}
+const observationLabel = (code?: string | null) => code ? observationLabels[code] || '收益证据待核' : '尚无有效收益证据'
+const observationPct = (value?: number) => value == null ? '待核' : `${value.toFixed(2)}%`
+const observationReturnPct = (value?: number) => value == null ? '待核' : `${value.toFixed(6)}%`
 
 function sortHoldings(column: HoldingColumn) {
   holdingSort.value = {
@@ -227,7 +239,7 @@ async function run(kind: 'compute' | 'proposals') {
       <div class="strategy-actions"><button type="button" class="button button-primary button-small" :disabled="busy || !current || !result.may_generate_buy_proposals" @click="run('proposals')">生成买入提案</button><RouterLink :to="{ name: 'r2-evaluation', query: { section: 'proposals' } }">审阅提案</RouterLink></div>
     </template>
     <template v-else-if="result">
-      <p>按产品复核。有效近 1 月年化低于 2.15% 时准备换出，按赎回窗口处理。缺少有效证据的产品暂停新增或加仓。</p>
+      <p>有效近 1 月年化低于 2.15% 时准备换出，按赎回窗口处理。2.15% 至不足 2.5% 且收益走弱时优先观察，换仓仍需比较费用和空档。缺少有效证据的产品暂停新增或加仓。</p>
       <div v-if="holdingProducts.length" class="strategy-table-wrap">
           <table class="strategy-holdings-table">
             <thead>
@@ -254,7 +266,28 @@ async function run(kind: 'compute' | 'proposals') {
                 <td>{{ money(amount) }}</td>
                 <td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}<small v-if="row.yield_1m != null && row.state === 'evidence_pending'">待核</small></td>
                 <td>{{ row.performance_date || '未获取到' }}</td>
-                <td>{{ holdingConclusion(row, exits) }}</td>
+                <td>
+                  <span :class="{ 'strategy-observation-watch': row.observation?.state === 'watch' }">{{ holdingConclusion(row, exits) }}</span>
+                  <small v-if="row.observation?.state === 'watch'">{{ row.observation.reasons.map(observationLabel).join('；') }}。仅观察。</small>
+                  <details v-if="row.observation" class="strategy-observation">
+                    <summary>查看收益证据</summary>
+                    <template v-if="row.observation.metrics?.recent.status === 'available'">
+                      <small>{{ row.observation.metrics.recent.start_date }} 至 {{ row.observation.metrics.recent.end_date }}（{{ row.observation.metrics.recent.days }}个自然日）</small>
+                      <small>7日涨跌幅 {{ observationReturnPct(row.observation.metrics.recent.return_pct) }}</small>
+                      <small v-if="row.observation.recent_return_threshold_pct != null">预警参考线约 {{ observationPct(row.observation.recent_return_threshold_pct) }}（精确按2.15%×7÷365计算）</small>
+                      <small>区间年化 {{ observationPct(row.observation.metrics.recent.annualized_pct) }}，仅供参考</small>
+                      <small>{{ row.observation.metrics.recent.interval_count }}个披露区间：零收益{{ row.observation.metrics.recent.zero_count }}次，负收益{{ row.observation.metrics.recent.negative_count }}次</small>
+                      <small>零、负收益次数仅作展示，不单独触发预警。</small>
+                    </template>
+                    <small v-else>近7天：{{ observationLabel(row.observation.metrics?.recent.reason) }}</small>
+                    <template v-if="row.observation.metrics?.trend.status === 'available'">
+                      <small>完整月份年化（按实际天数折算）：</small>
+                      <small v-for="period in row.observation.metrics.trend.periods" :key="period.end_date">{{ period.start_date }} 至 {{ period.end_date }}：{{ observationPct(period.annualized_pct) }}</small>
+                    </template>
+                    <small v-else>月度趋势：{{ observationLabel(row.observation.metrics?.trend.reason) }}</small>
+                    <small>按累计净值变化与期初单位净值计算，含分红影响；短期年化仅供观察，不预测未来收益。</small>
+                  </details>
+                </td>
                 <td>
                   <details v-if="exits.length" class="strategy-exit">
                     <summary>查看赎回安排</summary>
@@ -294,6 +327,9 @@ dt { color: var(--ink-soft); font-size: 12px; } dd { margin: 5px 0 0; font-size:
 .strategy-blockers li + li { margin-top: 10px; }
 .strategy-blocker-hint { margin: 2px 0 0; max-width: 75ch; font-size: 13px; line-height: 1.6; }
 .strategy-exit summary { cursor: pointer; }
+.strategy-observation { margin-top: 6px; font-size: 12px; }
+.strategy-observation summary { cursor: pointer; color: var(--green-deep); }
+.strategy-observation-watch { color: var(--warning-ink); font-weight: 650; }
 .strategy-exit ul { padding-left: 16px; }
 .strategy-exit li + li { margin-top: 8px; }
 .strategy-exit button { display: block; margin-top: 4px; }

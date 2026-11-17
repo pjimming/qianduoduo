@@ -2,6 +2,30 @@
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { isoDate, shift } = require('../r2-screening/calendar');
+const { decimal, fresh } = require('../r2-screening/policy');
+
+// A review parameter, not an execution contract or a forecast. A warning never
+// changes mandatory exits, candidate eligibility or the switch break-even test.
+function holdingObservation(current, yieldState, date) {
+  const metrics = current?.metrics?.observation ?? null;
+  const recentReturnThreshold = Number(CONTRACT.min_monthly_yield) * 7 / 365;
+  const result = { version: 2, state: 'pending', threshold_pct: 2.5,
+    recent_return_threshold_pct: recentReturnThreshold, reasons: [], metrics };
+  if (yieldState !== 'pass' || !current || !fresh(current.performance_date, date) ||
+      current.nav_fresh !== true || current.monitoring_verified === false) return result;
+  const monthly = decimal(current.performance?.['1m']);
+  if (monthly === null) return result;
+  if (monthly >= decimal('2.5')) return { ...result, state: 'clear' };
+  const recent = metrics?.recent, trend = metrics?.trend;
+  const recentUsable = recent?.status === 'available' && fresh(recent.end_date, date) && recent.days === 7 &&
+    Number.isFinite(recent.return_pct);
+  const periods = trend?.periods;
+  const trendUsable = trend?.status === 'available' && periods?.length === 3 &&
+    periods[2].end_date < date && periods[2].end_date.slice(0, 7) === shift(date.slice(0, 7) + '-01', -1).slice(0, 7);
+  if (trendUsable && trend.weak) result.reasons.push('monthly_trend_weak');
+  if (recentUsable && recent.return_pct < recentReturnThreshold) result.reasons.push('recent_yield_weak');
+  return { ...result, state: result.reasons.length ? 'watch' : recentUsable && trendUsable ? 'clear' : 'pending' };
+}
 
 // The pretrade review store is retired, so redemption timing is derived from
 // the ledger's own maturity facts. Fees and arrival dates stay explicitly
@@ -57,6 +81,7 @@ function buildHoldingMonitoring({ holdings, context, date }) {
     seen.add(holding.lot_id);
     const { current = null, yieldState = 'pending' } = products.get(holding.product_code) ?? {};
     const redemption = redemptionFor(holding, date);
+    const observation = holdingObservation(current, yieldState, date);
     const riskReasons = [];
     if (['watch', 'reject'].includes(current?.metrics?.drawdown?.band)) riskReasons.push('drawdown_risk');
     // A missing/stale NAV is evidence that needs review, not a yield failure:
@@ -90,6 +115,7 @@ function buildHoldingMonitoring({ holdings, context, date }) {
     } else {
       state = 'hold'; plannedAction = 'review_holding';
       summary = '近期收益达到续持门槛；公开售罄或未进前三不单独触发退出。是否自愿替换仍需比较扣费和空档后的净收益。';
+      if (observation.state === 'watch') summary = '达到续持底线，但收益走弱，进入观察；提前复核同桶替代品，换仓仍需覆盖费用和空档，不据此生成退出意图。';
     }
     const expiry = current?.performance_date && isoDate(current.performance_date) ? shift(current.performance_date, 7) : date;
     const nextVerify = [expiry, redemption.state === 'locked' ? redemption.earliest_redeem_date : null]
@@ -102,7 +128,7 @@ function buildHoldingMonitoring({ holdings, context, date }) {
       identity: current?.identity ?? null, mapping_id: current?.mapping?.id ?? null, evidence_hash: current?.evidence_hash ?? null,
       run_id: current?.run_id ?? null, yield_state: yieldState, yield_1m: current?.performance?.['1m'] ?? null,
       performance_date: current?.performance_date ?? null, screening_status: current?.screening_status ?? 'pending',
-      hints: current?.hints ?? [], risk_reasons: riskReasons, state, action, planned_action: plannedAction,
+      hints: current?.hints ?? [], risk_reasons: riskReasons, observation, state, action, planned_action: plannedAction,
       redemption, check_id: null, next_verify_date: nextVerify, summary,
       requires_user_action: userAction,
       message_key: fingerprint({ type: yieldState === 'below' ? 'holding_exit' : 'holding_review', lot_id: holding.lot_id,
@@ -110,7 +136,8 @@ function buildHoldingMonitoring({ holdings, context, date }) {
     return { ...body, fingerprint: fingerprint(body) };
   });
   const priorities = { exit_required: 0, exit_at_open: 1, exit_rules_pending: 2, risk_review: 3, evidence_pending: 4, hold: 5 };
-  rows.sort((a, b) => priorities[a.state] - priorities[b.state] || a.lot_id.localeCompare(b.lot_id));
+  rows.sort((a, b) => priorities[a.state] - priorities[b.state] ||
+    Number(b.observation.state === 'watch') - Number(a.observation.state === 'watch') || a.lot_id.localeCompare(b.lot_id));
   return freeze({ version: CONTRACT.holding_review_version, date, rows,
     counts: Object.fromEntries(Object.keys(priorities).map(key => [key, rows.filter(row => row.state === key).length])) });
 }

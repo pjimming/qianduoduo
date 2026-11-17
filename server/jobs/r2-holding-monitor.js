@@ -15,7 +15,7 @@ async function refreshHoldingMonitor({ ledger, sourceSnapshot, date, signal,
   const unique = [...new Map(identities.map(identity => [fingerprint(identity), identity])).values()];
   if (!unique.length) return { skipped: true, reason: 'no_holdings' };
   if (unique.length > 128) return { skipped: true, reason: 'monitor_scope_exceeded' };
-  const key = fingerprint({ date, identities: unique, source: sourceSnapshot, channel_resolution: 'public-list-v1' });
+  const key = fingerprint({ date, identities: unique, source: sourceSnapshot, channel_resolution: 'public-list-v1', observation_version: 2 });
   const lock = `${artifactPath(ledger.dbPath)}.lock`;
   let handle;
   try {

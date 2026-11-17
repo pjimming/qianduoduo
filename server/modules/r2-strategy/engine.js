@@ -144,6 +144,7 @@ function compactStrategyResult(result) {
       rows: result.monitoring.rows.map(row => ({ lot_id: row.lot_id, product_code: row.product_code,
         identity: row.identity, amount: row.amount, summary: row.summary, redemption: row.redemption,
         state: row.state, action: row.action, planned_action: row.planned_action, yield_1m: row.yield_1m,
+        observation: row.observation,
         performance_date: row.performance_date, next_verify_date: row.next_verify_date,
         requires_user_action: row.requires_user_action, message_key: row.message_key, fingerprint: row.fingerprint })) },
     selected_reviews: result.selected_reviews.map(row => ({ identity: row.identity, check_id: null,
