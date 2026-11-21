@@ -1,4 +1,5 @@
 'use strict';
+const { effectiveIncomeUnits } = require('../../../lib/income-precision');
 
 const { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH, fingerprint } = require('./contract');
 const { verifyExecutionSnapshot } = require('./snapshot');
@@ -86,8 +87,9 @@ function measureFrozenNetPnl({ decision, trades = [], valuations = [], allocatio
     const denominator = cents(row.holding_amount);
     if (denominator === null || denominator <= 0 || ratios.some(value => value.whole !== denominator || value.own <= 0) ||
         ratios.some(value => value.own !== ratios[0].own || value.whole !== ratios[0].whole)) return unavailable('holding_attribution_unverified');
-    const amount = cents(row.daily_pnl);
-    if (amount === null) return unavailable('product_pnl_unverified');
+    let amount;
+    try { amount = effectiveIncomeUnits(row) / 100; }
+    catch { return unavailable('product_pnl_unverified'); }
     pnl += amount * ratios[0].own / denominator;
     for (const date of scope) covered.add(date);
     used.push(row.id);

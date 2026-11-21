@@ -41,7 +41,7 @@ const form = reactive({
   yield_date: props.reportingDate,
   credit_date: props.reportingDate,
   holding_amount: null as number | null,
-  daily_pnl: null as number | null,
+  daily_pnl: '',
   coverage_start_date: '',
   coverage_end_date: '',
   clear_coverage: false,
@@ -135,6 +135,33 @@ function sourceLabel(source: string): string {
   )
 }
 
+function incomeAmount(item: { daily_pnl: number; daily_pnl_exact?: number; daily_pnl_1e4?: number | null }): number {
+  return item.daily_pnl_exact ?? (item.daily_pnl_1e4 == null ? item.daily_pnl : item.daily_pnl_1e4 / 10000)
+}
+
+function precisionLabel(item: ProductValuationSummary): string {
+  const total = item.precision_total_count ?? item.observed_days
+  if (!total) return '尚无日收益记录'
+  if (item.precision_status === 'full') return `四位来源 ${total} / ${total} 条`
+  if (item.precision_status === 'mixed-source') return `已按来源精度记录 · 四位 ${item.precision_four_digit_count ?? 0} / ${total} 条`
+  return `历史精度待核 · 原值 ${item.precision_recorded_count ?? 0} / ${total} 条`
+}
+
+function displayedIncome(item: ProductValuationSummary): number {
+  if (item.bank_holding_income?.scope_status === 'rolled_forward' && item.bank_holding_income.current_holding_income != null) return item.bank_holding_income.current_holding_income
+  return item.bank_holding_income?.scope_status === 'current'
+    ? item.bank_holding_income.holding_income
+    : item.cumulative_pnl
+}
+
+function recordPrecisionLabel(item: ProductDailyValuation): string {
+  return item.source_precision ? `来源 ${item.source_precision} 位` : '历史精度待核'
+}
+
+function auditIncome(item: Record<string, unknown>): number {
+  return Number(item.daily_pnl_exact ?? (item.daily_pnl_1e4 == null ? item.daily_pnl ?? 0 : Number(item.daily_pnl_1e4) / 10000))
+}
+
 function coverageLabel(dates: string[] | undefined): string {
   const values = [...new Set((dates || []).filter(Boolean))].sort()
   if (values.length < 2) return ''
@@ -173,7 +200,7 @@ function resetForm(): void {
   form.holding_amount = selectedSummary.value?.active_amount ||
     selectedSummary.value?.latest_holding_amount ||
     null
-  form.daily_pnl = null
+  form.daily_pnl = ''
   form.coverage_start_date = ''
   form.coverage_end_date = ''
   form.clear_coverage = false
@@ -217,7 +244,7 @@ function startCorrection(
   form.yield_date = valuation.yield_date
   form.credit_date = valuation.credit_date
   form.holding_amount = valuation.holding_amount
-  form.daily_pnl = valuation.daily_pnl
+  form.daily_pnl = incomeAmount(valuation).toFixed(valuation.source_precision ?? (valuation.daily_pnl_1e4 == null ? 2 : 4))
   form.coverage_start_date = contiguousCoverage(valuation.covered_yield_dates)
     ? valuation.covered_yield_dates[0]
     : ''
@@ -242,8 +269,12 @@ function openTrace(valuation: ProductDailyValuation): void {
 
 async function save(): Promise<void> {
   if (!selectedSummary.value) return
-  if (form.daily_pnl === null || form.daily_pnl === undefined) {
+  if (!form.daily_pnl.trim()) {
     show('请填写产品当日收益', { error: true })
+    return
+  }
+  if (!/^[+-]?(?:\d+(?:\.\d{1,4})?|\.\d{1,4})$/.test(form.daily_pnl.trim()) || !Number.isSafeInteger(Math.round(Number(form.daily_pnl) * 10000))) {
+    show('当日收益最多保留 4 位小数，请按截图原值填写', { error: true })
     return
   }
   if (!form.yield_date) {
@@ -267,6 +298,7 @@ async function save(): Promise<void> {
     return
   }
   saving.value = true
+  const wasEditing = editingId.value !== null
   try {
     const payload = {
       yield_date: form.yield_date,
@@ -275,7 +307,8 @@ async function save(): Promise<void> {
       product_code: selectedSummary.value.product_code,
       product_name: selectedSummary.value.product_name,
       holding_amount: form.holding_amount,
-      daily_pnl: form.daily_pnl,
+      daily_pnl: Number(form.daily_pnl),
+      source_precision: ((form.daily_pnl.split('.')[1]?.length ?? 0) > 2 ? 4 : 2) as 2 | 4,
       ...(!form.clear_coverage && form.coverage_start_date
         ? {
             coverage_start_date: form.coverage_start_date,
@@ -298,7 +331,7 @@ async function save(): Promise<void> {
     show(
       response.conflict
         ? '该产品日期已有不同收益，平台未覆盖；已生成人工确认提醒'
-        : editingId.value !== null
+        : wasEditing
           ? '产品收益已修正并保留审计记录'
           : '产品收益已记录；如日期和金额已存在则自动忽略',
       response.conflict ? { error: true, duration: 7000 } : undefined,
@@ -316,12 +349,11 @@ async function save(): Promise<void> {
   <div class="rw-panel-body product-valuation-panel">
     <div class="rw-toolbar">
       <div class="rw-card-heading">
-        <p class="kicker">PRODUCT YIELD ARCHIVE</p>
         <strong class="rw-panel-title">逐产品每日收益档案</strong>
         <p class="rw-panel-sub">
           产品收益按你提供的收益归属日归档，并另行保存到账/可见日；同日期同金额视为已记录，
           不同金额只提醒、不覆盖。合并更新只记最后归属日并标明覆盖区间，前几日不补 0、
-          不做均分；账户总收益按逐产品当日收益自动汇总。
+          不做均分。日收益最多保存 4 位小数，累计后再舍入；两位截图按原值记录，历史未知精度单独标注。
         </p>
       </div>
       <div class="rw-toolbar-actions pv-summary-chips">
@@ -416,9 +448,9 @@ async function save(): Promise<void> {
         <span class="pv-card-code">{{ item.product_code }}</span>
         <span class="pv-card-stats">
           <span>
-            <small>累计已记录收益</small>
-            <strong :class="{ 'is-negative': item.cumulative_pnl < 0 }">
-              ¥{{ formatMoney(item.cumulative_pnl, 2) }}
+            <small>{{ item.bank_holding_income?.scope_status === 'current' ? '银行持仓收益' : item.bank_holding_income?.scope_status === 'rolled_forward' ? '银行基准续算收益' : '账本累计收益' }}</small>
+            <strong :class="{ 'is-negative': displayedIncome(item) < 0 }">
+              ¥{{ formatMoney(displayedIncome(item), 2) }}
             </strong>
           </span>
           <span>
@@ -432,10 +464,15 @@ async function save(): Promise<void> {
           <span>
             <small>最差单日</small>
             <strong class="is-negative">
-              {{ item.worst_day ? `¥${formatMoney(item.worst_day.daily_pnl, 2)}` : '—' }}
+              {{ item.worst_day ? `¥${formatMoney(incomeAmount(item.worst_day), 4)}` : '—' }}
             </strong>
           </span>
         </span>
+        <span v-if="item.bank_holding_income" class="pv-bank-reconciliation">
+          <span>银行截至 {{ item.bank_holding_income.as_of_date }} · ¥{{ formatMoney(item.bank_holding_income.holding_income, 2) }}<template v-if="item.bank_holding_income.scope_status === 'rolled_forward'"> · 已按日收益续算至 {{ item.bank_holding_income.projection_as_of_date }}</template><template v-else-if="item.bank_holding_income.scope_status !== 'current'"> · {{ item.bank_holding_income.scope_status === 'needs_review' ? '持仓范围待核' : '历史快照' }}</template></span>
+          <span>同期账本 {{ item.bank_holding_income.ledger_income == null ? '待核' : `¥${formatMoney(item.bank_holding_income.ledger_income, 2)}` }} · 差额（银行−账本） {{ item.bank_holding_income.difference == null ? '待核' : `¥${formatMoney(item.bank_holding_income.difference, 2)}` }}</span>
+        </span>
+        <span class="pv-precision-note">{{ precisionLabel(item) }}</span>
         <span class="pv-card-foot">
           最近归属日 {{ item.last_yield_date || '—' }} · 查看逐日记录 →
         </span>
@@ -482,8 +519,8 @@ async function save(): Promise<void> {
           <input v-model.number="form.holding_amount" type="number" min="0" step="0.01" />
         </label>
         <label>
-          <span>当日收益</span>
-          <input v-model.number="form.daily_pnl" type="number" step="0.01" required />
+          <span>当日收益（最多 4 位小数）</span>
+          <input :value="form.daily_pnl" type="number" step="0.0001" required @input="form.daily_pnl = ($event.target as HTMLInputElement).value" />
         </label>
         <label>
           <span>合并覆盖起始日（可选）</span>
@@ -562,9 +599,10 @@ async function save(): Promise<void> {
               </td>
               <td
                 class="is-number"
-                :class="{ 'rw-danger-text': valuation.daily_pnl < 0, 'rw-gain-text': valuation.daily_pnl > 0 }"
+                :class="{ 'rw-danger-text': incomeAmount(valuation) < 0, 'rw-gain-text': incomeAmount(valuation) > 0 }"
               >
-                ¥{{ formatMoney(valuation.daily_pnl, 2) }}
+                ¥{{ formatMoney(incomeAmount(valuation), 4) }}
+                <small class="pv-precision-note">{{ recordPrecisionLabel(valuation) }}</small>
               </td>
               <td>{{ sourceLabel(valuation.source) }}</td>
               <td>{{ valuation.notes || '—' }}</td>
@@ -587,7 +625,7 @@ async function save(): Promise<void> {
         <span v-for="audit in detail.audit.slice(0, 3)" :key="audit.id">
           {{ formatDateShort(audit.created_at.slice(0, 10)) }} ·
           {{ audit.note || sourceLabel(audit.source) }} ·
-          收益 ¥{{ formatMoney(Number(audit.after.daily_pnl ?? 0), 2) }}
+          收益 ¥{{ formatMoney(auditIncome(audit.after), 4) }}
         </span>
       </div>
     </section>
@@ -603,6 +641,36 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
+.pv-bank-reconciliation,
+.pv-precision-note {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.pv-bank-reconciliation {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.pv-bank-reconciliation > span {
+  display: block;
+}
+
+.pv-card > .pv-precision-note {
+  margin-top: 6px;
+}
+
+.pv-form {
+  background: var(--card);
+}
+
+.pv-form label {
+  color: var(--ink-soft);
+}
+
 .pv-row-actions {
   display: flex;
   gap: 10px;

@@ -34,7 +34,7 @@
  *
  * 规则（与 lib/db.js applyIncomeScreenshot 一致）：
  * - 每个产品可带自己的 yield_date；缺省取截图 date。
- * - 同一 (product_code, yield_date) 已有值与新值差 > 0.005 视为冲突，整张截图不写入。
+ * - 同一 (product_code, yield_date) 按分值或同为四位来源的原始整数检查冲突，整张截图不写入。
  * - 一张截图只能 apply 一次；多日期必须在同一次 products 中提交。
  * - 0 元必须有页面明确显示；页面不显示 0 时不要自行补 0。
  */
@@ -42,9 +42,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import precision from '../lib/income-precision.js';
 
 const DEFAULT_BASE = process.env.INCOME_BASE || 'http://127.0.0.1:8765';
-const TOLERANCE = 0.005;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const CODE_RE = /^[A-Z0-9-]{4,32}$/;
 
@@ -113,10 +113,6 @@ function jsonBody(payload) {
   };
 }
 
-function round2(value) {
-  return Math.round(Number(value) * 100) / 100;
-}
-
 function validateSpec(spec) {
   if (!spec || !Array.isArray(spec.screenshots) || spec.screenshots.length === 0) {
     fail('规格文件需要 screenshots 数组');
@@ -135,6 +131,8 @@ function validateSpec(spec) {
       if (!CODE_RE.test(code)) fail(`${pLabel}.product_code 不合法：${product.product_code}`);
       const pnl = Number(product.daily_pnl);
       if (!Number.isFinite(pnl)) fail(`${pLabel}.daily_pnl 需要数字`);
+      try { precision.toIncomeUnits(product.daily_pnl); } catch (error) { fail(`${pLabel}: ${error.message}`); }
+      product.source_precision ??= typeof product.daily_pnl === 'string' && (product.daily_pnl.split('.')[1]?.length || 0) > 2 ? 4 : precision.toIncomeUnits(pnl) % 100 ? 4 : 2;
       if (product.yield_date && !DATE_RE.test(product.yield_date)) {
         fail(`${pLabel}.yield_date 需要 YYYY-MM-DD`);
       }
@@ -169,11 +167,15 @@ function preflight(shot, existing) {
       results.push({ product, status: 'new' });
       continue;
     }
-    const diff = Math.abs(Number(current.daily_pnl) - product.daily_pnl);
+    const incoming = precision.toIncomeUnits(product.daily_pnl);
+    const existing = precision.effectiveIncomeUnits(current);
+    const conflict = precision.roundIncomeUnitsToCents(incoming) !== precision.roundIncomeUnitsToCents(existing) ||
+      (current.source_precision === 4 && product.source_precision === 4 && incoming !== existing);
+    const diff = Math.abs(existing - incoming) / 10000;
     results.push({
       product,
-      status: diff > TOLERANCE ? 'conflict' : 'unchanged',
-      current: Number(current.daily_pnl),
+      status: conflict ? 'conflict' : 'unchanged',
+      current: existing / 10000,
       diff,
     });
   }
@@ -182,12 +184,12 @@ function preflight(shot, existing) {
 
 function formatCheck(check) {
   const { product, status } = check;
-  const base = `${product.yield_date}  ${product.product_code.padEnd(9)}  ${round2(product.daily_pnl).toFixed(2)}`;
+  const base = `${product.yield_date}  ${product.product_code.padEnd(9)}  ${Number(product.daily_pnl).toFixed(4)}`;
   if (status === 'new') return `  + ${base}  新增`;
   if (status === 'unchanged') {
-    return `  = ${base}  已在库 ${check.current.toFixed(2)}（差 ${check.diff.toFixed(4)}，幂等）`;
+    return `  = ${base}  已在库 ${check.current.toFixed(4)}（差 ${check.diff.toFixed(4)}，幂等）`;
   }
-  return `  ! ${base}  冲突：库中 ${check.current.toFixed(2)}（差 ${check.diff.toFixed(4)}）`;
+  return `  ! ${base}  冲突：库中 ${check.current.toFixed(4)}（差 ${check.diff.toFixed(4)}）`;
 }
 
 function addDays(date, days) {

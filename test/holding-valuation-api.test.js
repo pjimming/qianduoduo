@@ -11,6 +11,34 @@ const {
 const ONE_PIXEL_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Wl3sAAAAASUVORK5CYII=';
 
+test('product bank-income HTTP contract retains evidence, scope, dedupe and exact raw-only conflicts', async t => {
+  const { baseUrl, repository } = await startTestServer(t);
+  require('../lib/product-holding-income-store').migrateProductHoldingIncome(repository.db);
+  repository.tradeStore.createTrade(tradePayload());
+  const date = shiftDate(todayShanghai(), -1);
+  repository.productValuationStore.upsertValuation({ product_code: '120026A', yield_date: date, daily_pnl: '0.5944' });
+  const evidence = await requestJson(`${baseUrl}/api/holding-valuations/evidence`, {
+    method: 'POST', body: JSON.stringify({ filename: 'bank.png', mime: 'image/png', data: ONE_PIXEL_PNG }),
+  });
+  assert.equal(evidence.response.status, 201);
+  const scope = repository.db.prepare("SELECT id FROM trade_transactions WHERE product_code='120026A' AND status='confirmed'").all().map(row => row.id);
+  const input = { product_code: '120026A', as_of_date: date, holding_income: .60, holding_amount: 15000.60,
+    evidence_id: evidence.body.evidence.id, scope_trade_ids: scope };
+  const post = () => requestJson(`${baseUrl}/api/product-holding-incomes`, { method: 'POST', body: JSON.stringify(input) });
+  assert.equal((await post()).response.status, 201);
+  assert.equal((await post()).response.status, 200);
+  const list = await requestJson(`${baseUrl}/api/product-holding-incomes?product_code=120026A`);
+  assert.equal(list.body.snapshots.length, 1);
+  const conflict = await requestJson(`${baseUrl}/api/product-valuations`, {
+    method: 'POST', body: JSON.stringify({ product_code: '120026A', yield_date: date, daily_pnl_1e4: 5945 }),
+  });
+  assert.equal(conflict.response.status, 200);
+  assert.equal(conflict.body.conflict, 'different-raw-daily-pnl');
+  const current = await requestJson(`${baseUrl}/api/product-valuations?product_code=120026A`);
+  assert.equal(current.body.detail.summary.bank_holding_income.holding_income, .60);
+  assert.equal(current.body.detail.valuations[0].daily_pnl_1e4, 5944);
+});
+
 function tradePayload(overrides = {}) {
   return {
     trade_date: '2026-10-20',

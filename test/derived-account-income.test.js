@@ -49,6 +49,42 @@ function addProduct(repository, productCode, dailyPnl, extra = {}) {
   });
 }
 
+test('exact product units drive daily projection and multi-day totals before display rounding', t => {
+  const { repository } = openTemp(t);
+  repository.initializeCapital(10000, '2026-10-20');
+  addProduct(repository, 'AA0001', '0.0049');
+  addProduct(repository, 'AA0002', '0.0049');
+  addProduct(repository, 'AA0001', '0.0049', { yield_date: '2026-10-21', valuation_date: '2026-10-21', credit_date: '2026-10-21' });
+  const rows = repository.listRecords();
+  assert.equal(rows[0].daily_pnl, .01);
+  assert.equal(rows[0].daily_pnl_1e4, 98);
+  assert.equal(rows[1].daily_pnl, 0);
+  assert.equal(rows[1].daily_pnl_1e4, 49);
+  const { enrichRecords, summarize } = require('../lib/metrics');
+  assert.equal(enrichRecords(rows).at(-1).cumulative_pnl, .0147);
+  assert.equal(summarize(enrichRecords(rows)).total_pnl, .0147);
+});
+
+test('negative half-cent uses the same away-from-zero projection in overview and monthly money', t => {
+  const { enrichRecords, summarize, buildReview } = require('../lib/metrics');
+  const rows = enrichRecords([{ date: '2026-11-19', principal: 10000, daily_pnl: -.01, daily_pnl_1e4: -50 }]);
+  const summary = summarize(rows);
+  assert.equal(summary.latest_daily_pnl, -.01);
+  assert.equal(summary.latest_cumulative_pnl, -.01);
+  assert.equal(summary.best_day, -.01);
+  assert.equal(summary.worst_day, -.01);
+  assert.equal(buildReview(rows, '2026-11-20').monthly[0].pnl, -.01);
+});
+
+test('same-cent four-digit conflicts retain distinct notification amounts and dedupe keys', t => {
+  const { repository } = openTemp(t);
+  const a = repository.flagProductIncomeConflict({ date: '2026-11-19', productCode: 'AA0001', existing: .9827, incoming: .9828 });
+  const b = repository.flagProductIncomeConflict({ date: '2026-11-19', productCode: 'AA0001', existing: .9827, incoming: .9829 });
+  assert.notEqual(a.id, b.id);
+  assert.match(a.message, /0\.9827.*0\.9828/);
+  assert.match(b.message, /0\.9829/);
+});
+
 function fileHash(filePath) {
   return crypto
     .createHash('sha256')

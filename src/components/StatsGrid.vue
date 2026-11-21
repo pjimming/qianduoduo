@@ -26,6 +26,8 @@ const window30 = computed(() => props.windows['30'])
 const annualized = computed(() => window30.value.annualized_pct)
 const valuationBadge = computed(() => {
   if (!props.valuation.available) return '暂无确认持仓'
+  const dates = props.valuation.bank_income_as_of_dates || []
+  if (dates.length) return `${props.valuation.bank_rolled_product_count ? '银行基准续算' : '银行累计'} ${formatDateShort(dates[0] || '')}${dates.length > 1 ? `–${formatDateShort(dates.at(-1) || '')}` : ''}`
   if (!props.valuation.income_as_of_date) return '暂无收益记录'
   return `收益截至 ${formatDateShort(props.valuation.income_as_of_date)}`
 })
@@ -75,7 +77,7 @@ function tone(value: number | null): string {
   <section class="stats-grid" aria-label="收益概览">
     <article class="stat-card stat-primary">
       <div class="stat-head stat-primary-head">
-        <span>已确认持仓净值</span>
+        <span :title="valuation.notes">已确认持仓净值</span>
         <span class="soft-badge stat-date-badge">{{ valuationBadge }}</span>
       </div>
       <strong class="stat-value">
@@ -136,7 +138,7 @@ function tone(value: number | null): string {
     </article>
 
     <article class="stat-card">
-      <div class="stat-head"><span>累计收益</span><span class="stat-index">01</span></div>
+      <div class="stat-head"><span title="按逐日日账原始收益合计，历史精度不足时可能与银行持仓累计存在差额">账本累计收益</span><span class="stat-index">01</span></div>
       <strong class="stat-value" :class="tone(hasRecords ? summary.total_pnl : null)">
         {{ hasRecords ? formatSignedMoney(summary.total_pnl) : '—' }}
       </strong>

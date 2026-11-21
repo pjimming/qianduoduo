@@ -13,9 +13,10 @@ function normalizeApplyInput(body = {}) {
   const products = Array.isArray(body.products)
     ? body.products.map((item) => ({
         ...item,
+        source_precision: item.source_precision ?? (typeof item.daily_pnl === 'string' && (item.daily_pnl.split('.')[1]?.length || 0) > 2 ? 4 : undefined),
         daily_pnl:
           item.daily_pnl === undefined || item.daily_pnl === null
-            ? null
+            ? item.daily_pnl_1e4 == null ? null : Number(item.daily_pnl_1e4) / 10000
             : Number(item.daily_pnl),
         holding_amount:
           item.holding_amount === undefined ||

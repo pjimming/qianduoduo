@@ -2,6 +2,7 @@
 
 const { buildHoldingAmountsByDate, shiftDate } = require('../../../lib/metrics');
 const { parseCoveredYieldDates } = require('../../../lib/product-income-coverage');
+const { effectiveIncomeUnits } = require('../../../lib/income-precision');
 
 function tradesForProduct(trades, code) {
   return trades.flatMap((trade) => {
@@ -42,7 +43,7 @@ function estimateRecentRecords(trades, valuations, code) {
       // Separate facts supersede inferred coverage even outside the selected sample.
       if (explicit || !factDates.has(date)) covered.add(date);
     }
-    pnlCents += Math.round(item.daily_pnl * 100);
+    pnlCents += effectiveIncomeUnits(item) / 100;
   }
 
   const dailyHoldings = buildHoldingAmountsByDate(

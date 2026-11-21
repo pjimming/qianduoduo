@@ -235,7 +235,10 @@ export interface BankHoldingReconciliation {
 export interface CurrentHoldingsValuation {
   available: boolean
   status: 'current' | 'stale' | 'missing'
-  value_source: 'confirmed_holdings_plus_product_income'
+  value_source: 'confirmed_holdings_plus_product_income' | 'confirmed_holdings_plus_verified_income'
+  bank_income_product_count?: number
+  bank_rolled_product_count?: number
+  bank_income_as_of_dates?: string[]
   current_value: number | null
   as_of_date: string | null
   as_of_at: string | null
@@ -609,6 +612,10 @@ export interface ProductDailyValuation {
   product_name: string
   holding_amount: number | null
   daily_pnl: number
+  daily_pnl_1e4?: number | null
+  daily_pnl_exact?: number
+  source_precision?: 2 | 4 | null
+  precision_status?: 'recorded' | 'legacy-rounded'
   source: string
   screenshot_id: number | null
   confidence: number
@@ -650,6 +657,23 @@ export interface ProductIncomeDisclosurePolicy {
 export interface ProductValuationDay {
   yield_date: string
   daily_pnl: number
+  daily_pnl_exact?: number
+  daily_pnl_1e4?: number | null
+}
+
+export interface BankHoldingIncome {
+  id: number
+  as_of_date: string
+  holding_income: number
+  holding_amount: number | null
+  source_screenshot_id: number | null
+  ledger_income: number | null
+  difference: number | null
+  scope_status: 'current' | 'rolled_forward' | 'history' | 'needs_review'
+  current_holding_income?: number | null
+  projection_as_of_date?: string
+  projection_status?: string
+  precision_status?: string
 }
 
 export interface ProductValuationSummary {
@@ -665,8 +689,18 @@ export interface ProductValuationSummary {
   holding_days: number
   observed_days: number
   cumulative_pnl: number
+  cumulative_pnl_1e4?: number
+  cumulative_pnl_exact?: number
+  legacy_cumulative_pnl?: number
+  precision_recorded_count?: number
+  precision_four_digit_count?: number
+  precision_total_count?: number
+  precision_status?: 'full' | 'mixed-source' | 'partial'
+  bank_holding_income?: BankHoldingIncome | null
   negative_days: number
   latest_daily_pnl: number | null
+  latest_daily_pnl_exact?: number | null
+  latest_daily_pnl_1e4?: number | null
   yield_lag_days: number
   yield_lag_source: ProductYieldLagSource
   yield_lag_verified: boolean
@@ -1750,6 +1784,9 @@ export interface ProductValuationInput {
   product_name?: string
   holding_amount?: number | null
   daily_pnl?: number | null
+  daily_pnl_1e4?: number | null
+  daily_pnl_exact?: number
+  source_precision?: 2 | 4 | null
   source?: string
   screenshot_id?: number | null
   confidence?: number

@@ -13,6 +13,7 @@ const {
   validateDatabase,
 } = require('../server/infrastructure/backup/sqlite-backup.js')
 const { DatabaseSync } = require('node:sqlite')
+const { roundIncomeUnitsToCents } = require('../lib/income-precision')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const defaultDbPath = path.join(root, 'data', 'r2_ledger.sqlite')
@@ -32,12 +33,13 @@ function roundMoney(value) {
 }
 
 function buildDerivedAccountIncomeReport(db) {
+  const precise = db.prepare('PRAGMA table_info(product_daily_valuations)').all().some(c => c.name === 'daily_pnl_1e4')
   const rows = db
     .prepare(`
       SELECT
         v.yield_date AS date,
         COUNT(*) AS product_count,
-        SUM(CAST(ROUND(v.daily_pnl * 100) AS INTEGER)) AS total_cents,
+        SUM(${precise ? 'COALESCE(v.daily_pnl_1e4, CAST(ROUND(v.daily_pnl * 100) AS INTEGER) * 100)' : 'CAST(ROUND(v.daily_pnl * 100) AS INTEGER) * 100'}) AS total_units,
         d.daily_pnl AS daily_pnl,
         d.source AS source
       FROM product_daily_valuations v
@@ -47,7 +49,7 @@ function buildDerivedAccountIncomeReport(db) {
     `)
     .all()
   const changes = rows.map((row) => {
-    const derived = Number(row.total_cents || 0) / 100
+    const derived = roundIncomeUnitsToCents(Number(row.total_units || 0)) / 100
     const current =
       row.daily_pnl === null || row.daily_pnl === undefined
         ? null

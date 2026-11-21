@@ -13,6 +13,8 @@ const props = defineProps<{
 
 const statusLabel = computed(() => {
   if (!props.valuation.available) return '暂无确认持仓'
+  if (props.valuation.bank_rolled_product_count) return '银行基准续算'
+  if (props.valuation.bank_income_product_count) return '已核对银行累计'
   if (props.valuation.missing_income_product_codes.length) {
     return '部分产品收益待补'
   }
@@ -27,6 +29,7 @@ const statusTone = computed(() => {
 })
 
 const coverageNote = computed(() => {
+  if (props.valuation.bank_income_product_count) return props.valuation.notes
   if (!props.valuation.missing_income_product_codes.length) {
     return `${props.valuation.income_product_count} 只产品均有收益档案，收益记录截至 ${
       props.valuation.income_as_of_date
@@ -47,7 +50,7 @@ const coverageNote = computed(() => {
         <p class="kicker">DERIVED CONFIRMED HOLDINGS VALUE</p>
         <strong class="rw-panel-title">当前已确认持仓净值</strong>
         <p class="rw-panel-sub">
-          由当前已确认持仓本金加逐产品累计收益实时推算。待确认买入、临时桥接本金和已赎回产品不进入净值。
+          {{ valuation.notes }}
         </p>
       </div>
       <span class="nav-status" :class="statusTone">{{ statusLabel }}</span>

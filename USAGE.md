@@ -114,7 +114,7 @@ npm run dev
 
 ### 4.2 每日记录
 
-- 当日收益由逐产品收益汇总，亏损为负。
+- 当日收益由逐产品原始收益汇总，亏损为负。日收益可录入最多四位小数；两位来源照常录入，保留来源精度。汇总使用万分之一元整数，最后才舍入展示；旧记录原始精度未知时明确标注。
 - 当日持仓金额来自已确认且未赎回的买入成本；待确认交易和临时桥接本金不计入。
 - 日收益率 = 当日收益 ÷ 当日已确认持仓金额。
 - 记录日参考净值 = 当日本金 + 截至该日累计收益，只用于历史曲线和按日分析。
@@ -183,8 +183,8 @@ node scripts/split-trade-rows.mjs <图片> <输出目录>
 
 - 持仓由确认买入批次和赎回匹配自动推导。
 - “未赎回成本本金”是确认买入金额减已匹配赎回本金，不是余额或当前市值。
-- 当前持仓净值 = 未赎回确认本金 + 逐产品累计收益 − 已确认赎回分配的已实现收益。
-- 部分赎回同时减少持仓本金和剩余持仓收益；银行市值快照仅用于对账。
+- 当前持仓净值优先采用持仓范围已核验的银行累计收益基准，基准日后完整披露的日收益按原精度续算。发生交易、收益缺口或合并收益跨越基准日时停止续算；无有效银行基准时，以未赎回确认本金加账本累计、再减已确认赎回实现收益推算。
+- 产品收益档案同时显示银行截至日、同期账本及差额。银行累计快照不改某日收益，也不进入账户日账或策略资金；旧账户总市值快照仍仅用于历史对账。
 
 结构检查包括：
 
@@ -486,7 +486,8 @@ Pages 只承载公开研究内容，不包含 R2 数据、账户事实、截图�
 - `POST /api/income/inbox/:id/apply|ignore`：归档产品收益或忽略截图。
 - `npm run income:entry -- run/income.json [--apply]`：收益截图一键入账；默认 dry-run 做冲突预检和 T+N 覆盖检查，加 `--apply` 才上传并 apply，随后打印当日账户、对账状态和账户汇总。`--template` 打印规格骨架。
 - `GET /api/product-valuations?product_code=...`：逐产品收益、覆盖区间和修正审计。
-- `POST /api/product-valuations`、`PUT /api/product-valuations/:id`：补录或修正产品收益。
+- `POST /api/product-valuations`、`PUT /api/product-valuations/:id`：补录或修正产品收益，支持四位 `daily_pnl` 或整数 `daily_pnl_1e4`，返回精确值和来源精度。
+- `GET /api/product-holding-incomes?product_code=...`、`POST /api/product-holding-incomes`：读取或登记银行持仓累计，必须绑定原图、显式截至日及完整交易范围；同日修正需要当前版本和原因，重复请求不覆盖较新版本。
 - `GET/POST /api/holding-valuations`：兼容读取派生当前净值；历史快照能力不再由工作台界面使用。
 - `POST /api/holding-valuations/evidence`、`GET /api/holding-valuations/evidence/:id/image`：兼容保留历史银行对照截图。
 

@@ -131,8 +131,8 @@ function createProductValuationsService({
       ? productValuationsRepository.flagProductIncomeConflict({
           date: yieldDate || body.date,
           productCode: body.product_code,
-          existing: result.valuation.daily_pnl,
-          incoming: body.daily_pnl,
+          existing: result.valuation.daily_pnl_exact ?? result.valuation.daily_pnl,
+          incoming: body.daily_pnl_1e4 == null ? body.daily_pnl : Number(body.daily_pnl_1e4) / 10000,
           source: 'manual-product',
         })
       : null;
@@ -155,6 +155,10 @@ function createProductValuationsService({
     const today = todayProvider();
     const beforeInput = { ...before };
     delete beforeInput.covered_yield_dates;
+    if (Object.hasOwn(body, 'daily_pnl') && !Object.hasOwn(body, 'daily_pnl_1e4')) {
+      delete beforeInput.daily_pnl_1e4;
+      delete beforeInput.source_precision;
+    }
     const yieldDate = String(body.yield_date || before.yield_date || '');
     const creditDate = String(
       body.credit_date ||
@@ -196,6 +200,16 @@ function createProductValuationsService({
   }
 
   return {
+    listBankHoldingIncome(query) {
+      const code = String(query.get('product_code') || '').trim().toUpperCase();
+      if (!/^[A-Z0-9-]{4,32}$/.test(code)) throw serviceError(400, '需要有效产品代码');
+      return { snapshots: productValuationsRepository.listBankHoldingIncome(code) };
+    },
+    saveBankHoldingIncome(body) {
+      try {
+        return productValuationsRepository.saveBankHoldingIncome(body, { today: todayProvider(), actor: 'user-confirmed' });
+      } catch (error) { throw serviceError(400, error.message); }
+    },
     createHoldingValuation,
     uploadHoldingValuationEvidence,
     createValuation,

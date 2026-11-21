@@ -11,6 +11,21 @@ const { createDailyBackup } = require('../../lib/backup');
 const { productCsv } = require('../fixtures');
 const { createTestContext } = require('../helpers/test-context');
 
+test('cash-balance legacy migration preserves pre-existing exact income and provenance', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-cross-migration-'));
+  const dbPath = path.join(directory, 'legacy.sqlite');
+  const legacy = new DatabaseSync(dbPath);
+  legacy.exec(`CREATE TABLE daily_records(id INTEGER PRIMARY KEY,record_date TEXT UNIQUE,principal REAL,daily_pnl REAL,daily_pnl_1e4 INTEGER,action TEXT,notes TEXT,cash_balance REAL,source TEXT,screenshot_id INTEGER,created_at TEXT,updated_at TEXT);
+    INSERT INTO daily_records VALUES(1,'2026-10-20',10000,.98,9827,'无操作','legacy',0,'product-income-summary',12,'a','b');`);
+  legacy.close();
+  const repository = openDatabase({ dbPath, productCsvPath: null, logger: { warn() {} } });
+  t.after(() => { repository.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const row = repository.getRecord('2026-10-20');
+  assert.equal(row.daily_pnl_1e4, 9827);
+  assert.equal(row.source, 'product-income-summary');
+  assert.equal(row.screenshot_id, 12);
+});
+
 test('legacy daily_records migrate without losing income data', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-migration-test-'));
   const dbPath = path.join(directory, 'legacy.sqlite');

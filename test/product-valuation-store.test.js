@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { openDatabase } = require('../lib/db');
+const { createProductValuationStore } = require('../lib/product-valuation-store');
 
 function openTemp(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'r2-product-valuations-'));
@@ -56,6 +57,78 @@ function createRedeem(repository, amount, overrides = {}) {
     ...overrides,
   });
 }
+
+test('raw income supports exact cumulative sums, precision upgrades and preserves raw values on replays', (t) => {
+  const { repository } = openTemp(t);
+  const store = repository.productValuationStore;
+  const input = { product_code: 'RAW123', yield_date: '2026-11-18', daily_pnl: '0.5370', source_precision: 4 };
+  const first = store.upsertValuation(input).valuation;
+  assert.equal(first.daily_pnl, 0.54);
+  assert.equal(first.daily_pnl_1e4, 5370);
+  assert.equal(first.daily_pnl_exact, 0.537);
+  assert.equal(first.source_precision, 4);
+  store.upsertValuation({ ...input, yield_date: '2026-11-19' });
+  const summary = store.getSummaries('2026-11-20').find(x => x.product_code === 'RAW123');
+  assert.equal(summary.cumulative_pnl, 1.07);
+  assert.equal(summary.cumulative_pnl_1e4, 10740);
+  assert.equal(summary.legacy_cumulative_pnl, 1.08);
+  assert.equal(summary.precision_status, 'full');
+  const auditCount = store.getAudit(first.id).length;
+  assert.equal(store.upsertValuation(input).unchanged, true);
+  assert.equal(store.upsertValuation({ ...input, daily_pnl: 0.54, source_precision: 2 }).unchanged, true);
+  assert.equal(store.getAudit(first.id).length, auditCount);
+  assert.equal(store.upsertValuation({ ...input, daily_pnl: '0.5380' }).conflict, 'different-raw-daily-pnl');
+  const corrected = store.updateValuationById(first.id, { daily_pnl: '0.5380', source_precision: 4 }, { auditNote: 'raw precision correction' });
+  assert.equal(corrected.valuation.daily_pnl, 0.54);
+  assert.equal(corrected.valuation.daily_pnl_1e4, 5380);
+  assert.equal(store.getAudit(first.id).length, auditCount + 1);
+  assert.equal(store.updateValuationById(first.id, { daily_pnl: '0.5380', source_precision: 4 }).unchanged, true);
+  assert.equal(store.getAudit(first.id).length, auditCount + 1);
+  const centOnly = store.upsertValuation({ product_code: 'RAW123', yield_date: '2026-11-20', daily_pnl: 0.54 }).valuation;
+  assert.equal(centOnly.source_precision, 2);
+  const upgraded = store.upsertValuation({ product_code: 'RAW123', yield_date: '2026-11-20', daily_pnl: '0.5370' });
+  assert.equal(upgraded.conflict, null);
+  assert.equal(upgraded.valuation.daily_pnl_1e4, 5370);
+  assert.equal(upgraded.valuation.id, centOnly.id);
+  assert.throws(() => store.upsertValuation({ ...input, daily_pnl: '0.53701' }), /四位/);
+  assert.throws(() => store.upsertValuation({ ...input, daily_pnl: null }), /不能为空/);
+  const zero = store.upsertValuation({ product_code: 'ZERO123', yield_date: '2026-11-20', daily_pnl: '0.0000' }).valuation;
+  assert.equal(zero.source_precision, 4);
+  assert.equal(zero.daily_pnl_1e4, 0);
+});
+
+test('an unmigrated product schema remains readable without implicit precision DDL and rejects loss of raw digits', (t) => {
+  const { repository } = openTemp(t);
+  repository.db.exec('ALTER TABLE product_daily_valuations DROP COLUMN daily_pnl_precision; ALTER TABLE product_daily_valuations DROP COLUMN daily_pnl_1e4');
+  const columns = repository.db.prepare('PRAGMA table_info(product_daily_valuations)').all().map(x => x.name);
+  const old = createProductValuationStore(repository.db);
+  assert.deepEqual(repository.db.prepare('PRAGMA table_info(product_daily_valuations)').all().map(x => x.name), columns);
+  const legacy = old.upsertValuation({ product_code: 'OLD123', yield_date: '2026-11-18', daily_pnl: 0.54 }).valuation;
+  assert.equal(legacy.daily_pnl_1e4, null);
+  assert.equal(legacy.precision_status, 'legacy-rounded');
+  assert.equal(old.getSummaries('2026-11-20')[0].precision_status, 'partial');
+  const auditCount = old.getAudit(legacy.id).length;
+  assert.equal(old.upsertValuation({ product_code: 'OLD123', yield_date: '2026-11-18', daily_pnl: 0.54 }).unchanged, true);
+  assert.equal(old.getAudit(legacy.id).length, auditCount);
+  assert.throws(() => old.upsertValuation({ product_code: 'OLD124', yield_date: '2026-11-18', daily_pnl: 0.537 }), /显式迁移/);
+  assert.equal(old.listValuations().length, 1);
+  old.updateValuationById(legacy.id, { notes: 'metadata only' });
+  assert.equal(old.getValuation(legacy.id).daily_pnl_1e4, null);
+});
+
+test('raw precision changes roll back when account projection fails, and bank snapshot callback is read-only', (t) => {
+  const { repository } = openTemp(t);
+  const store = repository.productValuationStore;
+  const first = store.upsertValuation({ product_code: 'RAW123', yield_date: '2026-11-18', daily_pnl: 0.54 }).valuation;
+  store.setAccountIncomeProjector(() => { throw Error('projection failure'); });
+  assert.throws(() => store.upsertValuation({ product_code: 'RAW123', yield_date: '2026-11-18', daily_pnl: 0.537 }), /projection failure/);
+  assert.equal(store.getValuation(first.id).daily_pnl_1e4, 5400);
+  assert.equal(store.getAudit(first.id).length, 1);
+  const withBank = createProductValuationStore(repository.db, {
+    getBankHoldingIncome(code, summary) { return { holding_income: 0.53, ledger_income: summary.cumulative_pnl, code }; },
+  });
+  assert.equal(withBank.getSummaries('2026-11-20')[0].bank_holding_income.holding_income, 0.53);
+});
 
 test('T+2 disclosures skip weekends and holidays, retain final-day waiting and preserve income facts', (t) => {
   const { repository } = openTemp(t);
@@ -671,7 +744,7 @@ test('retrying a covered product fact without repeating coverage metadata stays 
   );
 });
 
-test('product income is stored and aggregated to cents without four-decimal precision', (t) => {
+test('product income preserves original units while retaining the legacy cent field', (t) => {
   const { repository } = openTemp(t);
   createBuy(repository);
   const saved = repository.productValuationStore.upsertValuation({
@@ -683,8 +756,11 @@ test('product income is stored and aggregated to cents without four-decimal prec
   });
 
   assert.equal(saved.valuation.daily_pnl, 1.23);
+  assert.equal(saved.valuation.daily_pnl_1e4, 12345);
+  assert.equal(saved.valuation.daily_pnl_exact, 1.2345);
   const summary = repository.productValuationStore
     .getSummaries('2026-10-22', repository.tradeStore.getPortfolio())
     .find((item) => item.product_code === '120056A');
   assert.equal(summary.cumulative_pnl, 1.23);
+  assert.equal(summary.cumulative_pnl_1e4, 12345);
 });

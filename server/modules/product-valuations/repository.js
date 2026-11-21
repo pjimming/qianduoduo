@@ -5,6 +5,13 @@ function createProductValuationsRepository(repository) {
     throw new Error('product valuations repository 需要 repository');
   }
   return {
+    listBankHoldingIncome(code) {
+      return repository.productHoldingIncomeStore?.list(code) || [];
+    },
+    saveBankHoldingIncome(input, context) {
+      if (!repository.productHoldingIncomeStore) throw new Error('银行持仓收益未启用');
+      return repository.productHoldingIncomeStore.save(input, context);
+    },
     createHoldingValuation(input, context) {
       return repository.holdingValuationStore.createSnapshot(
         input,

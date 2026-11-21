@@ -45,7 +45,8 @@ interface IncomeDraft {
     holding_amount: number | null
     yield_date: string
     credit_date: string
-    daily_pnl: number | null
+    daily_pnl: number | string | null
+    source_precision?: 2 | 4 | null
     confidence: number
     notes: string
   }>
@@ -135,9 +136,10 @@ watch(
               item.record_date ||
               reportingDate.value,
             daily_pnl:
-              product.daily_pnl === null || product.daily_pnl === undefined
+              product.daily_pnl_exact == null && product.daily_pnl == null
                 ? null
-                : Number(product.daily_pnl),
+                : Number(product.daily_pnl_exact ?? product.daily_pnl),
+            source_precision: product.source_precision,
             confidence: Number(product.confidence ?? item.parse_confidence),
             notes: product.notes || '',
           })),
@@ -344,11 +346,26 @@ async function applyIncome(item: IncomeInboxItem): Promise<void> {
     })
     return
   }
+  const invalidPrecision = draft.products.some((product) => {
+    const raw = String(product.daily_pnl ?? '').trim()
+    return !/^[+-]?(?:\d+(?:\.\d{1,4})?|\.\d{1,4})$/.test(raw) || !Number.isSafeInteger(Math.round(Number(raw) * 10000))
+  })
+  if (invalidPrecision) {
+    show('产品收益最多保留 4 位小数，请按截图原值填写', { error: true })
+    return
+  }
   applyingIncomeId.value = item.id
   try {
     const response = await store.applyIncomeScreenshot(item.id, {
       ...draft,
       daily_pnl: accountPnlPresent ? draft.daily_pnl : null,
+      products: draft.products.map((product) => ({
+        ...product,
+        daily_pnl: Number(product.daily_pnl),
+        source_precision: (typeof product.daily_pnl === 'string'
+          ? (product.daily_pnl.split('.')[1]?.length ?? 0) > 2 ? 4 : 2
+          : product.source_precision ?? ((String(product.daily_pnl).split('.')[1]?.length ?? 0) > 2 ? 4 : 2)) as 2 | 4,
+      })),
     })
     const savedCount = response.saved_valuations?.length ?? 0
     const accountPnlAbsent = !hasAccountPnl(response.record?.daily_pnl ?? null)
@@ -632,7 +649,7 @@ defineExpose({
           <div class="income-product-head">
             <strong>产品明细</strong>
             <span>
-              这些产品收益会实时汇总为账户总收益；银行账户金额仅用于可选核对。
+              日收益最多保留 4 位小数，按截图原值填写；两位截图照常记录，银行账户金额仅用于可选核对。
             </span>
           </div>
           <div
@@ -653,8 +670,8 @@ defineExpose({
               <input v-model.number="product.holding_amount" type="number" min="0" step="0.01" />
             </label>
             <label>
-              <span>当日收益</span>
-              <input v-model.number="product.daily_pnl" type="number" step="0.01" />
+              <span>当日收益（最多 4 位）</span>
+              <input :value="product.daily_pnl" type="number" step="0.0001" @input="product.daily_pnl = ($event.target as HTMLInputElement).value" />
             </label>
             <label>
               <span>收益归属日</span>
@@ -785,3 +802,10 @@ defineExpose({
     </details>
   </section>
 </template>
+
+<style scoped>
+.income-product-head span,
+.income-product-row label {
+  color: var(--ink-soft);
+}
+</style>

@@ -17,6 +17,21 @@ function sendServiceError(response, error) {
 function createProductValuationsRoutes(productValuations) {
   return [
     {
+      method: 'GET', path: '/api/product-holding-incomes',
+      handler(request, response, context) {
+        try { sendJson(response, 200, productValuations.listBankHoldingIncome(context.requestUrl.searchParams)); }
+        catch (error) { sendServiceError(response, error); }
+      },
+    },
+    {
+      method: 'POST', path: '/api/product-holding-incomes',
+      async handler(request, response) {
+        const body = await readJsonBody(request);
+        try { const result = productValuations.saveBankHoldingIncome(body); sendJson(response, result.duplicate ? 200 : 201, result); }
+        catch (error) { sendServiceError(response, error); }
+      },
+    },
+    {
       method: 'GET',
       path: '/api/holding-valuations',
       handler(request, response, context) {

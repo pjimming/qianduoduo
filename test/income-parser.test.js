@@ -4,6 +4,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { parseIncomeText } = require('../lib/income-parser');
 
+test('income parser preserves four digits, zero precision and never truncates a fifth digit', () => {
+  const { extractProductValuations, extractDailyPnl } = require('../lib/income-parser');
+  const rows = extractProductValuations('AA1234 昨日收益 0.0000\nBB1234 昨日收益 -0.0050', {
+    products: [{ product_code: 'AA1234' }, { product_code: 'BB1234' }],
+  });
+  assert.equal(rows[0].source_precision, 4);
+  assert.equal(rows[0].daily_pnl, 0);
+  assert.equal(rows[1].daily_pnl, -.005);
+  assert.equal(extractDailyPnl('昨日收益 0.12345'), null);
+});
+
 test('income parser extracts disclosed daily P&L, date and principal', () => {
   const parsed = parseIncomeText(
     `
