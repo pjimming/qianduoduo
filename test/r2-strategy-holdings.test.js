@@ -8,7 +8,8 @@ function input() {
   const identity = { source: 'cmb', channel: 'D07', code: 'A' };
   return { date: '2026-11-07', holdings: [{ lot_id: '1:A', product_code: 'A', amount: 100, purchase_date: '2026-10-01', maturity_date: '2026-12-01' }],
     context: { date: '2026-11-07', contract_hash: CONTRACT_HASH, available: true, fingerprint: 'context', blockers: [],
-      rows: [{ identity, mapping: { product_code: 'A' }, holding_yield_state: 'below', performance: { '1m': '2.14' },
+      rows: [{ identity, mapping: { product_code: 'A' }, holding_yield_state: 'below', performance: { '1m': '2.14', '3m': '2.5', '6m': '3.0' }, nav_fresh: true, holding_exit_performance_verified: true,
+        metrics: { observation: { basis: 'cumulative_change_over_start_unit', recent: { status: 'available', days: 7, start_date: '2026-10-30', end_date: '2026-11-06', return_pct: 0.01 } } },
         performance_date: '2026-11-06', evidence_hash: 'hash', term: { kind: 'minimum', days: 30 },
         quota: { status: 1 }, shortlisted: false, screening_status: 'rejected', run_id: 1 }] } };
 }
@@ -55,11 +56,13 @@ test('sale status and research rank alone do not force a passing holding to exit
 });
 test('risk signals are distinct from the explicit yield exit rule and do not fake a redemption', () => {
   const model = input(); model.context.rows[0].holding_yield_state = 'pass';
-  model.context.rows[0].metrics = { drawdown: { band: 'watch' } };
+  model.context.rows[0].performance['1m'] = '2.15';
+  model.context.rows[0].metrics.drawdown = { band: 'watch' };
   model.context.rows[0].term.days = 191;
   assert.equal(one(model).state, 'risk_review');
   assert.equal(one(model).action, '观察');
   model.context.rows[0].holding_yield_state = 'below';
+  model.context.rows[0].performance['1m'] = '2.14';
   assert.equal(one(model).state, 'exit_at_open');
 });
 test('message identity is stable across evidence batches and handling states; source outage alone creates no daily user card', () => {

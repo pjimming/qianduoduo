@@ -43,9 +43,9 @@ test('an unavailable calculation, partial amount or unactivated mode cannot beco
 });
 test('the previous v9 contract verifies for frozen evaluation and is rejected for new adoption', () => {
   const { snapshot_hash, ...body } = buildExecutionSnapshot(fixture());
-  const { bucket_caps_pct, ...contract } = body.contract;
-  body.contract = { ...contract, allocation_policy_version: 'r2-v9-bucket-allocation-v1',
-    bucket_targets: { cash: 0, short: 30, medium: 35, long: 35 } };
+  const { exit_policy, ...contract } = body.contract;
+  body.contract = { ...contract, holding_review_version: 'r2-v9-holding-review-v1',
+    forced_exit: ['fresh_same_share_monthly_yield_below_2.15'] };
   body.contract_hash = PREVIOUS_CONTRACT_HASH;
   const historical = { ...body, snapshot_hash: fingerprint(body) };
   assert.equal(verifyExecutionSnapshot(historical), false);

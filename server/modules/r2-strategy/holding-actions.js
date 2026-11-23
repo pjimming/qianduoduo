@@ -39,10 +39,11 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       action: '观察', planned_action: monitor.planned_action, state: monitor.state, reason: monitor.summary,
       executable: false, blockers: [], warnings: [], candidates: [], comparison: null,
       redemption: { ...monitor.redemption, ...path },
-      dedupe_key: fingerprint({ type: monitor.yield_state === 'below' ? 'mandatory_holding_exit' : 'holding_review',
+      exit_conditions: monitor.exit_conditions,
+      dedupe_key: fingerprint({ type: monitor.exit_conditions.status === 'met' ? 'mandatory_holding_exit' : 'holding_review',
         lot_id: holding.lot_id, contract_hash: CONTRACT_HASH }),
       frozen_evidence: { current } };
-    if (monitor.yield_state === 'below') {
+    if (monitor.exit_conditions.status === 'met') {
       // This branch deliberately precedes candidate/economic comparison. No
       // replacement or positive net edge is needed to retain an exit intent.
       base.action = monitor.action;
@@ -54,7 +55,9 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       return seal(base);
     }
     if (monitor.yield_state !== 'pass' || monitor.state === 'risk_review' || !current) {
-      base.blockers = monitor.yield_state !== 'pass' ? ['holding_yield_unverified'] : monitor.risk_reasons;
+      base.blockers = monitor.yield_state === 'below' ? [monitor.exit_conditions.status === 'pending'
+        ? 'holding_exit_evidence_pending' : 'holding_exit_conditions_not_met']
+        : monitor.yield_state !== 'pass' ? ['holding_yield_unverified'] : monitor.risk_reasons;
       return seal(base);
     }
     const reference = current.reference;

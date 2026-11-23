@@ -95,7 +95,7 @@ test('holding-only supplements change monitoring without changing the official p
   const result = evaluateStrategy({ ...fixture, holdingSupplements: [batch] });
   assert.equal(baseline.monitoring.rows[0].yield_state, 'pass');
   assert.equal(result.monitoring.rows[0].yield_state, 'below');
-  assert.equal(result.exit_intents.length, 1);
+  assert.equal(result.exit_intents.length, 0, '1M alone does not satisfy the conjunction');
   assert.equal(result.evidence.fingerprint, baseline.evidence.fingerprint);
   assert.equal(result.allocation.fingerprint, baseline.allocation.fingerprint);
   assert.notEqual(result.input_fingerprint, baseline.input_fingerprint);

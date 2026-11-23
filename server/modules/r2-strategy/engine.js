@@ -119,7 +119,7 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], port
     selected_reviews: selectedReviews, may_generate_buy_proposals: mayPropose,
     // Mandatory-yield exits are independent of full-investment feasibility or
     // replacement availability. The actual write use case still revalidates.
-    exit_intents: active ? monitoring.rows.filter(row => row.yield_state === 'below').map(row => ({ lot_id: row.lot_id,
+    exit_intents: active ? monitoring.rows.filter(row => row.exit_conditions.status === 'met').map(row => ({ lot_id: row.lot_id,
       action: row.action, planned_action: row.planned_action, state: row.state, fingerprint: row.fingerprint })) : [] });
 }
 
@@ -144,7 +144,7 @@ function compactStrategyResult(result) {
       rows: result.monitoring.rows.map(row => ({ lot_id: row.lot_id, product_code: row.product_code,
         identity: row.identity, amount: row.amount, summary: row.summary, redemption: row.redemption,
         state: row.state, action: row.action, planned_action: row.planned_action, yield_1m: row.yield_1m,
-        observation: row.observation,
+        observation: row.observation, exit_conditions: row.exit_conditions,
         performance_date: row.performance_date, next_verify_date: row.next_verify_date,
         requires_user_action: row.requires_user_action, message_key: row.message_key, fingerprint: row.fingerprint })) },
     selected_reviews: result.selected_reviews.map(row => ({ identity: row.identity, check_id: null,

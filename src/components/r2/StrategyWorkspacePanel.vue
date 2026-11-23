@@ -112,7 +112,8 @@ const holdingSort = ref<{ column: HoldingColumn; direction: 'ascending' | 'desce
 const holdingCollator = new Intl.Collator('zh-CN', { numeric: true })
 
 function holdingConclusion(row: StrategyHoldingRow, exits: StrategyHoldingRow[]) {
-  if (exits.length) return '未达续持门槛 · 准备换出'
+  if (exits.length) return '三项退出条件满足 · 准备换出'
+  if (row.yield_1m != null && Number(row.yield_1m) < 2.15 && row.exit_conditions) return row.exit_conditions.status === 'pending' ? '退出证据待核 · 观察' : '退出条件未同时满足 · 观察'
   if (row.state === 'evidence_pending') return row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据'
   if (row.state === 'hold' && row.observation?.state === 'watch') return '收益预警 · 观察'
   return label(row.state)
@@ -239,7 +240,7 @@ async function run(kind: 'compute' | 'proposals') {
       <div class="strategy-actions"><button type="button" class="button button-primary button-small" :disabled="busy || !current || !result.may_generate_buy_proposals" @click="run('proposals')">生成买入提案</button><RouterLink :to="{ name: 'r2-evaluation', query: { section: 'proposals' } }">审阅提案</RouterLink></div>
     </template>
     <template v-else-if="result">
-      <p>有效近 1 月年化低于 2.15% 时准备换出，按赎回窗口处理。2.15% 至不足 2.5% 且收益走弱时优先观察，换仓仍需比较费用和空档。缺少有效证据的产品暂停新增或加仓。</p>
+      <p>近7日总收益率低于0.04123288%、近1月年化低于2.15%，且近6月年化&gt;近3月年化&gt;近1月年化，三项同时满足后生成退出决策提案，按可赎窗口处理。2.15%至不足2.5%且收益走弱时优先观察。缺少有效证据的产品暂停新增或加仓。</p>
       <div v-if="holdingProducts.length" class="strategy-table-wrap">
           <table class="strategy-holdings-table">
             <thead>
@@ -269,6 +270,14 @@ async function run(kind: 'compute' | 'proposals') {
                 <td>
                   <span :class="{ 'strategy-observation-watch': row.observation?.state === 'watch' }">{{ holdingConclusion(row, exits) }}</span>
                   <small v-if="row.observation?.state === 'watch'">{{ row.observation.reasons.map(observationLabel).join('；') }}。仅观察。</small>
+                  <details v-if="row.exit_conditions" class="strategy-observation">
+                    <summary>查看三项退出条件</summary>
+                    <small>三项需同时满足；等于阈值或窗口年化相等不触发。</small>
+                    <small>近7日总收益率：{{ row.exit_conditions.recent == null ? '待核' : `${observationReturnPct(row.exit_conditions.recent.return_pct)}（${row.exit_conditions.recent.start_date} 至 ${row.exit_conditions.recent.end_date}）` }}；退出阈值 &lt;0.04123288%</small>
+                    <small>近1月年化：{{ row.yield_1m == null ? '待核' : `${row.yield_1m}%` }}；退出阈值 &lt;2.15%</small>
+                    <small>近6月 / 近3月 / 近1月年化：{{ ['6m', '3m', '1m'].map(key => row.exit_conditions?.performance[key] == null ? '待核' : `${row.exit_conditions.performance[key]}%`).join(' / ') }}；须依次严格下降。</small>
+                    <small>{{ row.summary }}</small>
+                  </details>
                   <details v-if="row.observation" class="strategy-observation">
                     <summary>查看收益证据</summary>
                     <template v-if="row.observation.metrics?.recent.status === 'available'">

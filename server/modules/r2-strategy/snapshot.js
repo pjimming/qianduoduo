@@ -1,6 +1,6 @@
 'use strict';
 
-const { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH, fingerprint, freeze } = require('./contract');
+const { CONTRACT, CONTRACT_HASH, HISTORICAL_CONTRACT_HASHES, fingerprint, freeze } = require('./contract');
 const { identityKey } = require('./evidence');
 const { buildBuyForecast } = require('./forecast');
 const { payload } = require('./repository');
@@ -38,7 +38,7 @@ function buildExecutionSnapshot({ result, row, amountCents, purpose = 'buy' }) {
 
 function verifyExecutionSnapshot(snapshot, { historical = false } = {}) {
   const hashAllowed = snapshot?.contract_hash === CONTRACT_HASH ||
-    (historical && snapshot?.contract_hash === PREVIOUS_CONTRACT_HASH);
+    (historical && HISTORICAL_CONTRACT_HASHES.includes(snapshot?.contract_hash));
   if (!snapshot || snapshot.payload_version !== 1 || snapshot.purpose !== 'buy' || snapshot.execution_version !== CONTRACT.execution_version ||
       !hashAllowed || !snapshot.contract || fingerprint(snapshot.contract) !== snapshot.contract_hash ||
       snapshot.evaluation_contract?.version !== CONTRACT.evaluation_policy_version || !snapshot.portfolio?.verified ||

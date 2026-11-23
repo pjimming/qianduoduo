@@ -67,7 +67,8 @@ function drawdown(points) {
   };
 }
 
-// Observation only: never feeds the screening gates, ranking or yield floor.
+// Return evidence for observation and the holding exit conjunction. It never
+// feeds purchase screening gates, ranking or the new-purchase yield floor.
 // Cumulative NAV preserves cash distributions; unit-only history is insufficient.
 function navObservation(points, date, calendar, valuationBasis) {
   const pending = reason => ({ status: 'pending', reason });

@@ -394,7 +394,12 @@ async function main() {
       payload.stale = false
       payload.result.monitoring.rows = Array.from({length: 11}, (_, i) => ({ lot_id: 'synthetic-lot-' + i, product_code: 'E2E' + i, identity: i === 10 ? null : {source:'cmb',channel:'TEST',code:'E2E' + i}, state: ['exit_required','exit_at_open','exit_rules_pending','evidence_pending','hold'][i % 5], action:'观察',planned_action:'verify_holding',yield_1m: i % 2 ? '2.50' : '2.10',performance_date:'2026-11-07',next_verify_date:'2026-11-09',summary:'合成验收数据：此批次用于检查交互，不是银行事实。',requires_user_action:true,fingerprint:'synthetic' }))
       Object.assign(payload.result.monitoring.rows[3], { identity: null, yield_1m: null, performance_date: null })
-      Object.assign(payload.result.monitoring.rows[0], { amount: 1000 })
+      Object.assign(payload.result.monitoring.rows[0], { amount: 1000, exit_conditions: {
+        status: 'met', operator: 'all', checks: { recent_return: 'met', monthly_yield: 'met', declining_windows: 'met' },
+        recent_return_threshold_pct: 0.04123288, monthly_yield_threshold_pct: 2.15,
+        performance: { '6m': '3.00', '3m': '2.50', '1m': '2.10' },
+        recent: { start_date: '2026-10-30', end_date: '2026-11-06', days: 7, return_pct: 0.01 },
+      } })
       Object.assign(payload.result.monitoring.rows[4], { yield_1m: '2.30', observation: {
         version: 2, state: 'watch', threshold_pct: 2.5, recent_return_threshold_pct: 2.15 * 7 / 365, reasons: ['recent_yield_weak'],
         metrics: { version: 2, basis: 'cumulative_change_over_start_unit', recent: { status: 'available', reason: null,
@@ -416,7 +421,10 @@ async function main() {
     assert(await holdingRows.count() === 9, '主表应按产品合并持仓')
     const merged = holdingRows.filter({ has: page.getByRole('rowheader', { name: 'E2E0 测试持仓产品名称', exact: true }) })
     await merged.getByText('¥3,500.00', { exact: true }).waitFor()
-    await merged.getByText('未达续持门槛 · 准备换出', { exact: true }).waitFor()
+    await merged.getByText('三项退出条件满足 · 准备换出', { exact: true }).waitFor()
+    await merged.getByText('查看三项退出条件', { exact: true }).click()
+    await merged.getByText('近6月 / 近3月 / 近1月年化：3.00% / 2.50% / 2.10%；须依次严格下降。', { exact: true }).waitFor()
+    await merged.getByText('三项需同时满足；等于阈值或窗口年化相等不触发。', { exact: true }).waitFor()
     await page.getByText('未匹配同份额证据', { exact: true }).waitFor()
     assert(!await merged.getByRole('button', { name: '生成退出提案' }).isVisible(), '默认不展开赎回安排')
     const holdingGeometry = () => page.locator('.strategy-holdings-table').evaluate(table => ({

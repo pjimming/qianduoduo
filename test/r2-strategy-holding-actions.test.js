@@ -14,7 +14,7 @@ const HOLDING = { lot_id: 'lot-1', holding_id: 11, product_code: 'A', product_na
 
 function monitorRow(overrides = {}) {
   return { identity: ID_A, mapping: { product_code: 'A' }, holding_yield_state: 'pass',
-    performance: { '1m': '3.00' }, performance_date: '2026-11-06', metrics: { drawdown: { band: 'normal' } },
+    performance: { '1m': '3.00' }, performance_date: '2026-11-06', holding_exit_performance_verified: true, metrics: { drawdown: { band: 'normal' }, observation: { basis: 'cumulative_change_over_start_unit', recent: { status: 'available', days: 7, start_date: '2026-10-30', end_date: '2026-11-06', return_pct: 0.01 } } },
     nav_fresh: true, term: { kind: 'minimum', days: 30 }, category: 'bond', detail: { equity_upper_pct: 0 },
     reference: { status: 'available', value_pct: 3.0 }, screening_status: 'qualified', rank: 1, run_id: 1,
     evidence_hash: 'c'.repeat(64), monitoring_verified: true, ...overrides };
@@ -40,7 +40,7 @@ function run({ rows = [monitorRow()], candidates = [], holdings = [HOLDING],
 
 test('低于门槛的日开持仓按账本可赎性生成可执行退出计划，费用与到账仍提示待核', () => {
   let validatorCalls = 0;
-  const result = run({ rows: [monitorRow({ holding_yield_state: 'below', performance: { '1m': '2.14' } })],
+  const result = run({ rows: [monitorRow({ holding_yield_state: 'below', performance: { '1m': '2.14', '3m': '2.5', '6m': '3.0' } })],
     candidates: [candidate()],
     validateReplacement: () => { validatorCalls += 1; return PASS_PORTFOLIO(); } });
   const plan = result.plans[0];
@@ -164,7 +164,7 @@ test('组合复核同步执行并保留其风险与流动性阻断', () => {
 });
 
 test('同一输入的计划、指纹和去重键稳定，强制退出键不随批次指纹变化', () => {
-  const args = { rows: [monitorRow({ holding_yield_state: 'below', performance: { '1m': '2.10' } })] };
+  const args = { rows: [monitorRow({ holding_yield_state: 'below', performance: { '1m': '2.10', '3m': '2.5', '6m': '3.0' } })] };
   const first = run(args);
   const second = run(args);
   assert.deepEqual(first.plans, second.plans);
@@ -177,7 +177,7 @@ test('同一输入的计划、指纹和去重键稳定，强制退出键不随�
     holdings: [HOLDING],
     context: { date: DATE, contract_hash: CONTRACT_HASH, fingerprint: 'changed', available: true, blockers: [], rows: [] },
     monitoringContext: { date: DATE, contract_hash: CONTRACT_HASH, fingerprint: 'changed-monitor', available: false,
-      blockers: [], rows: [monitorRow({ holding_yield_state: 'below', performance: { '1m': '2.10' } })] },
+      blockers: [], rows: [monitorRow({ holding_yield_state: 'below', performance: { '1m': '2.10', '3m': '2.5', '6m': '3.0' } })] },
     date: DATE });
   assert.equal(changedContext.plans[0].dedupe_key, first.plans[0].dedupe_key);
 

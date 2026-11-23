@@ -8,7 +8,12 @@ export interface HoldingObservation {
     trend: { status: string; reason: string | null; weak?: boolean; periods?: { start_date: string; end_date: string; days: number; annualized_pct: number }[] }
   } | null
 }
-export interface StrategyHoldingRow { identity?: StrategyIdentity | null; amount?: number; summary?: string; observation?: HoldingObservation; redemption?: { earliest_redeem_date?: string | null; funds_available_date?: string | null }; lot_id: string; product_code: string; state: string; action: string; planned_action: string; yield_1m: string | null; performance_date: string | null; next_verify_date: string; requires_user_action: boolean; fingerprint: string }
+export interface HoldingExitConditions {
+  status: 'met' | 'not_met' | 'pending'; operator: 'all'; checks: Record<string, 'met' | 'not_met' | 'pending'>
+  recent_return_threshold_pct: number; monthly_yield_threshold_pct: number; performance: Record<string, string | null>
+  recent: { start_date: string; end_date: string; days: number; return_pct: number } | null
+}
+export interface StrategyHoldingRow { exit_conditions?: HoldingExitConditions; identity?: StrategyIdentity | null; amount?: number; summary?: string; observation?: HoldingObservation; redemption?: { earliest_redeem_date?: string | null; funds_available_date?: string | null }; lot_id: string; product_code: string; state: string; action: string; planned_action: string; yield_1m: string | null; performance_date: string | null; next_verify_date: string; requires_user_action: boolean; fingerprint: string }
 export interface StrategyResult {
   input: { mode: string; activation_seq: number; business_date: string; source_fingerprint: string | null }
   input_fingerprint: string; may_generate_buy_proposals: boolean

@@ -17,9 +17,6 @@ const {
   buildProductView,
   isProductPoolEligible,
 } = require('../lib/products');
-const {
-  captureObservationFromFile,
-} = require('../lib/yield-observation');
 
 const ROOT = path.resolve(__dirname, '..');
 const { openPublicBrowser, createProductListClient, queryProducts } = require('../server/modules/r2-screening/product-list');
@@ -285,18 +282,12 @@ async function main() {
     writeCsv(universePath, universe);
     writeCsv(selectedPath, view.observation_list);
     writeCsv(snapshotPath, snapshotProducts);
-    let observation;
-    try {
-      observation = captureObservationFromFile({
-        root: ROOT,
-        inputPath: universePath,
-      });
-    } catch (error) {
-      observation = {
-        status: 'error',
-        message: error instanceof Error ? error.message : String(error),
-      };
-    }
+    // Legacy scoring observations are opt-in through the standalone commands.
+    // A product refresh must not append samples or reopen retired review alerts.
+    const observation = {
+      status: 'disabled',
+      message: '旧策略样本外观察已停用；产品快照刷新不再自动采集或触发复核。',
+    };
 
     let refresh = null;
     try {

@@ -78,6 +78,8 @@ function adaptSnapshot(snapshot, date) {
       registration: data.detail?.registration ?? null, group: `${data.term?.days}/${data.category}`, rank: data.rank,
       shortlisted: data.shortlisted, screening_status: data.status, performance: data.performance,
       performance_date: data.performance_date, yield_state: yieldState, nav_fresh: navFresh,
+      holding_exit_performance_verified: Boolean(performanceVerified && ['6m', '3m', '1m'].every(window =>
+        decimal(data.performance?.[window]) !== null && decimal(data.performance[window]) === decimal(performance.performance?.[window]))),
       metrics: data.metrics, nav_hash: row.nav_hash, term: data.term, category: data.category,
       quota, min_amount: data.min_amount, restrictions: data.restrictions,
       evidence_tier: tier, reference, evidence, hints: data.hints, blockers: reasons,

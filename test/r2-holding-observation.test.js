@@ -80,11 +80,11 @@ test('warning band adds an observation without an exit, user-action card or chan
   assert.equal(monitor(observation, { monthly: '2.15' }).observation.state, 'watch');
   assert.equal(monitor(observation, { monthly: '2.50' }).observation.state, 'clear');
   const exit = monitor(null, { monthly: '2.14', yieldState: 'below' });
-  assert.equal(exit.state, 'exit_required');
-  assert.equal(exit.action, '赎回');
+  assert.equal(exit.state, 'evidence_pending');
+  assert.equal(exit.action, '观察');
   const locked = buildHoldingMonitoring({ date: '2026-11-17', holdings: [{ lot_id: 'L', product_code: 'L', amount: 10, maturity_date: '2026-12-01' }],
     context: { date: '2026-11-17', contract_hash: CONTRACT_HASH, rows: [{ mapping: { product_code: 'L' }, holding_yield_state: 'below' }] } }).rows[0];
-  assert.equal(locked.state, 'exit_at_open');
+  assert.equal(locked.state, 'evidence_pending');
 });
 test('zero/negative counts remain diagnostic and a profitable week is not warned just because its gains are concentrated', () => {
   const row = monitor(metrics([1.000, 1.002, 1.001, 1.003, 1.002, 1.004]).observation);
@@ -143,7 +143,9 @@ test('warning products precede ordinary holds while mandatory exits keep their p
   fixture.sourceSnapshot.rows[0].data.performance['1m'] = '2.60';
   fixture.sourceSnapshot.evidence[0].summary.performance['1m'] = '2.60';
   fixture.sourceSnapshot.rows[2].data.performance['1m'] = '2.14';
-  fixture.sourceSnapshot.evidence[2].summary.performance['1m'] = '2.14';
+  fixture.sourceSnapshot.rows[2].data.performance['3m'] = '2.5';
+  fixture.sourceSnapshot.rows[2].data.performance['6m'] = '3.0';
+  fixture.sourceSnapshot.evidence[2].summary.performance = { ...fixture.sourceSnapshot.rows[2].data.performance };
   fixture.portfolio.holdings = ['S1', 'S2', 'S3'].map((product_code, i) => ({ lot_id: String(i), product_code, amount: 10, purchase_date: '2026-10-01', term_days: 30 }));
   const result = evaluateStrategy(fixture);
   assert.deepEqual(result.monitoring.rows.map(row => row.product_code), ['S3', 'S2', 'S1']);

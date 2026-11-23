@@ -75,7 +75,8 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
       amount: plan.amount_cents / 100, term_days: Number.isSafeInteger(target?.term?.days) ? target.term.days : null });
     const dedupe = fingerprint({ execution_version: CONTRACT.execution_version, contract_hash: CONTRACT_HASH, kind,
       lot_id: plan.lot_id, amount_cents: plan.amount_cents, target_identity: plan.target_identity ?? null,
-      plan_key: plan.dedupe_key });
+      plan_key: plan.dedupe_key, plan_hash: plan.content_hash,
+      material_portfolio_hash: fingerprint(materialPortfolio(frozen.input)) });
     const proposal = { dedupe_key: `v9:${dedupe}`, group_key: `v9:holding:${plan.lot_id}`, proposal_type: 'holding_switch',
       action: plan.action, title: `持仓${label}待采纳：${plan.product_name}${kind === 'holding_switch' ? ` → ${targetName}` : ''}`,
       summary, product_name: plan.product_name, product_code: plan.product_code,

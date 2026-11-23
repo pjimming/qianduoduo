@@ -1,0 +1,3277 @@
+{
+  "schema_version": 1,
+  "review_version": "td-yield-001-parameter-review-v1",
+  "review_context": {
+    "id": "stage6",
+    "snapshot_count": 4,
+    "cohort": {
+      "observation_version": "td-yield-002-out-of-sample-v1",
+      "spec_frozen_at": "2026-10-25T08:49:40.997Z",
+      "spec_sha256": "d96bff18e420d269936710dc47632f48c010edd7ff4412ff172ca09b61d26d36",
+      "policy_version": "r2-term-yield-v1",
+      "selection_version": "r2-dynamic-v4",
+      "official_front_load_scheme": "B",
+      "cohort_version": "td-yield-002-cohort-v1",
+      "code_count": 689,
+      "code_hash": "a5770790afb1aef28a7d97bcca5440828a8f14457f8a94ec557e490cec849f23",
+      "baseline_data_date": "2026-10-22"
+    }
+  },
+  "generated_at": "2026-11-23T04:25:51.324Z",
+  "policy": {
+    "short_one_month_min_weight": 0.2,
+    "short_one_month_max_weight": 0.3,
+    "short_three_month_min_weight": 0.5,
+    "long_requires_same_top3_as_A": true,
+    "long_prefer_lower_average_rank_churn": true,
+    "formal_path_change_authorized": false
+  },
+  "write_policy": {
+    "formal_scoring_written": false,
+    "allocation_written": false,
+    "proposal_written": false,
+    "database_written": false
+  },
+  "snapshots": [
+    {
+      "label": "cmb_r2_universe-2026-10-30.csv",
+      "source": {
+        "kind": "product_csv",
+        "path": "data/cmb_r2_universe-2026-10-30.csv",
+        "file_name": "cmb_r2_universe-2026-10-30.csv",
+        "file_date": "2026-10-30",
+        "sha256": "1887fb3cf2865798ca695fdf95e4ed718a6738287e666a84abd0cd5753991786",
+        "row_count": 693
+      },
+      "snapshot_date": "2026-10-29",
+      "product_count": 673,
+      "cohort_quality": {
+        "presence_ratio": 0.97677793904209,
+        "reportable_ratio": 0.8838896952104499,
+        "missing_count": 16,
+        "extra_count": 20,
+        "bucket_candidate_counts": {
+          "short": 250,
+          "medium": 147,
+          "long": 212
+        }
+      }
+    },
+    {
+      "label": "cmb_r2_universe-2026-11-09.csv",
+      "source": {
+        "kind": "product_csv",
+        "path": "data/cmb_r2_universe-2026-11-09.csv",
+        "file_name": "cmb_r2_universe-2026-11-09.csv",
+        "file_date": "2026-11-09",
+        "sha256": "89b449a47b2255852b0a41e5081a4193cc3e3e2f49bc8ae129f15fe29d85e938",
+        "row_count": 707
+      },
+      "snapshot_date": "2026-11-08",
+      "product_count": 673,
+      "cohort_quality": {
+        "presence_ratio": 0.97677793904209,
+        "reportable_ratio": 0.8867924528301887,
+        "missing_count": 16,
+        "extra_count": 34,
+        "bucket_candidate_counts": {
+          "short": 252,
+          "medium": 147,
+          "long": 212
+        }
+      }
+    },
+    {
+      "label": "cmb_r2_universe-2026-11-16.csv",
+      "source": {
+        "kind": "product_csv",
+        "path": "data/cmb_r2_universe-2026-11-16.csv",
+        "file_name": "cmb_r2_universe-2026-11-16.csv",
+        "file_date": "2026-11-16",
+        "sha256": "bd967fb15090acd9262d6569dcdf581560232d1a1cf5b1690ab245ec1e34b555",
+        "row_count": 714
+      },
+      "snapshot_date": "2026-11-15",
+      "product_count": 672,
+      "cohort_quality": {
+        "presence_ratio": 0.9753265602322206,
+        "reportable_ratio": 0.8896952104499274,
+        "missing_count": 17,
+        "extra_count": 42,
+        "bucket_candidate_counts": {
+          "short": 253,
+          "medium": 149,
+          "long": 211
+        }
+      }
+    },
+    {
+      "label": "cmb_r2_universe-2026-11-23.csv",
+      "source": {
+        "kind": "product_csv",
+        "path": "data/cmb_r2_universe-2026-11-23.csv",
+        "file_name": "cmb_r2_universe-2026-11-23.csv",
+        "file_date": "2026-11-23",
+        "sha256": "d0825d6033b995e9c937af46899b82f6f8ae068958deef0458654f80f72b435a",
+        "row_count": 722
+      },
+      "snapshot_date": "2026-11-22",
+      "product_count": 671,
+      "cohort_quality": {
+        "presence_ratio": 0.9738751814223512,
+        "reportable_ratio": 0.8940493468795355,
+        "missing_count": 18,
+        "extra_count": 51,
+        "bucket_candidate_counts": {
+          "short": 253,
+          "medium": 150,
+          "long": 213
+        }
+      }
+    }
+  ],
+  "short_weight_options": {
+    "original_50_30_20": {
+      "weights": {
+        "return_1m": 0.5,
+        "return_3m": 0.3,
+        "return_6m": 0.2
+      },
+      "per_snapshot": [
+        {
+          "snapshot": "2026-10-29",
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "candidate_count": 250,
+          "max_score": 7.811,
+          "median_score": 1.548,
+          "outlier_count": 13,
+          "outlier_threshold": 3.498,
+          "top5_excess_share": 0.410969,
+          "spearman_vs_old": 0.921117,
+          "rank_changed": 244,
+          "comparable_rank_count": 250,
+          "rank_changed_ratio": 0.976,
+          "mean_absolute_score_delta": 0.1778,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "134022A",
+            "PY040226",
+            "JX040213"
+          ]
+        },
+        {
+          "snapshot": "2026-11-08",
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "candidate_count": 252,
+          "max_score": 6.988,
+          "median_score": 1.4315,
+          "outlier_count": 27,
+          "outlier_threshold": 2.7559999999999993,
+          "top5_excess_share": 0.436196,
+          "spearman_vs_old": 0.905686,
+          "rank_changed": 243,
+          "comparable_rank_count": 252,
+          "rank_changed_ratio": 0.964286,
+          "mean_absolute_score_delta": 0.2028,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "134022A",
+            "JX040213",
+            "PY040226"
+          ]
+        },
+        {
+          "snapshot": "2026-11-15",
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "candidate_count": 253,
+          "max_score": 5.234,
+          "median_score": 1.158,
+          "outlier_count": 15,
+          "outlier_threshold": 2.9049999999999994,
+          "top5_excess_share": 0.417962,
+          "spearman_vs_old": 0.852038,
+          "rank_changed": 250,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.988142,
+          "mean_absolute_score_delta": 0.3634,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "MS040211",
+            "JX040213",
+            "134022A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-22",
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "candidate_count": 253,
+          "max_score": 4.745,
+          "median_score": 0.9845,
+          "outlier_count": 10,
+          "outlier_threshold": 3.194,
+          "top5_excess_share": 0.419859,
+          "spearman_vs_old": 0.875192,
+          "rank_changed": 243,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.960474,
+          "mean_absolute_score_delta": 0.5264,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "MS040211",
+            "JX040226"
+          ]
+        }
+      ],
+      "aggregate": {
+        "snapshot_count": 4,
+        "max_score_across_snapshots": 7.811,
+        "average_top5_excess_share": 0.421246,
+        "average_spearman_vs_old": 0.888508,
+        "average_rank_changed_ratio": 0.972226,
+        "average_mean_absolute_score_delta": 0.3176,
+        "top3_preserved_snapshot_count": 0
+      }
+    },
+    "balanced_30_50_20": {
+      "weights": {
+        "return_1m": 0.3,
+        "return_3m": 0.5,
+        "return_6m": 0.2
+      },
+      "per_snapshot": [
+        {
+          "snapshot": "2026-10-29",
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "candidate_count": 250,
+          "max_score": 6.401,
+          "median_score": 1.553,
+          "outlier_count": 13,
+          "outlier_threshold": 3.4,
+          "top5_excess_share": 0.39515,
+          "spearman_vs_old": 0.945855,
+          "rank_changed": 242,
+          "comparable_rank_count": 250,
+          "rank_changed_ratio": 0.968,
+          "mean_absolute_score_delta": 0.1279,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "134022A",
+            "JX040213",
+            "PY040226"
+          ]
+        },
+        {
+          "snapshot": "2026-11-08",
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "candidate_count": 252,
+          "max_score": 5.912,
+          "median_score": 1.4485000000000001,
+          "outlier_count": 25,
+          "outlier_threshold": 2.907,
+          "top5_excess_share": 0.408665,
+          "spearman_vs_old": 0.937067,
+          "rank_changed": 246,
+          "comparable_rank_count": 252,
+          "rank_changed_ratio": 0.97619,
+          "mean_absolute_score_delta": 0.1489,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "134022A",
+            "JX040213",
+            "PY040226"
+          ]
+        },
+        {
+          "snapshot": "2026-11-15",
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "candidate_count": 253,
+          "max_score": 4.926,
+          "median_score": 1.22,
+          "outlier_count": 23,
+          "outlier_threshold": 2.7270000000000003,
+          "top5_excess_share": 0.394885,
+          "spearman_vs_old": 0.898755,
+          "rank_changed": 238,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.940711,
+          "mean_absolute_score_delta": 0.2557,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "MS040211",
+            "134022A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-22",
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "candidate_count": 253,
+          "max_score": 4.853,
+          "median_score": 1.089,
+          "outlier_count": 19,
+          "outlier_threshold": 2.8389999999999995,
+          "top5_excess_share": 0.403029,
+          "spearman_vs_old": 0.90952,
+          "rank_changed": 246,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.972332,
+          "mean_absolute_score_delta": 0.3609,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "MS040211",
+            "135002A"
+          ]
+        }
+      ],
+      "aggregate": {
+        "snapshot_count": 4,
+        "max_score_across_snapshots": 6.401,
+        "average_top5_excess_share": 0.400432,
+        "average_spearman_vs_old": 0.922799,
+        "average_rank_changed_ratio": 0.964308,
+        "average_mean_absolute_score_delta": 0.22335,
+        "top3_preserved_snapshot_count": 0
+      }
+    },
+    "selected_20_50_30": {
+      "weights": {
+        "return_1m": 0.2,
+        "return_3m": 0.5,
+        "return_6m": 0.3
+      },
+      "per_snapshot": [
+        {
+          "snapshot": "2026-10-29",
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "candidate_count": 250,
+          "max_score": 5.564,
+          "median_score": 1.5539999999999998,
+          "outlier_count": 9,
+          "outlier_threshold": 3.5650000000000004,
+          "top5_excess_share": 0.380593,
+          "spearman_vs_old": 0.962673,
+          "rank_changed": 233,
+          "comparable_rank_count": 250,
+          "rank_changed_ratio": 0.932,
+          "mean_absolute_score_delta": 0.095,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "134022A",
+            "JX040210"
+          ]
+        },
+        {
+          "snapshot": "2026-11-08",
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "candidate_count": 252,
+          "max_score": 5.34,
+          "median_score": 1.4565000000000001,
+          "outlier_count": 19,
+          "outlier_threshold": 3.079,
+          "top5_excess_share": 0.386063,
+          "spearman_vs_old": 0.957986,
+          "rank_changed": 239,
+          "comparable_rank_count": 252,
+          "rank_changed_ratio": 0.948413,
+          "mean_absolute_score_delta": 0.1106,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "134022A",
+            "PY040226"
+          ]
+        },
+        {
+          "snapshot": "2026-11-15",
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "candidate_count": 253,
+          "max_score": 4.929,
+          "median_score": 1.258,
+          "outlier_count": 25,
+          "outlier_threshold": 2.71,
+          "top5_excess_share": 0.375282,
+          "spearman_vs_old": 0.936448,
+          "rank_changed": 238,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.940711,
+          "mean_absolute_score_delta": 0.1864,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "MS040211",
+            "134022A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-22",
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "candidate_count": 253,
+          "max_score": 4.857,
+          "median_score": 1.144,
+          "outlier_count": 21,
+          "outlier_threshold": 2.7459999999999996,
+          "top5_excess_share": 0.390727,
+          "spearman_vs_old": 0.939887,
+          "rank_changed": 241,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.952569,
+          "mean_absolute_score_delta": 0.2615,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "MS040211",
+            "135002A"
+          ]
+        }
+      ],
+      "aggregate": {
+        "snapshot_count": 4,
+        "max_score_across_snapshots": 5.564,
+        "average_top5_excess_share": 0.383166,
+        "average_spearman_vs_old": 0.949249,
+        "average_rank_changed_ratio": 0.943423,
+        "average_mean_absolute_score_delta": 0.163375,
+        "top3_preserved_snapshot_count": 0
+      }
+    },
+    "low_1m_10_50_40": {
+      "weights": {
+        "return_1m": 0.1,
+        "return_3m": 0.5,
+        "return_6m": 0.4
+      },
+      "per_snapshot": [
+        {
+          "snapshot": "2026-10-29",
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "candidate_count": 250,
+          "max_score": 5.467,
+          "median_score": 1.545,
+          "outlier_count": 6,
+          "outlier_threshold": 3.6820000000000004,
+          "top5_excess_share": 0.360576,
+          "spearman_vs_old": 0.972498,
+          "rank_changed": 225,
+          "comparable_rank_count": 250,
+          "rank_changed_ratio": 0.9,
+          "mean_absolute_score_delta": 0.0646,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "JX040210",
+            "134022A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-08",
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "candidate_count": 252,
+          "max_score": 5.175,
+          "median_score": 1.4635,
+          "outlier_count": 13,
+          "outlier_threshold": 3.3209999999999997,
+          "top5_excess_share": 0.362706,
+          "spearman_vs_old": 0.970319,
+          "rank_changed": 229,
+          "comparable_rank_count": 252,
+          "rank_changed_ratio": 0.90873,
+          "mean_absolute_score_delta": 0.0732,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "134022A",
+            "135002A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-15",
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "candidate_count": 253,
+          "max_score": 4.932,
+          "median_score": 1.314,
+          "outlier_count": 21,
+          "outlier_threshold": 2.917,
+          "top5_excess_share": 0.364204,
+          "spearman_vs_old": 0.96077,
+          "rank_changed": 231,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.913043,
+          "mean_absolute_score_delta": 0.1159,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "135002A",
+            "MS040211"
+          ]
+        },
+        {
+          "snapshot": "2026-11-22",
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "candidate_count": 253,
+          "max_score": 4.861,
+          "median_score": 1.197,
+          "outlier_count": 22,
+          "outlier_threshold": 2.7230000000000003,
+          "top5_excess_share": 0.373218,
+          "spearman_vs_old": 0.963668,
+          "rank_changed": 234,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.924901,
+          "mean_absolute_score_delta": 0.1603,
+          "top3_same_as_old": false,
+          "top3_codes": [
+            "JX040213",
+            "135002A",
+            "MS040211"
+          ]
+        }
+      ],
+      "aggregate": {
+        "snapshot_count": 4,
+        "max_score_across_snapshots": 5.467,
+        "average_top5_excess_share": 0.365176,
+        "average_spearman_vs_old": 0.966814,
+        "average_rank_changed_ratio": 0.911669,
+        "average_mean_absolute_score_delta": 0.1035,
+        "top3_preserved_snapshot_count": 0
+      }
+    },
+    "no_1m_0_50_50": {
+      "weights": {
+        "return_1m": 0,
+        "return_3m": 0.5,
+        "return_6m": 0.5
+      },
+      "per_snapshot": [
+        {
+          "snapshot": "2026-10-29",
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "candidate_count": 250,
+          "max_score": 5.37,
+          "median_score": 1.5350000000000001,
+          "outlier_count": 7,
+          "outlier_threshold": 3.6500000000000004,
+          "top5_excess_share": 0.340627,
+          "spearman_vs_old": 0.973517,
+          "rank_changed": 214,
+          "comparable_rank_count": 250,
+          "rank_changed_ratio": 0.856,
+          "mean_absolute_score_delta": 0.0543,
+          "top3_same_as_old": true,
+          "top3_codes": [
+            "JX040213",
+            "JX040210",
+            "135002A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-08",
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "candidate_count": 252,
+          "max_score": 5.01,
+          "median_score": 1.475,
+          "outlier_count": 10,
+          "outlier_threshold": 3.49,
+          "top5_excess_share": 0.339429,
+          "spearman_vs_old": 0.971472,
+          "rank_changed": 224,
+          "comparable_rank_count": 252,
+          "rank_changed_ratio": 0.888889,
+          "mean_absolute_score_delta": 0.0536,
+          "top3_same_as_old": true,
+          "top3_codes": [
+            "JX040213",
+            "135002A",
+            "MS040211"
+          ]
+        },
+        {
+          "snapshot": "2026-11-15",
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "candidate_count": 253,
+          "max_score": 4.935,
+          "median_score": 1.345,
+          "outlier_count": 12,
+          "outlier_threshold": 3.19,
+          "top5_excess_share": 0.34606,
+          "spearman_vs_old": 0.968967,
+          "rank_changed": 213,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.841897,
+          "mean_absolute_score_delta": 0.0648,
+          "top3_same_as_old": true,
+          "top3_codes": [
+            "JX040213",
+            "135002A",
+            "134022A"
+          ]
+        },
+        {
+          "snapshot": "2026-11-22",
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "candidate_count": 253,
+          "max_score": 4.865,
+          "median_score": 1.245,
+          "outlier_count": 20,
+          "outlier_threshold": 2.8999999999999995,
+          "top5_excess_share": 0.353724,
+          "spearman_vs_old": 0.967774,
+          "rank_changed": 218,
+          "comparable_rank_count": 253,
+          "rank_changed_ratio": 0.86166,
+          "mean_absolute_score_delta": 0.0752,
+          "top3_same_as_old": true,
+          "top3_codes": [
+            "JX040213",
+            "135002A",
+            "PY040226"
+          ]
+        }
+      ],
+      "aggregate": {
+        "snapshot_count": 4,
+        "max_score_across_snapshots": 5.37,
+        "average_top5_excess_share": 0.34496,
+        "average_spearman_vs_old": 0.970433,
+        "average_rank_changed_ratio": 0.862112,
+        "average_mean_absolute_score_delta": 0.061975,
+        "top3_preserved_snapshot_count": 4
+      }
+    }
+  },
+  "long_frontload_options": {
+    "A": {
+      "per_snapshot": [
+        {
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "rank_changed": 511,
+          "comparable_rank_count": 609,
+          "max_score": 6.6,
+          "median_score": 1.714,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "132042A",
+            "MS040210"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "rank_changed": 515,
+          "comparable_rank_count": 611,
+          "max_score": 5.96,
+          "median_score": 1.51165,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "132042A",
+            "MS040210"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "rank_changed": 518,
+          "comparable_rank_count": 613,
+          "max_score": 5.6,
+          "median_score": 1.323,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "MS040210",
+            "132042A"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "rank_changed": 516,
+          "comparable_rank_count": 616,
+          "max_score": 5.04,
+          "median_score": 1.032,
+          "outlier_count": 0,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "665121A",
+            "MS040213"
+          ]
+        }
+      ],
+      "aggregate": {
+        "average_rank_changed": 515,
+        "top3_same_as_A_snapshot_count": 4,
+        "outlier_count": 3
+      },
+      "pairwise_to_A": null,
+      "pairwise_to_B": null
+    },
+    "B": {
+      "per_snapshot": [
+        {
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "rank_changed": 514,
+          "comparable_rank_count": 609,
+          "max_score": 6.6,
+          "median_score": 1.718,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "132042A",
+            "MS040210"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "rank_changed": 516,
+          "comparable_rank_count": 611,
+          "max_score": 5.96,
+          "median_score": 1.51165,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "132042A",
+            "MS040210"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "rank_changed": 521,
+          "comparable_rank_count": 613,
+          "max_score": 5.6,
+          "median_score": 1.323,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "MS040210",
+            "132042A"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "rank_changed": 519,
+          "comparable_rank_count": 616,
+          "max_score": 5.04,
+          "median_score": 1.032,
+          "outlier_count": 0,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "665121A",
+            "MS040213"
+          ]
+        }
+      ],
+      "aggregate": {
+        "average_rank_changed": 517.5,
+        "top3_same_as_A_snapshot_count": 4,
+        "outlier_count": 3
+      },
+      "pairwise_to_A": {
+        "changed_score_count": 173,
+        "max_positive_score_delta": 0.075
+      },
+      "pairwise_to_B": null
+    },
+    "C": {
+      "per_snapshot": [
+        {
+          "source": "cmb_r2_universe-2026-10-30.csv",
+          "rank_changed": 513,
+          "comparable_rank_count": 609,
+          "max_score": 6.6,
+          "median_score": 1.718,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "132042A",
+            "MS040210"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-09.csv",
+          "rank_changed": 517,
+          "comparable_rank_count": 611,
+          "max_score": 5.96,
+          "median_score": 1.51165,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "132042A",
+            "MS040210"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-16.csv",
+          "rank_changed": 521,
+          "comparable_rank_count": 613,
+          "max_score": 5.6,
+          "median_score": 1.323,
+          "outlier_count": 1,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "MS040210",
+            "132042A"
+          ]
+        },
+        {
+          "source": "cmb_r2_universe-2026-11-23.csv",
+          "rank_changed": 524,
+          "comparable_rank_count": 616,
+          "max_score": 5.04,
+          "median_score": 1.032,
+          "outlier_count": 0,
+          "top3_same_as_old": true,
+          "top3_same_as_A": true,
+          "top3_codes": [
+            "667828A",
+            "665121A",
+            "MS040213"
+          ]
+        }
+      ],
+      "aggregate": {
+        "average_rank_changed": 518.75,
+        "top3_same_as_A_snapshot_count": 4,
+        "outlier_count": 3
+      },
+      "pairwise_to_A": {
+        "changed_score_count": 173,
+        "max_positive_score_delta": 0.25
+      },
+      "pairwise_to_B": {
+        "changed_score_count": 55,
+        "max_positive_score_delta": 0.234
+      }
+    }
+  },
+  "selected_parameters": {
+    "selection_status": "current_policy_under_review",
+    "buckets": {
+      "cash": {
+        "return_1m": 0.7,
+        "return_3m": 0.3
+      },
+      "short": {
+        "return_1m": 0.2,
+        "return_3m": 0.5,
+        "return_6m": 0.3
+      },
+      "medium": {
+        "return_3m": 0.5,
+        "return_6m": 0.3,
+        "return_1y": 0.2
+      },
+      "long": {
+        "return_3m": 0.2,
+        "return_6m": 0.4,
+        "return_1y": 0.4
+      }
+    },
+    "long_frontload_scheme": "B",
+    "weighted_yield_mode": "alias_of_reference_yield",
+    "cash_policy": "display_only_no_score_no_rank_no_allocation_no_candidate_no_proposal"
+  },
+  "decision": {
+    "short_weights": {
+      "original": {
+        "return_1m": 0.5,
+        "return_3m": 0.3,
+        "return_6m": 0.2
+      },
+      "selected": {
+        "return_1m": 0.2,
+        "return_3m": 0.5,
+        "return_6m": 0.3
+      },
+      "outcome": "decision_required",
+      "rationale": "4 份规格后快照中，short 20/50/30 的最高评分为 5.564，与旧排序的平均 Spearman 为 0.949249。"
+    },
+    "long_frontload": {
+      "selected": "B",
+      "outcome": "decision_required",
+      "rationale": "4 份规格后快照中，B 与 A 的前三名有 4/4 份相同；B 平均 long 排名变化 517.5，A 为 515。"
+    },
+    "medium_weights": {
+      "outcome": "current_policy_pending_user_decision",
+      "rationale": "medium 当前正式权重为 50/30/20；本轮只记录样本外证据，不预选继续或调整。"
+    },
+    "long_weights": {
+      "outcome": "current_policy_pending_user_decision",
+      "rationale": "long 当前正式权重为 20/40/40；单一窗口风险仍由证据档位上限和观察指标单独表达。"
+    },
+    "cash_weights": {
+      "outcome": "display_only_current_policy",
+      "rationale": "cash 只展示，永不参与样本外排名、分配、候选或提案评分。"
+    }
+  },
+  "production_projection": {
+    "selected": {
+      "status": "projection_only_not_integrated",
+      "production_snapshot_date": "2026-11-22",
+      "formal_attribution": {
+        "status": "available",
+        "reference_yield_coverage_pct": 100,
+        "product_evidence_count": 13
+      },
+      "formal_proposals": {
+        "pending_count": 0,
+        "accepted_count": 0,
+        "executed_count": 4
+      },
+      "current_holdings": [
+        {
+          "code": "120056A",
+          "name": "招银理财招睿添金90天持有期6号A",
+          "bucket": "medium",
+          "current_yield_pct": 1.603,
+          "shadow_reference_yield_pct": 1.603,
+          "changed": false
+        },
+        {
+          "code": "17356D",
+          "name": "招银理财招睿季添利90天持有1号D",
+          "bucket": "medium",
+          "current_yield_pct": 1.289,
+          "shadow_reference_yield_pct": 1.289,
+          "changed": false
+        },
+        {
+          "code": "17318K",
+          "name": "招银理财招睿添利180天持有15号K",
+          "bucket": "long",
+          "current_yield_pct": 2.408,
+          "shadow_reference_yield_pct": 2.408,
+          "changed": false
+        },
+        {
+          "code": "13328D",
+          "name": "招银理财招睿丰和180天持有期5号D",
+          "bucket": "long",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false
+        },
+        {
+          "code": "GD040242",
+          "name": "光大理财阳光金增利稳健天天购5号（180天最低持有）",
+          "bucket": "long",
+          "current_yield_pct": 2.65,
+          "shadow_reference_yield_pct": 2.65,
+          "changed": false
+        },
+        {
+          "code": "ZX040233",
+          "name": "信银理财慧盈象固收增利三个月持有期32号理财产品",
+          "bucket": "medium",
+          "current_yield_pct": 2.255,
+          "shadow_reference_yield_pct": 2.255,
+          "changed": false
+        },
+        {
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "bucket": "short",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false
+        },
+        {
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "bucket": "short",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false
+        },
+        {
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "bucket": null,
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true
+        },
+        {
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "bucket": "short",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false
+        },
+        {
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "bucket": "short",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false
+        },
+        {
+          "code": "NY040215",
+          "name": "农银理财农银安心·灵动30天理财产品第9期",
+          "bucket": "short",
+          "current_yield_pct": 3.66,
+          "shadow_reference_yield_pct": 3.66,
+          "changed": false
+        },
+        {
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "bucket": "short",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false
+        }
+      ],
+      "current_yield_changed_count": 1,
+      "candidates": [
+        {
+          "holding_code": "120056A",
+          "code": "JX040223",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第21期",
+          "current_yield_pct": 3.7,
+          "shadow_reference_yield_pct": 3.7,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.097,
+          "shadow_yield_gap_pp": 2.097
+        },
+        {
+          "holding_code": "120056A",
+          "code": "GD040244",
+          "name": "光大理财阳光金增利稳健天天购17号（90天最低持有）",
+          "current_yield_pct": 3.437,
+          "shadow_reference_yield_pct": 3.437,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.834,
+          "shadow_yield_gap_pp": 1.834
+        },
+        {
+          "holding_code": "120056A",
+          "code": "JY040247",
+          "name": "交银理财稳享灵动慧利日开68号（90天持有期）理财产品B",
+          "current_yield_pct": 3.4475,
+          "shadow_reference_yield_pct": 3.4475,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.8445,
+          "shadow_yield_gap_pp": 1.8445
+        },
+        {
+          "holding_code": "120056A",
+          "code": "JX040220",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第19期",
+          "current_yield_pct": 2.66,
+          "shadow_reference_yield_pct": 2.66,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.057,
+          "shadow_yield_gap_pp": 1.057
+        },
+        {
+          "holding_code": "120056A",
+          "code": "HX040225",
+          "name": "华夏理财悦慧最短持有90天理财产品M款",
+          "current_yield_pct": 3.1175,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 1.5145,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "17356D",
+          "code": "JX040223",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第21期",
+          "current_yield_pct": 3.7,
+          "shadow_reference_yield_pct": 3.7,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.411,
+          "shadow_yield_gap_pp": 2.411
+        },
+        {
+          "holding_code": "17356D",
+          "code": "GD040244",
+          "name": "光大理财阳光金增利稳健天天购17号（90天最低持有）",
+          "current_yield_pct": 3.437,
+          "shadow_reference_yield_pct": 3.437,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.148,
+          "shadow_yield_gap_pp": 2.148
+        },
+        {
+          "holding_code": "17356D",
+          "code": "JY040247",
+          "name": "交银理财稳享灵动慧利日开68号（90天持有期）理财产品B",
+          "current_yield_pct": 3.4475,
+          "shadow_reference_yield_pct": 3.4475,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.1585,
+          "shadow_yield_gap_pp": 2.1585
+        },
+        {
+          "holding_code": "17356D",
+          "code": "JX040220",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第19期",
+          "current_yield_pct": 2.66,
+          "shadow_reference_yield_pct": 2.66,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.371,
+          "shadow_yield_gap_pp": 1.371
+        },
+        {
+          "holding_code": "17356D",
+          "code": "HX040225",
+          "name": "华夏理财悦慧最短持有90天理财产品M款",
+          "current_yield_pct": 3.1175,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 1.8285,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "17318K",
+          "code": "JY040241",
+          "name": "交银理财稳享灵动慧利日开64号（180天持有期）理财产品",
+          "current_yield_pct": 3.7167,
+          "shadow_reference_yield_pct": 3.7167,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.3087,
+          "shadow_yield_gap_pp": 1.3087
+        },
+        {
+          "holding_code": "17318K",
+          "code": "JY040236",
+          "name": "交银理财稳享灵动慧利日开63号（180天持有期）理财产品",
+          "current_yield_pct": 3.5633,
+          "shadow_reference_yield_pct": 3.5633,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.1553,
+          "shadow_yield_gap_pp": 1.1553
+        },
+        {
+          "holding_code": "13328D",
+          "code": "JY040241",
+          "name": "交银理财稳享灵动慧利日开64号（180天持有期）理财产品",
+          "current_yield_pct": 3.7167,
+          "shadow_reference_yield_pct": 3.7167,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.9987,
+          "shadow_yield_gap_pp": 0.9987
+        },
+        {
+          "holding_code": "13328D",
+          "code": "JY040236",
+          "name": "交银理财稳享灵动慧利日开63号（180天持有期）理财产品",
+          "current_yield_pct": 3.5633,
+          "shadow_reference_yield_pct": 3.5633,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.8453,
+          "shadow_yield_gap_pp": 0.8453
+        },
+        {
+          "holding_code": "GD040242",
+          "code": "JY040241",
+          "name": "交银理财稳享灵动慧利日开64号（180天持有期）理财产品",
+          "current_yield_pct": 3.7167,
+          "shadow_reference_yield_pct": 3.7167,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.0667,
+          "shadow_yield_gap_pp": 1.0667
+        },
+        {
+          "holding_code": "GD040242",
+          "code": "JY040236",
+          "name": "交银理财稳享灵动慧利日开63号（180天持有期）理财产品",
+          "current_yield_pct": 3.5633,
+          "shadow_reference_yield_pct": 3.5633,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.9133,
+          "shadow_yield_gap_pp": 0.9133
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "JX040223",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第21期",
+          "current_yield_pct": 3.7,
+          "shadow_reference_yield_pct": 3.7,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.445,
+          "shadow_yield_gap_pp": 1.445
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "GD040244",
+          "name": "光大理财阳光金增利稳健天天购17号（90天最低持有）",
+          "current_yield_pct": 3.437,
+          "shadow_reference_yield_pct": 3.437,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.182,
+          "shadow_yield_gap_pp": 1.182
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "JY040247",
+          "name": "交银理财稳享灵动慧利日开68号（90天持有期）理财产品B",
+          "current_yield_pct": 3.4475,
+          "shadow_reference_yield_pct": 3.4475,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.1925,
+          "shadow_yield_gap_pp": 1.1925
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "HX040225",
+          "name": "华夏理财悦慧最短持有90天理财产品M款",
+          "current_yield_pct": 3.1175,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.8625,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "JX040220",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第19期",
+          "current_yield_pct": 2.66,
+          "shadow_reference_yield_pct": 2.66,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.405,
+          "shadow_yield_gap_pp": 0.405
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 0.757
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.491,
+          "shadow_yield_gap_pp": 0.491
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.1437
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.104,
+          "shadow_yield_gap_pp": -0.104
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 0.757
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.491,
+          "shadow_yield_gap_pp": 0.491
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.1437
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.104,
+          "shadow_yield_gap_pp": -0.104
+        },
+        {
+          "holding_code": "120019K",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.809,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.1957,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.543,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.034,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 0.757
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.491,
+          "shadow_yield_gap_pp": 0.491
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.1437
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.104,
+          "shadow_yield_gap_pp": -0.104
+        },
+        {
+          "holding_code": "120040A",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.266,
+          "shadow_yield_gap_pp": 0.266
+        },
+        {
+          "holding_code": "120040A",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.3473,
+          "shadow_yield_gap_pp": -0.3473
+        },
+        {
+          "holding_code": "120040A",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.543,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.491,
+          "shadow_yield_gap_pp": -0.491
+        },
+        {
+          "holding_code": "120040A",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.577,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.595,
+          "shadow_yield_gap_pp": -0.595
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.081,
+          "shadow_yield_gap_pp": -0.081
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.9657,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.6943,
+          "shadow_yield_gap_pp": -0.6943
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.89,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.838,
+          "shadow_yield_gap_pp": -0.838
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.347,
+          "shadow_yield_gap_pp": -0.347
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.924,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.579,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.6133,
+          "shadow_yield_gap_pp": 0.6133
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.313,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.3473,
+          "shadow_yield_gap_pp": 0.3473
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.1957,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.822,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.1437,
+          "shadow_yield_gap_pp": -0.1437
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.2297,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.2477,
+          "shadow_yield_gap_pp": -0.2477
+        }
+      ],
+      "candidate_yield_changed_count": 16,
+      "candidate_count": 63,
+      "verdict_changes": [
+        {
+          "holding_code": "120056A",
+          "candidate_code": "HX040225",
+          "candidate_name": "华夏理财悦慧最短持有90天理财产品M款",
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.1175,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 1.603,
+          "shadow_current_yield_pct": 1.603,
+          "old_yield_gap_pp": 1.5145,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "17356D",
+          "candidate_code": "HX040225",
+          "candidate_name": "华夏理财悦慧最短持有90天理财产品M款",
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.1175,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 1.289,
+          "shadow_current_yield_pct": 1.289,
+          "old_yield_gap_pp": 1.8285,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "ZX040233",
+          "candidate_code": "HX040225",
+          "candidate_name": "华夏理财悦慧最短持有90天理财产品M款",
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.1175,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.255,
+          "shadow_current_yield_pct": 2.255,
+          "old_yield_gap_pp": 0.8625,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.822,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.822,
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.822,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.822,
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "candidate_code": "JX040210",
+          "candidate_name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.822,
+          "shadow_candidate_yield_pct": 2.822,
+          "old_current_yield_pct": 2.77,
+          "shadow_current_yield_pct": null,
+          "old_yield_gap_pp": 0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.77,
+          "shadow_current_yield_pct": null,
+          "old_yield_gap_pp": -0.034,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "candidate_code": "132083A",
+          "candidate_name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.718,
+          "shadow_candidate_yield_pct": 2.718,
+          "old_current_yield_pct": 2.77,
+          "shadow_current_yield_pct": null,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.822,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.822,
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.313,
+          "shadow_current_yield_pct": 3.313,
+          "old_yield_gap_pp": -0.543,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.313,
+          "shadow_current_yield_pct": 3.313,
+          "old_yield_gap_pp": -0.577,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "NY040215",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.66,
+          "shadow_current_yield_pct": 3.66,
+          "old_yield_gap_pp": -0.89,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "NY040215",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.66,
+          "shadow_current_yield_pct": 3.66,
+          "old_yield_gap_pp": -0.924,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.9657,
+          "shadow_current_yield_pct": 2.9657,
+          "old_yield_gap_pp": -0.1957,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.9657,
+          "shadow_current_yield_pct": 2.9657,
+          "old_yield_gap_pp": -0.2297,
+          "shadow_yield_gap_pp": null
+        }
+      ],
+      "verdict_changed_count": 18
+    },
+    "original_candidate": {
+      "status": "projection_only_not_integrated",
+      "production_snapshot_date": "2026-11-22",
+      "formal_attribution": {
+        "status": "available",
+        "reference_yield_coverage_pct": 100,
+        "product_evidence_count": 13
+      },
+      "formal_proposals": {
+        "pending_count": 0,
+        "accepted_count": 0,
+        "executed_count": 4
+      },
+      "current_holdings": [
+        {
+          "code": "120056A",
+          "name": "招银理财招睿添金90天持有期6号A",
+          "bucket": "medium",
+          "current_yield_pct": 1.603,
+          "shadow_reference_yield_pct": 1.603,
+          "changed": false
+        },
+        {
+          "code": "17356D",
+          "name": "招银理财招睿季添利90天持有1号D",
+          "bucket": "medium",
+          "current_yield_pct": 1.289,
+          "shadow_reference_yield_pct": 1.289,
+          "changed": false
+        },
+        {
+          "code": "17318K",
+          "name": "招银理财招睿添利180天持有15号K",
+          "bucket": "long",
+          "current_yield_pct": 2.408,
+          "shadow_reference_yield_pct": 2.408,
+          "changed": false
+        },
+        {
+          "code": "13328D",
+          "name": "招银理财招睿丰和180天持有期5号D",
+          "bucket": "long",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.718,
+          "changed": false
+        },
+        {
+          "code": "GD040242",
+          "name": "光大理财阳光金增利稳健天天购5号（180天最低持有）",
+          "bucket": "long",
+          "current_yield_pct": 2.65,
+          "shadow_reference_yield_pct": 2.65,
+          "changed": false
+        },
+        {
+          "code": "ZX040233",
+          "name": "信银理财慧盈象固收增利三个月持有期32号理财产品",
+          "bucket": "medium",
+          "current_yield_pct": 2.255,
+          "shadow_reference_yield_pct": 2.255,
+          "changed": false
+        },
+        {
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "bucket": "short",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true
+        },
+        {
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "bucket": "short",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true
+        },
+        {
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "bucket": null,
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true
+        },
+        {
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "bucket": "short",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true
+        },
+        {
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "bucket": "short",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true
+        },
+        {
+          "code": "NY040215",
+          "name": "农银理财农银安心·灵动30天理财产品第9期",
+          "bucket": "short",
+          "current_yield_pct": 3.66,
+          "shadow_reference_yield_pct": 3.66,
+          "changed": false
+        },
+        {
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "bucket": "short",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true
+        }
+      ],
+      "current_yield_changed_count": 6,
+      "candidates": [
+        {
+          "holding_code": "120056A",
+          "code": "JX040223",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第21期",
+          "current_yield_pct": 3.7,
+          "shadow_reference_yield_pct": 3.7,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.097,
+          "shadow_yield_gap_pp": 2.097
+        },
+        {
+          "holding_code": "120056A",
+          "code": "GD040244",
+          "name": "光大理财阳光金增利稳健天天购17号（90天最低持有）",
+          "current_yield_pct": 3.437,
+          "shadow_reference_yield_pct": 3.437,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.834,
+          "shadow_yield_gap_pp": 1.834
+        },
+        {
+          "holding_code": "120056A",
+          "code": "JY040247",
+          "name": "交银理财稳享灵动慧利日开68号（90天持有期）理财产品B",
+          "current_yield_pct": 3.4475,
+          "shadow_reference_yield_pct": 3.4475,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.8445,
+          "shadow_yield_gap_pp": 1.8445
+        },
+        {
+          "holding_code": "120056A",
+          "code": "JX040220",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第19期",
+          "current_yield_pct": 2.66,
+          "shadow_reference_yield_pct": 2.66,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.057,
+          "shadow_yield_gap_pp": 1.057
+        },
+        {
+          "holding_code": "120056A",
+          "code": "HX040225",
+          "name": "华夏理财悦慧最短持有90天理财产品M款",
+          "current_yield_pct": 3.1175,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 1.5145,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "17356D",
+          "code": "JX040223",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第21期",
+          "current_yield_pct": 3.7,
+          "shadow_reference_yield_pct": 3.7,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.411,
+          "shadow_yield_gap_pp": 2.411
+        },
+        {
+          "holding_code": "17356D",
+          "code": "GD040244",
+          "name": "光大理财阳光金增利稳健天天购17号（90天最低持有）",
+          "current_yield_pct": 3.437,
+          "shadow_reference_yield_pct": 3.437,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.148,
+          "shadow_yield_gap_pp": 2.148
+        },
+        {
+          "holding_code": "17356D",
+          "code": "JY040247",
+          "name": "交银理财稳享灵动慧利日开68号（90天持有期）理财产品B",
+          "current_yield_pct": 3.4475,
+          "shadow_reference_yield_pct": 3.4475,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 2.1585,
+          "shadow_yield_gap_pp": 2.1585
+        },
+        {
+          "holding_code": "17356D",
+          "code": "JX040220",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第19期",
+          "current_yield_pct": 2.66,
+          "shadow_reference_yield_pct": 2.66,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.371,
+          "shadow_yield_gap_pp": 1.371
+        },
+        {
+          "holding_code": "17356D",
+          "code": "HX040225",
+          "name": "华夏理财悦慧最短持有90天理财产品M款",
+          "current_yield_pct": 3.1175,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 1.8285,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "17318K",
+          "code": "JY040241",
+          "name": "交银理财稳享灵动慧利日开64号（180天持有期）理财产品",
+          "current_yield_pct": 3.7167,
+          "shadow_reference_yield_pct": 3.7167,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.3087,
+          "shadow_yield_gap_pp": 1.3087
+        },
+        {
+          "holding_code": "17318K",
+          "code": "JY040236",
+          "name": "交银理财稳享灵动慧利日开63号（180天持有期）理财产品",
+          "current_yield_pct": 3.5633,
+          "shadow_reference_yield_pct": 3.5633,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.1553,
+          "shadow_yield_gap_pp": 1.1553
+        },
+        {
+          "holding_code": "13328D",
+          "code": "JY040241",
+          "name": "交银理财稳享灵动慧利日开64号（180天持有期）理财产品",
+          "current_yield_pct": 3.7167,
+          "shadow_reference_yield_pct": 3.7167,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.9987,
+          "shadow_yield_gap_pp": 0.9987
+        },
+        {
+          "holding_code": "13328D",
+          "code": "JY040236",
+          "name": "交银理财稳享灵动慧利日开63号（180天持有期）理财产品",
+          "current_yield_pct": 3.5633,
+          "shadow_reference_yield_pct": 3.5633,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.8453,
+          "shadow_yield_gap_pp": 0.8453
+        },
+        {
+          "holding_code": "GD040242",
+          "code": "JY040241",
+          "name": "交银理财稳享灵动慧利日开64号（180天持有期）理财产品",
+          "current_yield_pct": 3.7167,
+          "shadow_reference_yield_pct": 3.7167,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.0667,
+          "shadow_yield_gap_pp": 1.0667
+        },
+        {
+          "holding_code": "GD040242",
+          "code": "JY040236",
+          "name": "交银理财稳享灵动慧利日开63号（180天持有期）理财产品",
+          "current_yield_pct": 3.5633,
+          "shadow_reference_yield_pct": 3.5633,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.9133,
+          "shadow_yield_gap_pp": 0.9133
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "JX040223",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第21期",
+          "current_yield_pct": 3.7,
+          "shadow_reference_yield_pct": 3.7,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.445,
+          "shadow_yield_gap_pp": 1.445
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "GD040244",
+          "name": "光大理财阳光金增利稳健天天购17号（90天最低持有）",
+          "current_yield_pct": 3.437,
+          "shadow_reference_yield_pct": 3.437,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.182,
+          "shadow_yield_gap_pp": 1.182
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "JY040247",
+          "name": "交银理财稳享灵动慧利日开68号（90天持有期）理财产品B",
+          "current_yield_pct": 3.4475,
+          "shadow_reference_yield_pct": 3.4475,
+          "changed": false,
+          "old_verdict": "replace",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 1.1925,
+          "shadow_yield_gap_pp": 1.1925
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "HX040225",
+          "name": "华夏理财悦慧最短持有90天理财产品M款",
+          "current_yield_pct": 3.1175,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.8625,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "ZX040233",
+          "code": "JX040220",
+          "name": "建信理财嘉鑫（增利）固收类最低持有90天产品第19期",
+          "current_yield_pct": 2.66,
+          "shadow_reference_yield_pct": 2.66,
+          "changed": false,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.405,
+          "shadow_yield_gap_pp": 0.405
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 1.24
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.491,
+          "shadow_yield_gap_pp": 0.581
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.2345
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.52,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.104,
+          "shadow_yield_gap_pp": -0.123
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 1.24
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.491,
+          "shadow_yield_gap_pp": 0.581
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.2345
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.52,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.104,
+          "shadow_yield_gap_pp": -0.123
+        },
+        {
+          "holding_code": "120019K",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.809,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.1957,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.543,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.034,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.52,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 1.24
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.491,
+          "shadow_yield_gap_pp": 0.581
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.2345
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.52,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.104,
+          "shadow_yield_gap_pp": -0.123
+        },
+        {
+          "holding_code": "120040A",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.266,
+          "shadow_yield_gap_pp": 0.659
+        },
+        {
+          "holding_code": "120040A",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.3473,
+          "shadow_yield_gap_pp": -0.3465
+        },
+        {
+          "holding_code": "120040A",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.543,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.491,
+          "shadow_yield_gap_pp": -0.581
+        },
+        {
+          "holding_code": "120040A",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.577,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.52,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.595,
+          "shadow_yield_gap_pp": -0.704
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.081,
+          "shadow_yield_gap_pp": 0.223
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "PY040225",
+          "name": "浦银理财周周鑫最短持有期176号A",
+          "current_yield_pct": 2.9657,
+          "shadow_reference_yield_pct": 2.8775,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.6943,
+          "shadow_yield_gap_pp": -0.7825
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.89,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.838,
+          "shadow_yield_gap_pp": -1.017
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.347,
+          "shadow_yield_gap_pp": -0.436
+        },
+        {
+          "holding_code": "NY040215",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.924,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "ZX040225",
+          "name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "current_yield_pct": 3.579,
+          "shadow_reference_yield_pct": 3.883,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_yield_gap_pp": 0.6133,
+          "shadow_yield_gap_pp": 1.0055
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "120040A",
+          "name": "招银理财招睿添金30天持有期10号固定收益类理财计划",
+          "current_yield_pct": 3.313,
+          "shadow_reference_yield_pct": 3.224,
+          "changed": true,
+          "old_verdict": "watch",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": 0.3473,
+          "shadow_yield_gap_pp": 0.3465
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "120019K",
+          "name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "current_yield_pct": 2.77,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.1957,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "JX040210",
+          "name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "current_yield_pct": 2.822,
+          "shadow_reference_yield_pct": 2.643,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.1437,
+          "shadow_yield_gap_pp": -0.2345
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "MS040208",
+          "name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "current_yield_pct": 2.736,
+          "shadow_reference_yield_pct": null,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_yield_gap_pp": -0.2297,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "code": "132083A",
+          "name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "current_yield_pct": 2.718,
+          "shadow_reference_yield_pct": 2.52,
+          "changed": true,
+          "old_verdict": "hold",
+          "shadow_verdict": "hold",
+          "old_yield_gap_pp": -0.2477,
+          "shadow_yield_gap_pp": -0.3575
+        }
+      ],
+      "candidate_yield_changed_count": 45,
+      "candidate_count": 63,
+      "verdict_changes": [
+        {
+          "holding_code": "120056A",
+          "candidate_code": "HX040225",
+          "candidate_name": "华夏理财悦慧最短持有90天理财产品M款",
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.1175,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 1.603,
+          "shadow_current_yield_pct": 1.603,
+          "old_yield_gap_pp": 1.5145,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "17356D",
+          "candidate_code": "HX040225",
+          "candidate_name": "华夏理财悦慧最短持有90天理财产品M款",
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.1175,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 1.289,
+          "shadow_current_yield_pct": 1.289,
+          "old_yield_gap_pp": 1.8285,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "ZX040233",
+          "candidate_code": "HX040225",
+          "candidate_name": "华夏理财悦慧最短持有90天理财产品M款",
+          "old_verdict": "replace",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.1175,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.255,
+          "shadow_current_yield_pct": 2.255,
+          "old_yield_gap_pp": 0.8625,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "ZX040225",
+          "candidate_name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_candidate_yield_pct": 3.579,
+          "shadow_candidate_yield_pct": 3.883,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 1.24
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "PY040225",
+          "candidate_name": "浦银理财周周鑫最短持有期176号A",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.9657,
+          "shadow_candidate_yield_pct": 2.8775,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.2345
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "ZX040225",
+          "candidate_name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_candidate_yield_pct": 3.579,
+          "shadow_candidate_yield_pct": 3.883,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 1.24
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "PY040225",
+          "candidate_name": "浦银理财周周鑫最短持有期176号A",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.9657,
+          "shadow_candidate_yield_pct": 2.8775,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.2345
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "candidate_code": "JX040210",
+          "candidate_name": "建信理财嘉鑫固收类最低持有7天产品第6期",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.822,
+          "shadow_candidate_yield_pct": 2.643,
+          "old_current_yield_pct": 2.77,
+          "shadow_current_yield_pct": null,
+          "old_yield_gap_pp": 0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.77,
+          "shadow_current_yield_pct": null,
+          "old_yield_gap_pp": -0.034,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120019K",
+          "candidate_code": "132083A",
+          "candidate_name": "招银理财招睿添利30天持有期25号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.718,
+          "shadow_candidate_yield_pct": 2.52,
+          "old_current_yield_pct": 2.77,
+          "shadow_current_yield_pct": null,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "ZX040225",
+          "candidate_name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_candidate_yield_pct": 3.579,
+          "shadow_candidate_yield_pct": 3.883,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": 0.757,
+          "shadow_yield_gap_pp": 1.24
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "PY040225",
+          "candidate_name": "浦银理财周周鑫最短持有期176号A",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.9657,
+          "shadow_candidate_yield_pct": 2.8775,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": 0.1437,
+          "shadow_yield_gap_pp": 0.2345
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": -0.052,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "JX040210",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.822,
+          "shadow_current_yield_pct": 2.643,
+          "old_yield_gap_pp": -0.086,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.313,
+          "shadow_current_yield_pct": 3.224,
+          "old_yield_gap_pp": -0.543,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "120040A",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.313,
+          "shadow_current_yield_pct": 3.224,
+          "old_yield_gap_pp": -0.577,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "NY040215",
+          "candidate_code": "ZX040225",
+          "candidate_name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 3.579,
+          "shadow_candidate_yield_pct": 3.883,
+          "old_current_yield_pct": 3.66,
+          "shadow_current_yield_pct": 3.66,
+          "old_yield_gap_pp": -0.081,
+          "shadow_yield_gap_pp": 0.223
+        },
+        {
+          "holding_code": "NY040215",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.66,
+          "shadow_current_yield_pct": 3.66,
+          "old_yield_gap_pp": -0.89,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "NY040215",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 3.66,
+          "shadow_current_yield_pct": 3.66,
+          "old_yield_gap_pp": -0.924,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "candidate_code": "ZX040225",
+          "candidate_name": "信银理财安盈象固收稳利七天持有期275号理财产品",
+          "old_verdict": "watch",
+          "shadow_verdict": "replace",
+          "old_candidate_yield_pct": 3.579,
+          "shadow_candidate_yield_pct": 3.883,
+          "old_current_yield_pct": 2.9657,
+          "shadow_current_yield_pct": 2.8775,
+          "old_yield_gap_pp": 0.6133,
+          "shadow_yield_gap_pp": 1.0055
+        },
+        {
+          "holding_code": "PY040225",
+          "candidate_code": "120019K",
+          "candidate_name": "招银理财招睿添金7天持有期9号固定收益类理财计划",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.77,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.9657,
+          "shadow_current_yield_pct": 2.8775,
+          "old_yield_gap_pp": -0.1957,
+          "shadow_yield_gap_pp": null
+        },
+        {
+          "holding_code": "PY040225",
+          "candidate_code": "MS040208",
+          "candidate_name": "民生理财贵竹固收增利月月盈30天持有期48号理财产品M",
+          "old_verdict": "hold",
+          "shadow_verdict": "watch",
+          "old_candidate_yield_pct": 2.736,
+          "shadow_candidate_yield_pct": null,
+          "old_current_yield_pct": 2.9657,
+          "shadow_current_yield_pct": 2.8775,
+          "old_yield_gap_pp": -0.2297,
+          "shadow_yield_gap_pp": null
+        }
+      ],
+      "verdict_changed_count": 26
+    }
+  },
+  "residual_risks": [
+    "4 个独立样本只开放参数复核入口，8 个样本仍为优先完成目标；少于 4 个不得得出结论。",
+    "排名稳定性、Top N 重合度和下一快照披露 1M 年化都只是横截面或前向代理，不是用户实际持有收益。",
+    "本复核不会修改正式权重、评分、目标或提案；任何调参或回退都必须由用户基于独立证据单独决定。"
+  ],
+  "conclusion": "已完成 4 份规格后快照的参数复核；结果只提供继续、调参或回退的证据，不自动修改正式权重。"
+}

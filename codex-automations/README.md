@@ -11,7 +11,7 @@
 
 自动化 cycle 在独立 worker 中运行，主进程持有硬超时、防重入、终止和中断恢复边界。手动运行、交易写后评估和后台定时巡检共用同一 runner。
 
-本机任务 `a` 自2026-11-11起为 `PAUSED`，其余任务配置保持原状，模型和推理档位见下表。
+本机任务 `a` 已暂停；旧策略样本外观察 `r2-4` 已按用户要求暂停，`r2` 仅刷新产品快照，`r2-2`/`r2-3` 保留当前 v9 与账本巡检。模型和推理档位见下表。
 
 ## 1. 任务清单
 
@@ -23,7 +23,7 @@
 | `r2` | R2产品快照每周更新 | 每周一 08:30 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO` | `gpt-6-luna` | `medium` | `local` | `ACTIVE` |
 | `r2-2` | 钱多多R2工作日巡检（含AI队列与消息中心） | 周一至周五 21:00，法定节假日跳过 | `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=21;BYMINUTE=0;BYSECOND=0` | `gpt-6.1-sol` | `high` | `local` | `ACTIVE` |
 | `r2-3` | 钱多多R2周五结构巡检 | 每周五 18:30 | `RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=18;BYMINUTE=30;BYSECOND=0` | `gpt-6.1-terra` | `medium` | `local` | `ACTIVE` |
-| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `gpt-6-luna` | `high` | `local` | `ACTIVE` |
+| `r2-4` | 钱多多R2样本外观察 | 每周一 08:45 | `RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=45;BYDAY=MO` | `gpt-6-luna` | `high` | `local` | `PAUSED` |
 
 > `ID` 是当前机器上 `%USERPROFILE%\.codex\automations\<id>\automation.toml` 的目录名。新建任务时 Codex 可能生成不同的 ID，**以任务名称、时间、提示词和运行配置为准**，不要为了复刻 ID 去手工改 Codex 内部目录。
 >
@@ -49,19 +49,13 @@
 
 - 运行 `scripts/fetch-cmb-r2-all.cjs`，拉取招行公开 R2 产品池；新增日开目标固定为 0%，旧版 target3 的历史基线为短期 30% / 中期 35% / 长期 35%；
 - 生成 `cmb_r2_all-*.csv`、`cmb_r2_universe-*.csv`、`cmb_r2_selected-*.csv`；
-- 调用本地 `/api/products/refresh` 让应用使用新快照；
+- 调用本地 `/api/products/refresh` 让应用使用新快照；旧策略样本外采样与复核提醒已停用，`observation.status=disabled` 为正常状态；
 - 检查 `/api/dashboard/products` 的 `meta.product_csv`、`products.all.length`、`products.stats.evidence_counts`、`products.stats.observation_ready`、`products.watchlist.length` 和 `products.allocation.allocation_policy.evidence_caps`；
 - 输出数据日期、数量、期限桶分布（`1–30 / 31–100 / 101+`）、五档证据数量、期限调整参考年化/原始 1Y/3M 变化和精选代码；缺 1Y 与仅 3M 档为 10%/20%，仅 1M 不自动配置。
 
-### `r2-4` — 钱多多R2样本外观察
+### `r2-4` — 钱多多R2样本外观察（已暂停）
 
-- 在周一产品快照后运行 `npm run yield:observe -- --json` 和 `npm run yield:observe:review -- --json`；
-- 使用冻结的 `td-yield-002-observation-spec.json` 与固定 689 只产品 cohort，不扩池、不替换代码、不修改阈值；
-- 同一产品数据日幂等，只有间隔 5–10 天且质量闸门通过的快照才追加为独立周样本；
-- 少于 4 个样本保持 `collecting` 并静默；4–7 个无触发时继续收集；达到 4 个且触发异常或达到 8 个里程碑时进入 `review_required`，先写消息中心再发短卡；
-- 超过 5–10 天窗口进入 `cadence_broken`，重复/质量/哈希异常进入 `ledger_invalid`；两者都必须报告，不能静默、回填或自行重置基线；
-- 分析 short 前 5% 集中度、单一窗口高分、前后三/前十稳定、换手、不可计算比例、31/101 边界和 `667828A`；
-- 披露收益只作前向代理；真实经济结果不足时不改正式权重。
+旧策略样本外观察已按用户要求停用：`r2-4` 为 `PAUSED`，周快照不再自动采集 TD-YIELD-002 样本或触发参数复核；日常/周五巡检不创建或重开单窗口高分、667828A 排名及4/8样本里程碑提醒。历史规格、cohort、台账和报告保留，仅在用户明确恢复后重新启用。当前 v9 策略、收益对账、公开初筛与产品快照更新继续运行。
 
 提示词：[r2-out-of-sample.md](r2-out-of-sample.md)
 
@@ -233,7 +227,7 @@ DSH 原生定时任务是会话级提醒：绑定创建它的会话，每次触�
 ## 2026-11-08 策略执行入口
 
 <!-- r2-strategy-acceptance-2026-11-08 -->
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。
+v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。退出决策须同时满足：近7个自然日总收益率<0.04123288%、有效同份额近1月年化<2.15%，且同一披露日近6月年化>近3月年化>近1月年化。三项同时满足后，已可赎份额自动生成待采纳退出提案，锁定份额保留到期退出意图；缺证据待核，等于阈值或窗口年化相等不触发；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照仅保留独立研究快照，旧策略样本外观察与复核提醒已停用，不切换生产模式。
 
 ### v9 流动性配置
 

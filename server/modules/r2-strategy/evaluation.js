@@ -1,7 +1,7 @@
 'use strict';
 const { effectiveIncomeUnits } = require('../../../lib/income-precision');
 
-const { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH, fingerprint } = require('./contract');
+const { CONTRACT, CONTRACT_HASH, HISTORICAL_CONTRACT_HASHES, fingerprint } = require('./contract');
 const { verifyExecutionSnapshot } = require('./snapshot');
 const { effectiveCoveredYieldDates } = require('../../../lib/product-income-coverage');
 const { daysBetween, isoDate, shift } = require('../r2-screening/calendar');
@@ -177,7 +177,7 @@ function evaluateHoldingDecision({ decision, trades, today }) {
   const { content_hash: planHash, ...body } = plan ?? {};
   const valid = Boolean(plan && planHash === snapshot.plan_hash && planHash === fingerprint(body) &&
     plan.execution_version === CONTRACT.execution_version &&
-    [CONTRACT_HASH, PREVIOUS_CONTRACT_HASH].includes(plan.contract_hash) &&
+    [CONTRACT_HASH, ...HISTORICAL_CONTRACT_HASHES].includes(plan.contract_hash) &&
     plan.lot_id === snapshot.lot_id && plan.executable === true && plan.action === decision.action);
   const linked = trades.filter(row => row.decision_id === decision.id && row.status !== 'cancelled');
   if (!linked.length) return [];

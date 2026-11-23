@@ -102,6 +102,7 @@ test('holding exit proposals use an executable holding plan, dedupe and adopt wi
   const { repository, fixture, store, options } = await setup(t, 'v9');
   const holding = { id: 901, lot_id: '901:S1', product_code: 'S1', product_name: '合成产品S1',
     amount: 50, confirm_date: '2026-10-01' };
+  configureTripleExit(repository, fixture);
   fixture.sourceSnapshot.rows[0].data.performance['1m'] = '1.20';
   fixture.sourceSnapshot.evidence[0].summary.performance['1m'] = '1.20';
   const service = createStrategyService(options);
@@ -181,4 +182,91 @@ test('cash change immediately before the completion write lock is rechecked insi
   const service = createStrategyService({ ...options, strategyRepository: wrapped });
   assert.throws(() => service.recompute(), error => error.code === 'input_changed');
   assert.equal(store.watermark('strategy'), null);
+});
+
+function configureTripleExit(repository, fixture, { locked = false, complete = true } = {}) {
+  repository.tradeStore.getPortfolio = () => [{ lot_id: 'synthetic:S1', product_code: 'S1', product_name: '合成持仓', amount: 10,
+    confirm_date: '2026-10-01', term_days: 30, maturity_date: locked ? '2026-12-01' : '2026-10-31' }];
+  const row = fixture.sourceSnapshot.rows[0].data;
+  row.performance = { ...row.performance, '1m': '2.14', '3m': '2.5', '6m': complete ? '3.0' : null };
+  fixture.sourceSnapshot.evidence[0].summary.performance = { ...row.performance };
+  row.metrics.observation = { basis: 'cumulative_change_over_start_unit', recent: { status: 'available', days: 7,
+    start_date: '2026-10-30', end_date: '2026-11-06', return_pct: 0.01 } };
+}
+
+test('three-condition exits automatically create one unaccepted proposal, remain idempotent and write no trades or decisions', async t => {
+  const { repository, fixture, options } = await setup(t, 'v9');
+  configureTripleExit(repository, fixture);
+  const service = createStrategyService(options);
+  const before = { trades: repository.tradeStore.listTrades().length, decisions: repository.listDecisions().length };
+  const first = service.recompute();
+  assert.equal(first.result.monitoring.rows[0].exit_conditions.status, 'met');
+  let proposals = repository.db.prepare('SELECT status,action,payload_json FROM decision_proposals').all();
+  assert.equal(proposals.length, 1);
+  assert.equal(proposals[0].status, 'pending');
+  assert.equal(proposals[0].action, '赎回');
+  const payload = JSON.parse(proposals[0].payload_json);
+  assert.equal(payload.plan.exit_conditions.status, 'met');
+  assert.equal(payload.plan.exit_conditions.performance['6m'], '3.0');
+  assert.equal(service.recompute().existing, true);
+  assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 1);
+  assert.equal(repository.tradeStore.listTrades().length, before.trades);
+  assert.equal(repository.listDecisions().length, before.decisions);
+});
+
+test('preview, shadow, locked and incomplete evidence never automatically create executable exit proposals', async t => {
+  for (const config of [{ mode: 'shadow' }, { mode: 'v9', locked: true }, { mode: 'v9', complete: false }]) {
+    await t.test(JSON.stringify(config), async sub => {
+      const { repository, fixture, options } = await setup(sub, config.mode);
+      configureTripleExit(repository, fixture, config);
+      const service = createStrategyService(options);
+      service.preview();
+      assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 0);
+      service.recompute();
+      assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 0);
+    });
+  }
+});
+
+test('automatic exit-proposal failure rolls back the derivation commit and can recover on retry', async t => {
+  const { repository, fixture, options, store } = await setup(t, 'v9');
+  configureTripleExit(repository, fixture);
+  repository.db.exec("CREATE TRIGGER fail_exit_proposal BEFORE INSERT ON decision_proposals BEGIN SELECT RAISE(ABORT, 'synthetic proposal failure'); END");
+  const service = createStrategyService(options);
+  assert.throws(() => service.recompute(), /synthetic proposal failure/);
+  assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 0);
+  assert.equal(store.latestCompleted('strategy'), null);
+  repository.db.exec('DROP TRIGGER fail_exit_proposal');
+  // Failed derivations have a bounded retry time; explicitly advance it in this temporary fixture.
+  repository.db.prepare("UPDATE r2_derivation_jobs SET retry_at='2000-01-01T00:00:00.000Z' WHERE status='pending'").run();
+  const result = service.recompute();
+  assert.equal(result.persisted, true);
+  assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 1);
+});
+
+test('automatic exit drafts refresh with evidence, expire when conditions recover, and preserve accepted decisions', async t => {
+  const { repository, fixture, options } = await setup(t, 'v9');
+  configureTripleExit(repository, fixture);
+  const service = createStrategyService(options);
+  service.recompute();
+  fixture.sourceSnapshot.rows[0].data.performance['1m'] = '2.13';
+  fixture.sourceSnapshot.evidence[0].summary.performance['1m'] = '2.13';
+  service.recompute();
+  let drafts = repository.db.prepare('SELECT id,status FROM decision_proposals ORDER BY id').all();
+  assert.deepEqual(drafts.map(x => x.status), ['expired', 'pending']);
+  fixture.sourceSnapshot.rows[0].data.metrics.observation.recent.return_pct = 0.1;
+  service.recompute();
+  assert.equal(repository.db.prepare("SELECT count(*) n FROM decision_proposals WHERE status='pending'").get().n, 0);
+  fixture.sourceSnapshot.rows[0].data.metrics.observation.recent.return_pct = 0.02;
+  service.recompute();
+  drafts = repository.db.prepare("SELECT id FROM decision_proposals WHERE status='pending'").all();
+  assert.equal(drafts.length, 1);
+  const proposals = createStrategyProposalService({ ...options, strategy: service });
+  proposals.adopt(drafts[0].id);
+  const count = repository.db.prepare('SELECT count(*) n FROM decision_proposals').get().n;
+  fixture.sourceSnapshot.rows[0].data.performance['1m'] = '2.12';
+  fixture.sourceSnapshot.evidence[0].summary.performance['1m'] = '2.12';
+  service.recompute();
+  assert.equal(repository.db.prepare('SELECT count(*) n FROM decision_proposals').get().n, count);
+  assert.equal(repository.db.prepare("SELECT status FROM decision_proposals WHERE id=?").get(drafts[0].id).status, 'accepted');
 });

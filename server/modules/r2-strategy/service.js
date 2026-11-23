@@ -11,7 +11,7 @@ const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifa
 // Bump whenever engine/account/allocation output can change without a ledger
 // write. It is part of the frozen input hash so a code change invalidates the
 // persisted strategy job instead of reusing a stale result.
-const CALCULATION_VERSION = 9;
+const CALCULATION_VERSION = 10;
 
 function monthEndWindow(date, months) {
   const start = new Date(`${date}T00:00:00Z`);
@@ -95,7 +95,10 @@ function createStrategyService({ repository, screening = null, strategyRepositor
     const seq = frozen.input.state.activation_seq;
     const job = store.enqueue({ eventType: 'strategy', expectedSeq: seq,
       input: { frozen_input_hash: frozen.fingerprint, business_date: frozen.input.date, activation_seq: seq } });
-    if (job.status === 'done') return { job_id: job.id, result: job.result, persisted: true, existing: true, input_fingerprint: frozen.fingerprint };
+    if (job.status === 'done') {
+      transactionManager.run(() => initiateExitProposals(job.result));
+      return { job_id: job.id, result: job.result, persisted: true, existing: true, input_fingerprint: frozen.fingerprint };
+    }
     const claim = store.claim({ expectedSeq: seq, id: job.id });
     if (!claim) return { job_id: job.id, persisted: true, pending: true, input_fingerprint: frozen.fingerprint };
     const lease = { id: claim.id, token: claim.lease_token, expectedSeq: seq, inputHash: claim.input_hash };
@@ -108,12 +111,32 @@ function createStrategyService({ repository, screening = null, strategyRepositor
         // IMMEDIATE must not commit an old cash calculation.
         const { sourceSnapshot: ignored, holdingSupplements: ignoredSupplements, ...oldLedger } = frozen.input;
         if (fingerprint(ledgerInput(frozen.input.date)) !== fingerprint(oldLedger)) throw strategyError('input_changed', '提交前账户已变化，请重算');
-        return compactStrategyResult(result);
+        const compact = compactStrategyResult(result);
+        initiateExitProposals(compact);
+        return compact;
       });
       return { job_id: job.id, persisted: true, result: completed.result, input_fingerprint: frozen.fingerprint };
     } catch (error) {
       try { store.fail(lease, error.code ?? 'calculation_failed'); } catch { /* Lost leases and activation changes cannot be overwritten. */ }
       throw error;
+    }
+  }
+  function initiateExitProposals(result) {
+    if (store.state()?.mode !== 'v9') return;
+    const exits = result.monitoring?.rows.filter(row => row.state === 'exit_required' && row.exit_conditions?.status === 'met') ?? [];
+    const { createStrategyProposalRepository } = require('./proposal-repository');
+    const drafts = createStrategyProposalRepository(repository);
+    const active = drafts.activeHoldingExits();
+    const eligible = new Set(exits.map(row => row.lot_id));
+    for (const draft of active) if (draft.status === 'pending' && !eligible.has(draft.payload.lot_id)) {
+      drafts.expire(draft.id, '三项退出条件、持仓或可赎窗口已变化，请重新核验');
+    }
+    if (!exits.length) return;
+    const { createStrategyProposalService } = require('./proposals');
+    const proposals = createStrategyProposalService({ repository, strategyRepository: store,
+      strategy: { frozenInput, readLedgerInput: ledgerInput }, evaluate: input => evaluate(input, engineOptions) });
+    for (const row of exits) if (!active.some(draft => draft.status === 'accepted' && draft.payload.lot_id === row.lot_id)) {
+      proposals.generate({ kind: 'holding_exit', lotId: row.lot_id });
     }
   }
   return { status, workspace, preview, recompute, frozenInput, readLedgerInput: ledgerInput };

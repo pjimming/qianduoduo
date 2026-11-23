@@ -1,6 +1,6 @@
 'use strict';
 
-const { CONTRACT } = require('./contract');
+const { CONTRACT, CONTRACT_HASH } = require('./contract');
 const { payload, strategyError } = require('./repository');
 
 // Uses the existing proposal schema. It never creates tables, adopts a decision
@@ -55,7 +55,12 @@ function createStrategyProposalRepository(repository) {
     if (result.changes !== 1) throw strategyError('proposal_changed', '提案状态已变化，请刷新');
     return get(id);
   }
-  return { get, create, accept, expire, reject };
+  function activeHoldingExits() {
+    return db.prepare(`SELECT id FROM decision_proposals WHERE status IN ('pending','accepted')
+      AND json_extract(payload_json,'$.kind')='holding_exit'
+      AND json_extract(payload_json,'$.contract_hash')=? ORDER BY id`).all(CONTRACT_HASH).map(row => get(row.id));
+  }
+  return { get, create, accept, expire, reject, activeHoldingExits };
 }
 
 module.exports = { createStrategyProposalRepository };

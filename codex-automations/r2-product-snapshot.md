@@ -15,7 +15,7 @@
 
 ## 用途
 
-每周刷新招行 R2 公开产品池，生成全量、普通可买候选和精选 CSV，并让本地应用立即使用新快照。脚本同时按冻结规格执行一次幂等样本外观察采集。它是数据维护任务，不是选品建议，也不查实时额度。
+每周刷新招行 R2 公开产品池，生成全量、普通可买候选和精选 CSV，并让本地应用立即使用新快照。旧策略样本外采样与提醒已停用，脚本仅刷新产品快照。它是数据维护任务，不是选品建议，也不查实时额度。
 
 ## 提示词（新环境模板）
 
@@ -23,7 +23,7 @@
 
 ```text
 
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。
+v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。退出决策须同时满足：近7个自然日总收益率<0.04123288%、有效同份额近1月年化<2.15%，且同一披露日近6月年化>近3月年化>近1月年化。三项同时满足后，已可赎份额自动生成待采纳退出提案，锁定份额保留到期退出意图；缺证据待核，等于阈值或窗口年化相等不触发；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照仅保留独立研究快照，旧策略样本外观察与复核提醒已停用，不切换生产模式。
 以上为当前 v9 策略读取规则；下文旧 holding_reviews 的推荐计算仅适用于 legacy，财务事实维护继续执行。
 
 每周一 08:30 自动更新钱多多工作台的 R2 全量产品池。先在工作区 <WORKSPACE> 运行 `npm run r2:refresh-all`。
@@ -35,9 +35,9 @@ v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-stra
 
 运行后检查 http://127.0.0.1:8765/api/dashboard/products 的 `meta.product_csv`、`products.all.length`、`products.stats.observation_ready`、`products.stats.evidence_counts`、`products.stats.reference_status_counts`、`products.stats.universe_median_3m/6m/1y`、`products.stats.universe_median_reference`、`products.allocation.allocation_policy.evidence_caps` 和 `products.watchlist.length`，确认五档研究池、期限调整参考年化、10%/20% 上限与观察池已生效。
 
-脚本输出中的 `observation` 是阶段 6 样本外观察结果。`status=accepted` 表示新增一个独立周样本；`duplicate` 或 `not_independent` 不追加样本且不是失败。若 `status=error`、`disqualified`、`cadence_broken`，或复核状态为 `ledger_invalid`，必须报告失败原因；`cadence_broken` 表示观察链已超过 5–10 天窗口，不得静默跳过或自行重置基线。`sample_count < 4` 时保持 quiet collecting，不评价参数；4–7 个样本无触发时继续静默收集。达到 4 个触发异常或 8 个样本里程碑时 `review_status=review_required`，必须先通过 `POST /api/inbox/confirmations` 写入消息中心，再发一张短卡并列 `review_triggers`。`dedupe_key` 必须包含 observation_version 和触发键；持续异常附最近样本日，8 样本里程碑使用稳定键。参数复核继续使用冻结 spec/cohort，不得自动修改正式权重。下一快照的披露收益代理不能替代真实持有收益。
+脚本输出 `observation.status=disabled` 表示旧策略样本外观察已停用，属于正常状态。不得补跑旧观察命令或据旧研究结果写入复核提醒。
 
-成功且产品数据与观察状态正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或期限调整参考年化/原始 3M/6M/1Y 中位数显著跳变、`reference_status_counts.unavailable` 异常变化、五档证据数量或可评分数发生重要变化，或观察状态为 cadence_broken、ledger_invalid、异常复核/8 样本里程碑时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。需要用户处理的观察事项先写消息中心。
+成功且产品数据正常时保持安静，不发例行周报。只有抓取/刷新失败、空快照、数据日期倒退、数量或期限调整参考年化/原始 3M/6M/1Y 中位数显著跳变、`reference_status_counts.unavailable` 异常变化、五档证据数量或可评分数发生重要变化时，才输出一张短卡，写明日期、数量、变化和是否需要用户在招行 App 核对。
 
 若脚本失败，保留旧快照并报告错误，不要伪造数据。不要写买入建议、不给固定“每桶 3 只”配置；不要登录招行账户、不要抓取实时额度、不要替我下单；额度、赎回到账和实际可买状态仍需我在 App 当日核验。
 ```
@@ -62,7 +62,7 @@ npm run r2:refresh-all
 - `data/cmb_r2_all-YYYY-MM-DD.csv`
 - `data/cmb_r2_universe-YYYY-MM-DD.csv`
 - `data/cmb_r2_selected-YYYY-MM-DD.csv`
-- `data/yield-observations/td-yield-002-weekly-ledger.jsonl`（仅接受新的独立周样本）
+- `observation.status=disabled`；保留历史样本台账，不再自动追加
 - `/api/dashboard` 的 `meta.product_csv` 指向最新候选池
 - 正常时无消息；异常时才有一条简短更新卡，不含买入建议
 

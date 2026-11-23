@@ -3,6 +3,7 @@
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { isoDate, shift } = require('../r2-screening/calendar');
 const { decimal, fresh } = require('../r2-screening/policy');
+const { holdingExitConditions } = require('./exit-conditions');
 
 // A review parameter, not an execution contract or a forecast. A warning never
 // changes mandatory exits, candidate eligibility or the switch break-even test.
@@ -82,6 +83,7 @@ function buildHoldingMonitoring({ holdings, context, date }) {
     const { current = null, yieldState = 'pending' } = products.get(holding.product_code) ?? {};
     const redemption = redemptionFor(holding, date);
     const observation = holdingObservation(current, yieldState, date);
+    const exitConditions = holdingExitConditions(current, yieldState, date);
     const riskReasons = [];
     if (['watch', 'reject'].includes(current?.metrics?.drawdown?.band)) riskReasons.push('drawdown_risk');
     // A missing/stale NAV is evidence that needs review, not a yield failure:
@@ -93,18 +95,24 @@ function buildHoldingMonitoring({ holdings, context, date }) {
     if (current?.term?.days > CONTRACT.max_term_days || ['periodic', 'rolling', 'conflict'].includes(current?.term?.kind)) riskReasons.push('term_risk_review');
     if (current?.detail?.equity_upper_pct > 5) riskReasons.push('equity_limit_review');
     let state, action = '观察', plannedAction = 'verify_holding', summary, userAction = false;
-    if (yieldState === 'below') {
+    if (exitConditions.status === 'met') {
       userAction = true;
       if (redemption.redeemable_now) {
         state = 'exit_required'; action = '赎回'; plannedAction = 'redeem';
-        summary = '有效近1月年化低于2.15%，不符合续持；按账本到期日已可赎回，准备退出。赎回费用与到账日仍需银行确认。无替代品时仍保留退出结论。';
+        summary = '近7日总收益率低于0.04123288%、近1月年化低于2.15%，且近6月年化>近3月年化>近1月年化，三项同时满足；已到可赎窗口，生成退出决策提案。费用与到账日按银行确认。';
       } else if (redemption.state === 'locked') {
         state = 'exit_at_open'; plannedAction = 'exit_at_maturity';
-        summary = `续持不达标，锁定中；最早${redemption.earliest_redeem_date}重新核验退出窗口，当前不能提前赎回。`;
+        summary = `三项退出条件同时满足，锁定中；最早${redemption.earliest_redeem_date}重新核验退出窗口，当前保留到期退出意图。`;
       } else {
         state = 'exit_rules_pending'; plannedAction = 'exit_when_verified';
-        summary = '续持不达标，赎回规则或当前窗口待核；补齐证据后准备退出，不自动续作。';
+        summary = '三项退出条件同时满足，赎回规则或当前窗口待核；补齐窗口证据后生成退出决策。';
       }
+    } else if (yieldState === 'below') {
+      state = exitConditions.status === 'pending' ? 'evidence_pending' : 'hold';
+      plannedAction = 'verify_holding';
+      summary = exitConditions.status === 'pending'
+        ? '近1月年化低于2.15%，三项退出条件的7日或6/3/1月证据待核；暂不生成赎回或切换决策，暂停新增和加仓。'
+        : '近1月年化低于2.15%，尚未同时满足三项退出条件；继续观察，暂停新增和加仓。';
     } else if (yieldState === 'pending') {
       state = 'evidence_pending';
       userAction = !current;
@@ -128,10 +136,10 @@ function buildHoldingMonitoring({ holdings, context, date }) {
       identity: current?.identity ?? null, mapping_id: current?.mapping?.id ?? null, evidence_hash: current?.evidence_hash ?? null,
       run_id: current?.run_id ?? null, yield_state: yieldState, yield_1m: current?.performance?.['1m'] ?? null,
       performance_date: current?.performance_date ?? null, screening_status: current?.screening_status ?? 'pending',
-      hints: current?.hints ?? [], risk_reasons: riskReasons, observation, state, action, planned_action: plannedAction,
+      hints: current?.hints ?? [], risk_reasons: riskReasons, observation, exit_conditions: exitConditions, state, action, planned_action: plannedAction,
       redemption, check_id: null, next_verify_date: nextVerify, summary,
       requires_user_action: userAction,
-      message_key: fingerprint({ type: yieldState === 'below' ? 'holding_exit' : 'holding_review', lot_id: holding.lot_id,
+      message_key: fingerprint({ type: exitConditions.status === 'met' ? 'holding_exit' : 'holding_review', lot_id: holding.lot_id,
         contract_hash: CONTRACT_HASH }) };
     return { ...body, fingerprint: fingerprint(body) };
   });

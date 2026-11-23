@@ -10,50 +10,23 @@
 | Reasoning | `high` |
 | 执行环境 | `local` |
 | 工作目录 | `<WORKSPACE>` |
-| 状态 | `ACTIVE` |
+| 状态 | `PAUSED` |
 
-## 用途
+## 当前状态
 
-在周一产品快照刷新后，按冻结规格采集一个幂等周样本，并检查阶段 6 的预注册异常阈值。任务只追加观察台账，不修改正式评分、分配、提案或数据库。
+旧策略样本外观察已按用户要求停用：`r2-4` 为 `PAUSED`，周快照不再自动采集 TD-YIELD-002 样本或触发参数复核；日常/周五巡检不创建或重开单窗口高分、667828A 排名及4/8样本里程碑提醒。历史规格、cohort、台账和报告保留，仅在用户明确恢复后重新启用。当前 v9 策略、收益对账、公开初筛与产品快照更新继续运行。
 
-## 提示词（新环境模板）
+来源：旧 `r2` 周快照内置采样与 `r2-4` 独立复核均可通过 `/api/inbox/confirmations` 创建提醒。两条自动路径现已停止。
+
+## 提示词
 
 ```text
-
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。低于有效同份额近1月年化2.15%时区分立即可退出与锁定到期退出意图；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照与样本外观察仍沿用原独立规则，不切换生产模式。
-样本外观察在采样前核对 r2 本周快照实际成功、文件更新与合格数据日；上游未就绪时保留台账并报告，不能仅按晚 15 分钟判断成功。
-以上为当前 v9 策略读取规则；下文旧 holding_reviews 的推荐计算仅适用于 legacy，财务事实维护继续执行。
-
-你是钱多多 R2 样本外观察与参数复核入口。工作区：<WORKSPACE>；时区：Asia/Shanghai。每周一 08:45 运行，必须在既有的 R2 产品快照任务之后。先在工作区执行：
-
-npm run yield:observe -- --json
-npm run yield:observe:review -- --json
-
-读取 data/yield-observations/td-yield-002-observation-spec.json、td-yield-002-cohort-v1.json 和 td-yield-002-weekly-ledger.jsonl。规格已冻结，不能修改 cohort、权重、指标、窗口或阈值；不能因为结果变化重新生成 spec。参数复核必须继续使用同一冻结 spec 和 cohort，扩池产品不得进入样本外比较。
-
-采集状态处理：
-- accepted：新增一个独立周样本；
-- duplicate 或 not_independent：不追加台账，不是失败；没有其他异常时保持安静；
-- disqualified 或 error：报告具体失败原因，不能把该快照计入 4/8 个样本；
-- cadence_broken：超过 5–10 天窗口，当前观察链已中断。必须报告并写入消息中心，不能静默跳过、回填样本或自行改基线；是否新建观察版本由用户决定；
-- ledger_invalid：台账重复、周间隔、质量字段、cohort 哈希或日期校验失败。必须报告并写入消息中心，不得自行修复 JSONL。
-
-样本少于 4 个时，状态应为 collecting，不评价参数优劣、不发例行周报。4–7 个样本且无触发时继续静默收集。达到 8 个样本时会产生稳定的 `preferred_sample_count_reached` 里程碑，状态为 review_required；无论是否另有异常，都要完成样本外复核并请用户决定继续、调参或回退。
-
-状态为 review_required、cadence_broken 或 ledger_invalid 且需要用户处理时，必须先调用 `POST http://127.0.0.1:8765/api/inbox/confirmations` 写入消息中心，请求至少包含确定性的 `dedupe_key`、`title`、`message`、`category=action`、`severity`、`action_label`、`action_url=/ledger/inbox` 和 `due_at`；`dedupe_key` 必须包含 `observation_version` 和触发键。持续性异常还要包含最近样本数据日，避免跨周漏报或重复堆叠；`preferred_sample_count_reached` 里程碑使用稳定键，不附带数据日，重复运行只复用同一事项。写库成功后再发一张不超过 8 行的短卡。review_status=continue_current_policy 时不发消息、不自行补样本或改参数。
-
-任何触发都只表示“需要复核”，不得自动修改 r2-term-yield-v1、B 方案、桶权重、产品排名、目标金额或提案。下一快照的披露 1M 年化只作前向代理，不能据此声称新口径或旧口径更赚钱；经济结果仍需要独立的真实持有期、费用和到账收益证据。
-
-重点报告 short 前 5% 集中度、单一窗口高分、top1/top3/top10 稳定性、short 排名换手、不可计算比例、31/101 边界样本和 667828A。若脚本失败，保留台账现状并报告错误，不手改 JSONL，也不得手改冻结 spec/cohort。
+此任务已按用户要求暂停。
+旧策略样本外观察已停用：不自动运行 yield:observe、yield:observe:review 或参数复核，不为 TD-YIELD-002、单窗口高分、667828A 排名或4/8样本里程碑创建或重开消息；历史资料保留，仅在用户明确恢复后重新启用。当前 v9 与账本巡检继续执行。
 ```
 
-## 预期输出
+## 历史资料
 
-- 正常 collecting 或 duplicate：无消息；
-- 新增 independent sample：静默更新台账；
-- disqualified/error/cadence_broken/ledger_invalid 或需要用户的 review_required：先写消息中心，再发一条短卡；
-- 正式权重和提案：始终不自动修改。
-
-### v9 流动性配置
-
-当前建议以 GET /api/r2-strategy/workspace 为准。使用 contract.bucket_caps_pct 读取中期、长期上限，使用 result.allocation.bucket_limits 读取实际策略占用和超限，字段缺失标记待更新。现金需求以 cash_needs 的付款日为准，旧区间末日标注估算。过期、契约不匹配、缺结果或接口异常时标注待核。当前配置与持仓动作仅使用 v9 工作区，CSV 与样本外结果标明各自的证据和冻结版本。r2-2、r2-3 原运行日闸门和财务事实巡检继续适用。
+- 冻结规格与 cohort：`data/yield-observations/`。
+- 已有参数复核：`docs/analysis/td-yield-002-out-of-sample-parameter-review-2026-11-23.md`。
+- 本次停用不改变冻结研究版本；手工研究命令仍保留，自动任务不得调用。
