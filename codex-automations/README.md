@@ -227,8 +227,10 @@ DSH 原生定时任务是会话级提醒：绑定创建它的会话，每次触�
 ## 2026-11-08 策略执行入口
 
 <!-- r2-strategy-acceptance-2026-11-08 -->
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。退出决策须同时满足：近7个自然日总收益率<0.04123288%、有效同份额近1月年化<2.15%，且同一披露日近6月年化>近3月年化>近1月年化。三项同时满足后，已可赎份额自动生成待采纳退出提案，锁定份额保留到期退出意图；缺证据待核，等于阈值或窗口年化相等不触发；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照仅保留独立研究快照，旧策略样本外观察与复核提醒已停用，不切换生产模式。
+v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。退出决策须同时满足：近7个自然日总收益率<0.04410959%、有效同份额近1月年化<2.3%，且同一披露日近6月年化>近3月年化>近1月年化。三项同时满足后，已可赎份额自动生成待采纳退出提案，锁定份额保留到期退出意图；缺证据待核，等于阈值或窗口年化相等不触发；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照仅保留独立研究快照，旧策略样本外观察与复核提醒已停用，不切换生产模式。
 
 ### v9 流动性配置
+
+工作日巡检 `r2-2` 对 v9 持仓近7日收益待核项执行 `node scripts/r2-weekly-nav-check.cjs`。按招行渠道和份额去重，报告公开净值的实际7个自然日区间、复算总收益率、当前退出阈值及待核原因。补查值供巡检核对，平台原判定继续显示。公开净值复算不写入个人收益、对账事实、消息中心或交易提案。
 
 当前建议以 GET /api/r2-strategy/workspace 为准。使用 contract.bucket_caps_pct 读取中期、长期上限，使用 result.allocation.bucket_limits 读取实际策略占用和超限，字段缺失标记待更新。现金需求以 cash_needs 的付款日为准，旧区间末日标注估算。过期、契约不匹配、缺结果或接口异常时标注待核。当前配置与持仓动作仅使用 v9 工作区，CSV 与样本外结果标明各自的证据和冻结版本。r2-2、r2-3 原运行日闸门和财务事实巡检继续适用。

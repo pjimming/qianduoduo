@@ -2,6 +2,7 @@
 
 const { CONTRACT, CONTRACT_HASH } = require('./contract');
 const { payload, strategyError } = require('./repository');
+const { mapProposal } = require('../../../lib/decision-proposal-store');
 
 // Uses the existing proposal schema. It never creates tables, adopts a decision
 // or starts a transaction: the generating/adopting service owns that boundary.
@@ -10,7 +11,7 @@ function createStrategyProposalRepository(repository) {
   function requireTransaction() {
     if (!transactionManager.isActive()) throw new Error('v9提案写入必须属于业务事务');
   }
-  const get = id => repository.decisionProposalStore.getProposal(id);
+  const get = id => mapProposal(db.prepare('SELECT * FROM decision_proposals WHERE id=?').get(id));
   function create(input) {
     requireTransaction();
     const json = payload(input.payload);
@@ -58,7 +59,9 @@ function createStrategyProposalRepository(repository) {
   function activeHoldingExits() {
     return db.prepare(`SELECT id FROM decision_proposals WHERE status IN ('pending','accepted')
       AND json_extract(payload_json,'$.kind')='holding_exit'
-      AND json_extract(payload_json,'$.contract_hash')=? ORDER BY id`).all(CONTRACT_HASH).map(row => get(row.id));
+      AND json_extract(payload_json,'$.execution_version')=?
+      AND (status='accepted' OR json_extract(payload_json,'$.contract_hash')=?) ORDER BY id`)
+      .all(CONTRACT.execution_version, CONTRACT_HASH).map(row => get(row.id));
   }
   return { get, create, accept, expire, reject, activeHoldingExits };
 }

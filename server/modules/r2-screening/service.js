@@ -2,12 +2,11 @@
 
 const { RULE_VERSION, screen, yearStart } = require('./policy');
 const { collect, VERSION } = require('./source');
-const { TIMEZONE, shanghaiTime, nextDue, shift, daysBetween, refreshCalendar, valuationCalendar } = require('./calendar');
+const { TIMEZONE, shanghaiTime, scheduledAt, nextDue, shift, daysBetween, refreshCalendar, valuationCalendar } = require('./calendar');
 
 const TIMEOUT_MS = 5 * 60 * 1000;
 const tickInterval = 10000;
 const terminal = new Set(['succeeded', 'degraded', 'failed', 'interrupted']);
-const dateTime = day => `${day}T12:00:00+08:00`;
 const messageByCode = {
   performance_unavailable: '公开近 1 月业绩来源全局不可用',
   pool_scope: '公开产品池与请求范围不符', pool_identity: '公开产品池份额缺失或重复',
@@ -33,7 +32,8 @@ function createScreeningService({
 
   function status() {
     const now = clock();
-    const { date, hour } = shanghaiTime(now);
+    const { date } = shanghaiTime(now);
+    const dueAt = scheduledAt(date);
     const current = repository?.current() ?? null;
     const last = repository?.last() ?? null;
     const active = enabled && !stopped ? repository?.active() ?? null : null;
@@ -49,7 +49,7 @@ function createScreeningService({
         last_scheduled: scheduled, active,
       },
       next_due_at: enabled && repository && schedule && !gap
-        ? hour >= 12 && !scheduled && refresh.isOpen(date) ? dateTime(date) : nextDue(now, refresh)
+        ? now >= new Date(dueAt) && !scheduled && refresh.isOpen(date) ? dueAt : nextDue(now, refresh)
         : null,
       current_run: current, last_attempt: last,
       data_age: current ? {
@@ -161,11 +161,13 @@ function createScreeningService({
   function tick() {
     if (stopped || !enabled || !repository) return;
     const now = clock();
-    const { date, hour, minute } = shanghaiTime(now);
-    if (schedule && hour >= 12 && refresh.isOpen(date) === true && !repository.scheduled(date)) {
+    const { date } = shanghaiTime(now);
+    const dueAt = scheduledAt(date);
+    const elapsedMs = +now - Date.parse(dueAt);
+    if (schedule && elapsedMs >= 0 && refresh.isOpen(date) === true && !repository.scheduled(date)) {
       repository.enqueue({
-        trigger: firstTick || hour !== 12 || minute !== 0 ? 'startup' : 'scheduled',
-        date, scheduledAt: dateTime(date), now: now.toISOString(), versions,
+        trigger: firstTick || elapsedMs >= 60000 ? 'startup' : 'scheduled',
+        date, scheduledAt: dueAt, now: now.toISOString(), versions,
       });
     }
     firstTick = false;

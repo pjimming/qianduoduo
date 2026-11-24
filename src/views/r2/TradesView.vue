@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import R2PageHeader from '@/components/r2/R2PageHeader.vue'
 import WorkspaceNav from '@/components/r2/WorkspaceNav.vue'
@@ -9,6 +9,9 @@ import HoldingsPanel from '@/components/review/HoldingsPanel.vue'
 import CurrentHoldingsValuationPanel from '@/components/r2/CurrentHoldingsValuationPanel.vue'
 import ProductValuationPanel from '@/components/r2/ProductValuationPanel.vue'
 import type { DashboardPayload } from '@/types/dashboard'
+import type { StrategyHoldingRow, StrategyWorkspace } from '@/types/r2-strategy'
+import { getStrategyWorkspace } from '@/api/r2-strategy'
+import { currentStrategySnapshot } from '@/composables/holdingExitStatus'
 
 const props = defineProps<{
   dashboard: DashboardPayload
@@ -30,6 +33,39 @@ const section = computed<Section>(() => {
   const value = typeof route.query.section === 'string' ? route.query.section : ''
   return (SECTIONS as readonly string[]).includes(value) ? (value as Section) : 'current-value'
 })
+
+const strategy = shallowRef<StrategyWorkspace>()
+const strategyRead = ref<'loading' | 'ready' | 'failed'>('loading')
+const currentReview = computed(() => {
+  const workspace = strategy.value
+  return workspace?.mode === 'v9' && workspace.business_date === today.value &&
+    currentStrategySnapshot(workspace) ? workspace.result : null
+})
+const exitReviews = computed(() => new Map<string, StrategyHoldingRow>(
+  currentReview.value?.monitoring.rows.map(row => [row.lot_id, row]) ?? [],
+))
+const exitNote = computed(() => {
+  if (strategyRead.value === 'loading') return '正在读取退出巡检'
+  if (strategyRead.value === 'failed') return '暂时无法读取退出巡检，请刷新页面重试'
+  if (strategy.value?.mode === 'v9' && !currentReview.value) return '暂无有效的当前巡检，请在持仓复核中重算'
+  return ''
+})
+
+watch([section, () => props.dashboard], async ([active, dashboard], _, onCleanup) => {
+  if (active !== 'holdings' || !dashboard.workspace.holdings.length) return
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
+  strategy.value = undefined
+  strategyRead.value = 'loading'
+  try {
+    const workspace = await getStrategyWorkspace(controller.signal)
+    if (controller.signal.aborted) return
+    strategy.value = workspace
+    strategyRead.value = 'ready'
+  } catch {
+    if (!controller.signal.aborted) strategyRead.value = 'failed'
+  }
+}, { immediate: true })
 
 const currentValueMeta = computed(() => {
   const valuation = props.dashboard.workspace.current_holdings_valuation
@@ -141,6 +177,8 @@ function openTrades(): void {
           :holdings="dashboard.workspace.holdings"
           :summary="dashboard.workspace.holdings_summary"
           :today="today"
+          :exit-reviews="exitReviews"
+          :exit-note="exitNote"
           @open-trades="openTrades"
         />
       </section>

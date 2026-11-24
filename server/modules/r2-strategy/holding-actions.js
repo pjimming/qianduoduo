@@ -60,6 +60,10 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
         : monitor.yield_state !== 'pass' ? ['holding_yield_unverified'] : monitor.risk_reasons;
       return seal(base);
     }
+    if (monitor.state === 'evidence_pending') {
+      base.blockers = ['holding_exit_evidence_pending'];
+      return seal(base);
+    }
     const reference = current.reference;
     const currentBucket = bucketForTerm(current.term?.days);
     const horizon = comparisonDaysForBucket(currentBucket);

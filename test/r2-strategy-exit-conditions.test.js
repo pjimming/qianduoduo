@@ -24,9 +24,9 @@ function monitor(value, maturity_date = '2026-11-01') {
 test('all eight combinations require all three conditions, including redeemable holdings', () => {
   for (let mask = 0; mask < 8; mask++) {
     const current = row();
-    current.metrics.observation.recent.return_pct = mask & 1 ? 0.01 : 0.06;
-    current.performance['1m'] = mask & 2 ? '2.14' : '2.20';
-    current.holding_yield_state = mask & 2 ? 'below' : 'pass';
+    current.metrics.observation.recent.return_pct = mask & 1 ? 0.043 : 0.06;
+    current.performance['1m'] = mask & 2 ? '2.29' : '2.30';
+    current.holding_yield_state = 'pass';
     if (!(mask & 4)) current.performance['6m'] = '2.0';
     const value = monitor(current);
     assert.equal(value.exit_conditions.status, mask === 7 ? 'met' : 'not_met', `combination ${mask}`);
@@ -36,17 +36,28 @@ test('all eight combinations require all three conditions, including redeemable 
 });
 
 test('seven-day threshold is exactly the requested percentage and compares unrounded returns strictly', () => {
-  assert.equal(CONTRACT.exit_policy.recent_return_threshold_pct, '0.04123288');
-  for (const [value, expected] of [[0.041232879999, 'met'], [0.04123288, 'not_met'], [0.041232880001, 'not_met']]) {
+  assert.equal(CONTRACT.exit_policy.recent_return_threshold_pct, (2.3 * 7 / 365).toFixed(8));
+  for (const [value, expected] of [[0.044109589999, 'met'], [0.04410959, 'not_met'], [0.044109590001, 'not_met']]) {
     const current = row(); current.metrics.observation.recent.return_pct = value;
     assert.equal(conditions(current).status, expected);
   }
-  const current = row(); current.performance['1m'] = '2.15';
+  const current = row(); current.performance['1m'] = '2.30';
   assert.equal(conditions(current).status, 'not_met');
   current.performance['1m'] = '2.14'; current.performance['3m'] = '3.0';
   assert.equal(conditions(current).status, 'not_met');
   current.performance['3m'] = '2.14';
   assert.equal(conditions(current).status, 'not_met');
+});
+
+test('a share between 2.15% and 2.3% with a missing exit input remains under review', () => {
+  const current = row();
+  current.performance['1m'] = '2.29';
+  current.metrics.observation.recent.status = 'pending';
+  current.holding_yield_state = 'pass';
+  const value = monitor(current);
+  assert.equal(value.exit_conditions.status, 'pending');
+  assert.equal(value.state, 'evidence_pending');
+  assert.equal(value.action, '观察');
 });
 
 test('missing six-month evidence, missing week, stale dates and unverified data cannot force an exit', () => {

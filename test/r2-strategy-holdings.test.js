@@ -48,7 +48,7 @@ test('missing/stale identity evidence is pending, never a forced yield exit or a
 });
 test('sale status and research rank alone do not force a passing holding to exit', () => {
   const model = input(); model.context.rows[0].holding_yield_state = 'pass';
-  model.context.rows[0].performance['1m'] = '2.15';
+  model.context.rows[0].performance['1m'] = '2.30';
   const value = one(model);
   assert.equal(value.state, 'hold');
   assert.equal(value.requires_user_action, false);
@@ -56,7 +56,7 @@ test('sale status and research rank alone do not force a passing holding to exit
 });
 test('risk signals are distinct from the explicit yield exit rule and do not fake a redemption', () => {
   const model = input(); model.context.rows[0].holding_yield_state = 'pass';
-  model.context.rows[0].performance['1m'] = '2.15';
+  model.context.rows[0].performance['1m'] = '2.30';
   model.context.rows[0].metrics.drawdown = { band: 'watch' };
   model.context.rows[0].term.days = 191;
   assert.equal(one(model).state, 'risk_review');

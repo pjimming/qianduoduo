@@ -65,12 +65,16 @@ const valuationCalendar = createCalendar({
   ],
 });
 
+function scheduledAt(date) {
+  return `${date}T09:30:00+08:00`;
+}
+
 function nextDue(now, calendar) {
-  const { date, hour } = shanghaiTime(now);
-  for (let day = hour < 12 ? date : shift(date, 1); day <= calendar.end; day = shift(day, 1)) {
-    if (calendar.isOpen(day)) return `${day}T12:00:00+08:00`;
+  const { date } = shanghaiTime(now);
+  for (let day = now < new Date(scheduledAt(date)) ? date : shift(date, 1); day <= calendar.end; day = shift(day, 1)) {
+    if (calendar.isOpen(day)) return scheduledAt(day);
   }
   return null;
 }
 
-module.exports = { TIMEZONE, shanghaiTime, isoDate, shift, daysBetween, createCalendar, refreshCalendar, valuationCalendar, nextDue };
+module.exports = { TIMEZONE, shanghaiTime, isoDate, shift, daysBetween, createCalendar, refreshCalendar, valuationCalendar, scheduledAt, nextDue };

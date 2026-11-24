@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   formatCompactMoney,
   formatDateShort,
@@ -7,14 +8,24 @@ import {
   formatPct,
 } from '@/composables/useFormatters'
 import type { Holding, HoldingsSummary } from '@/types/dashboard'
+import type { StrategyHoldingRow } from '@/types/r2-strategy'
+import { holdingExitMark } from '@/composables/holdingExitStatus'
 
 const props = defineProps<{
   holdings: Holding[]
   summary: HoldingsSummary
   today: string
+  exitReviews: ReadonlyMap<string, StrategyHoldingRow>
+  exitNote: string
 }>()
 
 const emit = defineEmits<{ (event: 'open-trades'): void }>()
+const holdingRows = computed(() => props.holdings.map(item => {
+  const review = item.lot_id ? props.exitReviews.get(item.lot_id) : undefined
+  const exitMark = review?.product_code === item.product_code ? holdingExitMark(review) : undefined
+  const earliestRedeemDate = review?.state === 'exit_at_open' ? review.redemption?.earliest_redeem_date : null
+  return { item, exitMark, earliestRedeemDate }
+}))
 
 const ladderMax = computed(() =>
   Math.max(1, ...props.summary.ladder.map((item) => item.amount)),
@@ -187,46 +198,85 @@ function barWidth(value: number | null): string {
     <div v-if="holdings.length === 0" class="rw-empty">
       还没有已确认持仓。先在「交易流水」中登记买入并确认，系统会按批次自动生成持仓。
     </div>
-    <div v-else class="rw-table-wrap">
-      <table class="rw-table">
-        <thead>
-          <tr>
-            <th>产品 / 批次</th>
-            <th class="is-number">未赎回成本本金</th>
-            <th>确认起持日</th>
-            <th>产品期限</th>
-            <th>到期日</th>
-            <th class="is-number">累计已赎回成本</th>
-            <th class="is-number">已实现盈亏</th>
-            <th>风险</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in holdings" :key="item.lot_id || item.id">
-            <td>
-              <strong>{{ item.product_name }}</strong>
-              <small>
-                {{ item.product_code || '无代码' }} · 批次 #{{ item.source_trade_id || item.id }}
-              </small>
-            </td>
-            <td class="is-number">{{ formatMoney(item.amount, 0) }}</td>
-            <td>{{ formatDateShort(item.purchase_date) }}</td>
-            <td>{{ termLabel(item.term_days) }}</td>
-            <td>
-              <span :class="{ 'rw-danger-text': item.maturity_date && item.maturity_date < today }">
-                {{ item.maturity_date ? formatDateShort(item.maturity_date) : '—' }}
-              </span>
-            </td>
-            <td class="is-number">
-              {{ formatMoney(item.allocated_principal ?? 0, 0) }}
-            </td>
-            <td class="is-number" :class="{ 'rw-gain-text': (item.realized_pnl ?? 0) > 0 }">
-              {{ formatMoney(item.realized_pnl ?? 0, 2) }}
-            </td>
-            <td>{{ item.risk_level }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <template v-else>
+      <p v-if="exitNote" class="rw-form-hint holding-exit-note" role="status">
+        {{ exitNote }}。
+      </p>
+      <div class="rw-table-wrap">
+        <table class="rw-table">
+          <thead>
+            <tr>
+              <th>产品 / 批次</th>
+              <th>退出巡检</th>
+              <th class="is-number">未赎回成本本金</th>
+              <th>确认起持日</th>
+              <th>产品期限</th>
+              <th>到期日</th>
+              <th class="is-number">累计已赎回成本</th>
+              <th class="is-number">已实现盈亏</th>
+              <th>风险</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="{ item, exitMark, earliestRedeemDate } in holdingRows" :key="item.lot_id || item.id">
+              <td>
+                <strong>{{ item.product_name }}</strong>
+                <small>
+                  {{ item.product_code || '无代码' }} · 批次 #{{ item.source_trade_id || item.id }}
+                </small>
+              </td>
+              <td>
+                <template v-if="exitMark">
+                  <RouterLink
+                    class="r2-exit-mark"
+                    :class="`is-${exitMark.tone}`"
+                    :aria-label="`${item.product_code} ${exitMark.label}，查看持仓复核`"
+                    :to="{ name: 'r2-products', query: { section: 'holdings' } }"
+                  >{{ exitMark.label }}</RouterLink>
+                  <small v-if="earliestRedeemDate" class="holding-exit-date">最早赎回 {{ earliestRedeemDate }}</small>
+                </template>
+                <span v-else>—</span>
+              </td>
+              <td class="is-number">{{ formatMoney(item.amount, 0) }}</td>
+              <td>{{ formatDateShort(item.purchase_date) }}</td>
+              <td>{{ termLabel(item.term_days) }}</td>
+              <td>
+                <span :class="{ 'rw-danger-text': item.maturity_date && item.maturity_date < today }">
+                  {{ item.maturity_date ? formatDateShort(item.maturity_date) : '—' }}
+                </span>
+              </td>
+              <td class="is-number">
+                {{ formatMoney(item.allocated_principal ?? 0, 0) }}
+              </td>
+              <td class="is-number" :class="{ 'rw-gain-text': (item.realized_pnl ?? 0) > 0 }">
+                {{ formatMoney(item.realized_pnl ?? 0, 2) }}
+              </td>
+              <td>{{ item.risk_level }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
   </div>
 </template>
+
+<style scoped>
+.holding-exit-note {
+  margin-bottom: 8px;
+}
+
+.rw-table th,
+.rw-table td {
+  padding-inline: 12px;
+}
+
+.rw-table td:first-child strong {
+  max-width: 200px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.rw-table td .holding-exit-date {
+  color: var(--ink-soft);
+}
+</style>

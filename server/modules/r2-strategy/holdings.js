@@ -99,7 +99,7 @@ function buildHoldingMonitoring({ holdings, context, date }) {
       userAction = true;
       if (redemption.redeemable_now) {
         state = 'exit_required'; action = '赎回'; plannedAction = 'redeem';
-        summary = '近7日总收益率低于0.04123288%、近1月年化低于2.15%，且近6月年化>近3月年化>近1月年化，三项同时满足；已到可赎窗口，生成退出决策提案。费用与到账日按银行确认。';
+        summary = `近7日总收益率低于${exitConditions.recent_return_threshold_pct}%、近1月年化低于${exitConditions.monthly_yield_threshold_pct}%，且近6月年化>近3月年化>近1月年化，三项同时满足。已到可赎窗口，生成退出决策提案。费用与到账日按银行确认。`;
       } else if (redemption.state === 'locked') {
         state = 'exit_at_open'; plannedAction = 'exit_at_maturity';
         summary = `三项退出条件同时满足，锁定中；最早${redemption.earliest_redeem_date}重新核验退出窗口，当前保留到期退出意图。`;
@@ -119,7 +119,13 @@ function buildHoldingMonitoring({ holdings, context, date }) {
       summary = '当前同份额近期收益缺失、过期或身份待核，续持判断待核；禁止新买或加仓，不将缺失当作收益不达标。';
     } else if (riskReasons.length) {
       state = 'risk_review'; userAction = true;
-      summary = '近期收益达到续持门槛，但回撤、期限或资产条件需单独复核；未形成已成交赎回事实。';
+      summary = '回撤、期限、资产或公开证据需单独复核。';
+    } else if (exitConditions.checks.monthly_yield === 'met') {
+      state = exitConditions.status === 'pending' ? 'evidence_pending' : 'hold';
+      const threshold = exitConditions.monthly_yield_threshold_pct;
+      summary = exitConditions.status === 'pending'
+        ? `近1月年化低于${threshold}%，7日或6/3/1月退出证据待核。`
+        : `近1月年化低于${threshold}%，三项退出条件未同时满足，继续观察。`;
     } else {
       state = 'hold'; plannedAction = 'review_holding';
       summary = '近期收益达到续持门槛；公开售罄或未进前三不单独触发退出。是否自愿替换仍需比较扣费和空档后的净收益。';

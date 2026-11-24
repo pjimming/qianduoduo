@@ -75,6 +75,36 @@ a.r2-head-chip:hover {
   background: #f7efdd;
 }
 
+.r2-exit-mark {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.r2-exit-mark.is-danger {
+  background: var(--surface-danger);
+  color: var(--danger-ink);
+}
+
+.r2-exit-mark.is-warning {
+  background: var(--surface-warning);
+  color: var(--warning-ink);
+}
+
+.r2-exit-mark.is-pending {
+  background: var(--card-soft);
+  color: var(--ink-soft);
+}
+
+a.r2-exit-mark {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .r2-index {
   display: flex;
   flex-wrap: wrap;

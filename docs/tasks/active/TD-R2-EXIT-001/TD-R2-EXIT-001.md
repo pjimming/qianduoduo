@@ -2,7 +2,7 @@
 
 用户授权日期：2026-11-23。范围为v9存量持仓退出规则、提案用例、证据/API展示与本机R2自动任务；不改变新买/加仓的近1月2.15%门槛。
 
-## 当前规则
+## 2026-11-23 首版规则
 
 全部同时满足才形成退出意图：①近7个自然日含分红总收益率严格低于0.04123288%；②最新有效同份额近1月年化严格低于2.15%；③同一披露日同份额近6月年化>近3月年化>近1月年化。相等不触发；6/3/1月是三个回溯窗口，不是三个完整自然月。
 
@@ -29,11 +29,18 @@
 - check通过；npm test 641/641；node --experimental-test-coverage --test 645/645，新exit-conditions行/分支/函数覆盖均100%；构建与完整npm run test:e2e通过。自动提案更新/失效/已采纳去重修正后重新跑过最终检查。
 - 副本升级通过，8类核心财务表逐行指纹未变；生产备份为data/backups/r2_ledger-exit-triple-precutover-2026-11-23.sqlite。
 - 2026-11-23 12:55经现有QianDuoDuo-Production计划任务发布，v9激活序号2→3；新契约31bf22a1db21a05cd1b4921fddcae152416b6fff454dc35df340d0e3c3ce4d6b，原契约95b4ace76283849ec29f3588e9c9ef48fc9a276010fe6bd7006d5940f28e82fd。
-- 生产job#68 done，stale=false、contract_matches=true；13个持仓批次（11个产品）均返回三项检查字段。
-- 120056A、17356D、17318K三项满足，均为exit_at_open；最早重新核验窗口分别为2027-01-18、2027-01-19、2027-04-19。未生成当前可执行退出草案。
-- PY040225截至2026-11-20近1月年化2.78%，6月及7日证据待核，月度条件明确不满足，因此合取not_met、状态hold；未触发退出。
+- 生产job#68 done，stale=false、contract_matches=true；持仓批次均返回三项检查字段。
+- 生产复核验证了锁定持仓保留到期复核安排，以及有效条件明确不满足时合取结果为not_met。
 - 生产schema及8类核心财务事实与备份指纹一致；SQLite quick_check=ok、外键问题0。prod:status确认唯一登录触发托管、隐藏启动和独立Supervisor，Health正常，最新stderr为空，无run/host.stop残留。
 - 生产1280px浅/深主题：新增证据能展开，最小信息字号12px，根横向溢出0。截图在run/acceptance-ui/exit-production-1280-light.png及dark.png；完整E2E另检查文字对比度>=4.5:1。
 - 实际r2、r2-2、r2-3、r2-4提示词通过Codex自动化工具更新并回读一致，原时刻、状态、模型、推理档位、项目与运行环境保持原值。私有验证日志在run/exit-*.log与run/exit-production-verification.json。
 - 自动审批拒绝临时演练库清理（只返回blocked by policy），故保留run/exit-contract-rehearsal.sqlite，不影响生产。
 - 不涉及依赖、数据库schema、股票报告或GitHub Pages；未提交或推送工作区改动。
+
+## 2026-11-24 阈值更新
+
+- 存量退出近1月门槛调整为严格低于2.3%，近7日按2.3%×7÷365折算，阈值固定为0.04410959%。仍须同份额同披露日近6月>近3月>近1月。当前策略文档、界面及巡检任务采用新口径。
+- 复核版本v3，生产激活序号3→4。原三份契约继续兼容历史评价。新版自动提案识别旧契约已采纳退出决策，精简账本适配器能读取提案。
+- 备份data/backups/r2_ledger-exit-230-precutover-2026-11-24.sqlite及临时副本升级通过。生产schema和八类财务表指纹一致，SQLite quick_check为ok，外键检查0，Health正常且无残留停止标记。
+- check、642项单测、646项财务覆盖、构建及完整E2E通过。已确认的09:30初筛排程一并上线，生产批次19发布为降级状态，计划次日09:30。
+- 派生#72完成，复核通过锁定期退出安排和7日收益待核的展示。

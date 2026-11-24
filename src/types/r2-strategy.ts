@@ -13,6 +13,7 @@ export interface HoldingExitConditions {
   recent_return_threshold_pct: number; monthly_yield_threshold_pct: number; performance: Record<string, string | null>
   recent: { start_date: string; end_date: string; days: number; return_pct: number } | null
 }
+export interface HoldingExitPolicy { recent_return_threshold_pct: string; monthly_yield_threshold_pct: string }
 export interface StrategyHoldingRow { exit_conditions?: HoldingExitConditions; identity?: StrategyIdentity | null; amount?: number; summary?: string; observation?: HoldingObservation; redemption?: { earliest_redeem_date?: string | null; funds_available_date?: string | null }; lot_id: string; product_code: string; state: string; action: string; planned_action: string; yield_1m: string | null; performance_date: string | null; next_verify_date: string; requires_user_action: boolean; fingerprint: string }
 export interface StrategyResult {
   input: { mode: string; activation_seq: number; business_date: string; source_fingerprint: string | null }
@@ -21,5 +22,5 @@ export interface StrategyResult {
   monitoring: { counts: Record<string, number>; rows: StrategyHoldingRow[] }
   selected_reviews: { identity: StrategyIdentity; check_id: number | null; mapping_id: number | null; amount_cents: number; executable: boolean; blockers: string[]; forecast_status?: string; forecast_reason?: string; expected_net_pnl_cents?: number | null; expected_net_annualized_pct?: number | null }[]
 }
-export interface StrategyWorkspace { mode: string; activation_seq: number; migrated: boolean; contract_hash: string; contract_matches?: boolean; business_date: string; input_fingerprint: string; source_issue: string | null; run_id: number | null; stale: boolean; result: StrategyResult | null; cashflow_dates?: StrategyCashflow[] | null; cash_needs?: { by_date: string; required_cents: number; basis: string }[] }
+export interface StrategyWorkspace { mode: string; activation_seq: number; migrated: boolean; contract_hash: string; contract_matches?: boolean; contract?: { exit_policy?: HoldingExitPolicy }; business_date: string; input_fingerprint: string; source_issue: string | null; run_id: number | null; stale: boolean; result: StrategyResult | null; cashflow_dates?: StrategyCashflow[] | null; cash_needs?: { by_date: string; required_cents: number; basis: string }[] }
 export interface StrategyComputation { input_fingerprint: string; persisted: boolean; pending?: boolean; result?: StrategyResult; job_id?: number }

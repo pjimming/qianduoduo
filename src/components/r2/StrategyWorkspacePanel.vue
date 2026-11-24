@@ -6,6 +6,7 @@ import type { StrategyCashflow, StrategyHoldingRow } from '@/types/r2-strategy'
 import type { StrategyWorkspace } from '@/types/r2-strategy'
 import type { HoldingReview } from '@/types/dashboard'
 import { formatMoney } from '@/composables/useFormatters'
+import { currentStrategySnapshot, holdingExitMark } from '@/composables/holdingExitStatus'
 
 const props = defineProps<{
   workspace: StrategyWorkspace
@@ -46,7 +47,7 @@ async function exitHolding(lot: string) {
   finally { busy.value = false }
 }
 const result = computed(() => props.workspace.result)
-const current = computed(() => props.workspace.contract_matches !== false && !props.workspace.stale && result.value?.input.activation_seq === props.workspace.activation_seq && result.value?.input.mode === props.workspace.mode)
+const current = computed(() => currentStrategySnapshot(props.workspace))
 const exitStates = new Set(['exit_required', 'exit_at_open', 'exit_rules_pending'])
 const holdingNames = computed(() => {
   const names = new Map<string, string>()
@@ -63,13 +64,18 @@ const holdingProducts = computed(() => {
     if (group) group.push(row)
     else groups.set(row.product_code, [row])
   }
-  return [...groups.values()].map(rows => ({
-    row: rows[0],
-    exits: rows.filter(row => exitStates.has(row.state)),
-    amount: rows.every(row => row.amount != null)
-      ? rows.reduce((total, row) => total + Math.round(row.amount! * 100), 0)
-      : null,
-  }))
+  return [...groups.values()].map(rows => {
+    const row = rows[0]
+    const exits = rows.filter(row => exitStates.has(row.state))
+    return {
+      row,
+      exits,
+      exitMark: current.value ? holdingExitMark(exits[0] ?? row) : undefined,
+      amount: rows.every(row => row.amount != null)
+        ? rows.reduce((total, row) => total + Math.round(row.amount! * 100), 0)
+        : null,
+    }
+  })
 })
 const stateNames: Record<string, string> = { exit_required: '准备退出', exit_at_open: '锁定中 · 到期核验退出', exit_rules_pending: '退出规则待核', risk_review: '风险复核', hold: '达到续持门槛', simulation_passed: '约束测算通过', pending: '证据或账户待核', no_feasible_full_allocation: '无可行满仓方案' }
 const reasons: Record<string, string> = { principal_unavailable: '本金尚未初始化', evidence_unavailable: '公开证据不可用', account_unverified: '账户占用或持仓信息待核', account_invalid: '账户输入异常', account_overcommitted: '持仓及承诺金额超出本金', existing_evidence_single_cap: '存量持仓超出证据层单一上限', existing_evidence_tier_cap: '存量持仓超出证据层合计上限', existing_product_cap: '存量持仓超出单一产品上限', existing_family_cap: '存量持仓超出策略家族上限', liquidity_or_cashflow_conflict: '流动性或近期用款约束冲突', exposure_unverified: '持仓风险敞口待核', settings_invalid: '配置约束待核', cash_needs_invalid: '用款约束待核', allocation_model_limit: '候选规模超出计算限制', screening_not_automatic: '尚未满足自动配置门槛', formal_terms_unverified: '正式期限条款待核', settlement_path_unverified: '申赎到账路径待核', fees_unverified: '费用待核', assets_unverified: '底层资产待核', prohibited_assets_or_unknown: '禁投资产敞口待核', equity_limit_unverified: '权益上限待核', duration_or_distribution_unverified: '久期或期限分布待核', app_availability_unverified: '当日 App 额度待核', allocation_limits_unverified: '起购、递增或集中度依据待核', public_quota_unverified: '公开额度待核', redemption_fee_unverified: '赎回费用待核', redemption_fee_or_arrival_unverified: '赎回费用或资金到账安排待核', redemption_rules_unverified: '赎回条款待核', current_redemption_window_unverified: '当日赎回窗口待核', holding_exit_not_current_plan: '当前批次尚未形成可执行退出计划' }
@@ -105,17 +111,20 @@ const holdingColumns = [
   { key: 'amount', title: '持仓本金', value: ({ amount }: HoldingProduct) => amount },
   { key: 'yield', title: '近 1 月年化', value: ({ row }: HoldingProduct) => row.yield_1m == null ? null : Number(row.yield_1m) },
   { key: 'date', title: '业绩日', value: ({ row }: HoldingProduct) => row.performance_date || null },
-  { key: 'conclusion', title: '复核结论', value: ({ row, exits }: HoldingProduct) => holdingConclusion(row, exits) },
+  { key: 'conclusion', title: '复核结论', value: ({ row, exits, exitMark }: HoldingProduct) => exitMark?.label ?? holdingConclusion(row, exits) },
 ] as const
 type HoldingColumn = (typeof holdingColumns)[number]
 const holdingSort = ref<{ column: HoldingColumn; direction: 'ascending' | 'descending' }>()
 const holdingCollator = new Intl.Collator('zh-CN', { numeric: true })
 
 function holdingConclusion(row: StrategyHoldingRow, exits: StrategyHoldingRow[]) {
-  if (exits.length) return '三项退出条件满足 · 准备换出'
-  if (row.yield_1m != null && Number(row.yield_1m) < 2.15 && row.exit_conditions) return row.exit_conditions.status === 'pending' ? '退出证据待核 · 观察' : '退出条件未同时满足 · 观察'
-  if (row.state === 'evidence_pending') return row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据'
+  if (exits.length) return current.value ? label(exits[0].state) : '退出状态待更新'
+  if (row.state === 'evidence_pending') {
+    if (row.exit_conditions?.checks.monthly_yield === 'met') return '退出证据待核 · 观察'
+    return row.identity ? '缺少有效近 1 月年化' : '未匹配同份额证据'
+  }
   if (row.state === 'hold' && row.observation?.state === 'watch') return '收益预警 · 观察'
+  if (row.state === 'hold' && row.exit_conditions?.checks.monthly_yield === 'met') return '退出条件未同时满足 · 观察'
   return label(row.state)
 }
 
@@ -240,7 +249,7 @@ async function run(kind: 'compute' | 'proposals') {
       <div class="strategy-actions"><button type="button" class="button button-primary button-small" :disabled="busy || !current || !result.may_generate_buy_proposals" @click="run('proposals')">生成买入提案</button><RouterLink :to="{ name: 'r2-evaluation', query: { section: 'proposals' } }">审阅提案</RouterLink></div>
     </template>
     <template v-else-if="result">
-      <p>近7日总收益率低于0.04123288%、近1月年化低于2.15%，且近6月年化&gt;近3月年化&gt;近1月年化，三项同时满足后生成退出决策提案，按可赎窗口处理。2.15%至不足2.5%且收益走弱时优先观察。缺少有效证据的产品暂停新增或加仓。</p>
+      <p v-if="workspace.contract?.exit_policy">近7日总收益率低于{{ workspace.contract.exit_policy.recent_return_threshold_pct }}%、近1月年化低于{{ workspace.contract.exit_policy.monthly_yield_threshold_pct }}%，且近6月年化&gt;近3月年化&gt;近1月年化，三项同时满足后按可赎窗口处理。</p>
       <div v-if="holdingProducts.length" class="strategy-table-wrap">
           <table class="strategy-holdings-table">
             <thead>
@@ -259,22 +268,26 @@ async function run(kind: 'compute' | 'proposals') {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="{ row, exits, amount } in sortedHoldingProducts" :key="row.product_code">
+              <tr v-for="{ row, exits, exitMark, amount } in sortedHoldingProducts" :key="row.product_code">
                 <th scope="row">
                   {{ row.product_code }}
                   <small v-if="holdingNames.has(row.product_code)" class="strategy-holding-name">{{ holdingNames.get(row.product_code) }}</small>
                 </th>
                 <td>{{ money(amount) }}</td>
-                <td>{{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}<small v-if="row.yield_1m != null && row.state === 'evidence_pending'">待核</small></td>
+                <td>
+                  {{ row.yield_1m == null ? '未获取到' : `${row.yield_1m}%` }}
+                  <small v-if="row.yield_1m != null && (row.exit_conditions ? row.exit_conditions.checks.monthly_yield === 'pending' : row.state === 'evidence_pending')">待核</small>
+                </td>
                 <td>{{ row.performance_date || '未获取到' }}</td>
                 <td>
-                  <span :class="{ 'strategy-observation-watch': row.observation?.state === 'watch' }">{{ holdingConclusion(row, exits) }}</span>
+                  <span v-if="exitMark" class="r2-exit-mark" :class="`is-${exitMark.tone}`">{{ exitMark.label }}</span>
+                  <span v-else :class="{ 'strategy-observation-watch': row.observation?.state === 'watch' }">{{ holdingConclusion(row, exits) }}</span>
                   <small v-if="row.observation?.state === 'watch'">{{ row.observation.reasons.map(observationLabel).join('；') }}。仅观察。</small>
                   <details v-if="row.exit_conditions" class="strategy-observation">
                     <summary>查看三项退出条件</summary>
                     <small>三项需同时满足；等于阈值或窗口年化相等不触发。</small>
-                    <small>近7日总收益率：{{ row.exit_conditions.recent == null ? '待核' : `${observationReturnPct(row.exit_conditions.recent.return_pct)}（${row.exit_conditions.recent.start_date} 至 ${row.exit_conditions.recent.end_date}）` }}；退出阈值 &lt;0.04123288%</small>
-                    <small>近1月年化：{{ row.yield_1m == null ? '待核' : `${row.yield_1m}%` }}；退出阈值 &lt;2.15%</small>
+                    <small>近7日总收益率：{{ row.exit_conditions.recent == null ? '待核' : `${observationReturnPct(row.exit_conditions.recent.return_pct)}（${row.exit_conditions.recent.start_date} 至 ${row.exit_conditions.recent.end_date}）` }}。退出阈值 &lt;{{ row.exit_conditions.recent_return_threshold_pct }}%</small>
+                    <small>近1月年化：{{ row.exit_conditions.checks.monthly_yield === 'pending' || row.yield_1m == null ? '待核' : `${row.yield_1m}%` }}。退出阈值 &lt;{{ row.exit_conditions.monthly_yield_threshold_pct }}%</small>
                     <small>近6月 / 近3月 / 近1月年化：{{ ['6m', '3m', '1m'].map(key => row.exit_conditions?.performance[key] == null ? '待核' : `${row.exit_conditions.performance[key]}%`).join(' / ') }}；须依次严格下降。</small>
                     <small>{{ row.summary }}</small>
                   </details>
@@ -298,7 +311,7 @@ async function run(kind: 'compute' | 'proposals') {
                   </details>
                 </td>
                 <td>
-                  <details v-if="exits.length" class="strategy-exit">
+                  <details v-if="current && exits.length" class="strategy-exit">
                     <summary>查看赎回安排</summary>
                     <ul>
                       <li v-for="exit in exits" :key="exit.lot_id">

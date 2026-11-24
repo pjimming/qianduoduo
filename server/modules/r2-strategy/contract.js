@@ -22,7 +22,7 @@ const CONTRACT = freeze({
   selection_policy_version: 'v9',
   allocation_policy_version: 'r2-v9-bucket-allocation-v2',
   yield_policy_version: 'r2-term-yield-v1',
-  holding_review_version: 'r2-v9-holding-review-v2',
+  holding_review_version: 'r2-v9-holding-review-v3',
   evaluation_policy_version: 'r2-v9-eval-v1',
   min_monthly_yield: '2.15', max_data_age_days: 6, max_term_days: 190,
   bucket_targets: { cash: 0, short: 70, medium: 20, long: 10 },
@@ -32,24 +32,25 @@ const CONTRACT = freeze({
   group_order: ['term_days_asc', 'category_asc'],
   group_distribution: 'equal_first_round_then_stable_rounds',
   blank_quota_assumption: { lower_bound_cny: 50000000, source: 'user_rule', bank_disclosed: false },
-  exit_policy: { operator: 'all', recent_days: 7, recent_return_threshold_pct: '0.04123288',
-    monthly_yield_threshold_pct: '2.15', declining_windows: ['6m', '3m', '1m'], comparison: 'strict' },
-  forced_exit: ['seven_day_return_below_threshold', 'fresh_same_share_monthly_yield_below_2.15', 'same_share_6m_gt_3m_gt_1m'],
+  exit_policy: { operator: 'all', recent_days: 7, recent_return_threshold_pct: '0.04410959',
+    monthly_yield_threshold_pct: '2.3', declining_windows: ['6m', '3m', '1m'], comparison: 'strict' },
+  forced_exit: ['seven_day_return_below_threshold', 'fresh_same_share_monthly_yield_below_2.3', 'same_share_6m_gt_3m_gt_1m'],
   risk_review_only: ['drawdown', 'term', 'asset'],
   not_exit_conditions: ['sold_out', 'not_top_three'],
   max_snapshot_bytes: 65536,
 });
 const CONTRACT_HASH = fingerprint(CONTRACT);
-const { exit_policy: currentExitPolicy, ...previous } = CONTRACT;
 const PREVIOUS_CONTRACT_HASH = fingerprint({
-  ...previous,
-  holding_review_version: 'r2-v9-holding-review-v1',
-  forced_exit: ['fresh_same_share_monthly_yield_below_2.15'],
+  ...CONTRACT,
+  holding_review_version: 'r2-v9-holding-review-v2',
+  exit_policy: { ...CONTRACT.exit_policy, recent_return_threshold_pct: '0.04123288', monthly_yield_threshold_pct: '2.15' },
+  forced_exit: ['seven_day_return_below_threshold', 'fresh_same_share_monthly_yield_below_2.15', 'same_share_6m_gt_3m_gt_1m'],
 });
-const previousContract = { ...previous, holding_review_version: 'r2-v9-holding-review-v1',
+const { exit_policy: currentExitPolicy, ...withoutExitPolicy } = CONTRACT;
+const previousContract = { ...withoutExitPolicy, holding_review_version: 'r2-v9-holding-review-v1',
   forced_exit: ['fresh_same_share_monthly_yield_below_2.15'] };
 const { bucket_caps_pct: oldCaps, ...v1 } = previousContract;
-const HISTORICAL_CONTRACT_HASHES = Object.freeze([PREVIOUS_CONTRACT_HASH, fingerprint({ ...v1,
+const HISTORICAL_CONTRACT_HASHES = Object.freeze([PREVIOUS_CONTRACT_HASH, fingerprint(previousContract), fingerprint({ ...v1,
   allocation_policy_version: 'r2-v9-bucket-allocation-v1', bucket_targets: { cash: 0, short: 30, medium: 35, long: 35 } })]);
 
 module.exports = { CONTRACT, CONTRACT_HASH, PREVIOUS_CONTRACT_HASH, HISTORICAL_CONTRACT_HASHES, fingerprint, stableJson, freeze };

@@ -23,7 +23,7 @@
 
 ```text
 
-v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。退出决策须同时满足：近7个自然日总收益率<0.04123288%、有效同份额近1月年化<2.15%，且同一披露日近6月年化>近3月年化>近1月年化。三项同时满足后，已可赎份额自动生成待采纳退出提案，锁定份额保留到期退出意图；缺证据待核，等于阈值或窗口年化相等不触发；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照仅保留独立研究快照，旧策略样本外观察与复核提醒已停用，不切换生产模式。
+v9 统一执行层巡检：通过原有运行日闸门后读取 GET /api/r2-strategy/status 与 GET /api/r2-strategy/workspace。mode=v9 时以该工作区的 allocation、monitoring、selected_reviews 及 stale 为当前策略依据，旧 dashboard.holding_reviews 和 CSV 仅作 legacy 历史观察。stale=true、结果缺失或接口不可用时标注待重算/待核，不退回旧算法生成当前建议，不调用策略重算、初筛刷新或自动采纳。退出决策须同时满足：近7个自然日总收益率<0.04410959%、有效同份额近1月年化<2.3%，且同一披露日近6月年化>近3月年化>近1月年化。三项同时满足后，已可赎份额自动生成待采纳退出提案，锁定份额保留到期退出意图；缺证据待核，等于阈值或窗口年化相等不触发；售罄、未入前三不构成强制退出。证据待核、预留/在途资金和约束冲突按当前状态解释，已有消息只引用不重复创建。入口为 /ledger/products?section=allocation、/ledger/products?section=holdings 和 /ledger/evaluation?section=proposals。历史决策按冻结版本评价，周快照仅保留独立研究快照，旧策略样本外观察与复核提醒已停用，不切换生产模式。
 以上为当前 v9 策略读取规则；下文旧 holding_reviews 的推荐计算仅适用于 legacy，财务事实维护继续执行。
 
 每周一 08:30 自动更新钱多多工作台的 R2 全量产品池。先在工作区 <WORKSPACE> 运行 `npm run r2:refresh-all`。

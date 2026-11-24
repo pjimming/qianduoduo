@@ -8,6 +8,7 @@ const { openDatabase } = require('../lib/db');
 const { openScreeningRepository } = require('../server/modules/r2-screening/repository');
 const { createStrategyRepository } = require('../server/modules/r2-strategy/repository');
 const { createStrategyService } = require('../server/modules/r2-strategy/service');
+const { openStrategyLedger } = require('../server/modules/r2-strategy/existing-ledger');
 const { createStrategyProposalService } = require('../server/modules/r2-strategy/proposals');
 const { fingerprint } = require('../server/modules/r2-strategy/contract');
 const { createStrategyScheduler } = require('../server/jobs/r2-strategy-scheduler');
@@ -196,22 +197,30 @@ function configureTripleExit(repository, fixture, { locked = false, complete = t
 
 test('three-condition exits automatically create one unaccepted proposal, remain idempotent and write no trades or decisions', async t => {
   const { repository, fixture, options } = await setup(t, 'v9');
-  configureTripleExit(repository, fixture);
-  const service = createStrategyService(options);
-  const before = { trades: repository.tradeStore.listTrades().length, decisions: repository.listDecisions().length };
-  const first = service.recompute();
-  assert.equal(first.result.monitoring.rows[0].exit_conditions.status, 'met');
-  let proposals = repository.db.prepare('SELECT status,action,payload_json FROM decision_proposals').all();
-  assert.equal(proposals.length, 1);
-  assert.equal(proposals[0].status, 'pending');
-  assert.equal(proposals[0].action, '赎回');
-  const payload = JSON.parse(proposals[0].payload_json);
-  assert.equal(payload.plan.exit_conditions.status, 'met');
-  assert.equal(payload.plan.exit_conditions.performance['6m'], '3.0');
-  assert.equal(service.recompute().existing, true);
-  assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 1);
-  assert.equal(repository.tradeStore.listTrades().length, before.trades);
-  assert.equal(repository.listDecisions().length, before.decisions);
+  const workerLedger = openStrategyLedger(repository.dbPath);
+  try {
+    configureTripleExit(workerLedger, fixture);
+    fixture.sourceSnapshot.rows[0].data.performance['1m'] = '2.29';
+    fixture.sourceSnapshot.evidence[0].summary.performance['1m'] = '2.29';
+    fixture.sourceSnapshot.rows[0].data.metrics.observation.recent.return_pct = 0.043;
+    const service = createStrategyService({ ...options, repository: workerLedger, strategyRepository: null });
+    const before = { trades: repository.tradeStore.listTrades().length, decisions: repository.listDecisions().length };
+    const first = service.recompute();
+    assert.equal(first.result.monitoring.rows[0].exit_conditions.status, 'met');
+    let proposals = repository.db.prepare('SELECT status,action,payload_json FROM decision_proposals').all();
+    assert.equal(proposals.length, 1);
+    assert.equal(proposals[0].status, 'pending');
+    assert.equal(proposals[0].action, '赎回');
+    const payload = JSON.parse(proposals[0].payload_json);
+    assert.equal(payload.plan.exit_conditions.status, 'met');
+    assert.equal(payload.plan.exit_conditions.performance['6m'], '3.0');
+    assert.equal(service.recompute().existing, true);
+    assert.equal(repository.db.prepare('SELECT COUNT(*) n FROM decision_proposals').get().n, 1);
+    assert.equal(repository.tradeStore.listTrades().length, before.trades);
+    assert.equal(repository.listDecisions().length, before.decisions);
+  } finally {
+    workerLedger.close();
+  }
 });
 
 test('preview, shadow, locked and incomplete evidence never automatically create executable exit proposals', async t => {

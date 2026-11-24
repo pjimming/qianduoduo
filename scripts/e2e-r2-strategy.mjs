@@ -389,14 +389,15 @@ async function main() {
     assert(await page.locator('.holding-review-body').count() === 0, 'v9 证据待核时不应回退到旧复核')
 
     // 9. 11 个合成持仓批次覆盖退出、待核、锁定和持有，验证可处理入口。
+    let strategyStale = false
     await page.route('**/api/r2-strategy/workspace', async route => {
       const response = await route.fetch(); const payload = await response.json()
-      payload.stale = false
+      payload.stale = strategyStale
       payload.result.monitoring.rows = Array.from({length: 11}, (_, i) => ({ lot_id: 'synthetic-lot-' + i, product_code: 'E2E' + i, identity: i === 10 ? null : {source:'cmb',channel:'TEST',code:'E2E' + i}, state: ['exit_required','exit_at_open','exit_rules_pending','evidence_pending','hold'][i % 5], action:'观察',planned_action:'verify_holding',yield_1m: i % 2 ? '2.50' : '2.10',performance_date:'2026-11-07',next_verify_date:'2026-11-09',summary:'合成验收数据：此批次用于检查交互，不是银行事实。',requires_user_action:true,fingerprint:'synthetic' }))
       Object.assign(payload.result.monitoring.rows[3], { identity: null, yield_1m: null, performance_date: null })
       Object.assign(payload.result.monitoring.rows[0], { amount: 1000, exit_conditions: {
         status: 'met', operator: 'all', checks: { recent_return: 'met', monthly_yield: 'met', declining_windows: 'met' },
-        recent_return_threshold_pct: 0.04123288, monthly_yield_threshold_pct: 2.15,
+        recent_return_threshold_pct: 0.04410959, monthly_yield_threshold_pct: 2.3,
         performance: { '6m': '3.00', '3m': '2.50', '1m': '2.10' },
         recent: { start_date: '2026-10-30', end_date: '2026-11-06', days: 7, return_pct: 0.01 },
       } })
@@ -410,6 +411,15 @@ async function main() {
         version: 1, state: 'pending', threshold_pct: 2.5, reasons: [], metrics: null,
       } })
       Object.assign(payload.result.monitoring.rows[1], { product_code: 'E2E0', amount: 2500, yield_1m: '2.10' })
+      const met = payload.result.monitoring.rows[0].exit_conditions
+      Object.assign(payload.result.monitoring.rows[1], { exit_conditions: met, redemption: { earliest_redeem_date: '2027-01-19' } })
+      Object.assign(payload.result.monitoring.rows[2], { exit_conditions: met })
+      Object.assign(payload.result.monitoring.rows[4], { exit_conditions: {
+        ...met, status: 'not_met', checks: { ...met.checks, monthly_yield: 'not_met' },
+      } })
+      Object.assign(payload.result.monitoring.rows[7], { exit_conditions: {
+        ...met, status: 'pending', checks: { ...met.checks, recent_return: 'pending' }, recent: null,
+      } })
       Object.assign(payload.result.monitoring.rows[8], { product_code: 'E2E3', identity: null, yield_1m: null, performance_date: null })
       Object.assign(payload.result.monitoring.rows[9], { yield_1m: '10.10' })
       await route.fulfill({response,json:payload})
@@ -421,10 +431,12 @@ async function main() {
     assert(await holdingRows.count() === 9, '主表应按产品合并持仓')
     const merged = holdingRows.filter({ has: page.getByRole('rowheader', { name: 'E2E0 测试持仓产品名称', exact: true }) })
     await merged.getByText('¥3,500.00', { exact: true }).waitFor()
-    await merged.getByText('三项退出条件满足 · 准备换出', { exact: true }).waitFor()
+    await merged.getByText('准备退出', { exact: true }).waitFor()
     await merged.getByText('查看三项退出条件', { exact: true }).click()
     await merged.getByText('近6月 / 近3月 / 近1月年化：3.00% / 2.50% / 2.10%；须依次严格下降。', { exact: true }).waitFor()
     await merged.getByText('三项需同时满足；等于阈值或窗口年化相等不触发。', { exact: true }).waitFor()
+    await merged.getByText(/退出阈值 <0\.04410959%/).waitFor()
+    await merged.getByText(/退出阈值 <2\.3%/).waitFor()
     await page.getByText('未匹配同份额证据', { exact: true }).waitFor()
     assert(!await merged.getByRole('button', { name: '生成退出提案' }).isVisible(), '默认不展开赎回安排')
     const holdingGeometry = () => page.locator('.strategy-holdings-table').evaluate(table => ({
@@ -481,7 +493,7 @@ async function main() {
     for (const direction of ['ascending', 'descending']) {
       await yieldSort.click()
       assert(await page.getByRole('columnheader', { name: '近 1 月年化' }).getAttribute('aria-sort') === direction, '排序方向应可读')
-      const values = await holdingRows.locator('td:nth-child(3)').allTextContents()
+      const values = (await holdingRows.locator('td:nth-child(3)').allTextContents()).map(value => value.trim())
       const expected = values.filter(value => value.includes('%')).sort((a, b) =>
         (parseFloat(a) - parseFloat(b)) * (direction === 'ascending' ? 1 : -1))
       assert(values.join('|') === [...expected, '未获取到'].join('|'), '年化应按数值排序，缺失项置底')
@@ -490,6 +502,60 @@ async function main() {
     await page.route('**/api/r2-strategy/proposals', async route => route.fulfill({json:{created:[],blockers:['fees_unverified']}}))
     await merged.getByRole('button',{name:'生成退出提案',exact:true}).click()
     await page.getByText('退出提案暂不可生成：费用待核', {exact:true}).waitFor()
+
+    // 10. 持仓账本按批次显示同一产品的不同赎回状态，旧快照不展示标记。
+    await page.route('**/api/dashboard/sections**', async route => {
+      const response = await route.fetch()
+      const payload = await response.json()
+      if (payload.workspace?.holdings) {
+        payload.workspace.holdings = [0, 1, 2, 4, 7].map(i => ({
+          id: i + 1, lot_id: 'synthetic-lot-' + i, product_code: 'E2E' + (i === 1 ? 0 : i),
+          product_name: '验收持仓 ' + i, amount: 2500, risk_level: 'R2', term_days: 90,
+          purchase_date: '2026-11-07', maturity_date: '2027-01-19',
+        }))
+      }
+      await route.fulfill({ response, json: payload })
+    })
+    await gotoSection(page, base, '/ledger/trades?section=holdings', 'holdings')
+    const tradeHoldings = page.locator('#holdings .rw-table')
+    const lot = i => tradeHoldings.getByRole('row').filter({ hasText: '验收持仓 ' + i })
+    await lot(0).getByText('准备退出', { exact: true }).waitFor()
+    const lockedMark = lot(1).getByRole('link', { name: /到期复核退出/ })
+    await lockedMark.waitFor()
+    await lot(1).getByText('最早赎回 2027-01-19', { exact: true }).waitFor()
+    await lot(2).getByText('赎回窗口待核', { exact: true }).waitFor()
+    await lot(7).getByText('退出条件待核', { exact: true }).waitFor()
+    assert(await lot(4).locator('.r2-exit-mark').count() === 0, '未触发退出的批次不能显示退出标记')
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
+      await page.waitForTimeout(350)
+      const visual = await tradeHoldings.locator('.r2-exit-mark, .holding-exit-date').evaluateAll(elements => {
+        const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+          const channel = value / 255
+          return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4
+        }).reduce((sum, value, i) => sum + value * [.2126, .7152, .0722][i], 0)
+        return elements.map(element => {
+          const style = getComputedStyle(element)
+          let background = element
+          while (getComputedStyle(background).backgroundColor === 'rgba(0, 0, 0, 0)' && background.parentElement) {
+            background = background.parentElement
+          }
+          const a = luminance(style.color), b = luminance(getComputedStyle(background).backgroundColor)
+          return { text: element.textContent.trim(), size: parseFloat(style.fontSize), ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) }
+        })
+      })
+      assert(visual.every(item => item.size >= 12 && item.ratio >= 4.5), '退出标记字号或对比度不达标 ' + theme + ': ' + JSON.stringify(visual))
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '退出标记导致页面横向溢出')
+      await tradeHoldings.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: path.join(captures, 'trade-holdings-exit-1280-' + theme + '.png') })
+    }
+    await lockedMark.focus()
+    await lockedMark.press('Enter')
+    await page.locator('.strategy-holdings-table .r2-exit-mark').filter({ hasText: /^准备退出$/ }).first().waitFor()
+    strategyStale = true
+    await gotoSection(page, base, '/ledger/trades?section=holdings', 'holdings')
+    await page.getByText('暂无有效的当前巡检，请在持仓复核中重算。', { exact: true }).waitFor()
+    assert(await tradeHoldings.locator('.r2-exit-mark').count() === 0, '过期快照不得展示退出标记')
 
     assert(errors.length === 0, `页面运行出错：${errors.join(' / ')}`)
     console.log('e2e-r2-strategy: 全部通过')

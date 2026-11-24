@@ -355,25 +355,31 @@ test('a successful publication wakes the strategy derivation hook without extend
   assert.ok(calls[0].published_at);
 });
 
-test('scheduler separates Shanghai noon, holidays, catch-up, retry and restart', async t => {
+test('scheduler uses 09:30 Shanghai time and preserves holidays, catch-up, retry and restart', async t => {
   const store = storeIn(t);
-  let now = new Date('2026-10-05T04:00:00Z');
+  let now = new Date('2026-10-05T01:30:00Z');
   let fails = true;
   const setup = () => createScreeningService({
     repository: store, enabled: true, clock: () => now,
     collector: async () => { if (fails) throw new Error('secret external failure'); return batch(); },
   });
-  assert.deepEqual(shanghaiTime(new Date('2026-10-08T03:59:00Z')), { date: '2026-10-08', hour: 11, minute: 59 });
-  assert.equal(nextDue(now, refreshCalendar), '2026-10-08T12:00:00+08:00');
+  const beforeDue = new Date('2026-10-08T01:29:59.999Z');
+  const dueAt = '2026-10-08T09:30:00+08:00';
+  assert.deepEqual(shanghaiTime(beforeDue), { date: '2026-10-08', hour: 9, minute: 29 });
+  assert.equal(nextDue(now, refreshCalendar), dueAt);
   let service = setup();
   service.tick();
-  now = new Date('2026-10-08T03:59:00Z');
+  now = beforeDue;
+  assert.equal(service.status().next_due_at, dueAt);
   service.tick();
   assert.equal(store.last(), null);
-  now = new Date('2026-10-08T04:00:00Z');
+  now = new Date(dueAt);
+  assert.equal(service.status().next_due_at, dueAt);
   service.tick();
   const first = await until(() => store.last()?.retry_at && store.last());
   assert.equal(first.trigger, 'scheduled');
+  assert.equal(first.scheduled_at, dueAt);
+  assert.equal(service.status().next_due_at, '2026-10-09T09:30:00+08:00');
   assert.equal(first.status, 'queued');
   assert.equal(first.error_message.includes('secret'), false);
   await service.stop();
@@ -381,7 +387,7 @@ test('scheduler separates Shanghai noon, holidays, catch-up, retry and restart',
   service.tick();
   assert.equal(store.attempts(first.id).length, 1);
   fails = false;
-  now = new Date('2026-10-08T04:01:00Z');
+  now = new Date('2026-10-08T01:31:00Z');
   service.tick();
   await until(() => store.current()?.id === first.id);
   service.tick();
@@ -392,11 +398,12 @@ test('scheduler separates Shanghai noon, holidays, catch-up, retry and restart',
   service.tick();
   assert.equal(store.last().id, first.id);
   await service.stop();
-  now = new Date('2026-10-12T06:00:00Z');
+  now = new Date('2026-10-12T02:00:00Z');
   service = setup();
   service.tick();
   await until(() => store.current()?.business_date === '2026-10-12');
   assert.equal(store.current().trigger, 'startup');
+  assert.equal(store.current().scheduled_at, '2026-10-12T09:30:00+08:00');
   await service.stop();
 });
 
