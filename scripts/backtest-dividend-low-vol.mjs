@@ -4,10 +4,12 @@ import { join } from 'node:path'
 
 const end = '2026-11-25'
 const root = process.argv[2] ?? 'D:/dfcf'
+const dcaOnly = process.argv.includes('--dca')
+const fundamentalOnly = dcaOnly || process.argv.includes('--fundamentals')
 const longPool = ['512890', '515450', '515300', '515100']
 const recentPool = ['563020', '515450', '515300', '159307']
 const localCodes = ['512890', '515450', '563020']
-const codes = [...new Set([...longPool, ...recentPool, '510300'])]
+const codes = fundamentalOnly ? ['512890', '563020', '510300'] : [...new Set([...longPool, ...recentPool, '510300'])]
 const dayMs = 86_400_000
 const suspension = { code: '512890', date: '2021-10-22' }
 
@@ -64,7 +66,9 @@ function readLocalPrices(buffer, code) {
 }
 
 async function corporateActions(code) {
-  const html = await get(`https://fundf10.eastmoney.com/fhsp_${code}.html`)
+  const url = `https://fundf10.eastmoney.com/fhsp_${code}.html`
+  // The unparameterized 563020 page can serve 515450's dividend table under the right title.
+  const html = await get(code === '563020' ? `${url}?fund=${code}` : url)
   const tables = [...html.matchAll(/<table[^>]*class=['"][^'"]*\b(?:cfxq|fhxq)\b[^'"]*['"][^>]*>[\s\S]*?<\/table>/g)]
   const dividendTable = tables.find(([table]) => table.includes('除息日'))?.[0]
   const splitTable = tables.find(([table]) => table.includes('拆分折算日'))?.[0]
@@ -88,7 +92,13 @@ async function corporateActions(code) {
     assert(date && split, `Unrecognized split ${code}: ${row}`)
     return [{ date, split: +split[2] / +split[1] }]
   })
-  return [...dividends, ...splits].filter(action => action.date <= end)
+  const actions = [...dividends, ...splits].filter(action => action.date <= end)
+  if (code === '563020') {
+    assert.equal(actions.length, 10, '563020: unexpected corporate-action count through the report cutoff')
+    assert(actions.some(action => action.date === '2026-09-11' && action.dividend === 0.012), '563020: missing verified 2026-09 distribution')
+  }
+  if (fundamentalOnly && code === '512890') assert.deepEqual(actions, [{ date: '2021-10-22', split: 2 }])
+  return actions
 }
 
 function adjust(prices, actions, code) {
@@ -119,6 +129,7 @@ function adjust(prices, actions, code) {
 
 const buffer = await readFile(join(root, 'data', 'SHANGHAI', 'DayData_SH_V43.dat'))
 const series = Object.fromEntries(await Promise.all(codes.map(async code => {
+  if (fundamentalOnly && code === '510300') return [code, { prices: await publicPrices(code) }]
   const [online, actions] = await Promise.all([publicPrices(code), corporateActions(code)])
   const local = localCodes.includes(code)
   const raw = local ? readLocalPrices(buffer, code) : online
@@ -441,6 +452,18 @@ function runSwing(rules, start, finish) {
     base.oneDayLater = simulate(start, finish, rules[name](), 8, 0, 1).cagr
   }
   return results
+}
+
+if (dcaOnly) {
+  const { runDca } = await import('./dividend-low-vol-dca.mjs')
+  await runDca({ get, series, end })
+  process.exit(0)
+}
+
+if (fundamentalOnly) {
+  const { fundamentals } = await import('./dividend-low-vol-fundamentals.mjs')
+  console.log(JSON.stringify({ fundamentals: await fundamentals({ get, simulate, fixed, hold, end }) }))
+  process.exit(0)
 }
 
 const longStart = '2021-08-02'
