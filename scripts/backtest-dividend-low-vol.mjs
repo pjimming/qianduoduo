@@ -106,7 +106,7 @@ function adjust(prices, actions, code) {
     const { dividend = 0, split = 1 } = actionsByDate.get(bar.date) ?? {}
     // Reinvest the cash distribution at the ex-date open in the total-return series.
     factor *= split + dividend / bar.open
-    const adjusted = { ...bar, o: bar.open * factor, c: bar.close * factor }
+    const adjusted = { ...bar, o: bar.open * factor, c: bar.close * factor, h: bar.high * factor, l: bar.low * factor }
     if (i) {
       const exReference = (prices[i - 1].close - dividend) / split
       const openGap = bar.open / exReference - 1
@@ -171,6 +171,135 @@ function pullback(code, threshold = 0.03) {
   } }
 }
 
+function macd(bars) {
+  let fast = bars[0].c
+  let slow = fast
+  let dea = 0
+  return bars.map(({ c }) => {
+    fast += (c - fast) * 2 / 13
+    slow += (c - slow) * 2 / 27
+    const dif = fast - slow
+    dea += (dif - dea) * 2 / 10
+    return { dif, dea }
+  })
+}
+
+function kdj(bars) {
+  let k = 50
+  let d = 50
+  return bars.map(({ c }, index) => {
+    if (index >= 8) {
+      const window = bars.slice(index - 8, index + 1)
+      const high = Math.max(...window.map(bar => bar.h))
+      const low = Math.min(...window.map(bar => bar.l))
+      const rsv = high === low ? 50 : 100 * (c - low) / (high - low)
+      k = (2 * k + rsv) / 3
+      d = (2 * d + k) / 3
+    }
+    return { k, d }
+  })
+}
+
+function rsi(bars) {
+  const period = 14
+  let averageGain = 0
+  let averageLoss = 0
+  return bars.map(({ c }, index) => {
+    if (!index) return null
+    const change = c - bars[index - 1].c
+    const gain = Math.max(0, change)
+    const loss = Math.max(0, -change)
+    if (index <= period) {
+      averageGain += gain / period
+      averageLoss += loss / period
+    } else {
+      averageGain += (gain - averageGain) / period
+      averageLoss += (loss - averageLoss) / period
+    }
+    if (index < period) return null
+    const movement = averageGain + averageLoss
+    return movement ? 100 * averageGain / movement : 50
+  })
+}
+
+function weekStart(date) {
+  const stamp = Date.parse(date)
+  return stamp - ((new Date(stamp).getUTCDay() + 6) % 7) * dayMs
+}
+
+const weekCloses = new Set(calendar.filter((date, i) => calendar[i + 1] && weekStart(date) !== weekStart(calendar[i + 1])))
+
+function weeklyMacd(code, bars) {
+  const closingIndices = new Set([...weekCloses]
+    .filter(date => date >= bars[0].date)
+    .map(date => lastBarIndex(code, date)))
+  const closes = bars.filter((bar, index) => closingIndices.has(index))
+  const weekly = macd(closes)
+  let current = -1
+  return bars.map(({ date }) => {
+    if (closes[current + 1]?.date === date) current++
+    return current >= 25 && weekly[current].dif > weekly[current].dea
+  })
+}
+
+function kdjCross(values, ceiling = 100, weeklyBullish) {
+  let holding = false
+  return values.map(({ k, d }, i) => {
+    const previous = values[i - 1]
+    if (k <= d || (weeklyBullish && !weeklyBullish[i])) holding = false
+    else if (previous?.k <= previous?.d && Math.max(k, d) <= ceiling) holding = true
+    return holding
+  })
+}
+
+function rsiRebound(values, oversold) {
+  let entered = null
+  return values.map((value, i) => {
+    if (value === null || values[i - 1] === null) return false
+    if (entered !== null && (value >= 55 || value < oversold || i - entered >= 20)) entered = null
+    else if (entered === null && values[i - 1] <= oversold && value > oversold) entered = i
+    return entered !== null
+  })
+}
+
+function swingRules(pool) {
+  const rules = {}
+  for (const code of pool) {
+    const { prices } = series[code]
+    const kd = kdj(prices)
+    const momentum = macd(prices)
+    const weekly = weeklyMacd(code, prices)
+    const strength = rsi(prices)
+    const signals = {
+      kdj: kdjCross(kd),
+      kdj20: kdjCross(kd, 20),
+      kdj30: kdjCross(kd, 30),
+      kdj40: kdjCross(kd, 40),
+      macd: momentum.map(({ dif, dea }) => dif > dea),
+      macd0: momentum.map(({ dif, dea }) => dif > dea && dif > 0),
+      macdWeek: weekly,
+      rsi30: rsiRebound(strength, 30),
+      rsi35: rsiRebound(strength, 35),
+      rsi40: rsiRebound(strength, 40),
+      kdjMacdWeek: kdjCross(kd, 50, weekly),
+    }
+    rules[`${code}-hold`] = () => hold(code)
+    rules[`${code}-cash80`] = () => fixed({ [code]: 0.8 })
+    rules[`${code}-cash90`] = () => fixed({ [code]: 0.9 })
+    for (const [key, active] of Object.entries(signals)) {
+      const make = (floor) => () => ({ target(date) {
+        const index = lastBarIndex(code, date)
+        assert(index >= 26 && typeof active[index] === 'boolean', `${code} lacks swing indicator history for ${date}`)
+        if (active[index]) return { [code]: 1 }
+        return floor ? { [code]: floor } : {}
+      } })
+      rules[`${code}-${key}`] = make(0)
+      rules[`${code}-${key}-core`] = make(0.8)
+    }
+  }
+  return rules
+}
+
 function rotate(pool, days, slots = 1) {
   return { monthly: true, target(date) {
     const rank = pool.map(code => {
@@ -183,10 +312,11 @@ function rotate(pool, days, slots = 1) {
   } }
 }
 
-function simulate(start, finish, rule, feeBp = 8, cashRate = 0) {
+function simulate(start, finish, rule, feeBp = 8, cashRate = 0, signalDelay = 0) {
   const dates = calendar.filter(date => date >= start && date <= finish)
   assert(dates.length > 1 && dates[0] === start && dates.at(-1) === finish)
-  const prior = calendar[calendar.indexOf(dates[0]) - 1]
+  const firstIndex = calendar.indexOf(start)
+  const prior = calendar[firstIndex - 1]
   let cash = 1
   let units = {}
   let target = null
@@ -216,7 +346,8 @@ function simulate(start, finish, rule, feeBp = 8, cashRate = 0) {
       return data
     }
     if (index) cash *= (1 + cashRate) ** ((Date.parse(date) - Date.parse(previous)) / dayMs / 365.25)
-    const next = !index || !rule.monthly || scheduled ? rule.target(previous) : target
+    const signalDate = calendar[firstIndex + index - 1 - signalDelay]
+    const next = !index || !rule.monthly || scheduled ? rule.target(signalDate) : target
     const tradedCodes = [...new Set([...Object.keys(units), ...Object.keys(next)])]
     const canRebalance = date !== suspension.date || !tradedCodes.includes(suspension.code)
     if (canRebalance && (!index || (rule.monthly ? scheduled : JSON.stringify(next) !== JSON.stringify(target)))) {
@@ -299,6 +430,19 @@ function run(rules, start, finish, includeDaily = false) {
   }))
 }
 
+function runSwing(rules, start, finish) {
+  const results = run(rules, start, finish)
+  for (const [name, base] of Object.entries(results)) {
+    if (name.endsWith('-hold') || /-cash\d+$/.test(name)) continue
+    const code = name.split('-')[0]
+    const matched = fixed({ [code]: base.exposure })
+    const { cagr, maxDrawdown } = simulate(start, finish, matched)
+    base.matched = { cagr, maxDrawdown }
+    base.oneDayLater = simulate(start, finish, rules[name](), 8, 0, 1).cagr
+  }
+  return results
+}
+
 const longStart = '2021-08-02'
 const laterStart = '2024-01-02'
 const recentStart = '2025-01-02'
@@ -308,6 +452,15 @@ const windows = {
   late: run(longRules, laterStart, end),
   recent: run(recentRules, recentStart, end, true),
   recentSameIndex: run({ '512890-hold': () => hold('512890'), '515100-hold': () => hold('515100') }, recentStart, end),
+}
+
+const longSwing = swingRules(longPool)
+const recentSwing = swingRules(recentPool)
+const swing = {
+  full: runSwing(longSwing, longStart, end),
+  early: runSwing(longSwing, longStart, '2023-12-29'),
+  late: runSwing(longSwing, laterStart, end),
+  recent: runSwing(recentSwing, recentStart, end),
 }
 
 // Independent buy-and-hold check. Only dividends earned after entry are reinvested.
@@ -340,4 +493,4 @@ const provenance = Object.fromEntries(codes.map(code => {
   const { prices, actions, source } = series[code]
   return [code, { first: prices[0].date, last: prices.at(-1).date, days: prices.length, source, actions, last20Amount: prices.slice(-20).reduce((sum, bar) => sum + bar.amount, 0) / 20 }]
 }))
-console.log(JSON.stringify({ provenance, windows, payoutSensitivity }))
+console.log(JSON.stringify({ provenance, windows, swing, payoutSensitivity }))

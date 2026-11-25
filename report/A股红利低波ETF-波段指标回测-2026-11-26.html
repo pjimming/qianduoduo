@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股红利低波ETF｜波段指标回测｜2026-11-26</title>
+<!-- rpnav-published: 2026-11-26 01:58 -->
+<!-- rpnav-title: A股红利低波ETF波段指标回测 -->
+<!-- rpnav-tag: A股红利低波ETF -->
+<!-- rpnav-summary: KDJ与MACD常规交叉跑输持有。RSI超跌回升可研究用于20%机动仓，159307的纯波段结果对成交时间敏感。 -->
+<!-- rpnav-keywords: KDJ MACD RSI 红利低波 ETF 波段 超跌回升 金叉 死叉 512890 515450 515300 515100 563020 159307 -->
+<!-- rpnav-priority: 中 -->
+<!-- rpnav-priority-detail: 对照同等平均持仓和实际成交，跟踪RSI回升的机动仓表现。 -->
+<link rel="stylesheet" href="report-template.css" data-report-template="v1">
+<style>
+  .etf-swing-numbers td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .etf-swing-rules th:first-child { min-width: 9rem; }
+</style>
+</head>
+<body class="rp-doc">
+<main class="rp-wrap">
+  <a class="rp-home-link" href="../research/index.html" data-report-page-home>← 返回报告库</a>
+  <header class="rp-hero">
+    <p class="rp-eyebrow">ETF 研究 · 日线与周线择时</p>
+    <h1>红利低波 ETF 的 KDJ、MACD 与 RSI 波段回测</h1>
+    <p class="sub rp-sub">常规金叉死叉在各代表样本均跑输持有。RSI 超跌回升可用小仓跟踪，纯波段的结果高度依赖成交时间。</p>
+    <div class="rp-meta">
+      <span class="rp-chip">调研 2026-11-26</span>
+      <span class="rp-chip">行情截至 2026-11-25 收盘</span>
+      <span class="rp-chip">人民币 · 基准单边成本 8 bp</span>
+    </div>
+  </header>
+
+  <section class="rp-section" id="verdict">
+    <p class="rp-chapter-no">01 / 一页结论</p>
+    <h2>有波段信号，先用机动仓验证</h2>
+    <div class="rp-takeaway"><p><strong>14日 RSI 超跌回升</strong>是本轮值得继续跟踪的规则。以单只 ETF 为例，平时目标仓位 80%。RSI 从 35 或以下向上穿过 35 时，把次日开盘目标仓位提高到 100%。RSI 达 55、重新跌破 35，或距入场信号满 20 个该 ETF 的交易日，任一条件触发，下一开盘回到 80%。阈值和仓位是回测参数。</p></div>
+    <ul>
+      <li>515450 长样本用这条规则年化 <strong>11.44%</strong>、最大回撤 <strong>−11.00%</strong>。同平均仓位的固定仓位年化 11.05%、回撤 −12.27%，满仓持有年化 13.08%、回撤 −14.52%。多等一天成交后，机动仓年化降至 10.92%。</li>
+      <li>159307 近段的纯 RSI 波段年化 6.07%、最大回撤 −2.13%，只有 14 笔单边成交，平均持仓约 16%。多等一天成交后，年化降至 2.69%，低于同期持有 3.90%。它适合检验超跌反弹的执行条件。</li>
+      <li>前一篇的季度等权继续作为组合基准。这里的 80%–100% 规则是在各单只 ETF 上分别验证的策略，下一步要观察其在多只产品上的同步信号与整体回撤。<a href="https://pjimming.github.io/qianduoduo/report/A股红利低波ETF-交易策略回测-2026-11-26.html">上一轮交易策略回测</a></li>
+    </ul>
+  </section>
+
+  <section class="rp-section" id="setup">
+    <p class="rp-chapter-no">02 / 样本与口径</p>
+    <h2>沿用四条指数路线和真实场内日线</h2>
+    <p>长样本为 2021-08-02 至 2026-11-25，共 1,288 个交易日，使用华泰柏瑞 512890、南方 515450、嘉实 515300、景顺长城 515100。近段为 2025-01-02 至 2026-11-25，共 459 个交易日，用易方达 563020 与博时 159307 替换同指数代表 512890 与 515100。四条路线分别对应中证红利低波、标普中国A股大盘红利低波50、沪深300红利低波和中证红利低波100，持仓仍共享部分行业暴露。</p>
+    <p>512890、515450、563020 取自 <code>D:/dfcf</code>，日期与 OHLC 逐日核对东财公开行情。其他产品用东财不复权数据补齐，按除息和拆分构建含分红再投的开高低收。信号沿用窗口前可见数据预热，周线策略只使用已结束的交易周。按日历天复利年化，最大回撤使用收盘账户价值，8 bp 由 3 bp 佣金及 5 bp 滑点组成。空仓现金基准收益 0%，追加测试单边 20／40 bp 与额外延后一个交易日成交。</p>
+    <p class="rp-src">行业和产品依据 2026-11-25 横向比较及其基金三季报。沿用 Serenity 的产品暴露与市场叙事框架，本篇新增技术指标事件回测与退出条件。分红、基金拆分、最小交易单位和 T+1 的口径与前一篇一致。<a href="https://pjimming.github.io/qianduoduo/report/A股红利低波ETF-横向比较-2026-11-25.html">产品横向比较</a> · <a href="https://www.sse.com.cn/assortment/fund/etf/question/">上交所ETF交易问答</a></p>
+  </section>
+
+  <section class="rp-section" id="rules">
+    <p class="rp-chapter-no">03 / 可复现买卖规则</p>
+    <h2>指标用来定义信号，收盘确认后次日开盘执行</h2>
+    <div class="rp-table-wrap">
+      <table class="etf-swing-rules">
+        <thead><tr><th scope="col">规则</th><th scope="col">买入信号</th><th scope="col">退出与变体</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">KDJ(9,3,3)</th><td>K 从下方上穿 D。按过去9日最高价、最低价和当日收盘价算 RSV，K、D 各递推平滑。</td><td>K 回落至 D 或更低退出。对照任意金叉和仅 K、D 同时低于或等于20、30、40的金叉，J线仅用于指标定义。</td></tr>
+          <tr><th scope="row">MACD(12,26,9)</th><td>DIF 高于 DEA 持有。DIF 为12期与26期 EMA 之差，DEA 为 DIF 的9期 EMA。</td><td>DIF 不高于 DEA 退出。另测要求 DIF 同时在零轴以上，以及只按完整周线判断的版本。</td></tr>
+          <tr><th scope="row">RSI(14) 超跌回升</th><td>用 Wilder 平滑。前一日 RSI ≤35，今日 RSI &gt;35，触发入场。</td><td>RSI ≥55、RSI &lt;35 或距入场信号满20个交易日，三者任一触发退出。另测入场阈值30与40，退出的回落阈值同步更改。</td></tr>
+          <tr><th scope="row">周 MACD ＋日 KDJ</th><td>完整周线 DIF 高于 DEA，并且日线 K、D 都不超过50时出现 KDJ 金叉。</td><td>日线 K 回落至 D 或更低，或完整周线 DIF 不再高于 DEA 时退出。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>每条规则比较纯波段（0%／100%）和机动仓（80%／100%）。仓位指交易时的目标，信号保持期间随市值自然漂移。同平均仓位的固定仓位按策略的实际平均仓位做月度再平衡。这是事后匹配的暴露对照，帮助检验择时贡献。</p>
+    <p class="rp-src"><a href="https://support.futunn.com/topic149?from_platform=1&amp;lang=zh-cn">富途 KDJ 计算</a> · <a href="https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/macd">Fidelity MACD</a> · <a href="https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/RSI">Fidelity RSI</a></p>
+  </section>
+
+  <section class="rp-section" id="results">
+    <p class="rp-chapter-no">04 / 波段策略表现</p>
+    <h2>金叉死叉落后，RSI 的贡献取决于标的和执行</h2>
+    <div class="rp-table-wrap">
+      <table class="etf-swing-numbers">
+        <thead><tr><th scope="col">ETF</th><th scope="col">持有年化</th><th scope="col">KDJ交叉年化</th><th scope="col">日MACD年化</th><th scope="col">周MACD年化</th><th scope="col">RSI35机动仓年化</th><th scope="col">同仓位年化</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">512890 · 长段</th><td>11.25%</td><td>4.82%</td><td>6.71%</td><td>−4.11%</td><td>10.07%</td><td>9.53%</td></tr>
+          <tr><th scope="row">515450 · 长段</th><td>13.08%</td><td>−0.38%</td><td>4.36%</td><td>−0.88%</td><td>11.44%</td><td>11.05%</td></tr>
+          <tr><th scope="row">515300 · 长段</th><td>10.84%</td><td>1.39%</td><td>5.69%</td><td>−0.88%</td><td>9.41%</td><td>9.24%</td></tr>
+          <tr><th scope="row">515100 · 长段</th><td>9.71%</td><td>5.36%</td><td>2.40%</td><td>−2.14%</td><td>9.15%</td><td>8.34%</td></tr>
+          <tr><th scope="row">563020 · 近段</th><td>5.80%</td><td>−3.19%</td><td>−1.27%</td><td>−1.57%</td><td>5.14%</td><td>4.91%</td></tr>
+          <tr><th scope="row">515450 · 近段</th><td>7.23%</td><td>−6.65%</td><td>−5.68%</td><td>−0.28%</td><td>6.36%</td><td>6.06%</td></tr>
+          <tr><th scope="row">515300 · 近段</th><td>3.55%</td><td>−1.23%</td><td>−1.93%</td><td>−2.01%</td><td>3.33%</td><td>3.08%</td></tr>
+          <tr><th scope="row">159307 · 近段</th><td>3.90%</td><td>−1.45%</td><td>−2.25%</td><td>−2.60%</td><td>4.39%</td><td>3.35%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>前三列技术指标年化均为纯波段。515450 长样本中，任意 KDJ 交叉有 247 笔成交，最大回撤 −21.79%，同期满仓持有的最大回撤为 −14.52%。限制低位金叉会降低交易和市场暴露。该标的 K、D 均不超过30时金叉才买、死叉卖，长样本纯波段年化为 4.57%，平均持仓 15.30%，回撤 −9.51%。在同标的用这条信号只动20%机动仓，长样本年化 11.45%、回撤 −12.17%，近段年化 6.19%，同平均仓位的近段固定仓位年化 6.08%。</p>
+    <h3>RSI 成本与成交延迟</h3>
+    <div class="rp-table-wrap">
+      <table class="etf-swing-numbers">
+        <thead><tr><th scope="col">标的、区间和策略</th><th scope="col">8 bp 年化</th><th scope="col">最大回撤</th><th scope="col">20 bp 年化</th><th scope="col">40 bp 年化</th><th scope="col">多等1日年化</th><th scope="col">成交笔数</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">515450 长段 · RSI35 机动仓</th><td>11.44%</td><td>−11.00%</td><td>11.21%</td><td>10.82%</td><td>10.92%</td><td>43</td></tr>
+          <tr><th scope="row">515450 近段 · RSI35 机动仓</th><td>6.36%</td><td>−8.57%</td><td>6.18%</td><td>5.86%</td><td>6.40%</td><td>11</td></tr>
+          <tr><th scope="row">159307 近段 · RSI35 纯波段</th><td>6.07%</td><td>−2.13%</td><td>5.14%</td><td>3.59%</td><td>2.69%</td><td>14</td></tr>
+          <tr><th scope="row">159307 近段 · RSI35 机动仓</th><td>4.39%</td><td>−9.86%</td><td>4.15%</td><td>3.76%</td><td>3.72%</td><td>15</td></tr>
+          <tr><th scope="row">159307 近段 · 买入持有</th><td>3.90%</td><td>−12.78%</td><td>3.83%</td><td>3.72%</td><td>—</td><td>1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>159307 纯波段将 RSI 入场阈值由35改为30或40，近段年化分别为 4.97% 和 2.77%，说明结果对阈值敏感。该基金的同指数长样本代表 515100 用 RSI35 纯波段年化 6.54%，仍低于同期持有的 9.71%。515450 的 RSI35 机动仓在长样本前段和后段分别为 9.59% 和 13.01%，同平均仓位基准分别为 9.18% 和 12.60%，两段优势各约 0.4 个百分点。</p>
+  </section>
+
+  <section class="rp-section" id="monitoring">
+    <p class="rp-chapter-no">05 / 观察条件与复现</p>
+    <h2>用真实成交核对波段收益</h2>
+    <ul>
+      <li>按同一 RSI 参数记录信号收盘、下一开盘、实际成交及佣金。同步跟踪同仓位月度再平衡和满仓持有，避免把低权益暴露带来的低回撤全归因于指标。</li>
+      <li>若扣除真实成本后连续12个月无法改善同仓位基准的收益与回撤组合，降低机动仓规则的研究优先级。若基金的份额和开盘深度持续走弱，先复核模拟成交可以实现的金额。</li>
+      <li>短样本的试验参数和同仓位基准均有事后观察成分。测算未计整手、最低单笔佣金或盘口冲击分档。各产品收益相关，也共享部分行业，跨产品对照的独立性有限。</li>
+    </ul>
+    <p>复现命令 <code>node scripts/backtest-dividend-low-vol.mjs D:/dfcf</code>，波段数据位于输出的 <code>swing</code> 字段，包含所有参数、前后阶段、成本、成交延迟与同等持仓结果。<a href="https://github.com/pjimming/qianduoduo/blob/main/scripts/backtest-dividend-low-vol.mjs">回测脚本</a></p>
+  </section>
+
+  <footer class="rp-foot"><p>本文为历史回测与研究记录。历史收益和回撤无法预测未来表现，不构成投资建议。</p></footer>
+</main>
+<!-- ↓ 报告导航（通用组件，自动挂载） -->
+<script src="../scripts/report-nav.js" defer></script>
+</body>
+</html>
