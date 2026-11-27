@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const end = '2026-11-25'
+const longStart = '2021-08-02'
 const root = process.argv[2] ?? 'D:/dfcf'
 const dcaOnly = process.argv.includes('--dca')
 const fundamentalOnly = dcaOnly || process.argv.includes('--fundamentals')
@@ -127,6 +128,13 @@ function adjust(prices, actions, code) {
     }
     return adjusted
   })
+}
+
+if (process.argv.includes('--index-combinations')) {
+  assert(!(fundamentalOnly || combinationsOnly), 'Run --index-combinations separately from other backtests')
+  const { runIndexCombinations } = await import('./dividend-low-vol-index-combinations.mjs')
+  console.log(JSON.stringify(await runIndexCombinations({ get, publicPrices, corporateActions, start: longStart, end })))
+  process.exit(0)
 }
 
 const buffer = combinationsOnly ? null : await readFile(join(root, 'data', 'SHANGHAI', 'DayData_SH_V43.dat'))
@@ -467,8 +475,6 @@ if (fundamentalOnly) {
   console.log(JSON.stringify({ fundamentals: await fundamentals({ get, simulate, fixed, hold, end }) }))
   process.exit(0)
 }
-
-const longStart = '2021-08-02'
 
 if (combinationsOnly) {
   const highPriority = ['512890', '563020', '159307', '515450']
