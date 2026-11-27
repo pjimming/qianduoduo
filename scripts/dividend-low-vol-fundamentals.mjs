@@ -124,7 +124,7 @@ export async function loadFundamentalHistory(get, end) {
   return { rows, ...buildSignals(rows) }
 }
 
-export async function fundamentals({ get, simulate, fixed, hold, end }) {
+export async function fundamentals({ get, simulate, fixed, hold, end, includeCurves = false }) {
   const { rows, signals, latest } = await loadFundamentalHistory(get, end)
   const rowByDate = new Map(rows.map(row => [row.date, row]))
   const settings = [
@@ -147,9 +147,10 @@ export async function fundamentals({ get, simulate, fixed, hold, end }) {
       }
     }
     return [key, Object.fromEntries(Object.entries(rules).map(([name, rule]) => {
-      const base = summarize(simulate(start, finish, rule))
+      const { daily, ...base } = simulate(start, finish, rule)
       return [name, {
         ...base,
+        ...(includeCurves && key === 'full' && ['hold', 'fixed80', 'pe', 'carry'].includes(name) ? { daily } : {}),
         cost20: simulate(start, finish, rule, 20).cagr,
         cash15: simulate(start, finish, rule, 8, 0.015).cagr,
         ...(name !== 'hold' && name !== 'fixed80' ? { matched: summarize(simulate(start, finish, fixed({ [code]: base.exposure }))) } : {}),
@@ -161,5 +162,6 @@ export async function fundamentals({ get, simulate, fixed, hold, end }) {
   const report = slices.map(([start, finish]) => attribution(rowByDate.get(start), rowByDate.get(finish)))
   const activeMonths = [...signals.values()].filter(signal => signal.date >= '2019-01-01')
   const blocked = activeMonths.filter(signal => weights(signal).carry === 1 && weights(signal).screened === 0.8)
-  return { results, attribution: report, latest, lastCompletedMonth: [...signals.values()].at(-1), blocked, observations: rows.length }
+  const attributionHistory = includeCurves ? rows.filter(row => row.date >= slices[0][0]) : undefined
+  return { results, attribution: report, attributionHistory, latest, lastCompletedMonth: [...signals.values()].at(-1), blocked, observations: rows.length }
 }

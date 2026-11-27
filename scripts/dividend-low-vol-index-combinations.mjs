@@ -51,11 +51,12 @@ function alignedLevels(series, calendar, label) {
   return new Map(series.map(row => [row.date, row.close]))
 }
 
-function backtest(levels, pool, dates) {
+function backtest(levels, pool, dates, includeCurves) {
   let holdings = pool.map(() => 1 / pool.length)
   let equity = 1
   let peak = 1
   let maxDrawdown = 0
+  const daily = includeCurves ? [{ date: dates[0], equity }] : null
   for (let i = 1; i < dates.length; i++) {
     const prior = dates[i - 1]
     const date = dates[i]
@@ -64,6 +65,7 @@ function backtest(levels, pool, dates) {
       holdings[j] *= prices.get(date) / prices.get(prior)
     }
     equity = holdings.reduce((sum, value) => sum + value, 0)
+    daily?.push({ date, equity })
     peak = Math.max(peak, equity)
     maxDrawdown = Math.min(maxDrawdown, equity / peak - 1)
     const month = date.slice(0, 7)
@@ -72,7 +74,7 @@ function backtest(levels, pool, dates) {
     }
   }
   const years = (Date.parse(dates.at(-1)) - Date.parse(dates[0])) / dayMs / 365.25
-  return { pool, total: equity - 1, cagr: equity ** (1 / years) - 1, maxDrawdown }
+  return { pool, total: equity - 1, cagr: equity ** (1 / years) - 1, maxDrawdown, ...(daily ? { daily } : {}) }
 }
 
 function combinations(routes, size) {
@@ -80,7 +82,7 @@ function combinations(routes, size) {
   return routes.flatMap((code, i) => combinations(routes.slice(i + 1), size - 1).map(rest => [code, ...rest]))
 }
 
-export async function runIndexCombinations({ get, publicPrices, corporateActions, start, end }) {
+export async function runIndexCombinations({ get, publicPrices, corporateActions, start, end, includeCurves = false }) {
   const [indices, traded, navScript, distributions] = await Promise.all([
     Promise.all(csiTotalReturn.map(async ([code, variant]) => [code, await indexPrices(get, variant, start, end)])),
     publicPrices(spProxy),
@@ -100,17 +102,18 @@ export async function runIndexCombinations({ get, publicPrices, corporateActions
   const pools = [...combinations(routes, 2), ...combinations(routes, 3)]
   assert.equal(pools.length, 35)
 
-  function rank(proxyPrices, firstDate) {
+  function rank(proxyPrices, firstDate, includeDaily = false) {
     const levels = new Map(official).set(spRoute, alignedLevels(proxyPrices, calendar, spProxy))
     const window = calendar.filter(date => date >= firstDate)
     assert.equal(window[0], firstDate)
     const ranked = pools.map(pool => backtest(levels, pool, window)).sort((a, b) => b.cagr - a.cagr)
-    return { start: firstDate, end, sessions: window.length, ranked, allSix: backtest(levels, routes, window) }
+    if (includeDaily) ranked.splice(0, 5, ...ranked.slice(0, 5).map(row => backtest(levels, row.pool, window, true)))
+    return { start: firstDate, end, sessions: window.length, ranked, allSix: backtest(levels, routes, window, includeDaily) }
   }
 
   return {
     sources: { csiTotalReturn: Object.fromEntries(csiTotalReturn), spRoute, spProxy },
-    market: { long: rank(marketSeries, start), common: rank(marketSeries, commonStart) },
+    market: { long: rank(marketSeries, start, includeCurves), common: rank(marketSeries, commonStart) },
     nav: { long: rank(navSeries, start), common: rank(navSeries, commonStart) },
   }
 }

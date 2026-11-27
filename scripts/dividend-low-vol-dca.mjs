@@ -72,7 +72,7 @@ function buildInputs(prices, rows, signals) {
 }
 
 function simulate(bars, rule, {
-  reserve = RESERVE, weeklyReserve = 0, feeBp = 8, cashRate = 0, minCommission = 0, detailed = false,
+  reserve = RESERVE, weeklyReserve = 0, feeBp = 8, cashRate = 0, minCommission = 0, detailed = false, includeCurve = false,
 } = {}) {
   let shares = 0
   let reserves = reserve
@@ -93,6 +93,7 @@ function simulate(bars, rule, {
   const deposits = []
   const adds = []
   const exits = []
+  const daily = includeCurve ? [] : null
   const times = bars[0].time
 
   for (let i = 0; i < bars.length; i++) {
@@ -177,6 +178,7 @@ function simulate(bars, rule, {
     drawdown = Math.min(drawdown, nav / peak - 1)
     exposure += equity / value
     lastValue = value
+    daily?.push({ date: bar.date, profit: value - totalDeposits })
   }
   const time = bars.at(-1).time
   return {
@@ -186,6 +188,7 @@ function simulate(bars, rule, {
     exposure: exposure / bars.length, endCash: reserves + regular + proceeds,
     buys, sells, fees,
     ...(detailed ? { addDates: adds, exitDates: exits } : {}),
+    ...(daily ? { daily } : {}),
   }
 }
 
@@ -235,7 +238,7 @@ function rolling(bars, code, years, withReserve) {
   }
 }
 
-export async function runDca({ get, series, end }) {
+export async function runDca({ get, series, end, includeCurves = false }) {
   const { rows, signals } = await loadFundamentalHistory(get, end)
   const bars = Object.fromEntries(['512890', '563020'].map(code => [code, buildInputs(series[code].prices, rows, signals)]))
   const settings = [
@@ -256,7 +259,7 @@ export async function runDca({ get, series, end }) {
     }]))
     const basic = Object.fromEntries(['weekly', 'monthly', 'peSell', 'peRankSell', 'yieldRankSell', 'yieldAbsSell', 'carrySell', 'target15', 'target20'].map(key => [
       key, {
-        ...simulate(window, rules[key], { reserve: 0, detailed: true }),
+        ...simulate(window, rules[key], { reserve: 0, detailed: true, includeCurve: includeCurves && name === 'full' && ['weekly', 'monthly', 'target15', 'target20'].includes(key) }),
         min5: simulate(window, rules[key], { reserve: 0, minCommission: 5 }).xirr,
       },
     ]))

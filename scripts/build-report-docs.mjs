@@ -329,9 +329,10 @@ async function extractImages(html, slug) {
   return { html: output, count, bytes, files }
 }
 
-function buildSearchSections(html) {
+function buildSearchSections(html, includeSubheadings = false) {
   const sections = []
-  const matches = [...html.matchAll(/<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi)]
+  const headingPattern = includeSubheadings ? /<h([23])\b([^>]*)>([\s\S]*?)<\/h\1>/gi : /<h(2)\b([^>]*)>([\s\S]*?)<\/h\1>/gi
+  const matches = [...html.matchAll(headingPattern)]
 
   const intro = textOnly(html.slice(0, matches[0]?.index ?? html.length))
   if (intro.length > 120) {
@@ -342,8 +343,8 @@ function buildSearchSections(html) {
     const match = matches[index]
     const start = (match.index ?? 0) + match[0].length
     const end = matches[index + 1]?.index ?? html.length
-    const id = /\bid=["']([^"']+)["']/i.exec(match[1])?.[1] ?? ''
-    const heading = textOnly(match[2])
+    const id = /\bid=["']([^"']+)["']/i.exec(match[2])?.[1] ?? ''
+    const heading = textOnly(match[3])
     const text = textOnly(html.slice(start, end))
     if (!heading && !text) continue
     sections.push({ id, heading, text: text.slice(0, 12000) })
@@ -399,7 +400,8 @@ async function extractReport(html, fileName) {
   const withIds = ensureHeadingIds(nav.html)
   content = nav.restore(withIds.html)
 
-  const searchSections = buildSearchSections(content)
+  const chapterOutline = /<main\b[^>]*\bdata-report-outline=["']h2["']/i.test(content)
+  const searchSections = buildSearchSections(content, chapterOutline)
   const images = await extractImages(content, slug)
   content = images.html
 
@@ -413,7 +415,7 @@ async function extractReport(html, fileName) {
       template: template.version || null,
       html: content,
       css: scopeReportCss(styles),
-      headings: withIds.headings,
+      headings: chapterOutline ? withIds.headings.filter(({ level }) => level === 2) : withIds.headings,
     },
     search: {
       slug,

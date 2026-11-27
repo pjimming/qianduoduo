@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
 const end = '2026-11-25'
 const longStart = '2021-08-02'
-const root = process.argv[2] ?? 'D:/dfcf'
+const root = process.argv.slice(2).find(arg => !arg.startsWith('--')) ?? 'D:/dfcf'
 const dcaOnly = process.argv.includes('--dca')
 const fundamentalOnly = dcaOnly || process.argv.includes('--fundamentals')
 const combinationsOnly = process.argv.includes('--combinations')
+const includeCurves = process.argv.includes('--report-curves')
 assert(!(combinationsOnly && fundamentalOnly), 'Run --combinations separately from --fundamentals or --dca')
 const longPool = ['512890', '515450', '515300', '515100']
 const recentPool = ['563020', '515450', '515300', '159307']
@@ -24,6 +26,7 @@ async function get(url) {
       return await response.text()
     } catch (error) {
       if (attempt === 3) throw new Error(`Cannot read ${url}`, { cause: error })
+      await delay(attempt * 500)
     }
   }
 }
@@ -133,11 +136,43 @@ function adjust(prices, actions, code) {
 if (process.argv.includes('--index-combinations')) {
   assert(!(fundamentalOnly || combinationsOnly), 'Run --index-combinations separately from other backtests')
   const { runIndexCombinations } = await import('./dividend-low-vol-index-combinations.mjs')
-  console.log(JSON.stringify(await runIndexCombinations({ get, publicPrices, corporateActions, start: longStart, end })))
+  console.log(JSON.stringify(await runIndexCombinations({ get, publicPrices, corporateActions, start: longStart, end, includeCurves })))
   process.exit(0)
 }
 
-const buffer = combinationsOnly ? null : await readFile(join(root, 'data', 'SHANGHAI', 'DayData_SH_V43.dat'))
+if (process.argv.includes('--product-nav')) {
+  const start = '2025-11-24'
+  const finish = '2026-11-24'
+  const representatives = ['512890', '159307', '515450', '515300', '159355', '560570', '510300']
+  const tradingDates = (await publicPrices('510300')).map(row => row.date).filter(date => date >= start && date <= finish)
+  assert.equal(tradingDates.length, 243)
+  const curves = await Promise.all(representatives.map(async code => {
+    const [script, actions] = await Promise.all([
+      get('https://fund.eastmoney.com/pingzhongdata/' + code + '.js'), corporateActions(code),
+    ])
+    assert.equal(script.match(/var fS_code\s*=\s*"(\d+)"/)?.[1], code)
+    const rows = JSON.parse(script.match(/var Data_netWorthTrend\s*=\s*(\[[\s\S]*?\]);/)?.[1] ?? '[]')
+    const levels = new Map(rows.map(row => [new Date(row.x + 8 * 3_600_000).toISOString().slice(0, 10), row.y]))
+    const distributions = actions.filter(action => action.date > start && action.date <= finish)
+    assert(distributions.every(action => action.dividend > 0 && tradingDates.includes(action.date)), `Unexpected action for ${code}`)
+    const dividends = new Map(distributions.map(action => [action.date, action.dividend]))
+    let equity = 1
+    let last
+    const daily = tradingDates.map(date => {
+      const nav = levels.get(date)
+      assert(nav > 0, `Missing ${code} NAV on ${date}`)
+      if (last) equity *= (nav + (dividends.get(date) ?? 0)) / last
+      last = nav
+      return { date, equity }
+    })
+    return [code, daily]
+  }))
+  console.log(JSON.stringify(Object.fromEntries(curves)))
+  process.exit(0)
+}
+
+// Report curves use the complete public history, including when the local cache is trimmed.
+const buffer = combinationsOnly || includeCurves ? null : await readFile(join(root, 'data', 'SHANGHAI', 'DayData_SH_V43.dat'))
 const series = Object.fromEntries(await Promise.all(codes.map(async code => {
   if (fundamentalOnly && code === '510300') return [code, { prices: await publicPrices(code) }]
   const [online, actions] = await Promise.all([publicPrices(code), corporateActions(code)])
@@ -466,13 +501,13 @@ function runSwing(rules, start, finish) {
 
 if (dcaOnly) {
   const { runDca } = await import('./dividend-low-vol-dca.mjs')
-  await runDca({ get, series, end })
+  await runDca({ get, series, end, includeCurves })
   process.exit(0)
 }
 
 if (fundamentalOnly) {
   const { fundamentals } = await import('./dividend-low-vol-fundamentals.mjs')
-  console.log(JSON.stringify({ fundamentals: await fundamentals({ get, simulate, fixed, hold, end }) }))
+  console.log(JSON.stringify({ fundamentals: await fundamentals({ get, simulate, fixed, hold, end, includeCurves }) }))
   process.exit(0)
 }
 
@@ -510,7 +545,7 @@ if (combinationsOnly) {
 
   function result(start, rule) {
     const { daily, ...metrics } = simulate(start, end, rule)
-    return { ...metrics, cagrAt20Bp: simulate(start, end, rule, 20).cagr }
+    return { ...metrics, cagrAt20Bp: simulate(start, end, rule, 20).cagr, ...(includeCurves ? { daily } : {}) }
   }
 
   const pairs = highPriority.flatMap((code, i) => highPriority.slice(i + 1).map(next => [code, next]))
@@ -549,6 +584,14 @@ const swing = {
   late: runSwing(longSwing, laterStart, end),
   recent: runSwing(recentSwing, recentStart, end),
 }
+const swingCurves = includeCurves ? (() => {
+  const key = '515450-rsi35-core'
+  const matched = fixed({ '515450': swing.full[key].exposure })
+  return {
+    rsi: simulate(longStart, end, longSwing[key]()).daily,
+    matched: simulate(longStart, end, matched).daily,
+  }
+})() : undefined
 
 // Independent buy-and-hold check. Only dividends earned after entry are reinvested.
 function holdCheck(code, start, usePaymentDate = false) {
@@ -580,4 +623,4 @@ const provenance = Object.fromEntries(codes.map(code => {
   const { prices, actions, source } = series[code]
   return [code, { first: prices[0].date, last: prices.at(-1).date, days: prices.length, source, actions, last20Amount: prices.slice(-20).reduce((sum, bar) => sum + bar.amount, 0) / 20 }]
 }))
-console.log(JSON.stringify({ provenance, windows, swing, payoutSensitivity }))
+console.log(JSON.stringify({ provenance, windows, swing, payoutSensitivity, swingCurves }))

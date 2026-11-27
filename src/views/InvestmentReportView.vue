@@ -96,7 +96,11 @@ function handleReady(doc: ReportDoc): void {
   void nextTick(() => {
     setupHeadingObserver()
     const id = decodeURIComponent(window.location.hash.slice(1))
-    if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' })
+    const target = id ? document.getElementById(id) : null
+    for (let disclosure = target?.closest('details'); disclosure; disclosure = disclosure.parentElement?.closest('details')) {
+      disclosure.open = true
+    }
+    target?.scrollIntoView({ block: 'start' })
   })
 }
 
