@@ -130,6 +130,28 @@
   overflow: visible;
 }
 
+.chart-canvas svg[data-chart]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.chart-canvas svg:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.chart-plot {
+  cursor: crosshair;
+  user-select: none;
+}
+
+.chart-plot.can-pan {
+  cursor: grab;
+}
+
+.chart-plot.is-dragging {
+  cursor: grabbing;
+}
+
 .chart-tooltip {
   position: absolute;
   z-index: 5;

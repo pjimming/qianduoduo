@@ -1,13 +1,14 @@
 'use strict';
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
+const { DEFAULT_POLICY } = require('./policy-settings');
 const { identityKey } = require('./evidence');
 const { buildPublicLimits } = require('./public-limits');
 const { moneyCents } = require('./account');
 const { buildHoldingMonitoring } = require('./holdings');
 const { isoDate, shift, daysBetween } = require('../r2-screening/calendar');
 const { bucketForTerm, roundHalfAwayFromZero } = require('../../../lib/yield-policy');
-const { calculateSwitch, dynamicMinGainAmount, comparisonDaysForBucket, MIN_YIELD_EDGE_PP, BREAK_EVEN_MARGIN_PP } = require('../../../lib/holdings-review');
+const { calculateSwitch, dynamicMinGainAmount } = require('../../../lib/holdings-review');
 
 const codeCompare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Public screening has no verified redemption fee or arrival facts. Keep the
@@ -19,9 +20,9 @@ function currentPath() {
 }
 
 function buildHoldingActionPlans({ holdings, context, monitoringContext = context, date,
-  validateReplacement = null }) {
+  validateReplacement = null, policy = DEFAULT_POLICY }) {
   if (!isoDate(date) || context?.date !== date || monitoringContext?.date !== date) throw new Error('持仓计划需使用当前业务日的冻结上下文');
-  const monitoring = buildHoldingMonitoring({ holdings, context: monitoringContext, date });
+  const monitoring = buildHoldingMonitoring({ holdings, context: monitoringContext, date, policy });
   const holdingByLot = new Map(holdings.map(row => [row.lot_id, row]));
   const plans = monitoring.rows.map(monitor => {
     const holding = holdingByLot.get(monitor.lot_id);
@@ -42,6 +43,7 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
       exit_conditions: monitor.exit_conditions,
       dedupe_key: fingerprint({ type: monitor.exit_conditions.status === 'met' ? 'mandatory_holding_exit' : 'holding_review',
         lot_id: holding.lot_id, contract_hash: CONTRACT_HASH }),
+      ...(policy !== DEFAULT_POLICY ? { policy_settings: policy } : {}),
       frozen_evidence: { current } };
     if (monitor.exit_conditions.status === 'met') {
       // This branch deliberately precedes candidate/economic comparison. No
@@ -66,9 +68,9 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
     }
     const reference = current.reference;
     const currentBucket = bucketForTerm(current.term?.days);
-    const horizon = comparisonDaysForBucket(currentBucket);
+    const horizon = policy.replacement[`${currentBucket}_comparison_days`] ?? policy.replacement.short_comparison_days;
     const end = shift(date, horizon);
-    const minGain = dynamicMinGainAmount(holding.amount, horizon);
+    const minGain = dynamicMinGainAmount(holding.amount, horizon, policy.replacement);
     // The comparison scenario is a property of the holding, not of whether a
     // candidate survives; keep it even when there is nothing to switch into.
     base.comparison = { start_date: date, end_date: end, days: horizon,
@@ -81,7 +83,7 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
     }
     const candidateRows = context.available && context.contract_hash === CONTRACT_HASH ? context.rows.filter(row =>
       row.automatic_eligible && row.mapping && identityKey(row.identity) !== identityKey(current.identity) &&
-      Number.isInteger(row.term?.days) && row.term.days > 0 && row.term.days <= CONTRACT.max_term_days &&
+      Number.isInteger(row.term?.days) && row.term.days > 0 && row.term.days <= policy.screening.max_term_days &&
       bucketForTerm(row.term?.days) === currentBucket && row.reference?.status === 'available') : [];
     candidateRows.sort((a, b) => a.term.days - b.term.days || codeCompare(a.category, b.category) ||
       (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) ||
@@ -101,8 +103,8 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
           newYieldPct: candidate.reference.value_pct, purchaseFeeBps: 0 });
       }
       const edge = roundHalfAwayFromZero(candidate.reference.value_pct - reference.value_pct);
-      const economicPass = Boolean(economics && edge >= MIN_YIELD_EDGE_PP && economics.difference >= minGain &&
-        economics.break_even_yield_pct !== null && candidate.reference.value_pct > economics.break_even_yield_pct + BREAK_EVEN_MARGIN_PP);
+      const economicPass = Boolean(economics && edge >= policy.replacement.min_yield_edge_pp && economics.difference >= minGain &&
+        economics.break_even_yield_pct !== null && candidate.reference.value_pct > economics.break_even_yield_pct + policy.replacement.break_even_margin_pp);
       if (!economicPass) blockers.push('switch_economics_not_met');
       let portfolio = { ok: false, reasons: ['portfolio_revalidation_required'], risk_not_worse: false, liquidity_not_worse: false };
       if (typeof validateReplacement === 'function') {
@@ -130,7 +132,7 @@ function buildHoldingActionPlans({ holdings, context, monitoringContext = contex
     // window never defers an executable switch to a later date.
     const future = !monitor.redemption.redeemable_now ? evaluated.find(row => row.economic_pass &&
       row.blockers.every(code => code === 'holding_not_redeemable_now')) ?? null : null;
-    base.candidates = evaluated.slice(0, 6);
+    base.candidates = evaluated.slice(0, policy.replacement.candidate_limit);
     if (chosen && !base.candidates.includes(chosen)) base.candidates[base.candidates.length - 1] = chosen;
     if (chosen) {
       if (chosen.reinvestment_required) base.warnings = [chosen.reinvestment_note];

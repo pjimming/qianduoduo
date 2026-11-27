@@ -3,7 +3,7 @@
  * R2 v9 工作区端到端检查（Stream C）。
  *
  * 覆盖：
- * - 选品与配置三分区（screening / allocation / holdings）
+ * - 选品与配置四分区（screening / allocation / holdings / settings）
  * - 决策与评估三分区（proposals / decisions / results）
  * - 旧深链与旧初筛参数迁移（#holding-reviews、#events、#automation、#calibration）
  * - 无效 section 的 notice 与 replace 规范化
@@ -117,6 +117,7 @@ async function main() {
     schedule: false,
     collector: async () => screeningFixture,
     clock: () => new Date('2026-11-07T04:26:00Z'),
+    readScreeningPolicy: () => require('../server/modules/r2-strategy/policy-settings.js').readPolicy(repository.db).settings.screening,
   })
   const { applyMigration } = await import('./migrate-r2-strategy.mjs')
   applyMigration({ dbPath: repository.dbPath, screeningPath: path.join(directory, 'screening.sqlite'), backupDir: path.join(directory, 'backups') })
@@ -424,6 +425,13 @@ async function main() {
       Object.assign(payload.result.monitoring.rows[9], { yield_1m: '10.10' })
       await route.fulfill({response,json:payload})
     })
+    await page.route('**/api/r2-strategy/holding-weekly-nav', async route => {
+      const workspace = await (await route.fetch({ url: base + '/api/r2-strategy/workspace' })).json()
+      await route.fulfill({ json: { date: workspace.business_date, status: 'checked', products: [
+        { code: 'E2E7', channel: 'TEST', status: 'calculated', return_pct: 0.0380187244, below_threshold: true,
+          start_date: '2026-10-30', end_date: '2026-11-06', source_url: 'https://cfweb.paas.cmbchina.com/' },
+      ] } })
+    })
     await page.goto(base + '/ledger/products?section=holdings', {waitUntil:'networkidle'})
     await page.locator('[data-testid="strategy-workspace"]').waitFor()
     await page.getByRole('heading', { name: '持仓产品复核' }).waitFor()
@@ -432,11 +440,20 @@ async function main() {
     const merged = holdingRows.filter({ has: page.getByRole('rowheader', { name: 'E2E0 测试持仓产品名称', exact: true }) })
     await merged.getByText('¥3,500.00', { exact: true }).waitFor()
     await merged.getByText('准备退出', { exact: true }).waitFor()
-    await merged.getByText('查看三项退出条件', { exact: true }).click()
-    await merged.getByText('近6月 / 近3月 / 近1月年化：3.00% / 2.50% / 2.10%；须依次严格下降。', { exact: true }).waitFor()
-    await merged.getByText('三项需同时满足；等于阈值或窗口年化相等不触发。', { exact: true }).waitFor()
-    await merged.getByText(/退出阈值 <0\.04410959%/).waitFor()
-    await merged.getByText(/退出阈值 <2\.3%/).waitFor()
+    const exitTags = merged.getByRole('list', { name: '三项退出条件' })
+    assert(await exitTags.getByRole('listitem').count() === 3, '默认显示三项退出条件标签')
+    await exitTags.getByText('7日收益 0.010000% 满足', { exact: true }).waitFor()
+    await merged.getByText('查看条件与阈值', { exact: true }).click()
+    await merged.getByText('6月 / 3月 / 1月年化 3.00% / 2.50% / 2.10%', { exact: true }).waitFor()
+    await merged.getByText('7日总收益率 < 0.04410959%', { exact: true }).waitFor()
+    await merged.getByText('1月年化 < 2.3%', { exact: true }).waitFor()
+    const reference = holdingRows.filter({ has: page.getByRole('rowheader', { name: 'E2E7', exact: true }) })
+    await reference.getByText('7日收益 0.038019% 参考', { exact: true }).waitFor()
+    await reference.getByText('退出条件待核', { exact: true }).waitFor()
+    await reference.getByText('查看条件与阈值', { exact: true }).click()
+    await reference.getByRole('link', { name: '招行公开净值' }).waitFor()
+    await reference.getByText('2026-10-30 至 2026-11-06 · 低于阈值', { exact: false }).waitFor()
+    assert(await reference.getByRole('button', { name: '生成退出提案' }).count() === 0, '公开复算只展示参考值')
     await page.getByText('未匹配同份额证据', { exact: true }).waitFor()
     assert(!await merged.getByRole('button', { name: '生成退出提案' }).isVisible(), '默认不展开赎回安排')
     const holdingGeometry = () => page.locator('.strategy-holdings-table').evaluate(table => ({
@@ -466,7 +483,7 @@ async function main() {
     assert(await warning.getByRole('button', { name: '生成退出提案' }).count() === 0, '收益预警不能提供退出提案按钮')
     await warning.getByText('查看收益证据', { exact: true }).click()
     await warning.getByText('7日涨跌幅 0.023589%', { exact: true }).waitFor()
-    await warning.getByText('预警参考线约 0.04%（精确按2.15%×7÷365计算）', { exact: true }).waitFor()
+    await warning.getByText('预警参考线 0.04123288%', { exact: true }).waitFor()
     await warning.getByText('零、负收益次数仅作展示，不单独触发预警。', { exact: true }).waitFor()
     await warning.getByText('5个披露区间：零收益3次，负收益1次', { exact: true }).waitFor()
     await warning.getByText('月度趋势：完整月份端点不足', { exact: true }).waitFor()
@@ -476,7 +493,7 @@ async function main() {
       const visual = await page.locator('.strategy-holdings-table').evaluate(table => {
         const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number)
         const light = values => values.map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((a, v, i) => a + v * [.2126, .7152, .0722][i], 0)
-        return [...table.querySelectorAll('.strategy-observation-watch, .strategy-observation summary, .strategy-observation small')]
+        return [...table.querySelectorAll('.strategy-exit-tag, .strategy-observation-watch, .strategy-observation summary, .strategy-observation small')]
           .filter(e => e.getClientRects().length).map(e => {
             const style = getComputedStyle(e)
             let parent = e, bg = style.backgroundColor
@@ -556,6 +573,47 @@ async function main() {
     await gotoSection(page, base, '/ledger/trades?section=holdings', 'holdings')
     await page.getByText('暂无有效的当前巡检，请在持仓复核中重算。', { exact: true }).waitFor()
     assert(await tradeHoldings.locator('.r2-exit-mark').count() === 0, '过期快照不得展示退出标记')
+
+    // 11. 设置标签通过真实接口读取、修改、持久化并交给下一次初筛。
+    await gotoSection(page, base, '/ledger/products?section=settings', 'settings')
+    const settings = page.locator('#settings')
+    const exitRate = settings.locator('[name="exit.recent_return_threshold_pct"]')
+    const entryRate = settings.locator('[name="screening.min_monthly_yield"]')
+    const save = settings.getByRole('button', { name: '保存策略设置' })
+    await exitRate.waitFor()
+    assert(await save.isDisabled(), '无修改时允许保存策略')
+    await exitRate.fill('0.05')
+    await entryRate.fill('3')
+    await save.click()
+    await settings.getByRole('link', { name: '前往刷新初筛' }).waitFor()
+    await page.reload()
+    await exitRate.waitFor()
+    assert(await exitRate.inputValue() === '0.05' && await entryRate.inputValue() === '3', '重载后策略参数没有保留')
+    const previousScreening = screening.status().current_run.id
+    assert(screening.status().screening_policy_stale, '未提示旧初筛按历史参数生成')
+    const refreshed = screening.manual('e2e-policy-settings')
+    await page.waitForFunction(async id => {
+      const response = await fetch('/api/r2-screening/status')
+      return (await response.json()).current_run?.id === id
+    }, refreshed.run.id)
+    assert(screening.status().current_run.id !== previousScreening &&
+      !screening.status().screening_policy_stale &&
+      screening.status().current_run.input.screening_policy.min_monthly_yield === 3, '初筛未使用保存的准入线')
+    await settings.getByRole('button', { name: '填入默认值' }).click()
+    assert(await exitRate.inputValue() === '0.04410959', '填入的默认参数不符')
+    await settings.getByRole('button', { name: '撤销修改' }).click()
+    assert(await exitRate.inputValue() === '0.05', '撤销没有恢复上次保存值')
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await page.waitForTimeout(250)
+      const layout = await settings.evaluate(element => ({
+        overflow: document.documentElement.scrollWidth - innerWidth,
+        smallest: Math.min(...[...element.querySelectorAll('legend, label, small, input, button')].map(item => parseFloat(getComputedStyle(item).fontSize))),
+      }))
+      assert(layout.overflow <= 1 && layout.smallest >= 12, '策略设置页面宽度或字号不合规 ' + theme)
+      await page.screenshot({ path: path.join(captures, 'strategy-settings-1280-' + theme + '.png'), fullPage: true })
+    }
 
     assert(errors.length === 0, `页面运行出错：${errors.join(' / ')}`)
     console.log('e2e-r2-strategy: 全部通过')

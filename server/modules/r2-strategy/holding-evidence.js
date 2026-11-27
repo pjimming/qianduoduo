@@ -2,6 +2,7 @@
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
 const { adaptSnapshot, identityKey } = require('./evidence');
+const { DEFAULT_POLICY } = require('./policy-settings');
 const { fresh } = require('../r2-screening/policy');
 
 function monitorContent(batch) {
@@ -17,7 +18,7 @@ const EVIDENCE_ISSUE_CODES = new Set(['share_identity_conflict', 'scope_unverifi
 
 // Returns a separate holding-only view. Do NOT feed this view into allocation:
 // both the context and every row are explicitly ineligible for new purchases.
-function combineHoldingEvidence({ context, supplements = [], date }) {
+function combineHoldingEvidence({ context, supplements = [], date, policy = DEFAULT_POLICY }) {
   if (!context || context.date !== date || context.contract_hash !== CONTRACT_HASH || !Array.isArray(context.rows) || !Array.isArray(supplements)) {
     throw new Error('需先按当前业务日冻结公开上下文，再合并监控证据');
   }
@@ -39,7 +40,7 @@ function combineHoldingEvidence({ context, supplements = [], date }) {
       counts: { total: batch.items.length },
       health: { ...(batch.health ?? {}), pool: { requested: 1, ok: 1, included: batch.items.length } } },
     rows: batch.items.map(row => ({ ...row.identity, data: row.data, nav_hash: row.nav_hash })),
-    evidence: batch.items.flatMap(row => row.evidence.map(proof => ({ ...row.identity, ...proof }))) }, date);
+    evidence: batch.items.flatMap(row => row.evidence.map(proof => ({ ...row.identity, ...proof }))) }, date, policy, { holdingOnly: true });
     for (let index = 0; index < adapted.rows.length; index++) {
       const incoming = adapted.rows[index], raw = batch.items[index], key = identityKey(incoming.identity);
       // Legacy artifacts used the source label as the channel. Unresolved
@@ -59,7 +60,7 @@ function combineHoldingEvidence({ context, supplements = [], date }) {
       const prior = rows.get(key);
       const identityFailure = raw.issues.some(code => /identity|pool_scope/.test(code)) || incoming.blockers.some(code =>
         ['share_identity_conflict'].includes(code));
-      const usable = !identityFailure && incoming.mapping && incoming.holding_yield_state !== 'pending' && fresh(incoming.performance_date, date);
+      const usable = !identityFailure && incoming.mapping && incoming.holding_yield_state !== 'pending' && fresh(incoming.performance_date, date, policy.screening.max_data_age_days);
       const newer = !prior?.performance_date || incoming.performance_date >= prior.performance_date;
       const replacePerformance = usable && newer;
       // A failed/older fetch cannot renew an old performance date. Keep recent
@@ -70,7 +71,7 @@ function combineHoldingEvidence({ context, supplements = [], date }) {
           base.registration = incoming.registration; }
         if (incoming.nav_fresh && incoming.nav_hash) { base.metrics = incoming.metrics; base.nav_hash = incoming.nav_hash; base.nav_fresh = true; }
       }
-      if (identityFailure || !fresh(base.performance_date, date)) base.holding_yield_state = 'pending';
+      if (identityFailure || !fresh(base.performance_date, date, policy.screening.max_data_age_days)) base.holding_yield_state = 'pending';
       base.nav_fresh = Boolean(fresh(base.metrics?.latest, date) && fresh(base.metrics?.end, date));
       base.rank = prior?.rank ?? null;
       base.shortlisted = prior?.shortlisted ?? false;

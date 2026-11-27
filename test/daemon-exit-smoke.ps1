@@ -19,6 +19,7 @@ if (Test-Path -LiteralPath $resolvedTest) {
 }
 New-Item -ItemType Directory -Force -Path (Join-Path $testRoot 'dist'), (Join-Path $testRoot 'scripts') | Out-Null
 Copy-Item -LiteralPath $daemonSource -Destination (Join-Path $testRoot 'scripts\daemon.ps1')
+Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\runtime-process.ps1') -Destination (Join-Path $testRoot 'scripts\runtime-process.ps1')
 Set-Content -LiteralPath (Join-Path $testRoot 'dist\index.html') -Value '<html></html>' -Encoding UTF8
 
 $serverScript = @'

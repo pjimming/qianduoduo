@@ -8,14 +8,14 @@ const { artifactPath, readArtifact, writeArtifact, validBatch } = require('./r2-
 
 // No network call receives a lot, account balance, principal or private decision.
 async function refreshHoldingMonitor({ ledger, sourceSnapshot, date, signal,
-  collector = collectHoldingEvidence, clock = () => new Date(), retryDelayMs = 3600000 }) {
+  collector = collectHoldingEvidence, screeningPolicy, clock = () => new Date(), retryDelayMs = 3600000 }) {
   if (refreshCalendar.isOpen(date) !== true) return { skipped: true, reason: 'calendar_closed' };
   const codes = [...new Set(ledger.tradeStore.getPortfolio().map(row => String(row.product_code)))].sort();
   const identities = codes.map(code => ({ source: 'cmb', channel: 'cmb', code }));
   const unique = [...new Map(identities.map(identity => [fingerprint(identity), identity])).values()];
   if (!unique.length) return { skipped: true, reason: 'no_holdings' };
   if (unique.length > 128) return { skipped: true, reason: 'monitor_scope_exceeded' };
-  const key = fingerprint({ date, identities: unique, source: sourceSnapshot, channel_resolution: 'public-list-v1', observation_version: 2 });
+  const key = fingerprint({ date, identities: unique, source: sourceSnapshot, channel_resolution: 'public-list-v1', observation_version: 2, screeningPolicy });
   const lock = `${artifactPath(ledger.dbPath)}.lock`;
   let handle;
   try {
@@ -37,7 +37,7 @@ async function refreshHoldingMonitor({ ledger, sourceSnapshot, date, signal,
     const baseline = validBatch(previous?.baseline, date) ? previous.baseline : null;
     writeArtifact(ledger.dbPath, { batch: retained, baseline, attempt });
     try {
-      const batch = await collector({ identities: unique, date, calendar: valuationCalendar, signal, clock });
+      const batch = await collector({ identities: unique, date, calendar: valuationCalendar, signal, clock, screeningPolicy });
       if (!validBatch(batch, date)) throw new Error('持仓监控结果指纹或范围无效');
       // Channel is resolved by the collector. The source and sales-code scope
       // must still match one-to-one, with no extra or duplicate results.

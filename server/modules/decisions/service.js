@@ -17,6 +17,7 @@ function createDecisionsService({
   transactionManager,
   automationRunner = null,
   todayProvider = todayShanghai,
+  readStrategyStatus = null,
 }) {
   function validate(body) {
     const result = validateDecisionPayload(body, {
@@ -78,15 +79,18 @@ function createDecisionsService({
     const decision = transactionManager.run(() => {
       const state = decisionsRepository.strategyState?.();
       const current = state?.mode === 'v9' && state.contract_hash === CONTRACT_HASH;
+      const strategy = state?.mode === 'v9' ? readStrategyStatus?.() : null;
+      const effective = strategy?.effective_contract ?? CONTRACT;
       const value = validate(state?.mode === 'v9' ? { ...body, strategy_version: CONTRACT.execution_version,
-        target_annualized: 3, bucket_plan: { ...CONTRACT.bucket_targets, max_single: CONTRACT.max_single_pct } } : body);
+        target_annualized: 3, bucket_plan: { ...effective.bucket_targets, max_single: effective.max_single_pct } } : body);
       // This form records a human decision. Only proposal adoption can attest
       // the complete execution snapshot; never accept a client-authored pass.
       const meta = { ...value.review_meta };
       for (const key of ['execution_snapshot', 'evaluation_contract', 'forecast', 'proposal_snapshot_hash', 'evaluation_settings']) delete meta[key];
       if (state?.mode === 'v9') Object.assign(meta, { source: 'manual-decision', strategy_mode: 'actual_fact',
         current_revalidation_required: true, manual_strategy_context: { execution_version: CONTRACT.execution_version,
-          contract_hash: state.contract_hash, activation_seq: state.activation_seq, status: current ? 'unverified' : 'contract_mismatch',
+          contract_hash: state.contract_hash, ...(strategy ? { policy_revision: strategy.policy_revision } : {}),
+          activation_seq: state.activation_seq, status: current ? 'unverified' : 'contract_mismatch',
           reason: '手工决策事实记录；尚未经统一策略提案与交易前复核，不代表准入或配置通过' } });
       return decisionsRepository.createDecision({ ...value, review_meta: meta });
     });

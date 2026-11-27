@@ -38,6 +38,7 @@ Set-Content `
   -Value 'disabled legacy shortcut fixture' `
   -Encoding UTF8
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\daemon.ps1') -Destination $daemonScript
+Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\runtime-process.ps1') -Destination (Join-Path $testRoot 'scripts\runtime-process.ps1')
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\production-host.ps1') -Destination $hostScript
 Copy-Item `
   -LiteralPath (Join-Path $repoRoot 'scripts\production-bootstrap-template.vbs') `
@@ -190,6 +191,7 @@ function Stop-ProcessElevated {
 
 $results = [ordered]@{}
 $installed = $false
+$unrelated = $null
 try {
   Write-Host '1/9 Installing a hidden current-user login task...'
   Invoke-HostAction @('-Action', 'install') | Out-Null
@@ -312,10 +314,32 @@ try {
   }
   $results.stop_isolation = 'ok'
 
+  Write-Host 'Checking stale PID files cannot identify or stop an unrelated process...'
+  $unrelated = Start-Process -FilePath $powershell -ArgumentList @('-NoProfile', '-WindowStyle', 'Hidden', '-Command', 'Start-Sleep -Seconds 600') -WindowStyle Hidden -PassThru
+  foreach ($pidName in @('daemon.pid', 'server.pid')) {
+    Set-Content -LiteralPath (Join-Path $testRoot "run\$pidName") -Value $unrelated.Id -Encoding ASCII
+  }
+  $staleStatus = Get-HostStatus
+  if ($staleStatus.supervisor_pid -or $staleStatus.server_pid -or $staleStatus.independent) {
+    throw 'Status trusted unrelated processes from stale PID files.'
+  }
+  Invoke-HostAction @('-Action', 'stop') | Out-Null
+  if (-not (Get-Process -Id $unrelated.Id -ErrorAction SilentlyContinue)) {
+    throw 'Controlled stop terminated an unrelated process from a stale PID file.'
+  }
+  # Repeat the stale files on startup, reproducing the failed login bootstrap.
+  foreach ($pidName in @('daemon.pid', 'server.pid')) {
+    Set-Content -LiteralPath (Join-Path $testRoot "run\$pidName") -Value $unrelated.Id -Encoding ASCII
+  }
+
   Write-Host '6/9 Restarting production through the hidden login task...'
   Invoke-HostAction @('-Action', 'start') | Out-Null
   Wait-Until -Condition { Test-Health } -TimeoutSeconds 30 -FailureMessage 'Hosted restart failed.'
   $beforeSupervisorKill = Get-RuntimePids
+  if (-not (Get-Process -Id $unrelated.Id -ErrorAction SilentlyContinue)) {
+    throw 'Startup terminated the unrelated process from a stale PID file.'
+  }
+  $results.stale_pid_recovery = 'ok'
   $results.restart = 'ok'
 
   Write-Host '7/9 Confirming there is no periodic recovery after Supervisor loss...'
@@ -349,6 +373,7 @@ try {
   $installed = $false
   $results.uninstall = 'ok'
 } finally {
+  if ($unrelated) { $unrelated.Kill() }
   if ($installed) {
     try {
       Invoke-HostAction @('-Action', 'uninstall') | Out-Null

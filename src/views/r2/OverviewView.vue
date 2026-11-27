@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import HeroSection from '@/components/HeroSection.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import AssetChart from '@/components/AssetChart.vue'
 import PnlChart from '@/components/PnlChart.vue'
 import ReviewSection from '@/components/ReviewSection.vue'
+import { useChartViewport } from '@/composables/useChartViewport'
 import type { DashboardPayload, RangeValue } from '@/types/dashboard'
 
 const props = defineProps<{
@@ -13,8 +14,12 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const chartRange = ref<RangeValue>(30)
+const { visibleRecords, activeRange, setRange, pan, zoom } = useChartViewport(() => props.dashboard.records)
 const chartHoverDate = ref<string | null>(null)
+const canPan = computed(() => visibleRecords.value.length < props.dashboard.records.length)
+const canNavigate = computed(() => canPan.value || props.dashboard.records.length > 2)
+
+watch(visibleRecords, () => { chartHoverDate.value = null })
 
 const pendingInbox = computed(
   () =>
@@ -42,7 +47,7 @@ const inboxSummary = computed(() => props.dashboard.inbox_center.summary)
 
 function setChartRange(value: RangeValue): void {
   chartHoverDate.value = null
-  chartRange.value = value
+  setRange(value)
 }
 
 function setChartHoverDate(value: string | null): void {
@@ -95,18 +100,26 @@ const shortcuts = computed(() => [
 
     <section class="r2-overview-charts" aria-label="收益图表">
       <AssetChart
-        :records="dashboard.records"
-        :range="chartRange"
+        :records="visibleRecords"
+        :range="activeRange"
+        :can-navigate="canNavigate"
+        :can-pan="canPan"
         :active-date="chartHoverDate"
         @update:range="setChartRange"
         @hover-date="setChartHoverDate"
+        @pan="pan"
+        @zoom="zoom"
       />
       <PnlChart
-        :records="dashboard.records"
-        :range="chartRange"
+        :records="visibleRecords"
+        :range="activeRange"
+        :can-navigate="canNavigate"
+        :can-pan="canPan"
         :active-date="chartHoverDate"
         @update:range="setChartRange"
         @hover-date="setChartHoverDate"
+        @pan="pan"
+        @zoom="zoom"
       />
     </section>
 

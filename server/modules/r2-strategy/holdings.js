@@ -1,24 +1,26 @@
 'use strict';
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
+const { DEFAULT_POLICY } = require('./policy-settings');
 const { isoDate, shift } = require('../r2-screening/calendar');
 const { decimal, fresh } = require('../r2-screening/policy');
 const { holdingExitConditions } = require('./exit-conditions');
 
 // A review parameter, not an execution contract or a forecast. A warning never
 // changes mandatory exits, candidate eligibility or the switch break-even test.
-function holdingObservation(current, yieldState, date) {
+function holdingObservation(current, yieldState, date, policy = DEFAULT_POLICY) {
+  const { screening, exit } = policy;
   const metrics = current?.metrics?.observation ?? null;
-  const recentReturnThreshold = Number(CONTRACT.min_monthly_yield) * 7 / 365;
-  const result = { version: 2, state: 'pending', threshold_pct: 2.5,
+  const recentReturnThreshold = screening.min_monthly_yield * 7 / 365;
+  const result = { version: 2, state: 'pending', threshold_pct: exit.observation_upper_pct,
     recent_return_threshold_pct: recentReturnThreshold, reasons: [], metrics };
-  if (yieldState !== 'pass' || !current || !fresh(current.performance_date, date) ||
+  if (yieldState !== 'pass' || !current || !fresh(current.performance_date, date, screening.max_data_age_days) ||
       current.nav_fresh !== true || current.monitoring_verified === false) return result;
   const monthly = decimal(current.performance?.['1m']);
   if (monthly === null) return result;
-  if (monthly >= decimal('2.5')) return { ...result, state: 'clear' };
+  if (monthly >= decimal(String(exit.observation_upper_pct))) return { ...result, state: 'clear' };
   const recent = metrics?.recent, trend = metrics?.trend;
-  const recentUsable = recent?.status === 'available' && fresh(recent.end_date, date) && recent.days === 7 &&
+  const recentUsable = recent?.status === 'available' && fresh(recent.end_date, date, screening.max_data_age_days) && recent.days === 7 &&
     Number.isFinite(recent.return_pct);
   const periods = trend?.periods;
   const trendUsable = trend?.status === 'available' && periods?.length === 3 &&
@@ -63,7 +65,7 @@ function redemptionFor(holding, date) {
     arrival_unverified: true, reason: 'maturity_date_unverified' });
 }
 
-function buildHoldingMonitoring({ holdings, context, date }) {
+function buildHoldingMonitoring({ holdings, context, date, policy = DEFAULT_POLICY }) {
   if (!isoDate(date)) throw new Error('持仓监控业务日无效');
   if (!Array.isArray(holdings) || holdings.length > 20000) throw new Error('持仓监控输入无效');
   const hardFailure = context?.blockers?.some(code => ['batch_version_or_status', 'batch_invalid', 'duplicate_identity', 'source_identity_or_calendar'].includes(code));
@@ -82,18 +84,20 @@ function buildHoldingMonitoring({ holdings, context, date }) {
     seen.add(holding.lot_id);
     const { current = null, yieldState = 'pending' } = products.get(holding.product_code) ?? {};
     const redemption = redemptionFor(holding, date);
-    const observation = holdingObservation(current, yieldState, date);
-    const exitConditions = holdingExitConditions(current, yieldState, date);
+    const observation = holdingObservation(current, yieldState, date, policy);
+    const exitConditions = holdingExitConditions(current, yieldState, date, policy);
     const riskReasons = [];
-    if (['watch', 'reject'].includes(current?.metrics?.drawdown?.band)) riskReasons.push('drawdown_risk');
+    const drawdown = current?.metrics?.drawdown;
+    if (Number.isFinite(drawdown?.pct) ? drawdown.pct >= policy.screening.drawdown_watch_pct
+      : ['watch', 'reject'].includes(drawdown?.band)) riskReasons.push('drawdown_risk');
     // A missing/stale NAV is evidence that needs review, not a yield failure:
     // never turn it into a redemption, but do not show the holding as verified.
     if (current?.nav_fresh === false) riskReasons.push('nav_evidence_unverified');
     // A failed refresh keeps the latest public evidence, but the holding must be
     // re-verified before it can be shown as an unchanged hold.
     if (current?.monitoring_verified === false) riskReasons.push('monitor_evidence_unverified');
-    if (current?.term?.days > CONTRACT.max_term_days || ['periodic', 'rolling', 'conflict'].includes(current?.term?.kind)) riskReasons.push('term_risk_review');
-    if (current?.detail?.equity_upper_pct > 5) riskReasons.push('equity_limit_review');
+    if (current?.term?.days > policy.screening.max_term_days || ['periodic', 'rolling', 'conflict'].includes(current?.term?.kind)) riskReasons.push('term_risk_review');
+    if (current?.detail?.equity_upper_pct > policy.screening.equity_review_pct) riskReasons.push('equity_limit_review');
     let state, action = '观察', plannedAction = 'verify_holding', summary, userAction = false;
     if (exitConditions.status === 'met') {
       userAction = true;
@@ -111,8 +115,8 @@ function buildHoldingMonitoring({ holdings, context, date }) {
       state = exitConditions.status === 'pending' ? 'evidence_pending' : 'hold';
       plannedAction = 'verify_holding';
       summary = exitConditions.status === 'pending'
-        ? '近1月年化低于2.15%，三项退出条件的7日或6/3/1月证据待核；暂不生成赎回或切换决策，暂停新增和加仓。'
-        : '近1月年化低于2.15%，尚未同时满足三项退出条件；继续观察，暂停新增和加仓。';
+        ? `近1月年化低于${policy.screening.min_monthly_yield}%，三项退出条件的7日或6/3/1月证据待核；暂不生成赎回或切换决策，暂停新增和加仓。`
+        : `近1月年化低于${policy.screening.min_monthly_yield}%，尚未同时满足三项退出条件；继续观察，暂停新增和加仓。`;
     } else if (yieldState === 'pending') {
       state = 'evidence_pending';
       userAction = !current;
@@ -128,10 +132,10 @@ function buildHoldingMonitoring({ holdings, context, date }) {
         : `近1月年化低于${threshold}%，三项退出条件未同时满足，继续观察。`;
     } else {
       state = 'hold'; plannedAction = 'review_holding';
-      summary = '近期收益达到续持门槛；公开售罄或未进前三不单独触发退出。是否自愿替换仍需比较扣费和空档后的净收益。';
+      summary = '近期收益达到续持门槛；公开售罄或未入选候选不单独触发退出。是否自愿替换仍需比较扣费和空档后的净收益。';
       if (observation.state === 'watch') summary = '达到续持底线，但收益走弱，进入观察；提前复核同桶替代品，换仓仍需覆盖费用和空档，不据此生成退出意图。';
     }
-    const expiry = current?.performance_date && isoDate(current.performance_date) ? shift(current.performance_date, 7) : date;
+    const expiry = current?.performance_date && isoDate(current.performance_date) ? shift(current.performance_date, policy.screening.max_data_age_days + 1) : date;
     const nextVerify = [expiry, redemption.state === 'locked' ? redemption.earliest_redeem_date : null]
       .filter(value => value && value > date).sort()[0] ?? date;
     const body = { lot_id: holding.lot_id, holding_id: holding.id ?? null, product_code: holding.product_code,

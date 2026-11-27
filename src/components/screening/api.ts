@@ -8,6 +8,7 @@ export type Run = {
   created_at: string; started_at: string | null; finished_at: string | null; retry_at: string | null
   refresh_calendar_version: string; valuation_calendar_version: string; collector_version: string
   counts: Counts | null; error_message: string | null
+  input?: { screening_policy?: { min_monthly_yield: number; max_data_age_days: number; max_term_days: number; drawdown_watch_pct: number; drawdown_reject_pct: number; shortlist_per_group: number } } | null
   health: Record<string, { requested?: number; ok?: number; matched?: number; pages?: number; covered?: number; state?: string }> | null
 }
 export type EvidenceAge = { date: string; performance_expired: number; nav_expired: number;
@@ -19,6 +20,7 @@ export type RunDetail = Run & {
 export type Status = {
   availability: string; current_run: Run | null; last_attempt: Run | null; next_due_at: string | null
   data_age: (EvidenceAge & { days: number }) | null
+  screening_policy_stale?: boolean
   scheduler: { enabled: boolean; calendar_gap: boolean; active: Run | null }
 }
 export type Point = { date: string; unit: string }
@@ -101,11 +103,11 @@ export const hintLabel: Record<string, string> = {
   term_unknown: '期限待核', category_unknown: '分类待核', equity_review: '权益上限待复核', calendar_gap: '日历覆盖不足',
 }
 export const reasonLabel: Record<string, string> = {
-  yield_unverified: '近 1 月年化缺少有效的同份额披露', yield_below: '近 1 月年化低于 2.15%', yield_pass: '近 1 月年化达到 2.15%',
+  yield_unverified: '近 1 月年化缺少有效的同份额披露', yield_below: '近 1 月年化低于批次准入线', yield_pass: '近 1 月年化达到批次准入线',
   quota_open: '公开额度状态为 0', sold_out: '公开额度状态为 1（售罄）', quota_unverified: '公开额度状态待核',
-  periodic: '定期开放', rolling: '滚动持有规则待核', term_exceeds: '公开期限超过 190 天', term_pass: '公开期限在 190 天以内',
+  periodic: '定期开放', rolling: '滚动持有规则待核', term_exceeds: '公开期限超过批次上限', term_pass: '公开期限符合批次上限',
   term_unknown: '未核实公开最短持有期', term_conflict: '公开期限依据不一致', category_unknown: '公开证据不足以确认分类',
-  drawdown_pass: '最大回撤低于 1%', drawdown_watch: '最大回撤在 1% 至 1.5% 之间', drawdown_reject: '最大回撤高于 1.5%',
+  drawdown_pass: '最大回撤低于批次观察线', drawdown_watch: '最大回撤在批次观察区间内', drawdown_reject: '最大回撤超过批次淘汰线',
   detail_unavailable: '同渠道产品详情暂未取得', nav_unavailable: '未获取到可用净值', nav_pages: '净值分页不完整', nav_identity: '净值份额不匹配',
   nav_conflict: '同日单位净值冲突', nav_invalid: '单位净值日期或披露精度无法核验',
   nav_insufficient: '有效单位净值少于两条', nav_stale: '净值披露已过期', calendar_gap: '交易日历覆盖不足',
@@ -115,6 +117,6 @@ export function pct(value?: number | string | null) { return value == null ? '�
 export function drawdownPct(value: number | null) {
   return value !== null && value > 0 && value < 0.01 ? '<0.01%' : pct(value)
 }
-export function evidenceExpired(value: string | null, today?: string) {
-  return Boolean(value && today && (value > today || Date.parse(today) - Date.parse(value) >= 7 * 86400000))
+export function evidenceExpired(value: string | null, today?: string, maxAgeDays = 6) {
+  return Boolean(value && today && (value > today || Date.parse(today) - Date.parse(value) > maxAgeDays * 86400000))
 }

@@ -11,10 +11,10 @@ const { isoDate } = require('../r2-screening/calendar');
 // keeps the same allocation contract with conservative, documented defaults.
 const PUBLIC_INCREMENT_CENTS = 100;
 
-function publicQuotaLimit(value) {
+function publicQuotaLimit(value, blankQuotaCny = CONTRACT.blank_quota_assumption.lower_bound_cny) {
   if (value === null || value === undefined || String(value).trim() === '') {
     return {
-      cents: CONTRACT.blank_quota_assumption.lower_bound_cny * 100,
+      cents: blankQuotaCny * 100,
       basis: { kind: 'user_rule_lower_bound', original: '', bank_disclosed: false },
     };
   }
@@ -56,7 +56,7 @@ function buildPublicLimits({ row, product = null, date, amountCents: orderCents 
   if (!row || !isoDate(date)) throw new Error('公开额度核验需要有效的策略业务日');
   const blockers = [];
   if (!row.automatic_eligible) blockers.push('screening_not_automatic');
-  const quota = publicQuotaLimit(row.quota?.amount);
+  const quota = publicQuotaLimit(row.quota?.amount, row.quota?.policy_assumption?.lower_bound_cny);
   if (!quota || row.quota?.status !== 0) blockers.push('public_quota_unverified');
   const available = quota?.cents ?? 0;
   const parsedMinimum = amountCents(row.min_amount);

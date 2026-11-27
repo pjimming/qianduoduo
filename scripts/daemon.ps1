@@ -11,6 +11,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'runtime-process.ps1')
 
 if (-not $Root) {
   $Root = Split-Path -Parent $PSScriptRoot
@@ -56,15 +57,8 @@ function Write-JsonFile {
 
 function Get-LiveProcess {
   param([string]$PidFile)
-  if (-not (Test-Path -LiteralPath $PidFile)) {
-    return $null
-  }
-  $raw = Get-Content -LiteralPath $PidFile -ErrorAction SilentlyContinue | Select-Object -First 1
-  $processId = 0
-  if (-not [int]::TryParse([string]$raw, [ref]$processId)) {
-    return $null
-  }
-  return Get-Process -Id $processId -ErrorAction SilentlyContinue
+  $role = if ($PidFile -eq $DaemonPidFile) { 'supervisor' } else { 'server' }
+  return Get-QddRuntimeProcess -PidFile $PidFile -Role $role -Root $Root -Port $Port
 }
 
 function Get-ProcessParentId {
@@ -203,7 +197,7 @@ function Stop-Runtime {
       }
       Start-Sleep -Milliseconds 250
     }
-    $server = Get-Process -Id $serverId -ErrorAction SilentlyContinue
+    $server = Get-LiveProcess -PidFile $ServerPidFile
     if ($server) {
       Stop-Process -Id $serverId -Force -ErrorAction SilentlyContinue
       Write-DaemonLog "server forced to stop pid=$serverId"
@@ -221,7 +215,7 @@ function Stop-Runtime {
       }
       Start-Sleep -Milliseconds 250
     }
-    $supervisor = Get-Process -Id $supervisor.Id -ErrorAction SilentlyContinue
+    $supervisor = Get-LiveProcess -PidFile $DaemonPidFile
     if ($supervisor) {
       Stop-Process -Id $supervisor.Id -Force -ErrorAction SilentlyContinue
       Write-DaemonLog "supervisor stopped pid=$($supervisor.Id)"
@@ -290,6 +284,7 @@ function Run-Supervisor {
     root = $Root
     port = $Port
     started_at = (Get-Date).ToUniversalTime().ToString('o')
+    process_started_at = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o')
   }
   Write-JsonFile -Path $DaemonMetaFile -Value $metadata
 

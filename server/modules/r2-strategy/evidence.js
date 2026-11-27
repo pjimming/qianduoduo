@@ -1,6 +1,7 @@
 'use strict';
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
+const { DEFAULT_POLICY, matchesScreeningPolicy } = require('./policy-settings');
 const { decimal, fresh } = require('../r2-screening/policy');
 const { isoDate } = require('../r2-screening/calendar');
 const { calculateReferenceYield } = require('../../../lib/yield-policy');
@@ -8,12 +9,14 @@ const { calculateReferenceYield } = require('../../../lib/yield-policy');
 const identityKey = ({ source, channel, code }) => JSON.stringify([source, channel, code]);
 const numeric = value => value === null || value === undefined || String(value).trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 
-function adaptSnapshot(snapshot, date) {
+function adaptSnapshot(snapshot, date, policy = DEFAULT_POLICY, { holdingOnly = false } = {}) {
+  const { screening, allocation } = policy;
   if (!isoDate(date)) throw new Error('策略业务日必须为有效日期');
-  if (!snapshot) return freeze({ date, available: false, blockers: ['no_published_batch'], rows: [], fingerprint: null });
+  if (!snapshot) return freeze({ date, contract_hash: CONTRACT_HASH, available: false, blockers: ['no_published_batch'], rows: [], fingerprint: null });
   const { run } = snapshot;
   const blockers = [];
   if (!['succeeded', 'degraded'].includes(run.status) || run.rule_version !== CONTRACT.selection_policy_version) blockers.push('batch_version_or_status');
+  if (!holdingOnly && !matchesScreeningPolicy(run, screening)) blockers.push('screening_policy_changed');
   const pool = run.health?.pool;
   if (!pool || pool.requested < 1 || pool.ok !== pool.requested ||
       (pool.included !== undefined && pool.included !== snapshot.rows.length) ||
@@ -47,9 +50,10 @@ function adaptSnapshot(snapshot, date) {
     const performanceVerified = performance && ['R2', 'PR2'].includes(performance.risk) && performance.currency === 'CNY' &&
       performance.public_offering === true && performance.performance_date === data.performance_date && monthly !== null &&
       decimal(performance.performance?.['1m']) === monthly;
-    const yieldState = monthly === null || !fresh(data.performance_date, date) ? 'pending'
-      : monthly < decimal(CONTRACT.min_monthly_yield) ? 'below' : 'pass';
-    const navFresh = fresh(data.metrics?.latest, date) && fresh(data.metrics?.end, date);
+    const yieldState = monthly === null || !fresh(data.performance_date, date, screening.max_data_age_days) ? 'pending'
+      : monthly < decimal(String(screening.min_monthly_yield)) ? 'below' : 'pass';
+    const navFresh = fresh(data.metrics?.latest, date, screening.max_data_age_days) &&
+      fresh(data.metrics?.end, date, screening.max_data_age_days);
     const reasons = [];
     if (data.channel !== row.channel || data.code !== row.code) reasons.push('share_identity_conflict');
     if (!performanceVerified) reasons.push('scope_unverified');
@@ -59,7 +63,7 @@ function adaptSnapshot(snapshot, date) {
     if (data.status !== 'eligible') reasons.push(`screening_${data.status}`);
     if (data.metrics?.issue === 'calendar_gap') reasons.push('calendar_gap');
     if (!['bond', 'deposit', 'enhanced'].includes(data.category)) reasons.push('category_unverified');
-    if (!Number.isInteger(data.term?.days) || data.term.days <= 0 || data.term.days > CONTRACT.max_term_days ||
+    if (!Number.isInteger(data.term?.days) || data.term.days <= 0 || data.term.days > screening.max_term_days ||
         !['minimum', 'closed'].includes(data.term.kind)) reasons.push('term_not_automatic');
     if (data.quota?.status !== 0) reasons.push('quota_not_open');
     const returns = Object.fromEntries(['1m', '3m', '6m', '1y'].map(window => [`return_${window}`, numeric(data.performance?.[window])]));
@@ -72,7 +76,7 @@ function adaptSnapshot(snapshot, date) {
     const quota = structuredClone(data.quota ?? {});
     // The bank's amount is display text. Parsing and order increments belong to
     // the allocation adapter; a blank value is explicitly a policy assumption.
-    quota.policy_assumption = quota.status === 0 && quota.amount === null ? CONTRACT.blank_quota_assumption : null;
+    quota.policy_assumption = quota.status === 0 && quota.amount === null ? { ...CONTRACT.blank_quota_assumption, lower_bound_cny: allocation.blank_quota_cny } : null;
     const body = { identity, mapping: structuredClone(mapping), run_id: run.id,
       name: data.name ?? row.code, issuer: data.issuer ?? '', detail: data.detail ?? null,
       registration: data.detail?.registration ?? null, group: `${data.term?.days}/${data.category}`, rank: data.rank,

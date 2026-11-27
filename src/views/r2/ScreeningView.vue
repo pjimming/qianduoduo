@@ -255,11 +255,14 @@ async function closeDetail() {
       <div v-if="visibleRun"><span>策略 / 当前最新披露（业绩 · 净值）</span>
         <strong>{{ visibleRun.rule_version }} / {{ ages?.performance_latest || '—' }} · {{ ages?.nav_latest || '—' }}</strong></div>
     </section>
+    <p v-if="visibleRun?.input?.screening_policy" class="table-note">
+      批次参数 · 近 1 月年化 ≥ {{ visibleRun.input.screening_policy.min_monthly_yield }}% · 期限 ≤ {{ visibleRun.input.screening_policy.max_term_days }} 天 · 每组前 {{ visibleRun.input.screening_policy.shortlist_per_group }} 只
+    </p>
     <div v-if="statusError || refreshError" class="screening-notice is-warn" role="alert">
       {{ statusError || refreshError }} <button v-if="statusError" type="button" class="link-button" @click="readStatus()">重新读取状态</button>
     </div>
     <div v-if="notice || isHistorical || (status && status.availability !== 'ready') || visibleRun?.status === 'degraded' ||
-      status?.current_run?.id !== runId || status?.last_attempt?.status === 'failed' || status?.scheduler.calendar_gap || ages?.performance_expired || ages?.nav_expired"
+      status?.current_run?.id !== runId || status?.last_attempt?.status === 'failed' || status?.scheduler.calendar_gap || status?.screening_policy_stale || ages?.performance_expired || ages?.nav_expired"
       class="screening-notice" role="status">
       <span v-if="notice">{{ notice }}</span>
       <span v-if="isHistorical">当前显示历史批次 {{ visibleRun?.business_date }}，额度保留当时的查询时点。</span>
@@ -269,6 +272,7 @@ async function closeDetail() {
       <span v-if="status?.availability === 'unavailable'">初筛库暂不可读。</span>
       <span v-if="visibleRun?.status === 'degraded'">部分份额证据待核，可在结果中查看原因。</span>
       <span v-if="status?.scheduler.calendar_gap">刷新日历覆盖不足。</span>
+      <span v-if="status?.screening_policy_stale">选品参数已更新，请刷新初筛。当前结果保留发布时的参数。</span>
       <span v-if="ages && (ages.performance_expired || ages.nav_expired)">
         按今天的有效期，业绩过期 {{ ages.performance_expired }} 个，净值过期 {{ ages.nav_expired }} 个。</span>
       <button v-if="status?.current_run && status.current_run.id !== runId" type="button" class="link-button" @click="switchBatch(status.current_run.id)">
@@ -383,8 +387,8 @@ async function closeDetail() {
                     <small v-for="hint in row.hints.filter(h => !['frequent_zero', 'quota_default'].includes(h))" :key="hint" class="hint-warn">{{ hintLabel[hint] }}</small>
                   </td>
                   <td>
-                    <span>业绩 {{ row.performance_date || '待核' }}</span><small v-if="evidenceExpired(row.performance_date, today)" class="hint-warn">业绩已过期</small>
-                    <small>净值 {{ row.metrics.latest || '—' }}<template v-if="evidenceExpired(row.metrics.latest, today)"> · 已过期</template></small>
+                    <span>业绩 {{ row.performance_date || '待核' }}</span><small v-if="evidenceExpired(row.performance_date, today, visibleRun?.input?.screening_policy?.max_data_age_days)" class="hint-warn">业绩已过期</small>
+                    <small>净值 {{ row.metrics.latest || '—' }}<template v-if="evidenceExpired(row.metrics.latest, today, visibleRun?.input?.screening_policy?.max_data_age_days)"> · 已过期</template></small>
                     <div class="evidence-links">
                       <button type="button" class="link-button" :aria-label="'证据详情 ' + row.code" @click="openRow(row, $event)">证据详情</button>
                       <button type="button" class="link-button" :disabled="!runIsCurrent || row.status !== 'eligible'" @click="updateQuery({ section: 'allocation', channel: row.channel, code: row.code })">加入配置试算</button>

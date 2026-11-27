@@ -2,6 +2,7 @@
 
 const solver = require('javascript-lp-solver');
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
+const { DEFAULT_POLICY, effectiveLimits } = require('./policy-settings');
 const { identityKey } = require('./evidence');
 const { bucketForTerm } = require('../../../lib/yield-policy');
 const { isoDate } = require('../r2-screening/calendar');
@@ -16,6 +17,8 @@ const sum = rows => rows.reduce((total, row) => total + row, 0);
 // explicit same-share facts, not accepted as trusted HTTP request fields.
 // No legacy CSV, selection_score, or reference-yield sorting is used here.
 function allocateV9({ context, account, limits = {}, settings = {} }, { solve = model => solver.Solve(model), timeoutMs = 2000, clock = Date.now } = {}) {
+  const policy = settings.policy ?? DEFAULT_POLICY;
+  const caps = effectiveLimits(policy.allocation);
   const started = clock();
   const blockers = [];
   const excluded = [];
@@ -60,7 +63,7 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
         !['full_1y', 'six_month', 'three_month'].includes(row.evidence_tier)) reasons.push('candidate_inconsistent');
     if (reasons.length) { excluded.push({ identity: row.identity, reasons }); continue; }
     const bucket = bucketForTerm(row.term.days);
-    if (!BUCKETS.includes(bucket) || row.term.days > CONTRACT.max_term_days) { excluded.push({ identity: row.identity, reasons: ['term_invalid'] }); continue; }
+    if (!BUCKETS.includes(bucket) || row.term.days > policy.screening.max_term_days) { excluded.push({ identity: row.identity, reasons: ['term_invalid'] }); continue; }
     const minimum = Math.max(1, limit.minimum_cents);
     const maximum = Math.min(available, limit.available_cents, limit.max_order_cents ?? available);
     if (!safe(maximum) || maximum < minimum) { excluded.push({ identity: row.identity, reasons: ['quota_below_minimum'] }); continue; }
@@ -86,7 +89,7 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
   const existing = (field, key) => sum(exposures.filter(row => row[field] === key).map(row => row.amount_cents));
   const bucketAmount = Object.fromEntries(BUCKETS.map(bucket => [bucket, existing('bucket', bucket)]));
   const existingViolations = [];
-  const bucketLimits = Object.fromEntries(Object.entries(CONTRACT.bucket_caps_pct).map(([bucket, percent]) => {
+  const bucketLimits = Object.fromEntries(Object.entries(caps.bucket_caps_pct).map(([bucket, percent]) => {
     const limit = pct(principal, percent);
     const occupied = bucketAmount[bucket];
     if (occupied > limit) existingViolations.push(`existing_${bucket}_bucket_cap`);
@@ -95,10 +98,10 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
       remaining_cents: Math.max(0, limit - occupied), excess_cents: Math.max(0, occupied - limit) }];
   }));
   for (const [field, maximum, reason] of [['product_key', pct(principal, singlePct), 'existing_product_cap'],
-    ['family_key', pct(principal, CONTRACT.max_strategy_family_pct), 'existing_family_cap']]) {
+    ['family_key', pct(principal, caps.max_strategy_family_pct), 'existing_family_cap']]) {
     for (const key of new Set(exposures.map(row => row[field]))) if (existing(field, key) > maximum) existingViolations.push(reason);
   }
-  for (const [tier, cap] of Object.entries(CONTRACT.evidence_caps)) {
+  for (const [tier, cap] of Object.entries(caps.evidence_caps)) {
     if (existing('evidence_tier', tier) > pct(principal, cap.aggregate)) existingViolations.push('existing_evidence_tier_cap');
     for (const exposure of exposures.filter(row => row.evidence_tier === tier)) {
       if (existing('product_key', exposure.product_key) > pct(principal, cap.single)) existingViolations.push('existing_evidence_single_cap');
@@ -127,9 +130,9 @@ function allocateV9({ context, account, limits = {}, settings = {} }, { solve = 
   const memberships = rows.map((row, index) => {
     const product = capKey('product', row.limit.product_key);
     const family = capKey('family', row.limit.family_key);
-    const tier = CONTRACT.evidence_caps[row.tier];
+    const tier = caps.evidence_caps[row.tier];
     addCapacity(product, pct(principal, singlePct) - existing('product_key', row.limit.product_key), { type: 'product', key: row.limit.product_key });
-    addCapacity(family, pct(principal, CONTRACT.max_strategy_family_pct) - existing('family_key', row.limit.family_key), { type: 'family', key: row.limit.family_key });
+    addCapacity(family, pct(principal, caps.max_strategy_family_pct) - existing('family_key', row.limit.family_key), { type: 'family', key: row.limit.family_key });
     const keys = ['total', `bucket_${row.bucket}`, product, family];
     if (tier) {
       const evidence = capKey('tier', row.tier);

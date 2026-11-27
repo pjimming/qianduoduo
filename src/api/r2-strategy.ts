@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { StrategyWorkspace, StrategyComputation, StrategyCashflow } from '@/types/r2-strategy'
+import type { StrategyWorkspace, StrategyComputation, StrategyCashflow, HoldingWeeklyNavResult, StrategyPolicy, StrategySettings } from '@/types/r2-strategy'
 import type { DecisionProposal } from '@/types/dashboard'
 const base = '/api/r2-strategy'
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -46,6 +46,11 @@ async function strategyRequest<T>(path: string, options: RequestInit = {}): Prom
 }
 
 export const getStrategyWorkspace = (signal?: AbortSignal) => apiRequest<StrategyWorkspace>(base + '/workspace', { signal })
+export const getStrategySettings = (signal?: AbortSignal) => strategyRequest<StrategySettings>('/settings', { signal })
+export const saveStrategySettings = (revision: string, settings: StrategyPolicy) => strategyRequest<StrategySettings>('/settings', {
+  method: 'PUT', body: JSON.stringify({ expected_revision: revision, settings }),
+})
+export const getHoldingWeeklyNav = (signal?: AbortSignal) => apiRequest<HoldingWeeklyNavResult>(base + '/holding-weekly-nav', { signal })
 export const computeStrategy = (fingerprint?: string) => apiRequest<StrategyComputation>(base + '/recompute', { method: 'POST', body: JSON.stringify(fingerprint ? { expected_input_fingerprint: fingerprint } : {}) })
 export const generateStrategyProposals = (fingerprint?: string) => apiRequest<{ created: { proposal: DecisionProposal; existing: boolean }[]; blockers?: string[] }>(base + '/proposals', { method: 'POST', body: JSON.stringify(fingerprint ? { expected_input_fingerprint: fingerprint } : {}) })
 export const cancelStrategyProposalRemaining = (id: number, reason = '') => strategyRequest<{
@@ -57,5 +62,6 @@ export const cancelStrategyProposalRemaining = (id: number, reason = '') => stra
 }>(`/proposals/${id}/cancel-remaining`, { method: 'POST', body: JSON.stringify({ reason }) })
 
 export const generateHoldingExit = (lot: string, fingerprint: string) => strategyRequest<{ created: unknown[]; blockers?: string[] }>('/proposals', { method: 'POST', body: JSON.stringify({kind: 'holding_exit', lot_id: lot, expected_input_fingerprint: fingerprint}) })
-export const getStrategyStatus = () => strategyRequest<{ mode: string; contract_hash: string; contract_matches: boolean; contract: { execution_version: string; bucket_targets: { short: number; medium: number; long: number }; max_single_pct: number } }>('/status')
+type StrategyContract = { execution_version: string; bucket_targets: { short: number; medium: number; long: number }; max_single_pct: number }
+export const getStrategyStatus = () => strategyRequest<{ mode: string; contract_hash: string; contract_matches: boolean; contract: StrategyContract; effective_contract?: StrategyContract }>('/status')
 export const saveStrategyCashflow = (cashflow_dates: StrategyCashflow[]) => apiRequest('/api/products/allocation', { method: 'PUT', body: JSON.stringify({ cashflow_dates }) })

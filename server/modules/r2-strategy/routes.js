@@ -5,13 +5,17 @@ const { readJsonBody } = require('../../http/middleware/json-body');
 const { strategyError } = require('./repository');
 const BASE = '/api/r2-strategy';
 const CANCEL_REMAINING = /^\/api\/r2-strategy\/proposals\/(\d+)\/cancel-remaining$/;
-const patterns = [['GET', BASE + '/status'], ['GET', BASE + '/workspace'],
+const WEEKLY_NAV = BASE + '/holding-weekly-nav';
+const SETTINGS = BASE + '/settings';
+const patterns = [['GET', BASE + '/status'], ['GET', BASE + '/workspace'], ['GET', WEEKLY_NAV],
+  ['GET', SETTINGS], ['PUT', SETTINGS],
   ['POST', BASE + '/preview'], ['POST', BASE + '/recompute'], ['POST', BASE + '/proposals'],
   ['POST', CANCEL_REMAINING]];
 const FINGERPRINT = /^[a-f0-9]{64}$/;
 const PROPOSAL_KEYS = new Set(['expected_input_fingerprint', 'kind', 'lot_id', 'amount_cents', 'target_product_code']);
 const COMPUTE_KEYS = new Set(['expected_input_fingerprint']);
 const CANCEL_KEYS = new Set(['reason']);
+const SETTINGS_KEYS = new Set(['expected_revision', 'settings']);
 
 function objectBody(body, message) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw strategyError('invalid_input', message, 400);
@@ -47,6 +51,19 @@ function proposalOptions(body) {
 function createStrategyRoutes(service, proposals) {
   return patterns.map(([method, path]) => ({ method, path,
     async handler(request, response, context) {
+      if (path === SETTINGS) {
+        if (method === 'GET') return sendJson(response, 200, service.policySettings());
+        const body = objectBody(await readJsonBody(request), '请求体必须为JSON对象');
+        onlyKeys(body, SETTINGS_KEYS, '策略设置请求包含未知字段');
+        if (typeof body.expected_revision !== 'string' || !FINGERPRINT.test(body.expected_revision)) {
+          throw strategyError('invalid_input', '策略设置版本无效，请重新读取', 400);
+        }
+        return sendJson(response, 200, service.savePolicySettings(body));
+      }
+      if (path === WEEKLY_NAV) {
+        sendJson(response, 200, await service.weeklyNav());
+        return;
+      }
       if (method === 'GET') {
         sendJson(response, 200, path.endsWith('/status') ? service.status() : service.workspace());
         return;

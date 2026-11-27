@@ -1,5 +1,6 @@
 'use strict';
 
+const { configuredContract } = require('./policy-settings');
 const { CONTRACT, CONTRACT_HASH, fingerprint } = require('./contract');
 const { identityKey } = require('./evidence');
 const { evaluateStrategy } = require('./engine');
@@ -35,8 +36,13 @@ function validateHoldingReplacement({ current, candidate, comparison_days: horiz
 }
 function holdingPlans(input, result) {
   return buildHoldingActionPlans({ holdings: input.portfolio.holdings, context: result.evidence,
-    monitoringContext: result.monitoringEvidence ?? result.evidence, date: input.date,
+    monitoringContext: result.monitoringEvidence ?? result.evidence, date: input.date, policy: input.settings?.policy,
     validateReplacement: values => validateHoldingReplacement({ ...values, account: result.account, settings: input.settings }) });
+}
+
+function bucketPlan(settings) {
+  const contract = settings?.policy ? configuredContract(settings.policy) : CONTRACT;
+  return { ...contract.bucket_targets, max_single: settings?.max_single_pct ?? contract.max_single_pct };
 }
 
 function materialPortfolio(input) {
@@ -152,7 +158,7 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
               data_date: row.performance_date } },
           decision: { reason: summary, expectation: '按冻结情景比较正式交易及收益事实；不把近1月或3%目标当作个人收益保证。',
             invalidation_condition: '份额、近期业绩、公开或App额度、复核版本、资金或约束变化时重核；未执行不假定收益已实现。',
-            bucket_plan: CONTRACT.bucket_targets },
+            bucket_plan: bucketPlan(frozen.input.settings) },
           review_meta: { source: 'v9-strategy-proposal', strategy_mode: 'recommendation', plan_hash: planHash },
           expected_legs: [{ side: 'buy', product_code: row.mapping.product_code, product_name: row.name,
             amount: allocation.amount_cents / 100, term_days: row.term.days }] } };
@@ -229,7 +235,7 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
         action: plan.action, reason: definition.reason ?? plan.reason, expectation: definition.expectation ?? '',
         invalidation_condition: definition.invalidation_condition ?? plan.invalidation_condition, actual_result: '',
         strategy_version: CONTRACT.execution_version, target_annualized: 3,
-        bucket_plan: { ...CONTRACT.bucket_targets, max_single: CONTRACT.max_single_pct },
+        bucket_plan: bucketPlan(frozen.input.settings),
         evidence_date: proposal.evidence_date, verify_date: proposal.verify_date,
         evaluation_at: ['holding', 'maturity'], rating: '待评估',
         review_meta: { ...payload.review_meta, proposal_id: proposal.id, proposal_type: proposal.proposal_type,
@@ -297,7 +303,7 @@ function createStrategyProposalService({ repository, strategy, strategyRepositor
       const decision = repository.createDecision({ date: frozen.input.date, product_name: proposal.product_name,
         action: proposal.action, reason: definition.reason, expectation: definition.expectation,
         invalidation_condition: definition.invalidation_condition, actual_result: '', strategy_version: CONTRACT.execution_version,
-        target_annualized: 3, bucket_plan: { ...CONTRACT.bucket_targets, max_single: CONTRACT.max_single_pct },
+        target_annualized: 3, bucket_plan: bucketPlan(frozen.input.settings),
         evidence_date: proposal.evidence_date, verify_date: proposal.verify_date, evaluation_at: ['buy_day', 'holding', 'maturity'], rating: '待评估',
         review_meta: { ...proposal.payload.review_meta, proposal_id: proposal.id, proposal_type: proposal.proposal_type,
           execution_snapshot: acceptedSnapshot, proposal_snapshot_hash: proposal.payload.snapshot.snapshot_hash,

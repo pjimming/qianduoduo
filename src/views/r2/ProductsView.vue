@@ -12,6 +12,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import type { DashboardPayload } from '@/types/dashboard'
 import ScreeningView from './ScreeningView.vue'
 import StrategyWorkspacePanel from '@/components/r2/StrategyWorkspacePanel.vue'
+import StrategySettingsPanel from '@/components/r2/StrategySettingsPanel.vue'
 import { getStrategyWorkspace } from '@/api/r2-strategy'
 import type { StrategyWorkspace } from '@/types/r2-strategy'
 
@@ -28,7 +29,7 @@ const data = computed<DashboardPayload | null>(
   () => storeDashboard.value ?? props.dashboard ?? null,
 )
 
-const SECTIONS = ['screening', 'allocation', 'holdings'] as const
+const SECTIONS = ['screening', 'allocation', 'holdings', 'settings'] as const
 type Section = (typeof SECTIONS)[number]
 
 const section = computed<Section>(() => {
@@ -73,7 +74,7 @@ const ledgerReady = computed(
 let ledgerToken = 0
 
 async function ensureLedger(force = false): Promise<void> {
-  if (section.value === 'screening' && !force) return
+  if (['screening', 'settings'].includes(section.value) && !force) return
   if (!force && ledgerReady.value) return
   const token = ++ledgerToken
   ledgerLoading.value = true
@@ -141,6 +142,10 @@ const navItems = computed(() => [
     label: '持仓复核',
     meta: holdingsMeta.value,
   },
+  {
+    key: 'settings',
+    label: '策略设置',
+  },
 ])
 
 function holdingsLink(
@@ -199,6 +204,14 @@ function holdingsLink(
     >
       <ScreeningView embedded />
     </section>
+
+    <StrategySettingsPanel
+      v-else-if="section === 'settings'"
+      :mode="strategy?.mode"
+      :screening-stale="strategy?.screening_policy_stale"
+      :calculation-stale="strategy?.stale || !strategy?.result"
+      @refresh="loadStrategy"
+    />
 
     <template v-else>
       <section

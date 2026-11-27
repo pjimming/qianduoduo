@@ -4,6 +4,7 @@ const { parentPort, workerData } = require('node:worker_threads');
 const { openStrategyLedger } = require('../modules/r2-strategy/existing-ledger');
 const { openScreeningRepository } = require('../modules/r2-screening/repository');
 const { createStrategyService } = require('../modules/r2-strategy/service');
+const { readPolicy } = require('../modules/r2-strategy/policy-settings');
 const { todayShanghai } = require('../../lib/metrics');
 const { refreshHoldingMonitor } = require('./r2-holding-monitor');
 
@@ -25,7 +26,7 @@ try {
   if (workerData.refreshHoldings === true && ['shadow', 'v9'].includes(status.mode)) {
     let sourceSnapshot = null;
     try { sourceSnapshot = screening?.readExecutionSnapshot() ?? null; } catch { /* Independent holding evidence can still be collected. */ }
-    await refreshHoldingMonitor({ ledger, sourceSnapshot,
+    await refreshHoldingMonitor({ ledger, sourceSnapshot, screeningPolicy: readPolicy(ledger.db).settings.screening,
       date: workerData.date ?? todayShanghai(), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(300000)]) });
   }
   controller.signal.throwIfAborted();

@@ -40,9 +40,10 @@ onMounted(async () => {
   try {
     const state = await getStrategyStatus()
     if (state.mode === 'v9') {
-      const { short, medium, long } = state.contract.bucket_targets
-      activeBucketPlan.value = { short, medium, long, max_single: state.contract.max_single_pct }
-      activeStrategyVersion.value = state.contract.execution_version
+      const contract = state.effective_contract ?? state.contract
+      const { short, medium, long } = contract.bucket_targets
+      activeBucketPlan.value = { short, medium, long, max_single: contract.max_single_pct }
+      activeStrategyVersion.value = contract.execution_version
       if (editingId.value === null) {
         form.strategy_version = activeStrategyVersion.value
         form.bucket_plan = { ...activeBucketPlan.value }

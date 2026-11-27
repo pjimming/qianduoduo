@@ -1,6 +1,7 @@
 'use strict';
 
 const { CONTRACT, CONTRACT_HASH, fingerprint, freeze } = require('./contract');
+const { DEFAULT_POLICY } = require('./policy-settings');
 const { adaptSnapshot, identityKey } = require('./evidence');
 const { buildPublicLimits } = require('./public-limits');
 const { buildAccountContext } = require('./account');
@@ -47,7 +48,8 @@ function applyHoldingClassificationFallback(holdings, products, assetsByCode) {
 // One entry point for HTTP, scheduled worker and CLI. It accepts frozen inputs
 // only; it cannot open a database, refresh a source or submit a business write.
 function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], portfolio, products = [], date, settings = {} }, options = {}) {
-  const evidence = adaptSnapshot(sourceSnapshot, date);
+  const policy = settings.policy ?? DEFAULT_POLICY;
+  const evidence = adaptSnapshot(sourceSnapshot, date, policy);
   const productByCode = new Map();
   for (const product of Array.isArray(products) ? products : []) {
     const code = String(product?.code || '').trim();
@@ -85,8 +87,8 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], port
   const account = buildAccountContext({ ...portfolio, reservations: portfolio.reservations ?? [], date, assetsByCode, settlementChecks });
   const allocation = allocateV9({ context: evidence, account, limits, settings }, options);
   const monitoringEvidence = holdingSupplements.length
-    ? combineHoldingEvidence({ context: evidence, supplements: holdingSupplements, date }) : evidence;
-  const monitoring = buildHoldingMonitoring({ holdings: portfolio.holdings ?? [], context: monitoringEvidence, date });
+    ? combineHoldingEvidence({ context: evidence, supplements: holdingSupplements, date, policy }) : evidence;
+  const monitoring = buildHoldingMonitoring({ holdings: portfolio.holdings ?? [], context: monitoringEvidence, date, policy });
   const verifiedArrivalByLot = new Map(monitoring.rows.filter(row =>
     row.redemption?.arrival_unverified === false && isoDate(row.redemption.funds_available_date))
     .map(row => [row.lot_id, row.redemption.funds_available_date]));
@@ -113,7 +115,7 @@ function evaluateStrategy({ state, sourceSnapshot, holdingSupplements = [], port
   const input = { payload_version: CONTRACT.payload_version, contract_hash: CONTRACT_HASH, business_date: date,
     activation_seq: state?.activation_seq ?? 0, mode: state?.mode ?? 'legacy',
     source_fingerprint: evidence.fingerprint, monitoring_fingerprint: monitoringEvidence.fingerprint, account_fingerprint: account.fingerprint,
-    settings_fingerprint: fingerprint(settings) };
+    settings_fingerprint: fingerprint(settings), ...(settings.policy ? { policy_settings: policy } : {}) };
   return freeze({ input, input_fingerprint: fingerprint(input), evidence, monitoringEvidence, account, allocation, monitoring,
     liquidity_coverage: liquidityCoverage,
     selected_reviews: selectedReviews, may_generate_buy_proposals: mayPropose,

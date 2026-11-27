@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type LocationQuery, type RouteLocationNormalized } from 'vue-router'
 
-const PRODUCT_SECTIONS = ['screening', 'allocation', 'holdings'] as const
+const PRODUCT_SECTIONS = ['screening', 'allocation', 'holdings', 'settings'] as const
 const EVALUATION_SECTIONS = ['proposals', 'decisions', 'results'] as const
 const DAILY_SECTIONS = ['today', 'records', 'capital'] as const
 const TRADES_SECTIONS = ['current-value', 'holdings', 'valuations', 'trades', 'inbox'] as const
@@ -26,6 +26,8 @@ const PRODUCT_ANCHORS: Record<string, string> = {
   '#events': 'holdings',
   '#products': 'allocation',
   '#screening': 'screening',
+  '#settings': 'settings',
+  '#allocation-cash-needs': 'allocation',
 }
 
 const DAILY_ANCHORS: Record<string, string> = {
@@ -85,6 +87,8 @@ function normalizeProducts(to: RouteLocationNormalized): NormalizedSection {
       section = 'holdings'
     } else if (to.hash === '#screening' || hasScreeningParams(to)) {
       section = 'screening'
+    } else if (to.hash === '#settings') {
+      section = 'settings'
     } else {
       section = 'allocation'
     }

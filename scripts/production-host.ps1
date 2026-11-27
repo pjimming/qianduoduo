@@ -22,6 +22,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'runtime-process.ps1')
 
 if (-not $Root) {
   $Root = Split-Path -Parent $PSScriptRoot
@@ -164,13 +165,9 @@ function Read-PidFile {
 
 function Get-LiveProcessId {
   param([string]$Path)
-  $processId = Read-PidFile -Path $Path
-  if (-not $processId) {
-    return $null
-  }
-  if (Get-Process -Id $processId -ErrorAction SilentlyContinue) {
-    return $processId
-  }
+  $role = if ($Path -eq $DaemonPidFile) { 'supervisor' } else { 'server' }
+  $process = Get-QddRuntimeProcess -PidFile $Path -Role $role -Root $Root -Port $Port
+  if ($process) { return $process.Id }
   return $null
 }
 
@@ -204,7 +201,7 @@ function Get-RuntimeSnapshot {
   $listenerPid = Get-ListeningProcessId
   $origin = $null
   $metadata = Read-JsonFile -Path $SupervisorMetaFile
-  if ($metadata) {
+  if ($metadata -and $supervisorPid -and [int]$metadata.pid -eq $supervisorPid -and $metadata.root -eq $Root -and [int]$metadata.port -eq $Port) {
     $origin = [string]$metadata.origin
   }
   return [pscustomobject]@{
@@ -721,6 +718,9 @@ function Get-HostStatusSnapshot {
     $task.definition_valid -and
     $task.login_trigger -and
     $task.single_trigger -and
+    $null -ne $runtime.supervisor_pid -and
+    $null -ne $runtime.server_pid -and
+    $runtime.healthy -and
     $runtime.supervisor_origin -eq 'task-scheduler'
   return [pscustomobject]@{
     host_provider = 'windows-task-scheduler'

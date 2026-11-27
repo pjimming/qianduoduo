@@ -7,6 +7,8 @@ const { isoDate } = require('./calendar');
 const { decimal, fresh, screen, evaluateProduct } = require('./policy');
 const { fingerprint: stablePublicHash } = require('../r2-strategy/contract');
 
+const { DEFAULT_POLICY } = require('../r2-strategy/policy-settings');
+
 const VERSION = 'cmb-public-v1';
 const SOURCE = 'cmb';
 const CF = 'https://cfweb.paas.cmbchina.com';
@@ -145,15 +147,15 @@ function parseQuota(result, share, checked_at) {
   };
 }
 
-function parseAmount(value) {
+function parseAmount(value, lowQuota = DEFAULT_POLICY.screening.low_quota_hint_cny) {
   const amount = text(value).normalize('NFKC');
   const match = amount.match(/剩余\s*额度\s*[:：]?\s*(?:[<>≤≥约]\s*)?([\d,.]+)\s*(万|亿)?元/);
   if (!match) return null;
   const numeric = Number(match[1].replaceAll(',', '')) * (match[2] === '亿' ? 1e8 : match[2] === '万' ? 1e4 : 1);
-  return { amount: text(value), low_amount: Number.isFinite(numeric) && numeric <= 10000 };
+  return { amount: text(value), low_amount: Number.isFinite(numeric) && numeric <= lowQuota };
 }
 
-async function readShelf(signal, options, targets, clock) {
+async function readShelf(signal, options, targets, clock, lowQuota) {
   const amounts = new Map();
   const seen = new Set();
   let cursor = {};
@@ -167,7 +169,7 @@ async function readShelf(signal, options, targets, clock) {
       for (const item of data.prdList) {
         const key = shareKey({ channel: item.saaCod, code: item.ripCod });
         if (!targets.has(key)) continue;
-        const parsed = parseAmount(item.dxsTag);
+        const parsed = parseAmount(item.dxsTag, lowQuota);
         if (!amounts.get(key)?.amount) amounts.set(key, {
           ...(parsed || {}), amount_state: parsed ? 'public' : item.dxsTag ? 'unrecognized' : 'blank',
           amount_checked_at: clock().toISOString(),
@@ -334,7 +336,7 @@ async function reportsEvidence(cf, share, clock) {
   });
 }
 
-async function collect({ date, calendar, signal, clock = () => new Date(), options: input = {} }) {
+async function collect({ date, calendar, signal, clock = () => new Date(), options: input = {}, screeningPolicy = DEFAULT_POLICY.screening }) {
   const options = { ...OPTIONS, ...input };
   const browser = await (options.openBrowser ?? openPublicBrowser)(signal);
   const health = {};
@@ -348,7 +350,7 @@ async function collect({ date, calendar, signal, clock = () => new Date(), optio
       throw sourceError('performance_unavailable', '公开近 1 月业绩来源全局不可用', health);
     }
     const passed = shares.filter(share => decimal(share.performance['1m']) !== null &&
-      decimal(share.performance['1m']) >= decimal('2.15') && fresh(share.performance_date, date));
+      decimal(share.performance['1m']) >= decimal(String(screeningPolicy.min_monthly_yield)) && fresh(share.performance_date, date, screeningPolicy.max_data_age_days));
     health.quota = { requested: passed.length, ok: 0, matched: 0 };
     health.detail = { requested: 0, ok: 0 };
     health.nav = { requested: 0, ok: 0 };
@@ -372,7 +374,7 @@ async function collect({ date, calendar, signal, clock = () => new Date(), optio
     });
     if (passed.length && !health.quota.matched) throw sourceError('quota_unavailable', '公开额度来源全局不可用', health);
     const open = passed.filter(share => share.quota?.status === 0);
-    const shelf = await readShelf(signal, options, new Set(open.map(shareKey)), clock);
+    const shelf = await readShelf(signal, options, new Set(open.map(shareKey)), clock, screeningPolicy.low_quota_hint_cny);
     health.shelf = { pages: shelf.pages, covered: shelf.amounts.size, state: shelf.state };
     for (const share of passed) {
       if (share.quota.status === 0) {
@@ -399,7 +401,7 @@ async function collect({ date, calendar, signal, clock = () => new Date(), optio
           share.detail_issue = 'detail_unavailable';
         }
         const term = share.detail?.term;
-        if (term && (term.days > 190 || ['periodic', 'rolling', 'conflict'].includes(term.kind))) return;
+        if (term && (term.days > screeningPolicy.max_term_days || ['periodic', 'rolling', 'conflict'].includes(term.kind))) return;
         health.nav.requested++;
         try {
           share.nav = await readNav(cf, share, signal);
@@ -414,7 +416,7 @@ async function collect({ date, calendar, signal, clock = () => new Date(), optio
       if (!health.detail.ok || (health.nav.requested && !health.nav.ok)) {
         throw sourceError('detail_nav_unavailable', '产品详情或净值来源全局不可用', health);
       }
-      const provisional = screen(shares, date, calendar);
+      const provisional = screen(shares, date, calendar, screeningPolicy);
       const check = new Set(provisional.results.filter(row => ['eligible', 'watch'].includes(row.status)).map(shareKey));
       health.prospectus = { requested: check.size, ok: 0 };
       health.reports = { requested: check.size, ok: 0 };
@@ -445,7 +447,7 @@ async function collect({ date, calendar, signal, clock = () => new Date(), optio
 // Public, same-share monitoring only. Unlike collect(), detail and NAV are
 // attempted even for sold-out, below-yield and no-longer-listed shares. This
 // function deliberately has no holding/lot/amount argument and persists nothing.
-async function collectHoldingEvidence({ identities, date, calendar, signal: callerSignal, clock = () => new Date(), options: input = {} }) {
+async function collectHoldingEvidence({ identities, date, calendar, signal: callerSignal, clock = () => new Date(), options: input = {}, screeningPolicy = DEFAULT_POLICY.screening }) {
   if (!isoDate(date) || date !== isoDate(date) || typeof calendar?.isOpen !== 'function' ||
       !Array.isArray(identities) || identities.length > 128) throw sourceError('monitor_input', '监控日期、日历或份额范围无效');
   const seen = new Set();
@@ -534,7 +536,7 @@ async function collectHoldingEvidence({ identities, date, calendar, signal: call
       } else if (listed || !needsChannel) {
         product.detail_issue = clientIssue; product.nav = { issue: clientIssue }; issues.push(clientIssue);
       }
-      const data = evaluateProduct(product, date, calendar);
+      const data = evaluateProduct(product, date, calendar, screeningPolicy);
       // The monitoring calculation must never acquire a candidate rank or quota
       // simply because this separately requested public evidence exists.
       data.shortlisted = false; data.rank = null;

@@ -29,6 +29,7 @@ const {
   terminateOcrProcesses,
 } = require('./infrastructure/ocr');
 
+const { readPolicy } = require('./modules/r2-strategy/policy-settings');
 const { createScreeningRuntime } = require('./jobs/r2-screening');
 
 function closeServer(server) {
@@ -115,6 +116,7 @@ function startServer(options = {}) {
     ...options,
     screeningOptions: {
       ...options.screeningOptions,
+      readScreeningPolicy: () => readPolicy(repository.db).settings.screening,
       onPublished: (event) => {
         try { options.screeningOptions?.onPublished?.(event); }
         catch (error) { logger.warn?.(`  初筛外部发布回调失败：${error instanceof Error ? error.message : error}`); }

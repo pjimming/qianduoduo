@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
-import { computeStrategy, generateStrategyProposals, generateHoldingExit, saveStrategyCashflow } from '@/api/r2-strategy'
-import type { StrategyCashflow, StrategyHoldingRow } from '@/types/r2-strategy'
-import type { StrategyWorkspace } from '@/types/r2-strategy'
+import { RouterLink, useRoute } from 'vue-router'
+import { computeStrategy, generateStrategyProposals, generateHoldingExit, getHoldingWeeklyNav, saveStrategyCashflow } from '@/api/r2-strategy'
+import type { HoldingWeeklyNav, StrategyCashflow, StrategyHoldingRow, StrategyWorkspace } from '@/types/r2-strategy'
 import type { HoldingReview } from '@/types/dashboard'
 import { formatMoney } from '@/composables/useFormatters'
 import { currentStrategySnapshot, holdingExitMark } from '@/composables/holdingExitStatus'
@@ -14,6 +13,7 @@ const props = defineProps<{
   holdingReviews?: readonly Pick<HoldingReview, 'product_code' | 'product_name'>[]
 }>()
 const emit = defineEmits<{ refresh: [] }>()
+const route = useRoute()
 const busy = ref(false)
 const message = ref('')
 const error = ref('')
@@ -48,6 +48,29 @@ async function exitHolding(lot: string) {
 }
 const result = computed(() => props.workspace.result)
 const current = computed(() => currentStrategySnapshot(props.workspace))
+const weeklyNav = ref(new Map<string, HoldingWeeklyNav>())
+const weeklyNavState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+watch(() => [props.section, props.workspace] as const, async ([section, workspace], _, onCleanup) => {
+  weeklyNav.value = new Map()
+  weeklyNavState.value = 'idle'
+  if (section !== 'holdings' || !current.value || !workspace.result?.monitoring.rows.some(row =>
+    row.exit_conditions?.checks.recent_return === 'pending' && row.identity?.source === 'cmb')) return
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
+  weeklyNavState.value = 'loading'
+  try {
+    const response = await getHoldingWeeklyNav(controller.signal)
+    if (controller.signal.aborted) return
+    if (response.date === workspace.business_date && response.status === 'checked') {
+      weeklyNav.value = new Map(response.products.map(product => [product.code, product]))
+      weeklyNavState.value = 'ready'
+    } else {
+      weeklyNavState.value = 'idle'
+    }
+  } catch {
+    if (!controller.signal.aborted) weeklyNavState.value = 'error'
+  }
+}, { immediate: true })
 const exitStates = new Set(['exit_required', 'exit_at_open', 'exit_rules_pending'])
 const holdingNames = computed(() => {
   const names = new Map<string, string>()
@@ -70,6 +93,7 @@ const holdingProducts = computed(() => {
     return {
       row,
       exits,
+      nav: weeklyNavFor(row),
       exitMark: current.value ? holdingExitMark(exits[0] ?? row) : undefined,
       amount: rows.every(row => row.amount != null)
         ? rows.reduce((total, row) => total + Math.round(row.amount! * 100), 0)
@@ -138,6 +162,38 @@ const observationLabels: Record<string, string> = {
 const observationLabel = (code?: string | null) => code ? observationLabels[code] || '收益证据待核' : '尚无有效收益证据'
 const observationPct = (value?: number) => value == null ? '待核' : `${value.toFixed(2)}%`
 const observationReturnPct = (value?: number) => value == null ? '待核' : `${value.toFixed(6)}%`
+const exitCheckLabels: Record<string, string> = { met: '满足', not_met: '未满足', pending: '待核' }
+const publicNavReasons: Record<string, string> = {
+  same_cmb_share_unverified: '同份额未确认',
+  nav_stale_or_unavailable: '近期净值未披露或已过期',
+  start_nav_missing: '缺少七日前的期初净值',
+  nav_gap: '缺少应披露日净值',
+  calendar_gap: '估值日历覆盖不足',
+  nav_conflict: '同日净值冲突',
+  cumulative_unavailable: '缺少累计净值',
+  unit_nav_invalid: '期初单位净值无效',
+  nav_identity: '净值销售份额不匹配',
+  nav_pages: '净值披露不完整',
+}
+function weeklyNavFor(row: StrategyHoldingRow) {
+  if (!current.value || row.exit_conditions?.checks.recent_return !== 'pending' || row.identity?.source !== 'cmb') return
+  const nav = weeklyNav.value.get(row.product_code)
+  if (nav && (nav.channel == null || nav.channel === row.identity.channel)) return nav
+}
+function exitTags(row: StrategyHoldingRow, nav?: HoldingWeeklyNav) {
+  const conditions = row.exit_conditions
+  if (!conditions) return []
+  const { checks, recent } = conditions
+  const reference = nav?.status === 'calculated'
+  const recentPct = recent?.return_pct ?? (reference ? nav.return_pct : undefined)
+  return [
+    { name: '7日收益', value: recentPct == null ? '' : observationReturnPct(recentPct),
+      state: reference ? 'reference' : checks.recent_return,
+      label: reference ? '参考' : exitCheckLabels[checks.recent_return] },
+    { name: '1月年化', state: checks.monthly_yield, label: exitCheckLabels[checks.monthly_yield] },
+    { name: '6/3/1月递减', state: checks.declining_windows, label: exitCheckLabels[checks.declining_windows] },
+  ]
+}
 
 function sortHoldings(column: HoldingColumn) {
   holdingSort.value = {
@@ -195,7 +251,10 @@ async function run(kind: 'compute' | 'proposals') {
     <p v-if="workspace.source_issue" class="rw-alert is-warn">公开证据异常：{{ workspace.source_issue }}</p>
     <p v-if="!result" class="rw-alert is-warn" role="status">尚无策略快照，请重算当前策略。完成之前不显示确定金额建议。</p>
     <p v-else-if="!current" class="rw-alert is-warn" role="status">账户、公开证据或策略已变化，以下为上次快照，不能据此执行；请重算当前策略。</p>
-    <details v-if="section === 'allocation' && workspace.cashflow_dates !== undefined">
+    <p v-if="section === 'allocation' && workspace.screening_policy_stale" class="rw-alert is-warn" role="status">
+      选品参数已更新。<RouterLink :to="{ query: { section: 'screening' } }">刷新初筛</RouterLink>发布新批次后再重算资金配置。
+    </p>
+    <details v-if="section === 'allocation' && workspace.cashflow_dates !== undefined" id="allocation-cash-needs" :open="route.hash === '#allocation-cash-needs'">
       <summary>按付款日设置现金需求</summary>
       <ul v-if="workspace.cash_needs?.length">
         <li v-for="(need, index) in workspace.cash_needs" :key="index">{{ need.by_date }} · 累计 {{ money(need.required_cents) }}{{ need.basis === 'legacy_window_end' ? '（旧区间估算）' : '' }}</li>
@@ -249,7 +308,7 @@ async function run(kind: 'compute' | 'proposals') {
       <div class="strategy-actions"><button type="button" class="button button-primary button-small" :disabled="busy || !current || !result.may_generate_buy_proposals" @click="run('proposals')">生成买入提案</button><RouterLink :to="{ name: 'r2-evaluation', query: { section: 'proposals' } }">审阅提案</RouterLink></div>
     </template>
     <template v-else-if="result">
-      <p v-if="workspace.contract?.exit_policy">近7日总收益率低于{{ workspace.contract.exit_policy.recent_return_threshold_pct }}%、近1月年化低于{{ workspace.contract.exit_policy.monthly_yield_threshold_pct }}%，且近6月年化&gt;近3月年化&gt;近1月年化，三项同时满足后按可赎窗口处理。</p>
+      <p v-if="workspace.contract?.exit_policy">三项退出条件须同时满足，等于阈值或年化持平时不触发。</p>
       <div v-if="holdingProducts.length" class="strategy-table-wrap">
           <table class="strategy-holdings-table">
             <thead>
@@ -268,7 +327,7 @@ async function run(kind: 'compute' | 'proposals') {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="{ row, exits, exitMark, amount } in sortedHoldingProducts" :key="row.product_code">
+              <tr v-for="{ row, exits, nav, exitMark, amount } in sortedHoldingProducts" :key="row.product_code">
                 <th scope="row">
                   {{ row.product_code }}
                   <small v-if="holdingNames.has(row.product_code)" class="strategy-holding-name">{{ holdingNames.get(row.product_code) }}</small>
@@ -283,20 +342,42 @@ async function run(kind: 'compute' | 'proposals') {
                   <span v-if="exitMark" class="r2-exit-mark" :class="`is-${exitMark.tone}`">{{ exitMark.label }}</span>
                   <span v-else :class="{ 'strategy-observation-watch': row.observation?.state === 'watch' }">{{ holdingConclusion(row, exits) }}</span>
                   <small v-if="row.observation?.state === 'watch'">{{ row.observation.reasons.map(observationLabel).join('；') }}。仅观察。</small>
-                  <details v-if="row.exit_conditions" class="strategy-observation">
-                    <summary>查看三项退出条件</summary>
-                    <small>三项需同时满足；等于阈值或窗口年化相等不触发。</small>
-                    <small>近7日总收益率：{{ row.exit_conditions.recent == null ? '待核' : `${observationReturnPct(row.exit_conditions.recent.return_pct)}（${row.exit_conditions.recent.start_date} 至 ${row.exit_conditions.recent.end_date}）` }}。退出阈值 &lt;{{ row.exit_conditions.recent_return_threshold_pct }}%</small>
-                    <small>近1月年化：{{ row.exit_conditions.checks.monthly_yield === 'pending' || row.yield_1m == null ? '待核' : `${row.yield_1m}%` }}。退出阈值 &lt;{{ row.exit_conditions.monthly_yield_threshold_pct }}%</small>
-                    <small>近6月 / 近3月 / 近1月年化：{{ ['6m', '3m', '1m'].map(key => row.exit_conditions?.performance[key] == null ? '待核' : `${row.exit_conditions.performance[key]}%`).join(' / ') }}；须依次严格下降。</small>
-                    <small>{{ row.summary }}</small>
-                  </details>
+                  <template v-if="row.exit_conditions">
+                    <ul class="strategy-exit-tags" role="list" aria-label="三项退出条件">
+                      <li v-for="tag in exitTags(row, nav)" :key="tag.name"
+                        class="strategy-exit-tag" :class="`is-${tag.state}`">
+                        {{ tag.name }} <strong v-if="tag.value">{{ tag.value }}</strong> <span>{{ tag.label }}</span>
+                      </li>
+                    </ul>
+                    <details class="strategy-observation">
+                      <summary>查看条件与阈值</summary>
+                      <small>7日总收益率 &lt; {{ row.exit_conditions.recent_return_threshold_pct }}%</small>
+                      <small v-if="row.exit_conditions.recent">
+                        {{ row.exit_conditions.recent.start_date }} 至 {{ row.exit_conditions.recent.end_date }}
+                      </small>
+                      <template v-else>
+                        <small>策略待核 · {{ observationLabel(row.observation?.metrics?.recent.reason) }}</small>
+                        <small v-if="nav?.status === 'calculated'">
+                          <a :href="nav.source_url" target="_blank" rel="noopener noreferrer">招行公开净值</a>
+                          {{ nav.start_date }} 至 {{ nav.end_date }} · {{ nav.below_threshold ? '低于阈值' : '未低于阈值' }}
+                        </small>
+                        <small v-else-if="nav">
+                          公开净值待核 · {{ publicNavReasons[nav.reason ?? ''] || '暂无法读取' }}{{ nav.affected_date ? `（${nav.affected_date}）` : '' }}
+                        </small>
+                        <small v-else-if="row.identity?.source === 'cmb' && current && weeklyNavState === 'loading'">正在查询公开净值…</small>
+                        <small v-else-if="row.identity?.source === 'cmb' && current && weeklyNavState === 'error'">公开净值读取失败，可读取最新状态重试。</small>
+                      </template>
+                      <small>1月年化 &lt; {{ row.exit_conditions.monthly_yield_threshold_pct }}%</small>
+                      <small>6月 / 3月 / 1月年化 {{ ['6m', '3m', '1m'].map(key => row.exit_conditions?.performance[key] == null ? '待核' : `${row.exit_conditions.performance[key]}%`).join(' / ') }}</small>
+                      <small v-if="exits.length">{{ row.summary }}</small>
+                    </details>
+                  </template>
                   <details v-if="row.observation" class="strategy-observation">
                     <summary>查看收益证据</summary>
                     <template v-if="row.observation.metrics?.recent.status === 'available'">
                       <small>{{ row.observation.metrics.recent.start_date }} 至 {{ row.observation.metrics.recent.end_date }}（{{ row.observation.metrics.recent.days }}个自然日）</small>
                       <small>7日涨跌幅 {{ observationReturnPct(row.observation.metrics.recent.return_pct) }}</small>
-                      <small v-if="row.observation.recent_return_threshold_pct != null">预警参考线约 {{ observationPct(row.observation.recent_return_threshold_pct) }}（精确按2.15%×7÷365计算）</small>
+                      <small v-if="row.observation.recent_return_threshold_pct != null">预警参考线 {{ row.observation.recent_return_threshold_pct.toFixed(8) }}%</small>
                       <small>区间年化 {{ observationPct(row.observation.metrics.recent.annualized_pct) }}，仅供参考</small>
                       <small>{{ row.observation.metrics.recent.interval_count }}个披露区间：零收益{{ row.observation.metrics.recent.zero_count }}次，负收益{{ row.observation.metrics.recent.negative_count }}次</small>
                       <small>零、负收益次数仅作展示，不单独触发预警。</small>
@@ -352,6 +433,24 @@ dt { color: var(--ink-soft); font-size: 12px; } dd { margin: 5px 0 0; font-size:
 .strategy-observation { margin-top: 6px; font-size: 12px; }
 .strategy-observation summary { cursor: pointer; color: var(--green-deep); }
 .strategy-observation-watch { color: var(--warning-ink); font-weight: 650; }
+.strategy-exit-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.strategy-exit-tag {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-quiet);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.strategy-exit-tag.is-met { background: var(--surface-warning); color: var(--warning-ink); }
+.strategy-exit-tag.is-reference { background: var(--surface-info); color: var(--info-ink); }
+.strategy-exit-tag strong { font-size: 13px; font-weight: 650; }
+.strategy-exit-tag span { font-weight: 650; }
+.strategy-observation a { color: var(--green-deep); text-decoration: underline; text-underline-offset: 2px; }
 .strategy-exit ul { padding-left: 16px; }
 .strategy-exit li + li { margin-top: 8px; }
 .strategy-exit button { display: block; margin-top: 4px; }
@@ -364,7 +463,7 @@ th { color: var(--ink-soft); font-size: 12px; } small { display: block; font-siz
 .strategy-holdings-table td { vertical-align: top; }
 .strategy-holdings-table thead th:first-child { width: 20%; }
 .strategy-holdings-table thead th:nth-child(n + 2):nth-child(-n + 4) { width: 12%; }
-.strategy-holdings-table thead th:nth-child(5) { width: 20%; }
+.strategy-holdings-table thead th:nth-child(5) { width: 28%; }
 .strategy-holding-name { font-weight: 400; }
 .strategy-holding-sort {
   display: inline-flex;

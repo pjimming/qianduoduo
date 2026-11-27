@@ -1,6 +1,7 @@
 'use strict';
 
 const { RULE_VERSION, screen, yearStart } = require('./policy');
+const { DEFAULT_POLICY, matchesScreeningPolicy } = require('../r2-strategy/policy-settings');
 const { collect, VERSION } = require('./source');
 const { TIMEZONE, shanghaiTime, scheduledAt, nextDue, shift, daysBetween, refreshCalendar, valuationCalendar } = require('./calendar');
 
@@ -22,7 +23,7 @@ function apiError(statusCode, code, message, data) {
 function createScreeningService({
   repository = null, enabled = false, issue = null, logger = console,
   clock = () => new Date(), refresh = refreshCalendar, valuation = valuationCalendar, collector = collect,
-  timeoutMs = TIMEOUT_MS, schedule = true, onPublished = null,
+  timeoutMs = TIMEOUT_MS, schedule = true, onPublished = null, readScreeningPolicy = () => DEFAULT_POLICY.screening,
 } = {}) {
   const versions = { rule: RULE_VERSION, refresh: refresh.version, valuation: valuation.version, collector: VERSION };
   let running;
@@ -35,6 +36,8 @@ function createScreeningService({
     const { date } = shanghaiTime(now);
     const dueAt = scheduledAt(date);
     const current = repository?.current() ?? null;
+    const screeningPolicy = readScreeningPolicy();
+    const publishedPolicy = current?.input?.screening_policy ?? DEFAULT_POLICY.screening;
     const last = repository?.last() ?? null;
     const active = enabled && !stopped ? repository?.active() ?? null : null;
     const scheduled = repository?.scheduled(date) ?? null;
@@ -52,9 +55,10 @@ function createScreeningService({
         ? now >= new Date(dueAt) && !scheduled && refresh.isOpen(date) ? dueAt : nextDue(now, refresh)
         : null,
       current_run: current, last_attempt: last,
+      screening_policy_stale: Boolean(current && !matchesScreeningPolicy(current, screeningPolicy)),
       data_age: current ? {
         date, days: daysBetween(current.business_date, date),
-        ...repository.ages(current.id, shift(date, -7), date),
+        ...repository.ages(current.id, shift(date, -publishedPolicy.max_data_age_days - 1), date),
       } : null,
       counts: current?.counts ?? null, source_health: last?.health ?? current?.health ?? null,
       issue,
@@ -82,7 +86,7 @@ function createScreeningService({
     if (!run) throw apiError(404, 'no_batch', '找不到初筛批次');
     const { date } = shanghaiTime(clock());
     return { ...run, attempts: store.attempts(id), current: store.current()?.id === id,
-      data_age: run.counts ? { date, ...store.ages(id, shift(date, -7), date) } : null };
+      data_age: run.counts ? { date, ...store.ages(id, shift(date, -(run.input?.screening_policy ?? DEFAULT_POLICY.screening).max_data_age_days - 1), date) } : null };
   }
 
   function result(id, channel, code) {
@@ -118,17 +122,19 @@ function createScreeningService({
     let health;
     let publication = false;
     try {
-      const input = await collector({ date: claim.run.business_date, calendar: valuation, signal, clock });
+      const screeningPolicy = readScreeningPolicy();
+      const input = await collector({ date: claim.run.business_date, calendar: valuation, signal, clock, screeningPolicy });
       signal.throwIfAborted();
       health = input.health;
       publication = true;
-      const evaluated = screen(input.products, claim.run.business_date, valuation);
+      const evaluated = screen(input.products, claim.run.business_date, valuation, screeningPolicy);
       const degraded = Object.entries(health).some(([key, info]) =>
         key === 'shelf' ? info.state === 'request_failed' : info.ok < info.requested ||
           (key === 'quota' && info.matched < info.requested)) ||
         evaluated.results.some(row => row.status === 'pending' || row.hints.includes('calendar_gap'));
       const now = clock();
-      if (repository.publish(claim.token, now.toISOString(), shanghaiTime(now).date, input, evaluated, degraded)) {
+      if (repository.publish(claim.token, now.toISOString(), shanghaiTime(now).date,
+        { ...input, input: { ...input.input, screening_policy: screeningPolicy } }, evaluated, degraded)) {
         notifyPublished({
           run_id: claim.run.id,
           business_date: claim.run.business_date,

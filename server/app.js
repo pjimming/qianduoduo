@@ -129,6 +129,7 @@ function createRequestHandler(repository, options = {}) {
   const transactionManager = repository.transactionManager;
   const decisions = createDecisionsService({
     decisionsRepository: createDecisionsRepository(repository),
+    readStrategyStatus: strategy.status,
     dashboardQuery,
     transactionManager,
     automationRunner,

@@ -2,6 +2,8 @@
 
 const { isoDate, daysBetween, shift } = require('./calendar');
 
+const { DEFAULT_POLICY } = require('../r2-strategy/policy-settings');
+
 const RULE_VERSION = 'v9';
 const CATEGORIES = ['bond', 'deposit', 'enhanced', 'unknown'];
 const STATES = ['eligible', 'watch', 'pending', 'rejected'];
@@ -19,9 +21,9 @@ function decimal(value, positive = false) {
   return positive && integer <= 0n ? null : integer;
 }
 
-function fresh(date, asOf) {
+function fresh(date, asOf, maxAge = DEFAULT_POLICY.screening.max_data_age_days) {
   const age = isoDate(date) ? daysBetween(date, asOf) : NaN;
-  return age >= 0 && age < 7;
+  return age >= 0 && age <= maxAge;
 }
 
 function yearStart(date) {
@@ -42,7 +44,7 @@ function percent(numerator, denominator) {
   return Number(numerator) / Number(denominator) * 100;
 }
 
-function drawdown(points) {
+function drawdown(points, settings) {
   let high = points[0];
   let peak = high;
   let trough = high;
@@ -59,7 +61,8 @@ function drawdown(points) {
   if (loss === 0n) return { band: 'pass', pct: 0, recovery: 'none' };
   const repair = points.find(point => point.date > trough.date && point.value >= peak.value);
   return {
-    band: loss * 200n > peak.value * 3n ? 'reject' : loss * 100n >= peak.value ? 'watch' : 'pass',
+    band: loss * 10000n > peak.value * BigInt(Math.round(settings.drawdown_reject_pct * 100)) ? 'reject'
+      : loss * 10000n >= peak.value * BigInt(Math.round(settings.drawdown_watch_pct * 100)) ? 'watch' : 'pass',
     pct: percent(loss, peak.value), peak_date: peak.date, trough_date: trough.date,
     peak_value: peak.unit, trough_value: trough.unit,
     recovery: repair ? 'repaired' : 'unrepaired', repair_date: repair?.date ?? null,
@@ -70,7 +73,7 @@ function drawdown(points) {
 // Return evidence for observation and the holding exit conjunction. It never
 // feeds purchase screening gates, ranking or the new-purchase yield floor.
 // Cumulative NAV preserves cash distributions; unit-only history is insufficient.
-function navObservation(points, date, calendar, valuationBasis) {
+function navObservation(points, date, calendar, valuationBasis, settings = DEFAULT_POLICY.screening) {
   const pending = reason => ({ status: 'pending', reason });
   const result = { version: 2, basis: 'cumulative_change_over_start_unit',
     recent: pending('nav_insufficient'), trend: pending('nav_insufficient') };
@@ -79,7 +82,7 @@ function navObservation(points, date, calendar, valuationBasis) {
     return result;
   }
   const end = points.at(-1);
-  if (!end || !fresh(end.date, date)) return result;
+  if (!end || !fresh(end.date, date, settings.max_data_age_days)) return result;
   const byDate = new Map(points.map(point => [point.date, point]));
   const read = point => point && decimal(point.cumulative, true);
   const interval = (start, finish) => {
@@ -131,7 +134,7 @@ function navObservation(points, date, calendar, valuationBasis) {
   return result;
 }
 
-function navMetrics(nav, date, calendar, valuationBasis) {
+function navMetrics(nav, date, calendar, valuationBasis, settings = DEFAULT_POLICY.screening) {
   const metrics = {
     latest: null, start: null, end: null, count: 0, recent: [], zero_dates: null,
     trend: 'pending', month_ends: [], monthly_returns: [],
@@ -159,13 +162,13 @@ function navMetrics(nav, date, calendar, valuationBasis) {
   metrics.start = points[0]?.date ?? null;
   metrics.end = points.at(-1)?.date ?? null;
   metrics.count = points.length;
-  if (!fresh(metrics.latest, date) || !fresh(metrics.end, date)) return { ...metrics, issue: 'nav_stale' };
+  if (!fresh(metrics.latest, date, settings.max_data_age_days) || !fresh(metrics.end, date, settings.max_data_age_days)) return { ...metrics, issue: 'nav_stale' };
   if (points.length < 2) return { ...metrics, issue: 'nav_insufficient' };
   metrics.issue = null;
-  metrics.observation = navObservation(points, date, calendar, valuationBasis);
+  metrics.observation = navObservation(points, date, calendar, valuationBasis, settings);
   if (cumulativeConflict) metrics.observation = { version: 2, basis: 'cumulative_change_over_start_unit',
     recent: { status: 'pending', reason: 'cumulative_conflict' }, trend: { status: 'pending', reason: 'cumulative_conflict' } };
-  metrics.drawdown = drawdown(points);
+  metrics.drawdown = drawdown(points, settings);
   const recent = points.slice(-7);
   metrics.recent = recent.map(({ date, unit }) => ({ date, unit }));
   if (recent.length === 7) {
@@ -188,15 +191,15 @@ function navMetrics(nav, date, calendar, valuationBasis) {
   return metrics;
 }
 
-function evaluateProduct(product, date, calendar) {
+function evaluateProduct(product, date, calendar, settings = DEFAULT_POLICY.screening) {
   const { detail, quota } = product;
   const term = detail?.term ?? { kind: 'unknown', days: null };
   const category = CATEGORIES.includes(detail?.category) ? detail.category : 'unknown';
   const returns = product.performance ?? {};
   const monthly = decimal(returns['1m']);
-  const yieldGate = monthly === null || !fresh(product.performance_date, date) ? 'pending'
-    : monthly < decimal('2.15') ? 'reject' : 'pass';
-  const metrics = navMetrics(product.nav, date, calendar, detail?.valuation_basis);
+  const yieldGate = monthly === null || !fresh(product.performance_date, date, settings.max_data_age_days) ? 'pending'
+    : monthly < decimal(String(settings.min_monthly_yield)) ? 'reject' : 'pass';
+  const metrics = navMetrics(product.nav, date, calendar, detail?.valuation_basis, settings);
   const amount = quota?.amount ?? null;
   const quotaStatus = quota?.status === 0 || quota?.status === 1 ? quota.status : null;
   const quotaGate = quotaStatus === 0 ? 'pass' : quotaStatus === 1 ? 'reject' : 'pending';
@@ -209,7 +212,7 @@ function evaluateProduct(product, date, calendar) {
     if (term.kind === 'periodic') reason('term', 'reject', 'periodic');
     else if (term.kind === 'rolling') reason('term', 'pending', 'rolling');
     else if (term.kind === 'conflict') reason('term', 'pending', 'term_conflict');
-    else if (term.days > 190) reason('term', 'reject', 'term_exceeds');
+    else if (term.days > settings.max_term_days) reason('term', 'reject', 'term_exceeds');
     else if (Number.isInteger(term.days) && term.days >= 0) reason('term', 'pass', 'term_pass');
     else reason('term', 'hint', 'term_unknown');
     if (category === 'unknown') reason('category', 'hint', 'category_unknown');
@@ -221,7 +224,7 @@ function evaluateProduct(product, date, calendar) {
   const outcomes = new Set(reasons.map(item => item.outcome));
   const status = outcomes.has('reject') ? 'rejected' : outcomes.has('pending') ? 'pending' : outcomes.has('watch') ? 'watch' : 'eligible';
   const hints = [
-    [metrics.zero_dates?.length >= 3, 'frequent_zero'],
+    [metrics.zero_dates?.length >= settings.frequent_zero_count, 'frequent_zero'],
     [yieldGate === 'pass' && quotaGate === 'pass' && metrics.zero_dates === null, 'zero_pending'],
     [metrics.trend === 'weak', 'trend_weak'], [metrics.trend === 'short', 'trend_short'],
     [metrics.count >= 2 && ['pending', 'calendar_gap'].includes(metrics.trend), 'trend_pending'],
@@ -229,7 +232,7 @@ function evaluateProduct(product, date, calendar) {
     [quotaStatus === 0 && quota?.low_amount === true, 'quota_low'],
     [status === 'eligible' && term.days === null, 'term_unknown'],
     [status === 'eligible' && category === 'unknown', 'category_unknown'],
-    [detail?.equity_upper_pct > 5, 'equity_review'],
+    [detail?.equity_upper_pct > settings.equity_review_pct, 'equity_review'],
     [metrics.issue === 'calendar_gap' || metrics.trend === 'calendar_gap', 'calendar_gap'],
   ].filter(([show]) => show).map(([, hint]) => hint);
   return {
@@ -244,8 +247,8 @@ function evaluateProduct(product, date, calendar) {
   };
 }
 
-function screen(products, date, calendar) {
-  const results = products.map(product => evaluateProduct(product, date, calendar));
+function screen(products, date, calendar, settings = DEFAULT_POLICY.screening) {
+  const results = products.map(product => evaluateProduct(product, date, calendar, settings));
   const ranked = results.filter(row => row.status === 'eligible' && row.term.days !== null && row.category !== 'unknown');
   ranked.sort((a, b) => {
     const left = decimal(a.performance['1m']);
@@ -257,7 +260,7 @@ function screen(products, date, calendar) {
     const key = `${row.term.days}/${row.category}`;
     row.rank = (groups.get(key) ?? 0) + 1;
     groups.set(key, row.rank);
-    row.shortlisted = row.rank <= 3;
+    row.shortlisted = row.rank <= settings.shortlist_per_group;
   }
   const counts = Object.fromEntries(STATES.map(status => [status, results.filter(row => row.status === status).length]));
   return {

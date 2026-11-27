@@ -306,6 +306,101 @@ async function screeningSmoke(browser, base) {
   } finally { await page.close() }
 }
 
+async function chartNavigationSmoke(browser, base) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  const records = Array.from({ length: 60 }, (_, index) => ({
+    date: new Date(Date.UTC(2026, 8, index + 1 + Math.floor(index / 5))).toISOString().slice(0, 10),
+    principal: 10000,
+    holding_amount: 10000,
+    daily_pnl: 1,
+    daily_return: 0.0001,
+    cumulative_pnl: index + 1,
+    net_value: 10001 + index,
+    nav_index: 1 + (index + 1) / 10000,
+    drawdown: 0,
+  }))
+  try {
+    await page.route('**/api/dashboard/sections?include=overview', async (route) => {
+      const response = await route.fetch()
+      await route.fulfill({ response, json: { ...(await response.json()), records } })
+    })
+    await page.goto(base + '/ledger/overview')
+    const plot = (chart) => page.locator(`[data-chart="${chart}"] .chart-plot`)
+    async function hoverPlot(chart, ratio) {
+      const region = plot(chart)
+      await region.scrollIntoViewIfNeeded()
+      const box = await region.boundingBox()
+      assert(box, '找不到收益图的绘图区')
+      const x = box.x + box.width * ratio
+      const y = box.y + box.height / 2
+      await page.mouse.move(x, y)
+      return { x, y, box }
+    }
+    const ranges = page.locator('.r2-overview-charts .chart-summary > :first-child')
+    async function readRange(previous = '') {
+      await page.waitForFunction((before) => {
+        const values = [...document.querySelectorAll('.r2-overview-charts .chart-summary > :first-child')]
+          .map((element) => element.textContent?.trim())
+        return values.length === 2 && values[0] === values[1] && values[0] !== before
+      }, previous)
+      const label = (await ranges.first().textContent()).trim()
+      const [dates, count] = label.split(' · ')
+      return { label, count: Number.parseInt(count, 10), last: dates.split(' — ')[1] }
+    }
+
+    const preset = await readRange()
+    assert(await page.getByText('左右拖动 · 滚轮缩放', { exact: true }).count() === 0, '图表仍显示操作提示')
+    for (const name of ['assets', 'pnl']) {
+      const chart = page.locator(`[data-chart="${name}"]`)
+      await plot(name).click()
+      assert(await chart.evaluate((svg) => getComputedStyle(svg).outlineStyle === 'none'), '鼠标点击图表后出现焦点白框')
+      await page.locator(`[data-range-group="${name}"] button`).last().focus()
+      await page.keyboard.press('Tab')
+      assert(await chart.evaluate((svg) => svg.matches(':focus-visible') && getComputedStyle(svg).outlineStyle === 'solid'), '键盘聚焦图表时缺少焦点样式')
+    }
+    await hoverPlot('assets', 0.98)
+    const scrollY = await page.evaluate(() => window.scrollY)
+    await page.mouse.wheel(0, -120)
+    const zoomed = await readRange(preset.label)
+    assert(zoomed.count < preset.count && zoomed.last === preset.last, '滚轮放大未保持鼠标侧日期')
+    assert(await page.evaluate(() => window.scrollY) === scrollY, '图内缩放时页面发生滚动')
+
+    const { y, box } = await hoverPlot('pnl', 0.4)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width + 20, y, { steps: 8 })
+    await page.mouse.up()
+    const earlier = await readRange(zoomed.label)
+    assert(earlier.count === zoomed.count && earlier.last < zoomed.last, '向右拖拽未查看更早区间')
+    assert(await page.locator('.chart-plot.is-dragging').count() === 0, '绘图区外松开后未结束拖拽')
+
+    const reverse = await hoverPlot('assets', 0.5)
+    await page.mouse.down()
+    await page.mouse.move(reverse.x - reverse.box.width * 0.2, reverse.y, { steps: 4 })
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await page.mouse.up()
+    const newer = await readRange(earlier.label)
+    assert(newer.count === earlier.count && newer.last > earlier.last, '向左拖拽未查看更晚区间')
+    assert(await page.locator('.chart-plot.is-dragging').count() === 0, '窗口失焦后未结束拖拽')
+
+    await hoverPlot('pnl', 0.5)
+    await page.mouse.wheel(0, 120)
+    const wider = await readRange(newer.label)
+    assert(wider.count > newer.count, '每日收益图滚轮缩小未扩大日期区间')
+    await page.locator('[data-chart="assets"]').press('ArrowRight')
+    const later = await readRange(wider.label)
+    assert(later.count === wider.count && later.last > wider.last, '方向键未平移到更晚区间')
+
+    await page.locator('[data-chart="assets"]').press('+')
+    const beforeReset = await readRange(later.label)
+    assert(beforeReset.count < later.count, '加号未放大图表')
+    await page.locator('[data-range-group="pnl"]').getByRole('button', { name: '30天' }).click()
+    assert((await readRange(beforeReset.label)).label === preset.label, '预设按钮未恢复原日期区间')
+    await assertFontFloor(page, '.r2-overview-charts', '收益图表')
+  } finally {
+    await page.close()
+  }
+}
+
 async function main() {
   process.env.R2_OCR = '0'
   if (!existsSync(path.join(root, 'dist', 'index.html'))) {
@@ -340,6 +435,7 @@ async function main() {
   page.on('pageerror', (error) => consoleErrors.push(error.message))
 
   try {
+    await chartNavigationSmoke(browser, base)
     await screeningSmoke(browser, base)
     await marketBriefSmoke(page, base, assertFontFloor)
 

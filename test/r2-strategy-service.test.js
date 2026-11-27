@@ -44,6 +44,39 @@ test('workspace and preview queries have no writes, and legacy recompute stays a
   assert.equal(repository.db.prepare('SELECT total_changes() n').get().n, before);
   assert.deepEqual(store.jobSummary().counts, {});
 });
+
+test('manual policy persists across connections, rejects stale edits and holds allocation until matching screening', async t => {
+  const { options, repository, fixture } = await setup(t);
+  const service = createStrategyService(options);
+  const initial = service.policySettings();
+  const previous = service.recompute();
+  const next = structuredClone(initial.settings);
+  next.screening.min_monthly_yield = 2.5;
+  next.allocation.medium_cap_pct = 10;
+  next.allocation.max_single_pct = 27;
+  assert.throws(() => service.savePolicySettings({ expected_revision: initial.revision,
+    settings: { ...next, unsupported: {} } }), error => error.code === 'invalid_policy_settings');
+  const saved = service.savePolicySettings({ expected_revision: initial.revision, settings: next });
+  assert.notEqual(saved.revision, initial.revision);
+  assert.equal(service.savePolicySettings({ expected_revision: initial.revision, settings: next }).revision, saved.revision);
+  assert.throws(() => service.savePolicySettings({ expected_revision: initial.revision, settings: initial.settings }),
+    error => error.code === 'settings_changed');
+  assert.equal(service.workspace().stale, true);
+  assert.equal(service.workspace().screening_policy_stale, true);
+  assert.throws(() => service.recompute({ expectedInputFingerprint: previous.input_fingerprint }),
+    error => error.code === 'input_changed');
+  assert.equal(service.preview().result.allocation.full_investment, false);
+  fixture.sourceSnapshot.run.input = { screening_policy: next.screening };
+  assert.equal(service.workspace().screening_policy_stale, false);
+  assert.equal(service.status().effective_contract.bucket_caps_pct.medium, 10);
+  const worker = openStrategyLedger(repository.dbPath, { readOnly: true });
+  try {
+    const reader = createStrategyService({ ...options, repository: worker, strategyRepository: null });
+    assert.deepEqual(reader.policySettings(), saved);
+    assert.equal(reader.frozenInput().input.settings.max_single_pct, 27);
+    assert.equal(reader.preview().result.allocation.bucket_limits.medium.limit_cents, 1000);
+  } finally { worker.close(); }
+});
 test('dated payment needs replace the estimated windows and accumulate by payment day', async t => {
   const { repository, options } = await setup(t, 'v9');
   const service = createStrategyService(options);
@@ -194,6 +227,25 @@ function configureTripleExit(repository, fixture, { locked = false, complete = t
   row.metrics.observation = { basis: 'cumulative_change_over_start_unit', recent: { status: 'available', days: 7,
     start_date: '2026-10-30', end_date: '2026-11-06', return_pct: 0.01 } };
 }
+
+test('a configured exit threshold expires old pending proposals without rewriting financial facts', async t => {
+  const { repository, fixture, options } = await setup(t, 'v9');
+  configureTripleExit(repository, fixture);
+  const service = createStrategyService(options);
+  const before = service.recompute().result.monitoring.rows[0];
+  assert.equal(before.exit_conditions.status, 'met');
+  const initial = service.policySettings();
+  const next = structuredClone(initial.settings);
+  next.exit.recent_return_threshold_pct = 0.01;
+  service.savePolicySettings({ expected_revision: initial.revision, settings: next });
+  const after = service.recompute().result.monitoring.rows[0];
+  assert.equal(after.exit_conditions.checks.recent_return, 'not_met');
+  assert.equal(after.exit_conditions.recent_return_threshold_pct, 0.01);
+  assert.equal(before.exit_conditions.recent_return_threshold_pct, 0.04410959);
+  assert.deepEqual(repository.db.prepare('SELECT status FROM decision_proposals').all().map(row => row.status), ['expired']);
+  assert.equal(repository.listDecisions().length, 0);
+  assert.equal(repository.tradeStore.listTrades().length, 0);
+});
 
 test('three-condition exits automatically create one unaccepted proposal, remain idempotent and write no trades or decisions', async t => {
   const { repository, fixture, options } = await setup(t, 'v9');

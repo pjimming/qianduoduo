@@ -7,6 +7,8 @@ const { evaluateStrategy, compactStrategyResult } = require('./engine');
 const { moneyCents } = require('./account');
 const { createTransactionManager } = require('../../../lib/transaction');
 const { readHoldingSupplements } = require('../../jobs/r2-holding-monitor-artifact');
+const { createWeeklyNavReader } = require('./weekly-nav');
+const { DEFAULT_POLICY, FIELDS, configuredContract, matchesScreeningPolicy, readPolicy, validatePolicy, writePolicy } = require('./policy-settings');
 
 // Bump whenever engine/account/allocation output can change without a ledger
 // write. It is part of the frozen input hash so a code change invalidates the
@@ -20,12 +22,33 @@ function monthEndWindow(date, months) {
 }
 
 function createStrategyService({ repository, screening = null, strategyRepository = null, todayProvider = todayShanghai,
-  evaluate = evaluateStrategy, engineOptions = {} }) {
+  evaluate = evaluateStrategy, engineOptions = {}, readWeeklyNav = createWeeklyNavReader() }) {
   if (!repository?.db) throw new Error('执行策略服务需要账本repository');
   const transactionManager = repository.transactionManager ?? createTransactionManager(repository.db);
   const store = strategyRepository ?? createStrategyRepository(repository.db, { transactionManager });
+  function policySettings() {
+    return { ...readPolicy(repository.db, repository.getAllocationSettings()), defaults: DEFAULT_POLICY, fields: FIELDS };
+  }
+  function savePolicySettings({ expected_revision: expectedRevision, settings }) {
+    validatePolicy(settings);
+    return transactionManager.run(() => {
+      const current = policySettings();
+      const unchanged = fingerprint(current.settings) === fingerprint(settings);
+      if (unchanged) return current;
+      if (current.revision !== expectedRevision) throw strategyError('settings_changed', '策略设置已被修改，请重新读取后再保存');
+      const { max_single_pct, liquidity_floor_pct, principal_override } = settings.allocation;
+      if (max_single_pct !== current.settings.allocation.max_single_pct ||
+          liquidity_floor_pct !== current.settings.allocation.liquidity_floor_pct ||
+          principal_override !== current.settings.allocation.principal_override) {
+        repository.saveAllocationSettings({ max_single_pct, liquidity_floor_pct, principal_override });
+      }
+      writePolicy(repository.db, settings);
+      return policySettings();
+    });
+  }
   function readLedger(date) {
     const settings = repository.getAllocationSettings();
+    const policy = readPolicy(repository.db, settings);
     const capital = repository.getCapitalState(date);
     const cashNeeds = [];
     let required = 0;
@@ -47,7 +70,8 @@ function createStrategyService({ repository, screening = null, strategyRepositor
         holdings: repository.tradeStore.getPortfolio(), trades: repository.tradeStore.listTrades(),
         reservations: store.reservations(), decisions: repository.listDecisions() },
       products: repository.listProducts(),
-      settings: { max_single_pct: settings.max_single_pct, liquidity_floor_pct: settings.liquidity_floor_pct, cash_needs: cashNeeds }, date,
+      settings: { max_single_pct: settings.max_single_pct, liquidity_floor_pct: settings.liquidity_floor_pct, cash_needs: cashNeeds,
+        ...(policy.updated_at ? { policy: policy.settings } : {}) }, date,
       cashflow_dates: settings.cashflow_dates ?? null, calculation_version: CALCULATION_VERSION };
   }
   function ledgerInput(date) {
@@ -67,7 +91,9 @@ function createStrategyService({ repository, screening = null, strategyRepositor
   }
   function status() {
     const state = store.state();
+    const policy = policySettings();
     return { contract: CONTRACT, contract_hash: CONTRACT_HASH, migrated: Boolean(state),
+      effective_contract: configuredContract(policy.settings), policy_revision: policy.revision,
       mode: state?.mode ?? 'legacy', activation_seq: state?.activation_seq ?? 0,
       contract_matches: state ? state.contract_hash === CONTRACT_HASH : false,
       jobs: store.jobSummary(), watermark: store.watermark('strategy'),
@@ -76,7 +102,9 @@ function createStrategyService({ repository, screening = null, strategyRepositor
   function workspace() {
     const frozen = frozenInput();
     const previous = store.latestCompleted('strategy');
+    const run = frozen.input.sourceSnapshot?.run;
     return { ...status(), business_date: frozen.input.date, source_issue: frozen.sourceIssue,
+      screening_policy_stale: Boolean(run && !matchesScreeningPolicy(run, (frozen.input.settings.policy ?? DEFAULT_POLICY).screening)),
       cashflow_dates: frozen.input.cashflow_dates, cash_needs: frozen.input.settings.cash_needs,
       run_id: frozen.input.sourceSnapshot?.run?.id ?? null, input_fingerprint: frozen.fingerprint,
       result: previous?.result ?? null, stale: Boolean(previous && previous.input.frozen_input_hash !== frozen.fingerprint) };
@@ -139,7 +167,8 @@ function createStrategyService({ repository, screening = null, strategyRepositor
       proposals.generate({ kind: 'holding_exit', lotId: row.lot_id });
     }
   }
-  return { status, workspace, preview, recompute, frozenInput, readLedgerInput: ledgerInput };
+  return { status, workspace, policySettings, savePolicySettings, weeklyNav: () => readWeeklyNav(workspace()),
+    preview, recompute, frozenInput, readLedgerInput: ledgerInput };
 }
 
 module.exports = { createStrategyService, monthEndWindow };

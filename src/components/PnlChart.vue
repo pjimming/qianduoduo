@@ -18,8 +18,8 @@ import {
   formatMoney,
   formatPct,
   formatSignedMoney,
-  rangeRecords,
 } from '@/composables/useFormatters'
+import { useChartNavigation } from '@/composables/useChartNavigation'
 import {
   chartGeometry,
   nearestChartPoint,
@@ -32,12 +32,16 @@ import {
 
 const props = defineProps<{
   records: LedgerRecord[]
-  range: RangeValue
+  range: RangeValue | null
+  canNavigate: boolean
+  canPan: boolean
   activeDate?: string | null
 }>()
 const emit = defineEmits<{
   'update:range': [value: RangeValue]
   'hover-date': [value: string | null]
+  pan: [offset: number]
+  zoom: [factor: number, anchor: number]
 }>()
 
 const ranges: Array<{ value: RangeValue; label: string }> = [
@@ -56,7 +60,16 @@ const tooltipStyle = ref<CSSProperties>({ left: '0px', top: '0px' })
 const pointerHovered = ref(false)
 let observer: ResizeObserver | null = null
 
-const chartRecords = computed(() => rangeRecords(props.records, props.range))
+const chartRecords = computed(() => props.records)
+const { dragging, navigateWithKeyboard, movePointer, leavePlot, plotListeners } = useChartNavigation({
+  canNavigate: () => props.canNavigate,
+  canPan: () => props.canPan,
+  visibleCount: () => props.records.length,
+  pan: (offset) => emit('pan', offset),
+  zoom: (factor, anchor) => emit('zoom', factor, anchor),
+  hover: updateTooltip,
+  clearHover: hideTooltip,
+})
 const height = computed(() => (width.value < 760 ? 300 : 340))
 
 interface AxisLabel {
@@ -311,10 +324,8 @@ function measure(): void {
 }
 
 watch(
-  () => props.range,
-  () => {
-    pointerHovered.value = false
-  },
+  () => props.activeDate,
+  (date) => { if (!date) pointerHovered.value = false },
 )
 
 watch(
@@ -383,6 +394,11 @@ onUnmounted(() => {
           :data-hover-date="activeRecord?.date ?? ''"
           role="img"
           aria-label="每日收益柱状图与日收益率折线"
+          :tabindex="canNavigate ? 0 : undefined"
+          :aria-description="canNavigate ? '左右方向键平移，加号和减号缩放' : undefined"
+          @keydown="navigateWithKeyboard"
+          @pointermove="movePointer"
+          @pointerleave="leavePlot"
         >
           <template v-for="tick in model.grid" :key="`pnl-${tick.y}`">
             <line
@@ -488,15 +504,14 @@ onUnmounted(() => {
             />
           </template>
           <rect
-            x="0"
-            y="0"
-            :width="model.width"
-            :height="model.height"
+            :x="model.margins.left"
+            :y="model.margins.top"
+            :width="model.width - model.margins.left - model.margins.right"
+            :height="model.height - model.margins.top - model.margins.bottom"
             fill="transparent"
-            style="cursor: crosshair"
-            @pointermove="updateTooltip"
-            @pointerleave="hideTooltip"
-            @pointercancel="hideTooltip"
+            class="chart-plot"
+            :class="{ 'can-pan': canPan, 'is-dragging': dragging }"
+            v-on="plotListeners"
           />
         </svg>
       </div>
