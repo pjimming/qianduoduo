@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A股红利低波ETF｜产品比较与策略回测｜2026-11-26</title>
-<meta name="description" content="比较六条指数路线和28只A股红利低波ETF，拆解收益来源，并回测季度等权、定投、估值与股息利差、均线、动量和波段策略。">
+<meta name="description" content="比较六条指数路线和28只A股红利低波ETF，拆解收益来源，并回测两只、三只及四指数季度等权、定投、股息利差与波段策略。">
 <!-- rpnav-published: 2026-11-26 02:36 -->
 <!-- rpnav-title: A股红利低波ETF：产品比较、收益来源与策略回测 -->
 <!-- rpnav-tag: A股红利低波ETF -->
-<!-- rpnav-summary: 存量资金参考四指数季度等权，新增资金参考固定定投。低估加倍、股息利差和技术波段对阈值、现金暴露或成交成本敏感。 -->
+<!-- rpnav-summary: 比较六条指数路线和28只红利低波ETF，回测10种两只及三只季度等权组合，并以四指数等权和固定定投作为对照。 -->
 <!-- rpnav-keywords: 红利低波 高股息 定投 周投 月投 XIRR 季度等权 股息利差 剪刀差 止盈 PE 分位 年化 收益归因 KDJ MACD RSI 512890 563020 159547 159307 515100 515450 515300 159355 560570 510300 H30269 H20269 930955 930740 931848 932422 -->
 <!-- rpnav-priority: 高 -->
 <!-- rpnav-priority-detail: 先复核行业暴露、现金流与成交成本，用季度等权或固定定投作为策略对照。 -->
@@ -22,6 +22,14 @@
   .rp-doc .etf-bt-rules th:first-child, .rp-doc .etf-swing-rules th:first-child { min-width: 8rem; }
   .rp-doc .fund-snapshot td:nth-child(n+3) { font-variant-numeric: tabular-nums; }
   .rp-doc .etf-toc { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin: 1rem 0; }
+  @media (max-width: 760px) {
+    .etf-combination-results table { min-width: 624px; table-layout: fixed; }
+    .etf-combination-results col:first-child { width: 112px; }
+    .etf-combination-results col + col { width: 58px; }
+    .etf-combination-results th[scope="row"] { white-space: normal; }
+    .etf-combination-results th[scope="row"],
+    .etf-combination-results th[scope="col"]:first-child[rowspan] { left: 0; z-index: 2; }
+  }
   @media print { .rp-doc .etf-bt-chart img { min-width: 0; } }
 </style>
 </head>
@@ -41,7 +49,7 @@
   </header>
   <nav class="etf-toc" aria-label="本文目录" data-report-toc>
     <a href="#conclusion">研究结论</a><a href="#return-drivers">收益来源</a><a href="#index-rules">产品比较</a>
-    <a href="#portfolio">存量资金策略</a><a href="#dca">定投与止盈</a><a href="#exit">失效条件与复现</a>
+    <a href="#portfolio">存量资金策略</a><a href="#equal-weight-combinations">两只与三只等权</a><a href="#dca">定投与止盈</a><a href="#exit">失效条件与复现</a>
   </nav>
 
   <section class="rp-section" id="conclusion">
@@ -51,6 +59,7 @@
       <li><strong>先选指数，再选产品。</strong> 563020和512890跟踪H30269，前者的管理及托管费较低，后者在产品快照窗口成交更活跃。159307跟踪中证红利低波100，行业相对分散。515450提供标普大盘路线，515300提供沪深300母池对照。</li>
       <li><strong>持有收益来自股息、盈利及估值。</strong> 2019年2月以来，H30269对应全收益指数年化10.77%，分红再投的年化复利因子为5.27%，约占全段对数总收益的一半。2023年以来的价格回报更多由估值抬升解释。</li>
       <li><strong>一次性已有资金。</strong> 四指数季度等权在2021年8月以来年化11.29%、最大回撤−12.63%，近段年化5.15%。季度与月度累计收益几乎相同，模拟成交分别为88笔和256笔。日线均线、常规金叉死叉与月度动量缺乏稳定优势。</li>
+      <li><strong>两只与三只等权。</strong> 同期 512890＋515450 年化 12.23%、最大回撤 −13.86%。加入 159307，按同指数基金补足上市前历史后，年化 11.64%、最大回撤 −12.52%。三只均已上市后，该三只组年化为 8.60%。<a href="#equal-weight-combinations">查看全部 10 组</a></li>
       <li><strong>持续新增资金。</strong> 512890固定周投和月投在2019年2月以来的资金加权年化为10.70%和10.65%。同一备金下，深跌低估加倍为10.75%，期初投出备金为10.81%。15%或20%年化触发后卖出一半，在长样本中降低了期末年化。</li>
     </ul>
     <p class="rp-src">实际方法为 Serenity 产业链瓶颈分析 + 公司全景与阵型 + 市场叙事与资金结构 + 退出条件。本题把瓶颈落在成份股派息能力与ETF可交易性，把阵型落在指数与产品两层，并加入指数收益归因与场内交易模拟。产品净值比较、无外部入金的复合年化（CAGR）和定投的资金加权年化（XIRR）各按本章标注的样本和口径阅读。</p>
@@ -262,6 +271,53 @@
         </tbody>
       </table>
     </div>
+    <h3 id="equal-weight-combinations">两只与三只 ETF 季度等权回测</h3>
+    <p>2026-11-27 补测。报告中研究顺序为「高」的四只 ETF 全部纳入，两只组合 6 种，三只组合 4 种。512890 华泰柏瑞和 563020 易方达跟踪中证红利低波（H30269），159307 博时跟踪中证红利低波100（930955），515450 南方跟踪标普中国 A 股大盘红利低波50。同时配置前两只时，H30269 的目标权重在两只组合中为 100%，在三只组合中为 2/3。</p>
+    <ul>
+      <li><strong>长样本</strong>为 2021-08-02 至 2026-11-25，共 1,288 个交易日。563020 于 2023-12-14 上市，先用同指数 512890 承接该份权重，2024-01-02 切换。159307 于 2024-04-25 上市，先用同指数 515100 承接，2024-07-01 切换。两个目标份额映射到同一产品时合并权重。该样本使用事后选定的产品池和历史可成交的基金价格。 <a href="https://www.sse.com.cn/disclosure/fund/announcement/c/new/2023-12-14/563020_20231214_6YHZ.pdf">563020 上市</a> · <a href="https://www.szse.cn/disclosure/notice/fund/t20240422_606925.html">159307 上市</a> · <a href="https://www.sse.com.cn/assortment/fund/list/etfinfo/basic/index.shtml?FUNDID=515100">515100 跟踪指数</a></li>
+      <li><strong>共同上市样本</strong>为 2024-04-25 至 2026-11-25，共 627 个交易日。每组期初开盘按目标权重买入，之后于每季首个交易日开盘恢复等权。两段均按除息日开盘模拟分红再投，单边交易成本按 8 个基点，按期末收盘估值和实际日历天数年化。</li>
+    </ul>
+    <h4 id="equal-weight-2-caption">两只等权，每只目标权重 50%</h4>
+    <div class="rp-table-wrap etf-combination-results" role="region" aria-labelledby="equal-weight-2-caption" tabindex="0">
+      <table class="etf-bt-numbers" aria-labelledby="equal-weight-2-caption">
+        <colgroup><col><col></colgroup><colgroup span="3"></colgroup><colgroup span="3"></colgroup>
+        <thead>
+          <tr><th scope="col" rowspan="2">ETF 组合</th><th scope="col" rowspan="2">指数数</th><th scope="colgroup" colspan="3">长样本</th><th scope="colgroup" colspan="3">共同上市样本</th></tr>
+          <tr><th scope="col">年化</th><th scope="col">累计</th><th scope="col">最大回撤</th><th scope="col">年化</th><th scope="col">累计</th><th scope="col">最大回撤</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">512890 ＋ 515450</th><td>2</td><td><strong>12.23%</strong></td><td>+84.60%</td><td>−13.86%</td><td>9.24%</td><td>+25.67%</td><td>−12.19%</td></tr>
+          <tr><th scope="row">563020 ＋ 515450</th><td>2</td><td>12.21%</td><td>+84.48%</td><td>−13.86%</td><td><strong>9.25%</strong></td><td>+25.70%</td><td>−12.26%</td></tr>
+          <tr><th scope="row">159307 ＋ 515450</th><td>2</td><td>11.74%</td><td>+80.42%</td><td>−12.93%</td><td>9.16%</td><td>+25.42%</td><td>−11.49%</td></tr>
+          <tr><th scope="row">512890 ＋ 563020</th><td>1</td><td>11.24%</td><td>+76.12%</td><td>−16.53%</td><td>7.40%</td><td>+20.26%</td><td>−14.23%</td></tr>
+          <tr><th scope="row">512890 ＋ 159307</th><td>2</td><td>10.88%</td><td>+73.09%</td><td>−13.48%</td><td>7.37%</td><td>+20.18%</td><td>−13.47%</td></tr>
+          <tr><th scope="row">563020 ＋ 159307</th><td>2</td><td>10.86%</td><td>+72.95%</td><td>−13.55%</td><td>7.38%</td><td>+20.20%</td><td>−13.55%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h4 id="equal-weight-3-caption">三只等权，每只目标权重 1/3</h4>
+    <div class="rp-table-wrap etf-combination-results" role="region" aria-labelledby="equal-weight-3-caption" tabindex="0">
+      <table class="etf-bt-numbers" aria-labelledby="equal-weight-3-caption">
+        <colgroup><col><col></colgroup><colgroup span="3"></colgroup><colgroup span="3"></colgroup>
+        <thead>
+          <tr><th scope="col" rowspan="2">ETF 组合</th><th scope="col" rowspan="2">指数数</th><th scope="colgroup" colspan="3">长样本</th><th scope="colgroup" colspan="3">共同上市样本</th></tr>
+          <tr><th scope="col">年化</th><th scope="col">累计</th><th scope="col">最大回撤</th><th scope="col">年化</th><th scope="col">累计</th><th scope="col">最大回撤</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">512890 ＋ 563020 ＋ 515450</th><td>2</td><td><strong>11.91%</strong></td><td>+81.81%</td><td>−14.70%</td><td><strong>8.64%</strong></td><td>+23.87%</td><td>−12.90%</td></tr>
+          <tr><th scope="row">512890 ＋ 159307 ＋ 515450</th><td>3</td><td>11.64%</td><td>+79.50%</td><td>−12.52%</td><td>8.60%</td><td>+23.78%</td><td>−12.39%</td></tr>
+          <tr><th scope="row">563020 ＋ 159307 ＋ 515450</th><td>3</td><td>11.63%</td><td>+79.41%</td><td>−12.52%</td><td>8.61%</td><td>+23.79%</td><td>−12.43%</td></tr>
+          <tr><th scope="row">512890 ＋ 563020 ＋ 159307</th><td>2</td><td>11.01%</td><td>+74.21%</td><td>−14.40%</td><td>7.40%</td><td>+20.25%</td><td>−13.75%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>两只组合。</strong> 长样本年化最高的是 512890＋515450（12.23%），共同上市后 563020＋515450 与它接近（9.25% 与 9.24%）。159307＋515450 在两只组合中两段回撤均最小，长样本与共同上市段分别为 −12.93% 和 −11.49%。</li>
+      <li><strong>三条指数路线。</strong> 512890＋159307＋515450 长样本年化 11.64%、最大回撤 −12.52%，同期两只的 512890＋515450 为 12.23% 和 −13.86%。共同上市后，加入 159307 的三只组年化由 9.24% 降至 8.60%，最大回撤由 −12.19% 加深至 −12.39%。把 512890 换成同指数 563020，三只组在两个样本的年化差均约 0.01 个百分点。单边成本升至 20 个基点时，两组三只组合的共同上市年化均为 8.55%。</li>
+      <li><strong>基准对照。</strong> 515450 单独持有的两段年化分别为 13.08% 和 11.06%，最大回撤分别为 −14.52% 和 −10.64%。四指数季度等权的两段年化分别为 11.29% 和 8.44%，最大回撤分别为 −12.63% 和 −12.30%。四指数共同上市段用 512890、159307、515450 和 515300。两只及三只组合的回报排序受到南方大盘低波在本样本表现的影响。</li>
+    </ul>
+    <p class="rp-src">补测全部采用东方财富公开不复权场内日线和基金分红送配记录，按公告处理 512890 的份额拆分及停牌。脚本以 510300 日线校验交易日历，组合现金流使用模型化成交，未计最低佣金、整手取整和实际分红到账前的资金占用。 <a href="https://quote.eastmoney.com/sh515450.html">场内行情</a> · <a href="https://fundf10.eastmoney.com/fhsp_159307.html">159307 分红记录</a> · <a href="https://www.sse.com.cn/disclosure/fund/announcement/c/new/2021-10-18/512890_20211018_1_5m8OUo9o.pdf">512890 拆分与停牌公告</a></p>
+
     <h3 id="allocation-sensitivity">均线交易拖累回报，回撤加仓保留验证价值</h3>
     <div class="rp-table-wrap">
       <table class="etf-bt-numbers">
@@ -417,6 +473,7 @@
     <p>运行环境使用本地东方财富日线 <code>D:/dfcf/data/SHANGHAI/DayData_SH_V43.dat</code>，与同日公开开高低收核对。其他场内行情用东方财富不复权日线补齐。现金分红按除息日开盘再投，按公告处理512890拆分及停牌，563020分红使用带基金代码参数的入口校验分红记录。产品横向比较使用所列基金定期报告、历史公布净值和市场快照。<a href="https://quote.eastmoney.com/sh515450.html">场内行情示例</a> · <a href="https://fundf10.eastmoney.com/fhsp_563020.html?fund=563020">563020分红记录</a> · <a href="https://www.sse.com.cn/disclosure/fund/announcement/c/new/2021-10-25/512890_20211025_1_lJ5GeyLb.pdf">512890拆分公告</a></p>
     <ul>
       <li>配置、均线、动量、波段与成交敏感性 <code>node scripts/backtest-dividend-low-vol.mjs D:/dfcf</code>。</li>
+      <li>两只与三只季度等权、上市前同指数衔接和成交成本敏感性 <code>node scripts/backtest-dividend-low-vol.mjs --combinations</code>。</li>
       <li>收益归因、估值与股息利差调仓 <code>node scripts/backtest-dividend-low-vol.mjs D:/dfcf --fundamentals</code>。</li>
       <li>定投、加仓、止盈及滚动窗口 <code>node scripts/backtest-dividend-low-vol.mjs D:/dfcf --dca</code>。</li>
     </ul>

@@ -6,6 +6,8 @@ const end = '2026-11-25'
 const root = process.argv[2] ?? 'D:/dfcf'
 const dcaOnly = process.argv.includes('--dca')
 const fundamentalOnly = dcaOnly || process.argv.includes('--fundamentals')
+const combinationsOnly = process.argv.includes('--combinations')
+assert(!(combinationsOnly && fundamentalOnly), 'Run --combinations separately from --fundamentals or --dca')
 const longPool = ['512890', '515450', '515300', '515100']
 const recentPool = ['563020', '515450', '515300', '159307']
 const localCodes = ['512890', '515450', '563020']
@@ -127,11 +129,11 @@ function adjust(prices, actions, code) {
   })
 }
 
-const buffer = await readFile(join(root, 'data', 'SHANGHAI', 'DayData_SH_V43.dat'))
+const buffer = combinationsOnly ? null : await readFile(join(root, 'data', 'SHANGHAI', 'DayData_SH_V43.dat'))
 const series = Object.fromEntries(await Promise.all(codes.map(async code => {
   if (fundamentalOnly && code === '510300') return [code, { prices: await publicPrices(code) }]
   const [online, actions] = await Promise.all([publicPrices(code), corporateActions(code)])
-  const local = localCodes.includes(code)
+  const local = buffer && localCodes.includes(code)
   const raw = local ? readLocalPrices(buffer, code) : online
   if (local) {
     assert.equal(raw.length, online.length, `${code} local and public daily-bar counts differ`)
@@ -358,7 +360,7 @@ function simulate(start, finish, rule, feeBp = 8, cashRate = 0, signalDelay = 0)
     }
     if (index) cash *= (1 + cashRate) ** ((Date.parse(date) - Date.parse(previous)) / dayMs / 365.25)
     const signalDate = calendar[firstIndex + index - 1 - signalDelay]
-    const next = !index || !rule.monthly || scheduled ? rule.target(signalDate) : target
+    const next = !index || !rule.monthly || scheduled ? rule.target(signalDate, date) : target
     const tradedCodes = [...new Set([...Object.keys(units), ...Object.keys(next)])]
     const canRebalance = date !== suspension.date || !tradedCodes.includes(suspension.code)
     if (canRebalance && (!index || (rule.monthly ? scheduled : JSON.stringify(next) !== JSON.stringify(target)))) {
@@ -467,6 +469,62 @@ if (fundamentalOnly) {
 }
 
 const longStart = '2021-08-02'
+
+if (combinationsOnly) {
+  const highPriority = ['512890', '563020', '159307', '515450']
+  const proxies = {
+    '563020': { code: '512890', listing: '2023-12-14', switchAt: '2024-01-02' },
+    '159307': { code: '515100', listing: '2024-04-25', switchAt: '2024-07-01' },
+  }
+  const quarterStarts = ['01', '04', '07', '10']
+  for (const [code, { listing, switchAt }] of Object.entries(proxies)) {
+    assert.equal(series[code].prices[0].date, listing)
+    const nextQuarter = calendar.find((date, i) => date >= listing &&
+      quarterStarts.includes(date.slice(5, 7)) && date.slice(0, 7) !== calendar[i - 1]?.slice(0, 7))
+    assert.equal(nextQuarter, switchAt)
+  }
+  const commonStart = highPriority.map(code => series[code].prices[0].date).sort().at(-1)
+
+  function quarterlyWeights(pool, useProxies) {
+    if (!useProxies) return fixed(equal(pool), 3)
+    return {
+      monthly: true,
+      interval: 3,
+      target: (_, date) => {
+        const weights = {}
+        for (const code of pool) {
+          const proxy = proxies[code]
+          const heldCode = proxy && date < proxy.switchAt ? proxy.code : code
+          weights[heldCode] = (weights[heldCode] ?? 0) + 1 / pool.length
+        }
+        return weights
+      },
+    }
+  }
+
+  function result(start, rule) {
+    const { daily, ...metrics } = simulate(start, end, rule)
+    return { ...metrics, cagrAt20Bp: simulate(start, end, rule, 20).cagr }
+  }
+
+  const pairs = highPriority.flatMap((code, i) => highPriority.slice(i + 1).map(next => [code, next]))
+  const triples = highPriority.map((_, omitted) => highPriority.filter((_, i) => i !== omitted))
+  const combinations = [...pairs, ...triples].map(pool => ({
+    pool,
+    long: result(longStart, quarterlyWeights(pool, true)),
+    common: result(commonStart, quarterlyWeights(pool, false)),
+  }))
+  const benchmarks = {
+    fourRoutes: {
+      long: result(longStart, fixed(equal(longPool), 3)),
+      common: result(commonStart, fixed(equal(['512890', '159307', '515450', '515300']), 3)),
+    },
+    '515450': { long: result(longStart, hold('515450')), common: result(commonStart, hold('515450')) },
+  }
+  console.log(JSON.stringify({ proxies, combinations, benchmarks }))
+  process.exit(0)
+}
+
 const laterStart = '2024-01-02'
 const recentStart = '2025-01-02'
 const windows = {
